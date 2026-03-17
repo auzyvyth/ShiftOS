@@ -5,3 +5,8 @@ node_modules
 .env
 *.env
 server/.env
+# env files
+.env
+server/.env
+.env.*
+server/.env.*
