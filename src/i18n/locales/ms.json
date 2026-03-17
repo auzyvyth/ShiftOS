@@ -1,0 +1,209 @@
+
+{
+  "nav": {
+    "home": "Laman Utama",
+    "browseCars": "Semak Kereta",
+    "calculator": "Kalkulator",
+    "howItWorks": "Cara Berfungsi",
+    "contact": "Hubungi",
+    "dashboard": "Papan Pemuka",
+    "login": "Log Masuk"
+  },
+  "common": {
+    "viewDetails": "Lihat Butiran",
+    "whatsappAboutCar": "WhatsApp Tentang Kereta Ini",
+    "whatsappUs": "WhatsApp Kami",
+    "needHelp": "Perlukan Bantuan? WhatsApp Saya",
+    "callNow": "Hubungi Sekarang",
+    "loadMore": "Muatkan Lebih Banyak Kereta",
+    "resetAll": "Set Semula Semua",
+    "applyFilters": "Gunakan Penapis",
+    "badges": {
+      "HOT DEAL": "TAWARAN HEBAT",
+      "NEW": "BARU",
+      "PRICE DROP": "TURUN HARGA"
+    },
+    "rm": "RM"
+  },
+  "home": {
+    "hero": {
+      "headline": "Cari Kereta Idaman Anda dari",
+      "highlight": "200+ Senarai Disahkan",
+      "subheadline": "Tiada Caj Tersembunyi. Tiada Tekanan Wakil Jualan. Hanya Tawaran Jujur.",
+      "browseBtn": "Semak Semua Kereta",
+      "chatBtn": "Sembang di WhatsApp"
+    },
+    "trust": {
+      "carsSold": "Kereta Terjual",
+      "bestPrice": "Jaminan",
+      "guarantee": "Harga Terbaik",
+      "free": "Rundingan",
+      "consultation": "Percuma"
+    },
+    "testimonials": {
+      "title": "Apa Kata Pelanggan Kami",
+      "subtitle": "Kisah benar dari orang sebenar"
+    },
+    "hotDeals": {
+      "title": "Tawaran Hebat Minggu Ini",
+      "subtitle": "Jangan lepaskan tawaran luar biasa ini",
+      "viewAllBtn": "Lihat Semua Kereta"
+    },
+    "howItWorks": {
+      "title": "Cara Berfungsi",
+      "subtitle": "Mudah, telus, dan bebas tekanan",
+      "step1": "Semak Senarai Disahkan",
+      "step2": "Mesej Tentang Kereta",
+      "step3": "Saya Runding Harga Terbaik",
+      "step4": "Anda Pandu Pulang Gembira"
+    },
+    "whyChoose": {
+      "title": "Mengapa Pilih XDrive?",
+      "subtitle": "Kami berbeza daripada platform kereta lain",
+      "benefit1Title": "Akses Tawaran Tersembunyi",
+      "benefit1Desc": "Dapatkan akses eksklusif kepada kereta sebelum ia memasuki pasaran",
+      "benefit2Title": "Rundingan Pakar",
+      "benefit2Desc": "Saya berunding bagi pihak anda untuk mendapatkan harga terbaik",
+      "benefit3Title": "Perlindungan Penipuan",
+      "benefit3Desc": "Setiap kereta disahkan dan diperiksa ketulenannya",
+      "benefit4Title": "Tiada Yuran",
+      "benefit4Desc": "Perkhidmatan saya adalah percuma sepenuhnya untuk pembeli kereta"
+    },
+    "budget": {
+      "title": "Ketahui Bajet Anda",
+      "subtitle": "Gunakan kalkulator pembiayaan kami untuk menganggar ansuran bulanan kereta anda, bandingkan tempoh pinjaman, dan rancang bajet anda sebelum membeli.",
+      "calcBtn": "Kira Bayaran Anda"
+    },
+    "cta": {
+      "title": "Bersedia Mencari Kereta Idaman Anda?",
+      "subtitle": "Biar saya bantu anda mencari kereta sempurna pada harga terbaik. Tiada tekanan, tiada kerumitan.",
+      "browseBtn": "Semak Semua Kereta",
+      "whatsappBtn": "WhatsApp Saya Sekarang"
+    }
+  },
+  "cars": {
+    "header": {
+      "title": "Semak Kereta Kami",
+      "subtitle": "200+ senarai disahkan dikemas kini setiap hari"
+    },
+    "filters": {
+      "show": "Tunjuk Penapis",
+      "hide": "Sembunyi Penapis",
+      "title": "Penapis",
+      "priceRange": "Julat Harga",
+      "brand": "Jenama",
+      "year": "Tahun",
+      "allYears": "Semua Tahun",
+      "bodyType": "Jenis Badan",
+      "transmission": "Transmisi",
+      "location": "Lokasi",
+      "allLocations": "Semua Lokasi"
+    },
+    "sort": {
+      "label": "Susun ikut:",
+      "newest": "Terbaru",
+      "priceLow": "Harga: Rendah ke Tinggi",
+      "priceHigh": "Harga: Tinggi ke Rendah"
+    },
+    "results": {
+      "found": "kereta ditemui",
+      "empty": "Tiada kereta ditemui yang sepadan dengan penapis anda",
+      "resetBtn": "Set Semula Penapis"
+    }
+  },
+  "carDetail": {
+    "specs": {
+      "mileage": "Jarak Perbatuan",
+      "transmission": "Transmisi",
+      "year": "Tahun",
+      "ownership": "Pemilikan"
+    },
+    "aboutTitle": "Tentang Kereta Ini",
+    "sidebar": {
+      "interested": "Berminat dengan kereta ini?",
+      "calcBtn": "Kira Bayaran Anda",
+      "responseTime": "Masa maklum balas: Biasanya dalam masa 5 minit",
+      "whyContact": "Mengapa hubungi saya?",
+      "benefit1": "Saya berunding harga terbaik untuk anda",
+      "benefit2": "Nasihat pemeriksaan kereta percuma",
+      "benefit3": "Tiada caj atau yuran tersembunyi",
+      "benefit4": "Maklum balas pantas & jujur"
+    },
+    "similar": "Anda Mungkin Juga Suka"
+  },
+  "calculator": {
+    "header": {
+      "title": "Kalkulator Pembiayaan Kereta",
+      "subtitle": "Kira bayaran bulanan kereta anda dalam beberapa saat. Rancang bajet anda sebelum membeli."
+    },
+    "inputs": {
+      "title": "Parameter Pinjaman",
+      "price": "Harga Kereta (RM)",
+      "downPayment": "Wang Pendahuluan",
+      "loanTerm": "Tempoh Pinjaman",
+      "interestRate": "Kadar Faedah",
+      "years": "Tahun",
+      "year": "Tahun"
+    },
+    "errors": {
+      "price": "Harga kereta mesti melebihi 0.",
+      "downPaymentNegative": "Wang pendahuluan tidak boleh negatif.",
+      "downPaymentExcess": "Wang pendahuluan mesti kurang daripada harga kereta.",
+      "loanTerm": "Tempoh pinjaman mesti antara 1 dan 15 tahun.",
+      "interestRate": "Kadar faedah mesti antara 0.1% dan 20%."
+    },
+    "results": {
+      "monthly": "Anggaran Ansuran Bulanan",
+      "mo": "/bln",
+      "principal": "Jumlah Pinjaman Pokok",
+      "totalInterest": "Jumlah Faedah Dikenakan",
+      "totalRepay": "Jumlah Pinjaman Perlu Dibayar",
+      "preApprovedBtn": "Dapatkan Pra-Kelulusan",
+      "findCarsBtn": "Cari Kereta Dalam Julat Harga Ini"
+    },
+    "schedule": {
+      "title": "Jadual Pelunasan (Kadar Rata)",
+      "month": "Bulan",
+      "payment": "Bayaran",
+      "principal": "Pokok",
+      "interest": "Faedah",
+      "balance": "Baki"
+    },
+    "tips": {
+      "title": "Tip Pembiayaan Berguna",
+      "tip1Title": "Apa yang mempengaruhi bayaran bulanan saya?",
+      "tip1Content1": "Bayaran bulanan kereta anda terutamanya ditentukan oleh tiga faktor:",
+      "tip1L1": "Jumlah Pinjaman: Harga kereta tolak wang pendahuluan anda.",
+      "tip1L2": "Kadar Faedah: Peratusan yang bank caj untuk meminjamkan wang kepada anda. Lebih rendah lebih baik.",
+      "tip1L3": "Tempoh Pinjaman: Berapa lama masa anda ambil untuk membayar balik pinjaman. Tempoh lebih panjang bermakna bayaran bulanan lebih rendah tetapi lebih banyak jumlah faedah dibayar dari masa ke masa.",
+      "tip2Title": "Kadar faedah biasa di Malaysia",
+      "tip2Content1": "Di Malaysia, kadar faedah pinjaman kereta (sewa beli) biasanya beroperasi pada asas kadar rata dan berkisar antara 2.5% hingga 4.5% untuk kereta baru, dan 3.0% hingga 8.0% untuk kereta terpakai, bergantung kepada:",
+      "tip2L1": "Umur dan keadaan kereta",
+      "tip2L2": "Kempen semasa bank peminjam",
+      "tip2L3": "Skor kredit peribadi anda (CTOS/CCRIS)",
+      "tip2L4": "Tempoh pinjaman (pinjaman lebih lama kadang-kadang mempunyai kadar lebih tinggi)",
+      "tip3Title": "Kelebihan wang pendahuluan yang lebih besar",
+      "tip3Content1": "Walaupun wang pendahuluan minimum di Malaysia biasanya 10%, meletakkan lebih banyak pendahuluan mempunyai beberapa kelebihan utama:",
+      "tip3L1": "Ansuran Bulanan Lebih Rendah: Mengurangkan beban kewangan bulanan anda.",
+      "tip3L2": "Kurang Faedah Dibayar: Anda meminjam kurang, bermakna anda membayar kurang jumlah faedah sepanjang tempoh pinjaman.",
+      "tip3L3": "Peluang Kelulusan Lebih Baik: Bank melihat anda sebagai peminjam berisiko lebih rendah.",
+      "tip3L4": "Elakkan Menjadi 'Under Water': Melindungi anda daripada berhutang lebih daripada nilai kereta semasa ia menyusut.",
+      "tip4Title": "Memilih tempoh pinjaman yang betul",
+      "tip4Content1": "Pinjaman kereta Malaysia biasanya berkisar antara 5 hingga 9 tahun (60 hingga 108 bulan).",
+      "tip4Content2": "Tempoh Lebih Pendek (cth., 5 tahun):",
+      "tip4Content3": "Bayaran bulanan lebih tinggi, tetapi anda melunaskan kereta lebih cepat dan menjimatkan ribuan ringgit dalam jumlah faedah.",
+      "tip4Content4": "Tempoh Lebih Panjang (cth., 9 tahun):",
+      "tip4Content5": "Bayaran bulanan lebih rendah dan lebih mudah diurus, tetapi anda akan membayar lebih banyak jumlah faedah sepanjang hayat pinjaman."
+    }
+  },
+  "footer": {
+    "tagline": "Cari Kereta Idaman Anda",
+    "quickLinks": "Pautan Pantas",
+    "contactUs": "Hubungi Kami",
+    "whatsapp": "WhatsApp",
+    "email": "E-mel",
+    "hours": "Waktu Operasi",
+    "hoursText": "Isn-Sab 9PG-8MLM",
+    "rights": "XDrive. Hak cipta terpelihara."
+  }
+}
