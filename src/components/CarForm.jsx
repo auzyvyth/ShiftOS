@@ -1,0 +1,609 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge } from 'lucide-react';
+
+// ─── Data ────────────────────────────────────────────────────────────────────
+
+const initialListing = {
+  brand: '', model: '', variant: '', year: '',
+  bodyType: '', fuelType: '', transmission: 'Auto', condition: 'used',
+  engineCc: '',
+  mileage: '', colour: '', registrationDate: '',
+  state: '', city: '',
+  basePrice: '', sellingPrice: '', originalPrice: '',
+  specs: '', options: '', features: '',
+  images: [],
+};
+
+const CAR_DATA = {
+  Perodua: ['Myvi', 'Axia', 'Bezza', 'Ativa', 'Alza', 'Kancil', 'Kelisa', 'Kenari', 'Viva', 'Nautica'],
+  Proton: ['Saga', 'Persona', 'Iriz', 'X50', 'X70', 'X90', 'Exora', 'Preve', 'Suprima S', 'Wira', 'Waja', 'Gen-2', 'Satria Neo', 'Arena', 'Juara'],
+  Honda: ['City', 'Civic', 'Accord', 'Jazz', 'HR-V', 'CR-V', 'BR-V', 'Odyssey', 'Freed', 'Stream', 'Mobilio', 'WR-V', 'ZR-V', 'Pilot', 'Fit', 'Insight', 'Legend', 'CR-Z', 'S2000', 'NSX', 'Stepwgn'],
+  Toyota: ['Vios', 'Yaris', 'Corolla', 'Camry', 'Prius', 'C-HR', 'RAV4', 'Fortuner', 'Hilux', 'Innova', 'Rush', 'Veloz', 'Avanza', 'Sienta', 'Alphard', 'Vellfire', 'Land Cruiser', 'Prado', 'Harrier', 'Estima', '86', 'GR86', 'Supra'],
+  Nissan: ['Almera', 'Serena', 'X-Trail', 'Navara', 'Patrol', 'Murano', 'Qashqai', 'Juke', 'Note', 'March', 'Sylphy', 'Teana', 'Leaf', 'GT-R', '370Z', '350Z', 'Kicks', 'Terra'],
+  Mazda: ['Mazda 2', 'Mazda 3', 'Mazda 6', 'CX-3', 'CX-30', 'CX-5', 'CX-8', 'CX-9', 'CX-60', 'MX-5', 'RX-7', 'RX-8', 'BT-50'],
+  Mitsubishi: ['Attrage', 'Lancer', 'Galant', 'Eclipse Cross', 'ASX', 'Outlander', 'Pajero', 'Triton', 'Xpander', 'Mirage', 'Evo'],
+  Suzuki: ['Swift', 'Ciaz', 'Baleno', 'Vitara', 'SX4', 'Jimny', 'Ertiga', 'XL7', 'Celerio', 'Alto'],
+  Subaru: ['Impreza', 'Legacy', 'Outback', 'Forester', 'XV', 'Crosstrek', 'WRX', 'STI', 'BRZ', 'Levorg'],
+  Hyundai: ['Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Kona', 'Venue', 'Palisade', 'Creta', 'i10', 'i20', 'i30', 'Ioniq 5', 'Ioniq 6', 'Veloster', 'Staria'],
+  Kia: ['Picanto', 'Rio', 'Cerato', 'K5', 'Stinger', 'Sportage', 'Sorento', 'Telluride', 'Seltos', 'Niro', 'EV6', 'Carnival', 'Soul'],
+  BMW: ['1 Series', '2 Series', '3 Series', '4 Series', '5 Series', '7 Series', '8 Series', 'X1', 'X3', 'X4', 'X5', 'X6', 'X7', 'iX', 'i4', 'i5', 'Z4', 'M2', 'M3', 'M4', 'M5'],
+  Mercedes: ['A-Class', 'C-Class', 'E-Class', 'S-Class', 'CLA', 'CLS', 'GLA', 'GLB', 'GLC', 'GLE', 'GLS', 'G-Class', 'AMG GT', 'SL', 'V-Class'],
+  Volkswagen: ['Polo', 'Golf', 'Jetta', 'Passat', 'Arteon', 'Tiguan', 'Touareg', 'T-Cross', 'T-Roc', 'ID.4', 'Amarok'],
+  Audi: ['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'Q3', 'Q5', 'Q7', 'Q8', 'TT', 'R8', 'e-tron GT', 'RS3', 'RS4', 'RS5', 'RS6', 'S3', 'S4'],
+  Porsche: ['911', 'Cayenne', 'Macan', 'Panamera', 'Taycan', 'Boxster', 'Cayman'],
+  'Land Rover': ['Defender', 'Discovery', 'Discovery Sport', 'Range Rover', 'Range Rover Sport', 'Range Rover Velar', 'Range Rover Evoque'],
+  Lexus: ['IS', 'ES', 'GS', 'LS', 'UX', 'NX', 'RX', 'GX', 'LX', 'RC', 'LC'],
+  Volvo: ['S60', 'S90', 'V60', 'XC40', 'XC60', 'XC90', 'C40', 'EX30', 'EX90'],
+  Tesla: ['Model 3', 'Model S', 'Model X', 'Model Y', 'Cybertruck'],
+  Ford: ['Mustang', 'Explorer', 'Ranger', 'Everest', 'F-150', 'Bronco', 'Focus', 'Fiesta', 'Puma'],
+  MG: ['MG3', 'MG5', 'MG6', 'ZS', 'HS'],
+  BYD: ['Atto 3', 'Dolphin', 'Seal', 'Han', 'Tang', 'Destroyer 05'],
+  Ferrari: ['Roma', 'Portofino', 'SF90', 'F8', '812', 'Purosangue'],
+  Lamborghini: ['Huracan', 'Urus', 'Revuelto'],
+  Jaguar: ['XE', 'XF', 'XJ', 'E-Pace', 'F-Pace', 'I-Pace', 'F-Type'],
+  Bentley: ['Continental GT', 'Flying Spur', 'Bentayga', 'Mulsanne'],
+  'Rolls Royce': ['Phantom', 'Ghost', 'Wraith', 'Dawn', 'Cullinan', 'Spectre'],
+  MINI: ['Cooper', 'Clubman', 'Countryman', 'Convertible'],
+  Chery: ['Omoda 5', 'Tiggo 4', 'Tiggo 7', 'Tiggo 8'],
+  Haval: ['H6', 'Jolion', 'H2', 'H9'],
+  Geely: ['Coolray', 'Azkarra', 'Okavango'],
+};
+
+const ALL_BRANDS = Object.keys(CAR_DATA).sort();
+
+const STATE_CITIES = {
+  'Kuala Lumpur': ['Kuala Lumpur City Centre', 'Chow Kit', 'Bangsar', 'Mont Kiara', 'Kepong', 'Setapak', 'Wangsa Maju', 'Titiwangsa', 'Brickfields', 'Cheras', 'Bukit Jalil', 'Sri Petaling'],
+  'Selangor': ['Shah Alam', 'Petaling Jaya', 'Subang Jaya', 'Klang', 'Ampang', 'Puchong', 'Sepang', 'Rawang', 'Kajang', 'Cyberjaya', 'Putrajaya', 'Damansara', 'Sungai Buloh'],
+  'Penang': ['George Town', 'Butterworth', 'Bukit Mertajam', 'Bayan Lepas', 'Batu Ferringhi', 'Gelugor', 'Seberang Jaya', 'Perai', 'Sungai Jawi', 'Nibong Tebal', 'Kepala Batas', 'Balik Pulau'],
+  'Johor': ['Johor Bahru', 'Iskandar Puteri', 'Skudai', 'Kulai', 'Batu Pahat', 'Muar', 'Kluang', 'Pasir Gudang', 'Senai'],
+  'Perak': ['Ipoh', 'Taiping', 'Teluk Intan', 'Sitiawan', 'Lumut', 'Kampar', 'Tanjung Malim', 'Kuala Kangsar'],
+  'Melaka': ['Melaka City', 'Ayer Keroh', 'Bukit Katil', 'Alor Gajah', 'Jasin'],
+  'Negeri Sembilan': ['Seremban', 'Port Dickson', 'Nilai', 'Rembau', 'Tampin', 'Senawang'],
+  'Kedah': ['Alor Setar', 'Sungai Petani', 'Kulim', 'Langkawi', 'Baling'],
+  'Kelantan': ['Kota Bharu', 'Pasir Mas', 'Tanah Merah', 'Machang', 'Gua Musang'],
+  'Terengganu': ['Kuala Terengganu', 'Kemaman', 'Dungun', 'Kerteh', 'Marang'],
+  'Pahang': ['Kuantan', 'Temerloh', 'Bentong', 'Raub', 'Cameron Highlands', 'Genting Highlands'],
+  'Sabah': ['Kota Kinabalu', 'Sandakan', 'Tawau', 'Lahad Datu', 'Keningau', 'Semporna', 'Kota Belud'],
+  'Sarawak': ['Kuching', 'Miri', 'Sibu', 'Bintulu', 'Limbang', 'Kota Samarahan'],
+};
+
+const CONDITIONS = ['used', 'recon', 'new'];
+const BODY_TYPES  = ['Sedan', 'SUV', 'MPV', 'Hatchback', 'Coupe', 'Pickup'];
+const FUEL_TYPES  = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+const CC_PRESETS  = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
+
+const STEPS = [
+  { id: 1, label: 'Identity',  icon: Car,        desc: 'Brand & model' },
+  { id: 2, label: 'Specs',     icon: Gauge,      desc: 'Type & engine' },
+  { id: 3, label: 'Condition', icon: Check,      desc: 'Mileage & colour' },
+  { id: 4, label: 'Location',  icon: MapPin,     desc: 'State & city' },
+  { id: 5, label: 'Pricing',   icon: DollarSign, desc: 'Prices & discount' },
+  { id: 6, label: 'Details',   icon: FileText,   desc: 'Specs & features' },
+  { id: 7, label: 'Photos',    icon: Camera,     desc: 'Upload images' },
+];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Combobox({ value, onChange, options, placeholder, disabled }) {
+  const [query, setQuery] = useState(value || '');
+  const [open, setOpen]   = useState(false);
+  const ref = useRef(null);
+
+  const filtered = query
+    ? options.filter(o => o.toLowerCase().includes(query.toLowerCase())).slice(0, 20)
+    : options.slice(0, 20);
+
+  useEffect(() => { setQuery(value || ''); }, [value]);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={query}
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onFocus={() => !disabled && setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      />
+      {open && !disabled && (
+        <ul className="absolute z-50 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-2xl">
+          {filtered.map(o => (
+            <li key={o} onMouseDown={() => { onChange(o); setQuery(o); setOpen(false); }} className="px-4 py-2.5 text-white hover:bg-red-600/20 hover:text-red-400 cursor-pointer text-sm transition-colors">{o}</li>
+          ))}
+          {filtered.length === 0 && <li className="px-4 py-2.5 text-gray-500 text-sm italic">No match — input saved as-is</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PillSelect({ options, value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button key={opt} type="button" onClick={() => onChange(opt)}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? 'bg-red-600 border-red-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500 hover:text-white'}`}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Field({ label, required, hint, children }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-400">
+          {label}{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        {hint && <span className="text-xs text-gray-600">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const inputCls    = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors";
+const selectCls   = "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/30 transition-colors appearance-none cursor-pointer";
+const textareaCls = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors resize-none";
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function CarForm({ onCreate }) {
+  const [form, setForm]           = useState(initialListing);
+  const [step, setStep]           = useState(1);
+  const [uploading, setUploading] = useState(false);
+  const [previews, setPreviews]   = useState([]);
+  const [draggingIndex, setDraggingIndex]     = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  const photosInputRef = useRef(null);
+  const previewUrlsRef = useRef([]);
+  const navigate = useNavigate();
+
+  useEffect(() => { previewUrlsRef.current = previews; }, [previews]);
+  useEffect(() => () => { previewUrlsRef.current.forEach(URL.revokeObjectURL); }, []);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleChange = e => set(e.target.name, e.target.value);
+
+  const modelOptions = form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
+  const cityOptions  = form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
+
+  // Discount preview calculations
+  const originalPriceVal = form.originalPrice ? parseFloat(form.originalPrice) : null;
+  const sellingPriceVal  = form.sellingPrice  ? parseFloat(form.sellingPrice)  : null;
+  const hasDiscount      = originalPriceVal && sellingPriceVal && originalPriceVal > sellingPriceVal;
+  const discountAmt      = hasDiscount ? originalPriceVal - sellingPriceVal : null;
+  const discountPct      = hasDiscount ? ((discountAmt / originalPriceVal) * 100).toFixed(1) : null;
+  const isHotDeal        = hasDiscount && parseFloat(discountPct) >= 3;
+
+  /* ── image handlers ── */
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const slots = 30 - form.images.length;
+    if (slots <= 0) { alert('Maximum 30 images'); e.target.value = ''; return; }
+    const accepted = files.slice(0, slots);
+    if (accepted.length < files.length) alert(`Only ${slots} more image${slots === 1 ? '' : 's'} allowed (max 30).`);
+    set('images', [...form.images, ...accepted]);
+    setPreviews(p => [...p, ...accepted.map(f => URL.createObjectURL(f))]);
+    e.target.value = '';
+  };
+
+  const moveToFirst = (i) => {
+    if (i <= 0) return;
+    setForm(f => { const a = [...f.images]; const [x] = a.splice(i, 1); a.unshift(x); return { ...f, images: a }; });
+    setPreviews(p => { const a = [...p]; const [x] = a.splice(i, 1); a.unshift(x); return a; });
+  };
+
+  const removeImage = (i) => {
+    setForm(f => ({ ...f, images: f.images.filter((_, j) => j !== i) }));
+    setPreviews(p => { const a = [...p]; const [r] = a.splice(i, 1); if (r) URL.revokeObjectURL(r); return a; });
+  };
+
+  const reorder = (from, to) => {
+    if (from === null || to === null || from === to || from < 0 || to < 0 || from >= form.images.length || to >= form.images.length) return;
+    setForm(f => { const a = [...f.images]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return { ...f, images: a }; });
+    setPreviews(p => { const a = [...p]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
+  };
+
+  const moveByStep = (i, d) => { const n = i + d; if (n >= 0 && n < form.images.length) reorder(i, n); };
+  const dragStart  = (i, e) => { setDraggingIndex(i); setDropTargetIndex(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); };
+  const dragOver   = (i, e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dropTargetIndex !== i) setDropTargetIndex(i); };
+  const drop       = (i, e) => { e.preventDefault(); const p = Number(e.dataTransfer.getData('text/plain')); reorder(Number.isInteger(p) ? p : draggingIndex, i); setDraggingIndex(null); setDropTargetIndex(null); };
+  const dragEnd    = () => { setDraggingIndex(null); setDropTargetIndex(null); };
+  const clearAll   = () => { previews.forEach(URL.revokeObjectURL); set('images', []); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); if (photosInputRef.current) photosInputRef.current.value = ''; };
+
+  const canNext = () => {
+    if (step === 1) return form.brand && form.model && form.year;
+    if (step === 2) return form.bodyType && form.fuelType;
+    if (step === 3) return form.mileage && form.colour && form.condition;
+    if (step === 4) return form.state && form.city;
+    if (step === 5) return form.basePrice && form.sellingPrice;
+    if (step === 7) return form.images.length > 0;
+    return true;
+  };
+
+  const uploadImages = async () => {
+    const urls = [];
+    for (const file of form.images) {
+      const name = `${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('car-images').upload(name, file);
+      if (error) throw error;
+      urls.push(supabase.storage.from('car-images').getPublicUrl(name).data.publicUrl);
+    }
+    return urls;
+  };
+
+  const handleSubmit = async () => {
+    if (!form.images.length) { alert('Please select at least 1 image'); return; }
+    const mileage      = parseInt(form.mileage);
+    const basePrice    = parseFloat(form.basePrice);
+    const sellingPrice = parseFloat(form.sellingPrice);
+    const originalPrice = form.originalPrice ? parseFloat(form.originalPrice) : null;
+    const year         = parseInt(form.year);
+    const engineCc     = form.engineCc ? parseInt(form.engineCc) : null;
+
+    if (isNaN(mileage) || mileage < 0)          { alert('Invalid mileage'); return; }
+    if (isNaN(basePrice) || basePrice < 0)       { alert('Invalid base price'); return; }
+    if (isNaN(sellingPrice) || sellingPrice < 0) { alert('Invalid selling price'); return; }
+    if (isNaN(year) || year < 1900)              { alert('Invalid year'); return; }
+    if (originalPrice !== null && originalPrice <= sellingPrice) {
+      alert('Original price must be higher than selling price'); return;
+    }
+
+    setUploading(true);
+    try {
+      const imageUrls = await uploadImages();
+      const { data, error } = await supabase.from('car_listings').insert([{
+        brand: form.brand, model: form.model, variant: form.variant,
+        state: form.state, city: form.city,
+        mileage, colour: form.colour, condition: form.condition,
+        registration_date: form.registrationDate,
+        specs: form.specs, options: form.options, features: form.features,
+        base_price: basePrice,
+        selling_price: sellingPrice,
+        original_price: originalPrice,   // ← correct column name
+        engine_cc: engineCc,
+        images: imageUrls, year,
+        transmission: form.transmission, body_type: form.bodyType, fuel_type: form.fuelType,
+        status: 'active',
+      }]).select().single();
+      if (error) throw error;
+      onCreate(data);
+      previews.forEach(URL.revokeObjectURL);
+      setForm(initialListing); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); setStep(1);
+    } catch (err) { alert('Error: ' + err.message); }
+    setUploading(false);
+  };
+
+  const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+
+  return (
+    <div className="w-full max-w-2xl mx-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+
+      {/* Progress */}
+      <div className="mb-8">
+        <div className="relative h-1 bg-gray-800 rounded-full mb-6">
+          <div className="absolute h-1 bg-red-600 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {STEPS.map(s => {
+            const Icon = s.icon; const done = step > s.id; const active = step === s.id;
+            return (
+              <button key={s.id} type="button" onClick={() => done && setStep(s.id)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${active ? 'bg-red-600 text-white' : done ? 'bg-gray-800 text-green-400 cursor-pointer hover:bg-gray-700' : 'bg-gray-800/50 text-gray-600 cursor-default'}`}>
+                {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Step header */}
+      <div className="mb-6">
+        <p className="text-xs text-red-500 font-semibold uppercase tracking-widest mb-1">Step {step} of {STEPS.length}</p>
+        <h2 className="text-xl font-bold text-white">{STEPS[step - 1].label}</h2>
+        <p className="text-sm text-gray-500">{STEPS[step - 1].desc}</p>
+      </div>
+
+      {/* ── Step 1: Identity ── */}
+      {step === 1 && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Brand" required>
+              <Combobox value={form.brand} onChange={v => setForm(f => ({ ...f, brand: v, model: '' }))} options={ALL_BRANDS} placeholder="e.g. Toyota" />
+            </Field>
+            <Field label="Model" required>
+              <Combobox value={form.model} onChange={v => set('model', v)} options={modelOptions} placeholder={form.brand ? 'e.g. Vios' : 'Pick brand first'} disabled={!form.brand} />
+            </Field>
+          </div>
+          <Field label="Variant">
+            <input name="variant" value={form.variant} onChange={handleChange} placeholder="e.g. 1.5 G" className={inputCls} />
+          </Field>
+          <Field label="Year" required>
+            <input type="number" name="year" value={form.year} onChange={handleChange} placeholder="e.g. 2021" min="1900" max="2030" className={inputCls} />
+          </Field>
+        </div>
+      )}
+
+      {/* ── Step 2: Specs ── */}
+      {step === 2 && (
+        <div className="space-y-6">
+          <Field label="Body Type" required>
+            <PillSelect options={BODY_TYPES} value={form.bodyType} onChange={v => set('bodyType', v)} />
+          </Field>
+          <Field label="Fuel Type" required>
+            <PillSelect options={FUEL_TYPES} value={form.fuelType} onChange={v => set('fuelType', v)} />
+          </Field>
+          <Field label="Transmission">
+            <PillSelect options={['Auto', 'Manual']} value={form.transmission} onChange={v => set('transmission', v)} />
+          </Field>
+          <Field label="Engine Displacement (CC)" hint="Used for road tax & insurance calc">
+            <div className="space-y-3">
+              <div className="relative">
+                <input type="number" name="engineCc" value={form.engineCc} onChange={handleChange} placeholder="e.g. 1500" min="50" max="10000" className={`${inputCls} pr-12`} />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">cc</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CC_PRESETS.map(cc => (
+                  <button key={cc} type="button" onClick={() => set('engineCc', String(cc))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? 'bg-red-600 border-red-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500 hover:text-white'}`}>
+                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, '') + 'k' : cc}cc
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => navigate(`/calculator?carPrice=${encodeURIComponent(form.sellingPrice || '')}&engineCc=${encodeURIComponent(form.engineCc || '')}&bodyType=${encodeURIComponent(form.bodyType || '')}`)}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                  Estimate Road Tax
+                </button>
+                <p className="text-xs text-gray-400">Opens calculator with current CC & body type</p>
+              </div>
+            </div>
+          </Field>
+        </div>
+      )}
+
+      {/* ── Step 3: Condition ── */}
+      {step === 3 && (
+        <div className="space-y-5">
+          <Field label="Condition" required>
+            <PillSelect options={CONDITIONS} value={form.condition} onChange={v => set('condition', v)} />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Mileage (km)" required>
+              <input type="number" name="mileage" value={form.mileage} onChange={handleChange} placeholder="e.g. 45000" min="0" className={inputCls} />
+            </Field>
+            <Field label="Colour" required>
+              <input name="colour" value={form.colour} onChange={handleChange} placeholder="e.g. Pearl White" className={inputCls} />
+            </Field>
+          </div>
+          <Field label="Registration Date">
+            <input type="date" name="registrationDate" value={form.registrationDate} onChange={handleChange} className={inputCls} />
+          </Field>
+        </div>
+      )}
+
+      {/* ── Step 4: Location ── */}
+      {step === 4 && (
+        <div className="space-y-5">
+          <Field label="State" required>
+            <div className="relative">
+              <select name="state" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value, city: '' }))} className={selectCls}>
+                <option value="">-- Select state --</option>
+                {Object.keys(STATE_CITIES).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            </div>
+          </Field>
+          <Field label="City" required>
+            <Combobox value={form.city} onChange={v => set('city', v)} options={cityOptions} placeholder={form.state ? 'Type or search city...' : 'Select state first'} disabled={!form.state} />
+          </Field>
+        </div>
+      )}
+
+      {/* ── Step 5: Pricing ── */}
+      {step === 5 && (
+        <div className="space-y-5">
+          <Field label="Base Price (RM)" required hint="Your cost / purchase price">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+              <input type="number" name="basePrice" value={form.basePrice} onChange={handleChange} placeholder="0" min="0" className={`${inputCls} pl-12`} />
+            </div>
+          </Field>
+
+          <Field label="Selling Price (RM)" required hint="What you're selling it for">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+              <input type="number" name="sellingPrice" value={form.sellingPrice} onChange={handleChange} placeholder="0" min="0" className={`${inputCls} pl-12`} />
+            </div>
+          </Field>
+
+          {/* Original price — the "was" price for discount badge */}
+          <Field label="Original Price (RM)" hint="Optional — set if this is a discounted price">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
+              <input type="number" name="originalPrice" value={form.originalPrice} onChange={handleChange} placeholder="Leave blank if no discount" min="0" className={`${inputCls} pl-12`} />
+            </div>
+            <p className="text-xs text-gray-600 mt-1.5">
+              This becomes the crossed-out "was" price on the listing card. Must be higher than selling price.
+            </p>
+
+            {/* Live discount preview */}
+            {hasDiscount && (
+              <div className={`flex items-center gap-3 mt-3 px-4 py-3 rounded-xl border ${isHotDeal ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
+                <span className="text-2xl leading-none">{isHotDeal ? '🔥' : '↓'}</span>
+                <div>
+                  <p className={`text-sm font-semibold ${isHotDeal ? 'text-red-400' : 'text-green-400'}`}>
+                    RM {discountAmt.toLocaleString()} off ({discountPct}%)
+                    {isHotDeal && ' — qualifies as Hot Deal!'}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    {isHotDeal
+                      ? 'This listing will appear in the Hot Deals section on the homepage'
+                      : `Needs ≥3% discount for Hot Deals. Currently ${discountPct}%`}
+                  </p>
+                </div>
+              </div>
+            )}
+          </Field>
+
+          {/* Margin check */}
+          {form.basePrice && form.sellingPrice && (
+            <div className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+              {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
+                ? `Margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()}`
+                : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Step 6: Details ── */}
+      {step === 6 && (
+        <div className="space-y-5">
+          <Field label="Specs">
+            <textarea name="specs" value={form.specs} onChange={handleChange} placeholder="e.g. 1.5L DOHC, 107hp, 140Nm..." className={textareaCls} rows={3} />
+          </Field>
+          <Field label="Options">
+            <textarea name="options" value={form.options} onChange={handleChange} placeholder="e.g. Sunroof, leather seats, Apple CarPlay..." className={textareaCls} rows={3} />
+          </Field>
+          <Field label="Features">
+            <textarea name="features" value={form.features} onChange={handleChange} placeholder="e.g. Reverse camera, push start, keyless entry..." className={textareaCls} rows={3} />
+          </Field>
+        </div>
+      )}
+
+      {/* ── Step 7: Photos ── */}
+      {step === 7 && (
+        <div className="space-y-5">
+          <label className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group">
+            <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
+            <p className="text-white font-medium mb-1">Choose Photos</p>
+            <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
+            <p className="text-red-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
+            <input ref={photosInputRef} type="file" multiple accept="image/*" onChange={handleFiles} className="hidden" />
+          </label>
+
+          {previews.length > 0 && (
+            <>
+              <div className="sticky top-3 z-20 rounded-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-sm p-3 sm:p-4 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Sticky Thumbnail Panel</p>
+                  <span className="text-xs font-semibold text-red-400">{form.images.length}/30</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-gray-800 border border-red-500/40 flex-shrink-0">
+                      <img src={previews[0]} alt="Primary" className="w-full h-full object-cover" />
+                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-red-600 text-white text-[10px] font-semibold">#1</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">Primary image locked in</p>
+                      <p className="text-xs text-gray-500 truncate">This photo appears first in cards and gallery.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => photosInputRef.current?.click()} className="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors">Add more</button>
+                    <button type="button" onClick={clearAll} className="px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors">Clear all</button>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500">Drag to reorder on desktop · use arrows on mobile · Image #1 is the main thumbnail</p>
+
+              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-800 p-1.5 sm:p-2">
+                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
+                  {previews.map((src, i) => (
+                    <div key={src + i} draggable
+                      onDragStart={e => dragStart(i, e)} onDragOver={e => dragOver(i, e)}
+                      onDrop={e => drop(i, e)} onDragEnd={dragEnd}
+                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? 'border-red-500 ring-2 ring-red-500/30' : 'border-gray-700'} ${i === draggingIndex ? 'opacity-70 scale-[0.98]' : ''}`}>
+                      <img src={src} alt={`preview ${i + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-white text-[9px] sm:text-[10px] font-semibold">#{i + 1}</span>
+                      <span className="hidden sm:block absolute top-1 right-7 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium select-none">Drag</span>
+                      {i === 0
+                        ? <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-red-600 text-white text-[9px] sm:text-[10px] font-semibold">Primary</span>
+                        : <button type="button" onClick={() => moveToFirst(i)} className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors">Set #1</button>
+                      }
+                      <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-[10px] sm:text-xs font-bold transition-colors">×</button>
+                      <div className="absolute bottom-1 right-1 flex items-center gap-1 sm:hidden">
+                        <button type="button" onClick={() => moveByStep(i, -1)} disabled={i === 0} className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
+                        <button type="button" onClick={() => moveByStep(i, 1)} disabled={i === previews.length - 1} className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {form.brand && (
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">Listing Summary</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                <span className="text-gray-500">Vehicle</span>
+                <span className="text-white font-medium">{form.brand} {form.model} {form.variant}</span>
+                <span className="text-gray-500">Year</span>
+                <span className="text-white">{form.year}</span>
+                <span className="text-gray-500">Body / Fuel</span>
+                <span className="text-white">{form.bodyType} · {form.fuelType}</span>
+                <span className="text-gray-500">Transmission</span>
+                <span className="text-white">{form.transmission}</span>
+                {form.engineCc && <><span className="text-gray-500">Engine CC</span><span className="text-white">{Number(form.engineCc).toLocaleString()}cc</span></>}
+                <span className="text-gray-500">Mileage</span>
+                <span className="text-white">{Number(form.mileage).toLocaleString()} km</span>
+                <span className="text-gray-500">Condition</span>
+                <span className="text-white capitalize">{form.condition}</span>
+                <span className="text-gray-500">Location</span>
+                <span className="text-white">{form.city}, {form.state}</span>
+                <span className="text-gray-500">Selling Price</span>
+                <span className="text-white font-semibold">RM {Number(form.sellingPrice).toLocaleString()}</span>
+                {hasDiscount && (
+                  <>
+                    <span className="text-gray-500">Original Price</span>
+                    <span className="text-white line-through opacity-60">RM {Number(form.originalPrice).toLocaleString()}</span>
+                    <span className="text-gray-500">Discount</span>
+                    <span className={`font-semibold ${isHotDeal ? 'text-red-400' : 'text-green-400'}`}>
+                      {isHotDeal ? '🔥 ' : ''}−RM {discountAmt.toLocaleString()} ({discountPct}%)
+                    </span>
+                  </>
+                )}
+                <span className="text-gray-500">Photos</span>
+                <span className="text-white">{form.images.length} selected</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Nav */}
+      <div className="flex gap-3 mt-8">
+        {step > 1 && (
+          <button type="button" onClick={() => setStep(s => s - 1)} className="flex items-center gap-2 px-5 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm font-medium transition-all border border-gray-700">
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+        )}
+        {step < STEPS.length ? (
+          <button type="button" onClick={() => canNext() && setStep(s => s + 1)} disabled={!canNext()} className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+            Continue <ChevronRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <button type="button" onClick={handleSubmit} disabled={uploading || !canNext()} className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+            {uploading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</> : <><Check className="w-4 h-4" />Publish Listing</>}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
