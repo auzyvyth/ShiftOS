@@ -1,0 +1,209 @@
+
+{
+  "nav": {
+    "home": "Home",
+    "browseCars": "Browse Cars",
+    "calculator": "Calculator",
+    "howItWorks": "How It Works",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "login": "Login"
+  },
+  "common": {
+    "viewDetails": "View Details",
+    "whatsappAboutCar": "WhatsApp About This Car",
+    "whatsappUs": "WhatsApp Us",
+    "needHelp": "Need Help? WhatsApp Me",
+    "callNow": "Call Now",
+    "loadMore": "Load More Cars",
+    "resetAll": "Reset All",
+    "applyFilters": "Apply Filters",
+    "badges": {
+      "HOT DEAL": "HOT DEAL",
+      "NEW": "NEW",
+      "PRICE DROP": "PRICE DROP"
+    },
+    "rm": "RM"
+  },
+  "home": {
+    "hero": {
+      "headline": "Find Your Perfect Car from",
+      "highlight": "200+ Verified Listings",
+      "subheadline": "No Hidden Fees. No Dealer Pressure. Just Honest Deals.",
+      "browseBtn": "Browse All Cars",
+      "chatBtn": "Chat on WhatsApp"
+    },
+    "trust": {
+      "carsSold": "Cars Sold",
+      "bestPrice": "Best Price",
+      "guarantee": "Guarantee",
+      "free": "Free",
+      "consultation": "Consultation"
+    },
+    "testimonials": {
+      "title": "What Our Customers Say",
+      "subtitle": "Real stories from real people"
+    },
+    "hotDeals": {
+      "title": "Hot Deals This Week",
+      "subtitle": "Don't miss out on these amazing offers",
+      "viewAllBtn": "View All Cars"
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Simple, transparent, and stress-free",
+      "step1": "Browse Verified Listings",
+      "step2": "Message About Cars",
+      "step3": "I Negotiate Best Price",
+      "step4": "You Drive Away Happy"
+    },
+    "whyChoose": {
+      "title": "Why Choose XDrive?",
+      "subtitle": "We're different from other car platforms",
+      "benefit1Title": "Access to Hidden Deals",
+      "benefit1Desc": "Get exclusive access to cars before they hit the market",
+      "benefit2Title": "Expert Negotiation",
+      "benefit2Desc": "I negotiate on your behalf to get you the best price",
+      "benefit3Title": "Scam Protection",
+      "benefit3Desc": "Every car is verified and checked for authenticity",
+      "benefit4Title": "No Fees to You",
+      "benefit4Desc": "My service is completely free for car buyers"
+    },
+    "budget": {
+      "title": "Know Your Budget",
+      "subtitle": "Use our financing calculator to estimate your monthly car payment, compare loan terms, and plan your budget before you buy.",
+      "calcBtn": "Calculate Your Payment"
+    },
+    "cta": {
+      "title": "Ready to Find Your Dream Car?",
+      "subtitle": "Let me help you find the perfect car at the best price. No pressure, no hassle.",
+      "browseBtn": "Browse All Cars",
+      "whatsappBtn": "WhatsApp Me Now"
+    }
+  },
+  "cars": {
+    "header": {
+      "title": "Browse Our Cars",
+      "subtitle": "200+ verified listings updated daily"
+    },
+    "filters": {
+      "show": "Show Filters",
+      "hide": "Hide Filters",
+      "title": "Filters",
+      "priceRange": "Price Range",
+      "brand": "Brand",
+      "year": "Year",
+      "allYears": "All Years",
+      "bodyType": "Body Type",
+      "transmission": "Transmission",
+      "location": "Location",
+      "allLocations": "All Locations"
+    },
+    "sort": {
+      "label": "Sort by:",
+      "newest": "Newest",
+      "priceLow": "Price: Low to High",
+      "priceHigh": "Price: High to Low"
+    },
+    "results": {
+      "found": "cars found",
+      "empty": "No cars found matching your filters",
+      "resetBtn": "Reset Filters"
+    }
+  },
+  "carDetail": {
+    "specs": {
+      "mileage": "Mileage",
+      "transmission": "Transmission",
+      "year": "Year",
+      "ownership": "Ownership"
+    },
+    "aboutTitle": "About This Car",
+    "sidebar": {
+      "interested": "Interested in this car?",
+      "calcBtn": "Calculate Your Payment",
+      "responseTime": "Response time: Usually within 5 minutes",
+      "whyContact": "Why contact me?",
+      "benefit1": "I negotiate the best price for you",
+      "benefit2": "Free car inspection advice",
+      "benefit3": "No hidden fees or charges",
+      "benefit4": "Fast response & honest service"
+    },
+    "similar": "You Might Also Like"
+  },
+  "calculator": {
+    "header": {
+      "title": "Car Financing Calculator",
+      "subtitle": "Calculate your monthly car payment in seconds. Plan your budget before you buy."
+    },
+    "inputs": {
+      "title": "Loan Parameters",
+      "price": "Car Price (RM)",
+      "downPayment": "Down Payment",
+      "loanTerm": "Loan Term",
+      "interestRate": "Interest Rate",
+      "years": "Years",
+      "year": "Year"
+    },
+    "errors": {
+      "price": "Car price must be greater than 0.",
+      "downPaymentNegative": "Down payment cannot be negative.",
+      "downPaymentExcess": "Down payment must be less than the car price.",
+      "loanTerm": "Loan term must be between 1 and 15 years.",
+      "interestRate": "Interest rate must be between 0.1% and 20%."
+    },
+    "results": {
+      "monthly": "Estimated Monthly Payment",
+      "mo": "/mo",
+      "principal": "Principal Loan Amount",
+      "totalInterest": "Total Interest Payable",
+      "totalRepay": "Total Loan to Repay",
+      "preApprovedBtn": "Get Pre-Approved",
+      "findCarsBtn": "Find Cars in This Price Range"
+    },
+    "schedule": {
+      "title": "Amortization Schedule (Flat Rate)",
+      "month": "Month",
+      "payment": "Payment",
+      "principal": "Principal",
+      "interest": "Interest",
+      "balance": "Balance"
+    },
+    "tips": {
+      "title": "Helpful Financing Tips",
+      "tip1Title": "What affects my monthly payment?",
+      "tip1Content1": "Your monthly car payment is primarily determined by three factors:",
+      "tip1L1": "Loan Amount: The car price minus your down payment.",
+      "tip1L2": "Interest Rate: The percentage a bank charges for lending you money. Lower is better.",
+      "tip1L3": "Loan Term: How long you take to pay back the loan. Longer terms mean lower monthly payments but more total interest paid over time.",
+      "tip2Title": "Typical interest rates in Malaysia",
+      "tip2Content1": "In Malaysia, car loan interest rates (hire purchase) typically operate on a flat rate basis and range from 2.5% to 4.5% for new cars, and 3.0% to 8.0% for used cars, depending on:",
+      "tip2L1": "The car's age and condition",
+      "tip2L2": "The borrowing bank's current campaigns",
+      "tip2L3": "Your personal credit score (CTOS/CCRIS)",
+      "tip2L4": "The loan tenure (longer loans sometimes have higher rates)",
+      "tip3Title": "Benefits of a larger down payment",
+      "tip3Content1": "While the minimum down payment in Malaysia is usually 10%, putting down more upfront has several major benefits:",
+      "tip3L1": "Lower Monthly Installment: Reduces your monthly financial burden.",
+      "tip3L2": "Less Interest Paid: You borrow less, meaning you pay less total interest over the life of the loan.",
+      "tip3L3": "Better Approval Odds: Banks view you as a lower-risk borrower.",
+      "tip3L4": "Avoid Being 'Under Water': Protects you from owing more than the car is worth as it depreciates.",
+      "tip4Title": "Choosing the right loan term",
+      "tip4Content1": "Malaysian car loans typically range from 5 to 9 years (60 to 108 months).",
+      "tip4Content2": "Shorter Term (e.g., 5 years):",
+      "tip4Content3": "Higher monthly payments, but you pay off the car faster and save thousands in total interest.",
+      "tip4Content4": "Longer Term (e.g., 9 years):",
+      "tip4Content5": "Lower, more manageable monthly payments, but you will pay significantly more in total interest over the loan's lifetime."
+    }
+  },
+  "footer": {
+    "tagline": "Find Your Perfect Car",
+    "quickLinks": "Quick Links",
+    "contactUs": "Contact Us",
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "hours": "Hours",
+    "hoursText": "Mon-Sat 9AM-8PM",
+    "rights": "XDrive. All rights reserved."
+  }
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "manual-invite-1",
+    "full_name": "Manual Invite",
+    "email": "manual@example.com",
+    "phone": "+6012345678",
+    "dealership": "Xdrive",
+    "role": "salesman",
+    "slug": "manual-invite-1",
+    "is_active": true,
+    "created_at": "2026-03-15T11:37:47.341Z"
+  },
+  {
+    "id": "5397ede4-bf55-4f6d-ac40-941e00e612c2",
+    "full_name": "diara",
+    "email": "juneevelyn00@gmail.com",
+    "phone": "+601123142642",
+    "dealership": "Xdrive",
+    "role": "salesman",
+    "slug": "diara",
+    "is_active": true,
+    "created_at": "2026-03-15T09:59:45.121Z",
+    "pending_profile": true
+  },
+  {
+    "id": "fd64de42-094d-4681-9fe9-a52f41c54cdd",
+    "full_name": "airy",
+    "email": "fasttrackautos050@gmail.com",
+    "phone": "+601123142642",
+    "dealership": "Xdrive",
+    "role": "salesman",
+    "slug": "airy",
+    "is_active": true,
+    "created_at": "2026-03-15T09:58:27.290Z",
+    "pending_profile": true
+  }
+]
