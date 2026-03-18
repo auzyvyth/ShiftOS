@@ -766,6 +766,34 @@ export default function DashboardPage() {
     });
   }, [navigate]);
 
+  // Real-time subscription to keep dashboard listings in sync with DB changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard_listings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'car_listings' },
+        (payload) => {
+          console.log('Dashboard real-time update received:', payload);
+          setListings(prev => {
+            switch (payload.eventType) {
+              case 'INSERT':
+                return [payload.new, ...prev];
+              case 'UPDATE':
+                return prev.map(l => l.id === payload.new.id ? { ...l, ...payload.new } : l);
+              case 'DELETE':
+                return prev.filter(l => l.id !== payload.old.id);
+              default:
+                return prev;
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
   const handleLogout    = async () => { await supabase.auth.signOut(); navigate('/login'); };
   const handleNew       = (listing) => { setListings(prev => [listing, ...prev]); setActiveTab('listings'); };
   const handleTabChange = (tab) => { setActiveTab(tab); setSidebarOpen(false); };
@@ -776,9 +804,20 @@ export default function DashboardPage() {
   };
   const handleStatusChange = async (id, newStatus) => {
     setUpdatingStatus(id);
-    const { error } = await supabase.from('car_listings').update({ status: newStatus }).eq('id', id);
-    if (!error) setListings(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
-    setUpdatingStatus(null);
+    try {
+      const { data, error } = await supabase
+        .from('car_listings')
+        .update({ status: newStatus })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      setListings(prev => prev.map(l => l.id === id ? data : l));
+    } catch (err) {
+      console.error('Failed to update listing status:', err);
+    } finally {
+      setUpdatingStatus(null);
+    }
   };
   const handlePriceSaved = (updatedListing) => {
     setListings(prev => prev.map(l => l.id === updatedListing.id ? updatedListing : l));
