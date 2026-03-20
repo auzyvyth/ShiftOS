@@ -40,6 +40,16 @@ const STATUS_CONFIG = {
   sold:     { label: 'Sold',      dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200' },
 };
 
+// Eagerly preload all image URLs into the browser cache so CarGallery
+// never has to fetch on click — images are already decoded and ready.
+const preloadImages = (urls = []) => {
+  urls.forEach((url) => {
+    if (!url) return;
+    const img = new Image();
+    img.src = url;
+  });
+};
+
 const CarDetailPage = () => {
   const { id }  = useParams();
   const { t }   = useTranslation();
@@ -54,13 +64,25 @@ const CarDetailPage = () => {
       const { data, error } = await supabase.from('car_listings').select('*').eq('id', id).single();
       if (error) { console.error(error); setLoading(false); return; }
       setCar(data);
+
+      // ── Preload all gallery images immediately after fetch ──
+      if (data?.images?.length) {
+        preloadImages(data.images);
+      }
+
       const { data: similar } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).limit(3);
       setSimilarCars(similar || []);
       setLoading(false);
 
       const channel = supabase.channel('car_detail_realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'car_listings' }, (payload) => {
-          if (payload.new?.id === data.id) setCar(c => ({ ...c, ...payload.new }));
+          if (payload.new?.id === data.id) {
+            setCar(c => ({ ...c, ...payload.new }));
+            // Re-preload if images changed
+            if (payload.new?.images?.length) {
+              preloadImages(payload.new.images);
+            }
+          }
           setSimilarCars(c => {
             if (payload.eventType === 'UPDATE') return c.map(x => x.id === payload.new.id ? { ...x, ...payload.new } : x);
             if (payload.eventType === 'DELETE') return c.filter(x => x.id !== payload.old.id);
@@ -78,6 +100,7 @@ const CarDetailPage = () => {
       const { data, error } = await supabase.from('car_listings').select('*').eq('id', id).single();
       if (!error && data) {
         setCar(data);
+        if (data?.images?.length) preloadImages(data.images);
         const { data: similar } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).limit(3);
         setSimilarCars(similar || []);
       }
@@ -154,6 +177,8 @@ const CarDetailPage = () => {
       <Helmet>
         <title>{carName} – RM {price.toLocaleString()} | Drevo</title>
         <meta name="description" content={`${carName} for sale at RM ${price.toLocaleString()}. Located in ${location}.`} />
+        {/* Hint the browser to preconnect to Supabase storage for faster image delivery */}
+        <link rel="preconnect" href="https://your-supabase-project.supabase.co" />
       </Helmet>
 
       <Header />

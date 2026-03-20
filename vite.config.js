@@ -19,4 +19,22 @@ export default defineConfig({
 			'@': path.resolve(__dirname, './src'),
 		},
 	},
+	build: {
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					// Core React runtime
+					'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+					// Animation library
+					'vendor-motion': ['framer-motion'],
+					// Supabase client
+					'vendor-supabase': ['@supabase/supabase-js'],
+					// UI utilities
+					'vendor-ui': ['lucide-react', 'react-helmet', 'react-i18next'],
+				},
+			},
+		},
+		// Raise warning threshold slightly — we're now splitting properly
+		chunkSizeWarningLimit: 600,
+	},
 });
