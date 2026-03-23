@@ -1,426 +1,673 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, Gauge, Settings, Calendar, CheckCircle, MessageCircle, Phone, Clock, ChevronRight, Fuel, Tag, Palette, FileText, Star, TrendingDown } from 'lucide-react';
+import {
+  MapPin, Gauge, Settings, Calendar, CheckCircle, MessageCircle,
+  Phone, Clock, ChevronRight, Fuel, Tag, Palette, FileText,
+  TrendingDown, ArrowLeft, Share2, Heart, X, ZoomIn,
+  ShieldCheck, Star, Calculator, ChevronLeft, ChevronDown,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
-import CarGallery from '@/components/CarGallery';
 import CarCard from '@/components/CarCard';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import { supabase } from '../supabaseClient';
 
+/* ── helpers ─────────────────────────────────────────────── */
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
-  const loan = price * 0.9;
-  return Math.round((loan * (1 + (3.5 / 100) * 7)) / (7 * 12));
+  return Math.round((price * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12));
 };
 
-// Road tax helper (JPJ, private vehicles, Peninsular Malaysia)
 const calcRoadTax = (cc, bodyType = 'Sedan') => {
   if (!cc || cc <= 0) return null;
-  const nonSaloon = bodyType && ['SUV', 'MPV', 'Pickup'].includes(bodyType);
+  const ns = bodyType && ['SUV', 'MPV', 'Pickup'].includes(bodyType);
   const c = Number(cc);
   if (c <= 1000) return 20;
   if (c <= 1200) return 55;
   if (c <= 1400) return 70;
   if (c <= 1600) return 90;
-  if (c <= 1800) return Math.round(200 + (c - 1600) * (nonSaloon ? 0.40 : 0.50));
-  if (c <= 2000) return Math.round(280 + (c - 1800) * (nonSaloon ? 0.40 : 0.50));
+  if (c <= 1800) return Math.round(200 + (c - 1600) * (ns ? 0.40 : 0.50));
+  if (c <= 2000) return Math.round(280 + (c - 1800) * (ns ? 0.40 : 0.50));
   if (c <= 2500) return Math.round(380 + (c - 2000) * 1.00);
-  if (c <= 3000) return Math.round(880 + (c - 2500) * (nonSaloon ? 2.50 : 4.50));
-  return Math.round((nonSaloon ? 2130 : 3130) + (c - 3000) * (nonSaloon ? 2.50 : 4.50));
+  if (c <= 3000) return Math.round(880 + (c - 2500) * (ns ? 2.50 : 4.50));
+  return Math.round((ns ? 2130 : 3130) + (c - 3000) * (ns ? 2.50 : 4.50));
 };
 
-const STATUS_CONFIG = {
-  active:   { label: 'Available', dot: 'bg-green-400',  text: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200' },
-  reserved: { label: 'Reserved',  dot: 'bg-yellow-400', text: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200' },
-  sold:     { label: 'Sold',      dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200' },
-};
-
-// Eagerly preload all image URLs into the browser cache so CarGallery
-// never has to fetch on click — images are already decoded and ready.
 const preloadImages = (urls = []) => {
-  urls.forEach((url) => {
-    if (!url) return;
-    const img = new Image();
-    img.src = url;
-  });
+  urls.forEach(url => { if (url) { const i = new Image(); i.src = url; } });
 };
 
+const STATUS = {
+  active:   { label: 'Available', color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)'  },
+  reserved: { label: 'Reserved',  color: '#fbbf24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)'  },
+  sold:     { label: 'Sold',      color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.25)' },
+};
+
+/* ── Lightbox ────────────────────────────────────────────── */
+const Lightbox = ({ images, startIdx, onClose }) => {
+  const [idx, setIdx] = useState(startIdx);
+  const prev = () => setIdx(i => (i - 1 + images.length) % images.length);
+  const next = () => setIdx(i => (i + 1) % images.length);
+
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') next();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif" }}
+      onClick={onClose}
+    >
+      <button onClick={e => { e.stopPropagation(); prev(); }}
+        style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', zIndex: 10 }}>
+        <ChevronLeft size={20} />
+      </button>
+
+      <img
+        src={images[idx]} alt={`Photo ${idx + 1}`}
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '12px' }}
+      />
+
+      <button onClick={e => { e.stopPropagation(); next(); }}
+        style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', zIndex: 10 }}>
+        <ChevronRight size={20} />
+      </button>
+
+      <button onClick={onClose}
+        style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+        <X size={18} />
+      </button>
+
+      <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>
+        {idx + 1} / {images.length}
+      </div>
+
+      {/* Thumbnail strip */}
+      <div style={{ position: 'absolute', bottom: '48px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', maxWidth: '80vw', overflowX: 'auto', padding: '4px' }}>
+        {images.map((img, i) => (
+          <img key={i} src={img} alt="" onClick={e => { e.stopPropagation(); setIdx(i); }}
+            style={{ width: '52px', height: '36px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: i === idx ? '2px solid #dc2626' : '2px solid transparent', opacity: i === idx ? 1 : 0.5, transition: 'all 0.15s', flexShrink: 0 }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+/* ── Photo Gallery ───────────────────────────────────────── */
+const PhotoGallery = ({ images, carName }) => {
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+  const shown = images.slice(0, 5);
+  const remaining = images.length - 5;
+
+  if (images.length === 0) return (
+    <div style={{ height: '320px', background: '#0d1117', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ textAlign: 'center' }}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ margin: '0 auto 8px', display: 'block' }}>
+          <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
+          <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
+        </svg>
+        <p style={{ fontSize: '13px' }}>No photos available</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Main grid */}
+      <div className="photo-grid-main" style={{ display: 'grid', gridTemplateColumns: images.length > 1 ? '1fr 1fr' : '1fr', gridTemplateRows: '240px 160px', gap: '6px', borderRadius: '16px', overflow: 'hidden' }}>
+        {/* Hero image */}
+        <div style={{ gridRow: '1 / 3', position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
+          onClick={() => setLightboxIdx(0)}>
+          <img src={shown[0]} alt={carName} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent 50%)', pointerEvents: 'none' }}/>
+          <div style={{ position: 'absolute', bottom: '10px', left: '12px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', color: 'white', fontSize: '11px', fontWeight: '600', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ZoomIn size={10}/> View all {images.length} photos
+          </div>
+        </div>
+
+        {/* Thumbnails */}
+        {shown.slice(1).map((img, i) => (
+          <div key={i} style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
+            onClick={() => setLightboxIdx(i + 1)}>
+            <img src={img} alt={`${carName} ${i + 2}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            />
+            {i === 3 && remaining > 0 && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: 'white', fontWeight: '800', fontSize: '18px' }}>+{remaining}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <Lightbox images={images} startIdx={lightboxIdx} onClose={() => setLightboxIdx(null)} />
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+/* ── Spec tile ───────────────────────────────────────────── */
+const SpecTile = ({ icon: Icon, label, value }) => {
+  if (!value || value === '—') return null;
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <Icon size={14} style={{ color: '#dc2626' }} />
+      <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '2px 0 0' }}>{label}</p>
+      <p style={{ color: 'white', fontSize: '13px', fontWeight: '700', margin: 0, lineHeight: 1.3 }}>{value}</p>
+    </div>
+  );
+};
+
+/* ── Section wrapper ─────────────────────────────────────── */
+const Section = ({ title, icon: Icon, children }) => (
+  <div style={{ background: 'linear-gradient(145deg,#0d1117,#111827)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', overflow: 'hidden' }}>
+    <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {Icon && <Icon size={14} style={{ color: '#dc2626' }} />}
+      <h3 style={{ color: 'white', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0 }}>{title}</h3>
+    </div>
+    <div style={{ padding: '20px' }}>
+      {children}
+    </div>
+  </div>
+);
+
+/* ── Main component ──────────────────────────────────────── */
 const CarDetailPage = () => {
   const { id }  = useParams();
   const { t }   = useTranslation();
-  const [car, setCar]                 = useState(null);
-  const [similarCars, setSimilarCars] = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [calcOpen, setCalcOpen]       = useState(false);
+  const [car,          setCar]          = useState(null);
+  const [similarCars,  setSimilarCars]  = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [calcOpen,     setCalcOpen]     = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [shareToast,   setShareToast]   = useState(false);
+  const stickyRef = useRef(null);
 
   useEffect(() => {
     const fetchCar = async () => {
       setLoading(true);
       const { data, error } = await supabase.from('car_listings').select('*').eq('id', id).single();
-      if (error) { console.error(error); setLoading(false); return; }
+      if (error) { setLoading(false); return; }
       setCar(data);
-
-      // ── Preload all gallery images immediately after fetch ──
-      if (data?.images?.length) {
-        preloadImages(data.images);
-      }
-
-      const { data: similar } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).limit(3);
-      setSimilarCars(similar || []);
+      if (data?.images?.length) preloadImages(data.images);
+      const { data: sim } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).eq('status','active').limit(3);
+      setSimilarCars(sim || []);
       setLoading(false);
 
-      const channel = supabase.channel('car_detail_realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'car_listings' }, (payload) => {
+      const ch = supabase.channel('vdp_realtime')
+        .on('postgres_changes', { event:'*', schema:'public', table:'car_listings' }, payload => {
           if (payload.new?.id === data.id) {
             setCar(c => ({ ...c, ...payload.new }));
-            // Re-preload if images changed
-            if (payload.new?.images?.length) {
-              preloadImages(payload.new.images);
-            }
+            if (payload.new?.images?.length) preloadImages(payload.new.images);
           }
-          setSimilarCars(c => {
-            if (payload.eventType === 'UPDATE') return c.map(x => x.id === payload.new.id ? { ...x, ...payload.new } : x);
-            if (payload.eventType === 'DELETE') return c.filter(x => x.id !== payload.old.id);
-            return c;
-          });
-        })
-        .subscribe();
-      return () => supabase.removeChannel(channel);
+        }).subscribe();
+      return () => supabase.removeChannel(ch);
     };
     fetchCar();
   }, [id]);
 
   useEffect(() => {
     const onFocus = async () => {
-      const { data, error } = await supabase.from('car_listings').select('*').eq('id', id).single();
-      if (!error && data) {
+      const { data } = await supabase.from('car_listings').select('*').eq('id', id).single();
+      if (data) {
         setCar(data);
-        if (data?.images?.length) preloadImages(data.images);
-        const { data: similar } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).limit(3);
-        setSimilarCars(similar || []);
+        if (data.images?.length) preloadImages(data.images);
+        const { data: sim } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).eq('status','active').limit(3);
+        setSimilarCars(sim || []);
       }
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [id]);
 
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({ title: carName, url: window.location.href });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2000);
+    }
+  };
+
+  /* ── loading ── */
   if (loading) return (
-    <><Header />
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-gray-500 text-sm font-medium">Loading…</p>
+    <>
+      <Header />
+      <div style={{ minHeight: '100vh', background: '#080C14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid rgba(220,38,38,0.3)', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }}/>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading listing…</p>
+        </div>
       </div>
-    </div><Footer /></>
+      <Footer />
+    </>
   );
 
   if (!car) return (
-    <><Header />
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-2xl font-bold text-gray-900 mb-2">Car not found</p>
-        <Link to="/cars" className="text-blue-600 hover:underline text-sm">← Back to listings</Link>
+    <>
+      <Header />
+      <div style={{ minHeight: '100vh', background: '#080C14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: 'white', fontWeight: '800', fontSize: '20px', marginBottom: '12px' }}>Listing not found</p>
+          <Link to="/cars" style={{ color: '#dc2626', fontSize: '14px', fontWeight: '600', textDecoration: 'none' }}>← Back to listings</Link>
+        </div>
       </div>
-    </div><Footer /></>
+      <Footer />
+    </>
   );
 
+  /* ── derived data ── */
   const make          = car.brand || '';
   const price         = car.selling_price || 0;
-  // Support both `original_price` (preferred) and legacy `previous_price` fields
-  const previousPrice = car.original_price || car.previous_price || null;
+  const prevPrice     = car.original_price || car.previous_price || null;
   const engineCc      = car.engine_cc || null;
   const location      = car.state || '';
-  const year          = car.year || (car.registration_date ? new Date(car.registration_date).getFullYear() : '');
+  const year          = car.year || '';
   const images        = car.images || [];
   const carName       = `${make} ${car.model}${car.variant ? ' ' + car.variant : ''} ${year}`.trim();
   const monthly       = calcMonthly(price);
-  const roadTax       = calcRoadTax(engineCc, car.body_type || car.bodyType);
+  const roadTax       = calcRoadTax(engineCc, car.body_type);
   const status        = car.status || 'active';
-  const statusCfg     = STATUS_CONFIG[status] || STATUS_CONFIG.active;
+  const statusCfg     = STATUS[status] || STATUS.active;
 
-  const hasDiscount  = previousPrice && previousPrice > price;
-  const discountAmt  = hasDiscount ? previousPrice - price : null;
-  const discountPct  = hasDiscount ? Math.round((discountAmt / previousPrice) * 100) : null;
+  const hasDiscount  = prevPrice && prevPrice > price;
+  const discountPct  = hasDiscount ? Math.round(((prevPrice - price) / prevPrice) * 100) : null;
+  const discountAmt  = hasDiscount ? prevPrice - price : null;
 
-  const whatsappMsg  = `Hi, I'm interested in the ${carName} listed at RM ${price.toLocaleString()}. Is it still available?`;
-  const whatsappLink = `https://wa.me/60174155191?text=${encodeURIComponent(whatsappMsg)}`;
+  const waMsg  = `Hi, I'm interested in the ${carName} listed at RM ${price.toLocaleString()}. Is it still available?`;
+  const waLink = `https://wa.me/60174155191?text=${encodeURIComponent(waMsg)}`;
 
   const specs = [
-    { icon: Calendar,    label: 'Year',         value: year || '—' },
-    { icon: Gauge,       label: 'Mileage',       value: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : '—' },
-    { icon: Settings,    label: 'Transmission',  value: car.transmission || '—' },
-    { icon: CheckCircle, label: 'Condition',     value: car.condition ? car.condition.charAt(0).toUpperCase() + car.condition.slice(1) : '—' },
-    { icon: Fuel,        label: 'Fuel Type',     value: car.fuel_type || '—' },
-    { icon: Tag,         label: 'Body Type',     value: car.body_type || '—' },
-    { icon: Palette,     label: 'Colour',        value: car.colour || '—' },
-    { icon: Gauge,       label: 'Engine',        value: engineCc ? `${Number(engineCc).toLocaleString()}cc` : '—' },
+    { icon: Calendar,    label: 'Year',         value: year ? String(year) : null },
+    { icon: Gauge,       label: 'Mileage',       value: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null },
+    { icon: Settings,    label: 'Transmission',  value: car.transmission || null },
+    { icon: Fuel,        label: 'Fuel',          value: car.fuel_type || null },
+    { icon: Tag,         label: 'Body Type',     value: car.body_type || null },
+    { icon: Palette,     label: 'Colour',        value: car.colour || null },
+    { icon: Gauge,       label: 'Engine',        value: engineCc ? `${Number(engineCc).toLocaleString()} cc` : null },
     { icon: MapPin,      label: 'Location',      value: location || 'Malaysia' },
-  ];
+    { icon: CheckCircle, label: 'Condition',     value: car.condition ? car.condition.charAt(0).toUpperCase() + car.condition.slice(1) : null },
+  ].filter(s => s.value);
 
-  // Simplified detail sections: only "Captions" and "Features & quirks"
-  const captionContent = car.captions || car.specs || null;
-  const featuresAndQuirksContent = [car.features, car.options].filter(Boolean).join('\n\n') || null;
+  const isSold = status === 'sold';
 
-  const PriceBadge = () => hasDiscount && (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-      <TrendingDown className="w-3 h-3" />−{discountPct}%
-    </span>
-  );
+  const btnBase = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    width: '100%', padding: '14px', borderRadius: '12px',
+    fontSize: '14px', fontWeight: '700', cursor: isSold ? 'default' : 'pointer',
+    border: 'none', fontFamily: "'DM Sans',sans-serif",
+    transition: 'all 0.2s ease', textDecoration: 'none',
+    opacity: isSold ? 0.5 : 1, pointerEvents: isSold ? 'none' : 'auto',
+  };
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
+        body { background: #080C14 !important; margin: 0 !important; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .vdp-wa:hover { background: rgba(37,211,102,0.9) !important; }
+        .vdp-call:hover { background: rgba(220,38,38,0.85) !important; }
+        .vdp-calc:hover { border-color: rgba(220,38,38,0.5) !important; color: #f87171 !important; }
+        .photo-grid img { transition: transform 0.3s ease; }
+        .share-toast { animation: fadeUp 0.2s ease; }
+        @media(max-width:1024px){
+          .vdp-layout { flex-direction: column !important; }
+          .vdp-sidebar { display: none !important; }
+        }
+        @media(max-width:640px){
+          .specs-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .photo-grid-main { grid-template-columns: 1fr !important; grid-template-rows: 220px !important; }
+          .photo-grid-main > div:not(:first-child) { display: none !important; }
+        }
+      `}</style>
+
       <Helmet>
-        <title>{carName} – RM {price.toLocaleString()} | Drevo</title>
-        <meta name="description" content={`${carName} for sale at RM ${price.toLocaleString()}. Located in ${location}.`} />
-        {/* Hint the browser to preconnect to Supabase storage for faster image delivery */}
-        <link rel="preconnect" href="https://your-supabase-project.supabase.co" />
+        <title>{carName} – RM {price.toLocaleString('en-MY')} | Drevo</title>
+        <meta name="description" content={`${carName} for sale at RM ${price.toLocaleString('en-MY')}. ${car.mileage ? Number(car.mileage).toLocaleString() + ' km. ' : ''}${location ? 'Located in ' + location + '.' : ''}`} />
       </Helmet>
 
       <Header />
 
-      <div className="pt-20 bg-[#F7F8FA] min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 py-6 lg:py-10">
+      <div style={{ background: '#080C14', minHeight: '100vh', paddingTop: '72px', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px 60px' }}>
 
-          {/* Breadcrumb */}
-          <nav className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 mb-5">
-            <Link to="/" className="hover:text-blue-700 transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link to="/cars" className="hover:text-blue-700 transition-colors">Browse Cars</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-gray-600 font-medium truncate max-w-[200px]">{carName}</span>
-          </nav>
-
-          <div className="md:hidden mb-4">
-            <Link to="/cars" className="inline-flex items-center text-sm font-semibold text-blue-700 hover:text-blue-800 transition-colors">
-              ← Back to listings
-            </Link>
+          {/* ── Breadcrumb + actions ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4b5563', fontSize: '12px' }}>
+              <Link to="/" style={{ color: '#4b5563', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                onMouseLeave={e => e.currentTarget.style.color = '#4b5563'}>Home</Link>
+              <ChevronRight size={12}/>
+              <Link to="/cars" style={{ color: '#4b5563', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                onMouseLeave={e => e.currentTarget.style.color = '#4b5563'}>Browse Cars</Link>
+              <ChevronRight size={12}/>
+              <span style={{ color: '#9ca3af', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{carName}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setSaved(!saved)}
+                style={{ background: saved ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.05)', border: saved ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: saved ? '#f87171' : '#9ca3af', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.15s', fontFamily: "'DM Sans',sans-serif" }}>
+                <Heart size={13} style={{ fill: saved ? '#f87171' : 'none' }}/> {saved ? 'Saved' : 'Save'}
+              </button>
+              <div style={{ position: 'relative' }}>
+                <button onClick={handleShare}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 14px', color: '#9ca3af', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: "'DM Sans',sans-serif" }}>
+                  <Share2 size={13}/> Share
+                </button>
+                {shareToast && (
+                  <div className="share-toast" style={{ position: 'absolute', top: '44px', right: 0, background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 12px', color: 'white', fontSize: '12px', whiteSpace: 'nowrap', zIndex: 10 }}>
+                    Link copied!
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 lg:gap-6">
+          {/* ── Main layout ── */}
+          <div className="vdp-layout" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
 
-            {/* ── LEFT ── */}
-            <div className="xl:col-span-2 space-y-5">
+            {/* ════ LEFT COLUMN ════ */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-              {/* Gallery (with discount badge overlay when applicable) */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 relative">
-                {images.length > 0
-                  ? (
-                    <>
-                      <CarGallery images={images} carName={carName} />
-                      {hasDiscount && (
-                        <div className="absolute top-4 right-4 z-20">
-                          <div className="car-card-discount-badge">
-                            <TrendingDown size={12} />
-                            <span>−{discountPct}%</span>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-72 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">No images available</div>
-                  )
-                }
-              </div>
+                      {/* Photo gallery */}
+              <PhotoGallery images={images} carName={carName} />
 
-              {/* Title + Price */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-1">{make}</p>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 leading-tight">
-                      {car.model}{car.variant ? <span className="font-semibold"> {car.variant}</span> : ''} <span className="font-semibold">{year}</span>
+              {/* Title + price (mobile) */}
+              <div style={{ background: 'linear-gradient(145deg,#0d1117,#111827)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <p style={{ color: '#6b7280', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 4px' }}>{make}</p>
+                    <h1 style={{ color: 'white', fontSize: 'clamp(1.4rem,3vw,2rem)', fontWeight: '800', margin: '0 0 12px', lineHeight: 1.2 }}>
+                      {car.model}{car.variant ? ` ${car.variant}` : ''} <span style={{ color: '#9ca3af', fontWeight: '600' }}>{year}</span>
                     </h1>
-                    <div className="flex items-center flex-wrap gap-3 mt-3">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />{statusCfg.label}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      {/* Status badge */}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: statusCfg.bg, border: `1px solid ${statusCfg.border}`, color: statusCfg.color, fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusCfg.color, display: 'inline-block' }}/>
+                        {statusCfg.label}
                       </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-500"><MapPin className="w-3.5 h-3.5" />{location || 'Malaysia'}</span>
-                      {engineCc && <span className="flex items-center gap-1 text-sm text-gray-500"><Gauge className="w-3.5 h-3.5" />{Number(engineCc).toLocaleString()}cc</span>}
+                      {location && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '12px' }}>
+                          <MapPin size={11}/>{location}
+                        </span>
+                      )}
+                      {hasDiscount && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.25)', color: '#f87171', fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' }}>
+                          <TrendingDown size={10}/> −{discountPct}%
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Price block */}
-                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 lg:px-5 lg:py-4 lg:text-right lg:min-w-[260px]">
-                    <p className="text-[11px] text-gray-500 mb-0.5 uppercase tracking-wide">Asking Price</p>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px 20px', minWidth: '200px', textAlign: 'right' }}>
+                    <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Asking Price</p>
                     {hasDiscount && (
-                      <div className="flex items-center gap-2 lg:justify-end mb-1">
-                        <span className="text-sm text-gray-400 line-through">RM {previousPrice.toLocaleString('en-MY')}</span>
-                        <PriceBadge />
-                      </div>
+                      <p style={{ color: '#6b7280', fontSize: '13px', textDecoration: 'line-through', margin: '0 0 2px' }}>RM {prevPrice.toLocaleString('en-MY')}</p>
                     )}
-                    <p className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight">
+                    <p style={{ color: hasDiscount ? '#f87171' : 'white', fontSize: 'clamp(1.5rem,3vw,2rem)', fontWeight: '800', margin: '0 0 4px', lineHeight: 1, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>
                       RM {price > 0 ? price.toLocaleString('en-MY') : '—'}
                     </p>
-                    {hasDiscount && <p className="text-xs text-green-600 font-semibold mt-0.5">Save RM {discountAmt.toLocaleString('en-MY')}</p>}
-                    {monthly && <p className="text-sm text-blue-700 font-semibold mt-1">≈ RM {monthly.toLocaleString('en-MY')}<span className="text-gray-400 font-normal">/mo</span></p>}
-                    {roadTax != null && (
-                      <p className="text-sm text-gray-600 font-medium mt-1">Est. Road Tax: RM {roadTax.toLocaleString('en-MY')}<span className="text-gray-400 font-normal">/yr</span>
-                        <button onClick={() => setCalcOpen(true)} className="ml-2 text-xs text-blue-700 font-semibold">Estimate</button>
-                      </p>
-                    )}
+                    {hasDiscount && <p style={{ color: '#34d399', fontSize: '11px', fontWeight: '700', margin: '0 0 6px' }}>Save RM {discountAmt.toLocaleString('en-MY')}</p>}
+                    {monthly && <p style={{ color: '#9ca3af', fontSize: '12px', margin: '0 0 2px' }}>≈ RM {monthly.toLocaleString('en-MY')}<span style={{ color: '#6b7280' }}>/mo</span></p>}
+                    {roadTax != null && <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Est. road tax: RM {roadTax.toLocaleString()}/yr</p>}
                   </div>
                 </div>
               </div>
 
               {/* Mobile CTAs */}
-              <div className="xl:hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                    className="w-full bg-[#25D366] hover:bg-[#1db954] text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-sm transition-all">
-                    <MessageCircle className="w-4 h-4" />WhatsApp
-                  </a>
-                  <button onClick={() => window.location.href = 'tel:+60174155191'}
-                    className="w-full bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-sm transition-all">
-                    <Phone className="w-4 h-4" />Call
+              <div className="vdp-sidebar-mobile" style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="vdp-wa"
+                  style={{ ...btnBase, background: '#25D366', color: 'white' }}>
+                  <MessageCircle size={16}/> WhatsApp Us
+                </a>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button onClick={() => window.location.href = 'tel:+60174155191'} className="vdp-call"
+                    style={{ ...btnBase, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171', padding: '12px' }}>
+                    <Phone size={15}/> Call Now
                   </button>
-                  <button onClick={() => setCalcOpen(true)}
-                    className="w-full border-2 border-blue-700 text-blue-700 hover:bg-blue-50 py-2 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm transition-all">
-                    📊 Estimate
+                  <button onClick={() => setCalcOpen(true)} className="vdp-calc"
+                    style={{ ...btnBase, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', padding: '12px' }}>
+                    <Calculator size={15}/> Calculator
                   </button>
                 </div>
               </div>
 
-              {/* Key specs */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">At a Glance</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-                  {specs.map(({ icon: Icon, label, value }) => value !== '—' && (
-                    <div key={label} className="flex flex-col gap-1 p-3 sm:p-3.5 bg-gray-50 rounded-xl border border-gray-100 group">
-                      <Icon className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mt-0.5">{label}</p>
-                      <p className="text-sm font-bold text-gray-800 truncate">{value}</p>
-                    </div>
-                  ))}
+              {/* Horizontal spec strip */}
+              <Section title="At a Glance" icon={Tag}>
+                <div className="specs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' }}>
+                  {specs.map(s => <SpecTile key={s.label} {...s}/>)}
                 </div>
-              </div>
+              </Section>
 
-              {/* Car details — only two sections: Captions and Features & quirks */}
-              {(captionContent || featuresAndQuirksContent) && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                  <div className="flex items-center gap-2 mb-4 sm:mb-5">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Car Details</h2>
+              {/* Puspakom badge if exists */}
+              {car.puspakom_url && car.puspakom_status === 'passed' && (
+                <div style={{ background: 'linear-gradient(135deg,rgba(52,211,153,0.08),rgba(52,211,153,0.03))', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <ShieldCheck size={20} style={{ color: '#34d399' }}/>
                   </div>
-                  <div className="space-y-4">
-                    {captionContent && (
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 sm:p-4">
-                        <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                          <FileText className="w-3.5 h-3.5 text-blue-500" />
-                          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Captions</h3>
-                        </div>
-                        <div className="text-gray-700 text-sm leading-6 pl-4 border-l-2 border-blue-100 whitespace-pre-line">{captionContent}</div>
-                      </div>
-                    )}
-
-                    {featuresAndQuirksContent && (
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 sm:p-4">
-                        <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                          <Star className="w-3.5 h-3.5 text-blue-500" />
-                          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Features & quirks</h3>
-                        </div>
-                        <div className="text-gray-700 text-sm leading-6 pl-4 border-l-2 border-blue-100 whitespace-pre-line">{featuresAndQuirksContent}</div>
-                      </div>
-                    )}
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: '#34d399', fontWeight: '700', fontSize: '13px', margin: '0 0 2px' }}>Puspakom Inspected ✓</p>
+                    <p style={{ color: '#6b7280', fontSize: '12px', margin: 0 }}>This vehicle has passed a Puspakom inspection.{' '}
+                      <a href={car.puspakom_url} target="_blank" rel="noopener noreferrer" style={{ color: '#34d399', fontWeight: '600' }}>View report →</a>
+                    </p>
                   </div>
                 </div>
               )}
 
+              {/* Description */}
+              {(car.captions || car.description) && (
+                <Section title="About this car" icon={FileText}>
+                  <p style={{ color: '#d1d5db', fontSize: '14px', lineHeight: '1.8', margin: 0, whiteSpace: 'pre-line' }}>
+                    {car.captions || car.description}
+                  </p>
+                </Section>
+              )}
+
+              {/* Features */}
+              {(car.features || car.options) && (
+                <Section title="Features & Equipment" icon={Star}>
+                  <div style={{ columns: '2', columnGap: '16px' }}>
+                    {(car.features || car.options || '').split('\n').filter(Boolean).map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px', breakInside: 'avoid' }}>
+                        <CheckCircle size={13} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }}/>
+                        <span style={{ color: '#d1d5db', fontSize: '13px', lineHeight: '1.5' }}>{f.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {/* Why buy with Drevo */}
+              <Section title="Why Buy with Drevo" icon={ShieldCheck}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {[
+                    { icon: ShieldCheck, t: 'Verified Listing',       d: 'Every car is manually verified by our team.' },
+                    { icon: Calculator,  t: 'Transparent Pricing',    d: 'No hidden fees. Price you see is final.' },
+                    { icon: MessageCircle, t: 'Fast Response',        d: 'Usually replies within 1 hour on WhatsApp.' },
+                    { icon: Star,        t: 'Trusted Dealers',        d: 'All dealers are rated and reviewed.' },
+                  ].map((b, i) => (
+                    <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
+                      <b.icon size={14} style={{ color: '#dc2626', marginBottom: '6px' }}/>
+                      <p style={{ color: 'white', fontWeight: '700', fontSize: '12px', margin: '0 0 4px' }}>{b.t}</p>
+                      <p style={{ color: '#6b7280', fontSize: '11px', margin: 0, lineHeight: 1.5 }}>{b.d}</p>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
             </div>
 
-            {/* ── RIGHT: sidebar ── */}
-            <div className="xl:col-span-1">
-              <div className="hidden xl:block bg-white rounded-2xl shadow-sm border border-gray-100 p-6 xl:sticky xl:top-24 space-y-4">
+            {/* ════ RIGHT SIDEBAR ════ */}
+            <div className="vdp-sidebar" style={{ width: '300px', flexShrink: 0, position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                <div className="pb-4 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Asking Price</p>
-                  {hasDiscount && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-400 line-through">RM {previousPrice.toLocaleString('en-MY')}</span>
-                      <PriceBadge />
+              {/* Price card */}
+              <div style={{ background: 'linear-gradient(145deg,#0d1117,#111827)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '20px' }}>
+                <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Asking Price</p>
+                {hasDiscount && (
+                  <p style={{ color: '#6b7280', fontSize: '13px', textDecoration: 'line-through', margin: '0 0 2px' }}>
+                    RM {prevPrice.toLocaleString('en-MY')}
+                  </p>
+                )}
+                <p style={{ color: hasDiscount ? '#f87171' : 'white', fontSize: '2rem', fontWeight: '800', margin: '0 0 2px', lineHeight: 1, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>
+                  RM {price > 0 ? price.toLocaleString('en-MY') : '—'}
+                </p>
+                {hasDiscount && <p style={{ color: '#34d399', fontSize: '11px', fontWeight: '700', margin: '0 0 8px' }}>Save RM {discountAmt.toLocaleString('en-MY')}</p>}
+
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {monthly && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#6b7280', fontSize: '12px' }}>Est. monthly</span>
+                      <span style={{ color: 'white', fontSize: '13px', fontWeight: '700' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
                     </div>
                   )}
-                  <p className="text-3xl font-extrabold text-gray-900">RM {price > 0 ? price.toLocaleString('en-MY') : '—'}</p>
-                  {hasDiscount && <p className="text-xs text-green-600 font-semibold mt-0.5">Save RM {discountAmt.toLocaleString('en-MY')}</p>}
-                  {monthly && <p className="text-sm text-blue-600 font-medium mt-1">≈ RM {monthly.toLocaleString('en-MY')}<span className="text-gray-400 font-normal text-xs"> /mo · 7yr @ 3.5%</span></p>}
-                  {roadTax != null && <p className="text-sm text-gray-600 font-medium mt-1">Est. Road Tax: RM {roadTax.toLocaleString('en-MY')}<span className="text-gray-400 font-normal text-xs"> /yr</span></p>}
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border mt-3 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />{statusCfg.label}
+                  {roadTax != null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#6b7280', fontSize: '12px' }}>Est. road tax</span>
+                      <span style={{ color: 'white', fontSize: '13px', fontWeight: '700' }}>RM {roadTax.toLocaleString()}/yr</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div style={{ marginTop: '12px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: statusCfg.bg, border: `1px solid ${statusCfg.border}`, color: statusCfg.color, fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusCfg.color, display: 'inline-block' }}/>
+                    {statusCfg.label}
                   </span>
                 </div>
-
-                <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                  className="w-full bg-[#25D366] hover:bg-[#1db954] text-white py-3.5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-sm">
-                  <MessageCircle className="w-5 h-5" />WhatsApp Us
-                </a>
-                <button onClick={() => window.location.href = 'tel:+60174155191'}
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3.5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-sm">
-                  <Phone className="w-5 h-5" />Call Now
-                </button>
-                <button onClick={() => setCalcOpen(true)}
-                  className="w-full border-2 border-blue-700 text-blue-700 hover:bg-blue-50 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm">
-                  📊 Financing & Cost Estimate
-                </button>
-
-                <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 pt-1">
-                  <Clock className="w-3 h-3" /><span>Usually replies within 1 hour</span>
-                </div>
-
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <p className="text-xs font-bold text-gray-700 mb-2.5">Why buy with Drevo?</p>
-                  <ul className="space-y-1.5 text-xs text-gray-600">
-                    {[t('carDetail.sidebar.benefit1'), t('carDetail.sidebar.benefit2'), t('carDetail.sidebar.benefit3'), t('carDetail.sidebar.benefit4')].map((b, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <CheckCircle className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />{b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
               </div>
-            </div>
 
+              {/* CTAs */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="vdp-wa"
+                  style={{ ...btnBase, background: '#25D366', color: 'white', boxShadow: '0 4px 16px rgba(37,211,102,0.25)' }}>
+                  <MessageCircle size={16}/> WhatsApp Us
+                </a>
+                <button onClick={() => window.location.href = 'tel:+60174155191'} className="vdp-call"
+                  style={{ ...btnBase, background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', color: '#f87171' }}>
+                  <Phone size={16}/> Call Now
+                </button>
+                <button onClick={() => setCalcOpen(true)} className="vdp-calc"
+                  style={{ ...btnBase, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af' }}>
+                  <Calculator size={15}/> Financing Calculator
+                </button>
+              </div>
+
+              {/* Response time */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#6b7280', fontSize: '11px' }}>
+                <Clock size={11}/> Usually replies within 1 hour
+              </div>
+
+              {/* Quick specs */}
+              {specs.slice(0, 4).length > 0 && (
+                <div style={{ background: 'linear-gradient(145deg,#0d1117,#111827)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '14px 16px' }}>
+                  <p style={{ color: '#6b7280', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 10px' }}>Quick Specs</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {specs.slice(0, 5).map(s => (
+                      <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#6b7280', fontSize: '12px' }}>{s.label}</span>
+                        <span style={{ color: 'white', fontSize: '12px', fontWeight: '600' }}>{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Similar cars */}
+          {/* ── Similar cars ── */}
           {similarCars.length > 0 && (
-            <div className="mt-14">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-bold text-gray-900">More {make}s</h2>
-                <Link to="/cars" className="text-sm text-blue-600 font-semibold hover:underline">View all →</Link>
+            <div style={{ marginTop: '60px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <div>
+                  <p style={{ color: '#dc2626', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 6px' }}>You may also like</p>
+                  <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>More {make}s</h2>
+                </div>
+                <Link to="/cars" style={{ color: '#dc2626', fontSize: '13px', fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  View all <ChevronRight size={14}/>
+                </Link>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {similarCars.map(c => <CarCard key={c.id} car={c} />)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: '18px' }}>
+                {similarCars.map(c => <CarCard key={c.id} car={c}/>)}
               </div>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* Calculator Modal */}
+      {/* Mobile sticky CTA bar */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30,
+        background: 'rgba(8,12,20,0.97)', backdropFilter: 'blur(16px)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        padding: '12px 16px', display: 'flex', gap: '10px',
+        fontFamily: "'DM Sans',sans-serif",
+      }} className="mobile-sticky-bar">
+        <a href={waLink} target="_blank" rel="noopener noreferrer"
+          style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: 'white', fontWeight: '700', fontSize: '14px', padding: '13px', borderRadius: '12px', textDecoration: 'none' }}>
+          <MessageCircle size={16}/> WhatsApp
+        </a>
+        <button onClick={() => setCalcOpen(true)}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', fontWeight: '600', fontSize: '13px', padding: '13px', borderRadius: '12px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+          <Calculator size={14}/> Calc
+        </button>
+      </div>
+
+      <style>{`
+        .mobile-sticky-bar { display: none !important; }
+        .vdp-sidebar-mobile { display: none !important; }
+        @media(max-width:1024px){
+          .mobile-sticky-bar { display: flex !important; }
+          .vdp-sidebar-mobile { display: flex !important; }
+        }
+      `}</style>
+
+      {/* Calculator modal */}
       <AnimatePresence>
         {calcOpen && (
-          <motion.div key="calc-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          <motion.div key="calc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: "'DM Sans',sans-serif" }}
             onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}>
-            <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 16 }} transition={{ duration: 0.2 }}
-              className="w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden bg-white">
-              <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              style={{ width: '100%', maxWidth: '860px', background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p className="font-bold text-gray-900 text-sm">Financing & Cost Calculator</p>
-                  <p className="text-xs text-gray-400">{carName}</p>
+                  <p style={{ color: 'white', fontWeight: '700', fontSize: '14px', margin: '0 0 2px' }}>Financing & Cost Calculator</p>
+                  <p style={{ color: '#6b7280', fontSize: '12px', margin: 0 }}>{carName}</p>
                 </div>
                 <button onClick={() => setCalcOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors text-lg font-light">×</button>
+                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
+                  <X size={16}/>
+                </button>
               </div>
-              <div className="max-h-[80vh] overflow-y-auto">
-                {/* Pass engineCc and bodyType so Road Tax tab auto-populates */}
+              <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
                 <FinancingCalculator initialPrice={price} engineCc={engineCc} bodyType={car.body_type} flat />
               </div>
             </motion.div>
