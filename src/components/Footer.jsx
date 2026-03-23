@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, MessageCircle, Mail, Clock } from 'lucide-react';
+import { Facebook, Instagram, MessageCircle, Mail, Clock, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const Footer = () => {
@@ -9,130 +8,139 @@ const Footer = () => {
   const { t } = useTranslation();
 
   return (
-    <footer className="bg-[#1F2937] text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {/* Column 1: Logo and Social */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="bg-[#1E3A8A] text-white font-bold text-2xl px-3 py-1 rounded-lg">
-                X
+    <footer
+      style={{
+        background: '#080C14',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+
+          {/* Col 1: Brand */}
+          <div className="md:col-span-1">
+            <Link to="/" className="flex items-center gap-2.5 mb-4 group w-fit">
+              <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
+                <div className="absolute inset-0 bg-red-600 rounded-lg rotate-6 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="relative text-white font-black text-lg" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>D</span>
               </div>
-              <span className="text-2xl font-bold">Drive</span>
-            </div>
-            <p className="text-gray-300 mb-6">{t('footer.tagline')}</p>
-            <div className="flex gap-4">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors"
-                aria-label="Visit our Facebook page"
+              <span className="text-white font-bold text-xl tracking-tight">
+                Drevo<span className="text-red-500">.</span>
+              </span>
+            </Link>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">{t('footer.tagline')}</p>
+            <div className="flex gap-3">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                aria-label="Facebook"
               >
-                <Facebook className="w-5 h-5" />
+                <Facebook className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
               </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors"
-                aria-label="Visit our Instagram page"
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                aria-label="Instagram"
               >
-                <Instagram className="w-5 h-5" />
+                <Instagram className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
               </a>
-              <a
-                href="https://wa.me/60174155191"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-[#25D366] hover:bg-[#25D366]/90 p-3 rounded-full transition-colors"
-                aria-label="Chat with us on WhatsApp"
+              <a href="https://wa.me/60174155191" target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.25)' }}
+                aria-label="WhatsApp"
               >
-                <MessageCircle className="w-5 h-5" />
+                <MessageCircle className="w-4 h-4 text-[#25D366]" />
               </a>
             </div>
           </div>
 
-          {/* Column 2: Quick Links */}
+          {/* Col 2: Quick Links */}
           <div>
-            <p className="text-xl font-bold mb-4">{t('footer.quickLinks')}</p>
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  to="/cars"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  {t('nav.browseCars')}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/#how-it-works"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  {t('nav.howItWorks')}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/calculator"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  {t('nav.calculator')}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/#contact"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  {t('nav.contact')}
-                </Link>
-              </li>
+            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">{t('footer.quickLinks')}</p>
+            <ul className="space-y-3">
+              {[
+                { label: t('nav.browseCars'), path: '/cars'          },
+                { label: t('nav.howItWorks'), path: '/#how-it-works' },
+                { label: t('nav.calculator'), path: '/calculator'    },
+                { label: 'For Dealers',       path: '/for-dealers'   },
+              ].map(link => (
+                <li key={link.path}>
+                  <Link to={link.path}
+                    className="text-gray-500 hover:text-white text-sm transition-colors flex items-center gap-1.5 group"
+                  >
+                    <ArrowRight className="w-3 h-3 text-red-600 opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all" />
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Contact Us */}
+          {/* Col 3: Contact */}
           <div>
-            <p className="text-xl font-bold mb-4">{t('footer.contactUs')}</p>
-            <ul className="space-y-3">
+            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">{t('footer.contactUs')}</p>
+            <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <MessageCircle className="w-5 h-5 mt-1 flex-shrink-0 text-[#25D366]" />
+                <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#25D366]" />
                 <div>
-                  <p className="font-semibold">{t('footer.whatsapp')}</p>
-                  <a
-                    href="https://wa.me/60174155191"
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
+                  <p className="text-white text-sm font-medium">{t('footer.whatsapp')}</p>
+                  <a href="https://wa.me/60174155191"
+                    className="text-gray-500 hover:text-white text-sm transition-colors">
                     +60 17-415 5191
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <Mail className="w-5 h-5 mt-1 flex-shrink-0 text-[#1E3A8A]" />
+                <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
                 <div>
-                  <p className="font-semibold">{t('footer.email')}</p>
-                  <a
-                    href="mailto:info@xdrive.my"
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    info@xdrive.my
+                  <p className="text-white text-sm font-medium">{t('footer.email')}</p>
+                  <a href="mailto:info@drevo.my"
+                    className="text-gray-500 hover:text-white text-sm transition-colors">
+                    info@drevo.my
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <Clock className="w-5 h-5 mt-1 flex-shrink-0 text-[#1E3A8A]" />
+                <Clock className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
                 <div>
-                  <p className="font-semibold">{t('footer.hours')}</p>
-                  <p className="text-gray-300">{t('footer.hoursText')}</p>
+                  <p className="text-white text-sm font-medium">{t('footer.hours')}</p>
+                  <p className="text-gray-500 text-sm">{t('footer.hoursText')}</p>
                 </div>
               </li>
             </ul>
           </div>
+
+          {/* Col 4: ShiftOS CTA */}
+          <div>
+            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">For Dealers</p>
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: 'linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.03) 100%)',
+                border: '1px solid rgba(220,38,38,0.15)',
+              }}
+            >
+              <p className="text-white text-sm font-semibold mb-1">Manage with ShiftOS</p>
+              <p className="text-gray-500 text-xs leading-relaxed mb-3">The all-in-one SaaS platform for Malaysian used car dealers.</p>
+              <Link
+                to="/for-dealers"
+                className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-semibold transition-colors group"
+              >
+                Learn more
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-gray-700 pt-8 text-center text-gray-400">
-          <p>&copy; {currentYear} {t('footer.rights')}</p>
+        {/* Bottom bar */}
+        <div
+          className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <p>&copy; {currentYear} Drevo. {t('footer.rights')}</p>
+          <p>Powered by <span className="text-red-600 font-semibold">ShiftOS</span></p>
         </div>
       </div>
     </footer>

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Bebas+Neue&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -54,34 +55,171 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    background-color: #080C14 !important;
+    color: #f9fafb;
     font-family: 'DM Sans', sans-serif;
     overflow-x: clip;
   }
-  
-  /* Style select dropdown options */
+
   select option {
-    background-color: #ffffff !important;
-    color: #1f2937 !important;
+    background-color: #0d1117 !important;
+    color: #f9fafb !important;
     padding: 10px 14px !important;
-    border-radius: 8px !important;
-    margin: 3px 0 !important;
     font-size: 14px !important;
     font-weight: 500 !important;
-    border: 1px solid #e5e7eb !important;
   }
-  
-  /* Hover effect for options */
-  select option:hover {
-    background-color: #f9fafb !important;
-    border-color: #d1d5db !important;
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.04em;
   }
-  
-  /* Focus effect for options */
-  select option:focus {
-    background-color: #eff6ff !important;
-    border-color: #3b82f6 !important;
-    color: #1e40af !important;
+
+  /* Shine sweep effect */
+  .shine-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.55s ease;
+  }
+  .shine-btn:hover::before {
+    left: 130%;
+  }
+
+  /* Card hover lift */
+  .card-lift {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  /* Section red underline */
+  .section-line {
+    width: 48px;
+    height: 3px;
+    background: #dc2626;
+    border-radius: 2px;
+  }
+
+  /* Glassmorphism nav */
+  .glass-nav {
+    background: rgba(8, 12, 20, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .glass-nav-solid {
+    background: rgba(8, 12, 20, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(220,38,38,0.15);
+  }
+
+  /* Nav link underline animation */
+  .nav-link-line {
+    position: relative;
+  }
+  .nav-link-line::after {
+    content: '';
+    display: block;
+    height: 2px;
+    width: 0;
+    background: #dc2626;
+    transition: width 0.25s ease;
+    margin-top: 2px;
+    border-radius: 1px;
+  }
+  .nav-link-line:hover::after,
+  .nav-link-line.active::after {
+    width: 100%;
+  }
+
+  /* Trust strip border */
+  .trust-item {
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .trust-item:last-child {
+    border-right: none;
+  }
+
+  /* Search bar glass */
+  .search-glass {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .search-select {
+    background: transparent;
+    color: white;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+  }
+  .search-select option {
+    background: #0d1117 !important;
+    color: white !important;
+  }
+
+  /* Red pulse */
+  .red-glow {
+    animation: redPulse 2.5s infinite;
+  }
+  @keyframes redPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
+    70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+
+  /* Gold shimmer */
+  .gold-shimmer {
+    background: linear-gradient(135deg, #b45309 0%, #f59e0b 40%, #fbbf24 60%, #b45309 100%);
+    background-size: 200% 100%;
+    animation: goldShift 3s ease infinite;
+    box-shadow: 0 4px 24px rgba(245,158,11,0.35);
+  }
+  @keyframes goldShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Dealer badge */
+  .dealer-badge {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    box-shadow: 0 0 12px rgba(220,38,38,0.35);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #080C14; }
+  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+  /* Mobile search grid */
+  @media (max-width: 768px) {
+    .search-bar-grid {
+      grid-template-columns: 1fr 1fr !important;
+    }
+  }
+  @media (max-width: 480px) {
+    .search-bar-grid {
+      grid-template-columns: 1fr !important;
+    }
   }
 }

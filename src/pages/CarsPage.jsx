@@ -1,216 +1,192 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
-import { RotateCcw, ChevronDown, Search, SlidersHorizontal, X, ChevronUp } from 'lucide-react';
+import {
+  RotateCcw, ChevronDown, Search, SlidersHorizontal, X,
+  ChevronUp, Flame, Car, Check,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { supabase } from '../supabaseClient';
 
-/* ─── tiny helpers ─────────────────────────────────────────── */
-const Tag = ({ label, onRemove }) => (
-  <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium px-2.5 py-1 rounded-full">
+/* ─────────────────────────────────────────
+   PRICE BRACKETS
+───────────────────────────────────────── */
+const PRICE_BRACKETS = [
+  { label: 'Under RM 50k',   min: 0,       max: 50000   },
+  { label: 'RM 50k–100k',    min: 50000,   max: 100000  },
+  { label: 'RM 100k–200k',   min: 100000,  max: 200000  },
+  { label: 'RM 200k–500k',   min: 200000,  max: 500000  },
+  { label: 'Above RM 500k',  min: 500000,  max: Infinity },
+];
+
+const BODY_TYPES    = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
+const TRANSMISSIONS = ['Automatic','Manual'];
+const FUEL_TYPES    = ['Petrol','Diesel','Hybrid','Electric'];
+
+/* ─────────────────────────────────────────
+   TINY REUSABLE BITS
+───────────────────────────────────────── */
+const ActiveTag = ({ label, onRemove }) => (
+  <span style={{
+    display:'inline-flex', alignItems:'center', gap:'4px',
+    background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.25)',
+    color:'#f87171', fontSize:'11px', fontWeight:'600',
+    padding:'4px 10px', borderRadius:'20px',
+  }}>
     {label}
-    <button onClick={onRemove} className="hover:text-blue-900 transition-colors">
-      <X className="w-3 h-3" />
+    <button onClick={onRemove} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex', alignItems:'center' }}>
+      <X size={10}/>
     </button>
   </span>
 );
 
+/* Collapsible filter section */
 const FilterSection = ({ title, children, defaultOpen = true }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-gray-100 last:border-0 rounded-lg mx-2 mb-2 bg-gray-50/50">
+    <div style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom: open ? '16px' : '0', marginBottom:'4px' }}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-3 px-4 text-sm font-semibold text-gray-800 hover:text-blue-700 hover:bg-white/80 transition-all rounded-lg"
+        style={{
+          width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
+          background:'none', border:'none', cursor:'pointer',
+          padding:'14px 0 10px', color:'white', fontSize:'12px', fontWeight:'700',
+          textTransform:'uppercase', letterSpacing:'0.1em',
+          fontFamily:"'DM Sans',sans-serif",
+        }}
       >
         {title}
-        {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        {open ? <ChevronUp size={13} style={{ color:'#6b7280' }}/> : <ChevronDown size={13} style={{ color:'#6b7280' }}/>}
       </button>
-      {open && <div className="pb-4 px-4 bg-white rounded-b-lg border-t border-gray-100">{children}</div>}
+      {open && <div>{children}</div>}
     </div>
   );
 };
 
-const FilterDropdown = ({ value, onChange, options, placeholder }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+/* Chip button for multi-select filters */
+const Chip = ({ label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      display:'inline-flex', alignItems:'center', gap:'4px',
+      background: active ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)',
+      border: active ? '1px solid rgba(220,38,38,0.4)' : '1px solid rgba(255,255,255,0.08)',
+      color: active ? '#f87171' : '#9ca3af',
+      fontSize:'12px', fontWeight: active ? '700' : '500',
+      padding:'6px 12px', borderRadius:'8px', cursor:'pointer',
+      transition:'all 0.15s ease',
+      fontFamily:"'DM Sans',sans-serif",
+    }}
+  >
+    {active && <Check size={10}/>}
+    {label}
+  </button>
+);
 
-  useEffect(() => {
-    const handleOutside = (event) => {
-      if (ref.current && !ref.current.contains(event.target)) {
-        setOpen(false);
-      }
-    };
+/* Native select styled dark */
+const DarkSelect = ({ value, onChange, options, placeholder }) => (
+  <div style={{ position:'relative' }}>
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width:'100%', background:'rgba(255,255,255,0.04)',
+        border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px',
+        padding:'9px 32px 9px 12px', color: value ? 'white' : '#6b7280',
+        fontSize:'12px', fontWeight:'500',
+        appearance:'none', WebkitAppearance:'none',
+        cursor:'pointer', outline:'none',
+        fontFamily:"'DM Sans',sans-serif",
+      }}
+    >
+      <option value="">{placeholder}</option>
+      {options.map(o => <option key={o} value={o} style={{ background:'#0d1117', color:'white' }}>{o}</option>)}
+    </select>
+    <ChevronDown size={12} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', color:'#6b7280', pointerEvents:'none' }}/>
+  </div>
+);
 
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between border border-gray-200 rounded-2xl px-4 py-3 text-sm bg-white shadow-sm hover:border-blue-300 transition-colors"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span className={value ? 'text-gray-800' : 'text-gray-400'}>
-          {value || placeholder}
-        </span>
-        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg max-h-56 overflow-y-auto">
-          <button
-            type="button"
-            onClick={() => { onChange(''); setOpen(false); }}
-            className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-              !value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
-            }`}
-            role="option"
-            aria-selected={!value}
-          >
-            {placeholder}
-          </button>
-
-          {options.map((option) => {
-            const selected = String(option) === String(value);
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => { onChange(option); setOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                  selected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-                role="option"
-                aria-selected={selected}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
-      )}
+/* ─────────────────────────────────────────
+   SKELETON CARD
+───────────────────────────────────────── */
+const SkeletonCard = () => (
+  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', overflow:'hidden' }}>
+    <div style={{ height:'190px', background:'linear-gradient(90deg,#111827 25%,#1f2937 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'shimmer 1.5s infinite' }}/>
+    <div style={{ padding:'16px' }}>
+      {[75,55,90,100].map((w,i) => (
+        <div key={i} style={{ height:'11px', width:`${w}%`, background:'#1f2937', borderRadius:'6px', marginBottom:'9px', animation:'shimmer 1.5s infinite' }}/>
+      ))}
     </div>
-  );
-};
+  </div>
+);
 
-/* ─── price brackets ───────────────────────────────────────── */
-const PRICE_BRACKETS = [
-  { label: 'Under RM 50k',   min: 0,       max: 50000 },
-  { label: 'RM 50k – 100k',  min: 50000,   max: 100000 },
-  { label: 'RM 100k – 200k', min: 100000,  max: 200000 },
-  { label: 'RM 200k – 500k', min: 200000,  max: 500000 },
-  { label: 'RM 500k – 1M',   min: 500000,  max: 1000000 },
-  { label: 'Above RM 1M',    min: 1000000, max: Infinity },
-];
-
-/* ─── main component ───────────────────────────────────────── */
+/* ─────────────────────────────────────────
+   MAIN PAGE
+───────────────────────────────────────── */
 const CarsPage = () => {
   const { t } = useTranslation();
-  const drawerRef = useRef(null);
+  const drawerRef    = useRef(null);
+  const searchRef    = useRef(null);
+
+  const [allCars,      setAllCars]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [fetchError,   setFetchError]   = useState(null);
   const [displayCount, setDisplayCount] = useState(12);
-  const [allCars, setAllCars]                           = useState([]);
-  const [loading, setLoading]                           = useState(true);
-  const [fetchError, setFetchError]                     = useState(null);
-  const [drawerOpen, setDrawerOpen]                     = useState(false);
-  const [selectedPriceBracket, setSelectedPriceBracket] = useState(null);
-  const [selectedBrands, setSelectedBrands]             = useState([]);
-  const [selectedYear, setSelectedYear]                 = useState('');
-  const [selectedBodyTypes, setSelectedBodyTypes]       = useState([]);
-  const [selectedTransmission, setSelectedTransmission] = useState([]);
-  const [selectedFuelTypes, setSelectedFuelTypes]       = useState([]);
-  const [selectedLocation, setSelectedLocation]         = useState('');
-  const [sortBy, setSortBy]                             = useState('price-high');
-  const [searchQuery, setSearchQuery]                   = useState('');
-  const refreshData = async () => {
+  const [drawerOpen,   setDrawerOpen]   = useState(false);
+
+  /* filters */
+  const [searchQuery,           setSearchQuery]           = useState('');
+  const [selectedPriceBracket,  setSelectedPriceBracket]  = useState(null);
+  const [selectedBrands,        setSelectedBrands]        = useState([]);
+  const [selectedYear,          setSelectedYear]          = useState('');
+  const [selectedBodyTypes,     setSelectedBodyTypes]     = useState([]);
+  const [selectedTransmission,  setSelectedTransmission]  = useState([]);
+  const [selectedFuelTypes,     setSelectedFuelTypes]     = useState([]);
+  const [selectedLocation,      setSelectedLocation]      = useState('');
+  const [hotDealsOnly,          setHotDealsOnly]          = useState(false);
+  const [sortBy,                setSortBy]                = useState('newest');
+
+  /* ── data ── */
+  const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('car_listings')
       .select('*')
       .order('created_at', { ascending: false });
-    if (!error) {
-      setAllCars(data || []);
-    }
+    if (error) { setFetchError(error.message); setAllCars([]); }
+    else        { setAllCars(data || []); }
     setLoading(false);
   };
 
   useEffect(() => {
-    const fetchCars = async () => {
-      setLoading(true);
-      setFetchError(null);
-      const { data, error } = await supabase
-        .from('car_listings')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) { setFetchError(error.message); setAllCars([]); }
-      else        { setAllCars(data || []); }
-      setLoading(false);
-    };
-    fetchCars();
-
-    // Set up real-time subscription
-    const channel = supabase.channel('cars_page_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'car_listings',
-        },
-        (payload) => {
-          console.log('CarsPage real-time update received:', payload);
-          
-          setAllCars(current => {
-            switch (payload.eventType) {
-              case 'INSERT':
-                return [payload.new, ...current];
-              case 'UPDATE':
-                return current.map(car => 
-                  car.id === payload.new.id ? { ...car, ...payload.new } : car
-                );
-              case 'DELETE':
-                return current.filter(car => car.id !== payload.old.id);
-              default:
-                return current;
-            }
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log('CarsPage subscription status:', status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Refresh data when window regains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('Window focused, refreshing car data...');
-      refreshData();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    load();
+    const ch = supabase.channel('cars_page')
+      .on('postgres_changes', { event:'*', schema:'public', table:'car_listings' }, payload => {
+        setAllCars(cur => {
+          if (payload.eventType === 'INSERT') return [payload.new, ...cur];
+          if (payload.eventType === 'UPDATE') return cur.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c);
+          if (payload.eventType === 'DELETE') return cur.filter(c => c.id !== payload.old.id);
+          return cur;
+        });
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
   }, []);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (drawerRef.current && !drawerRef.current.contains(e.target)) setDrawerOpen(false);
-    };
-    if (drawerOpen) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  /* close drawer on outside click */
+  useEffect(() => {
+    const h = e => { if (drawerRef.current && !drawerRef.current.contains(e.target)) setDrawerOpen(false); };
+    if (drawerOpen) document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [drawerOpen]);
 
   useEffect(() => {
@@ -218,199 +194,181 @@ const CarsPage = () => {
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
 
-  const brands        = [...new Set(allCars.map(c => c.brand || c.make).filter(Boolean))].sort();
-  const years         = [...new Set(allCars.map(c => c.year).filter(Boolean))].sort((a, b) => b - a);
-  const locations     = [...new Set(allCars.map(c => c.state || c.location).filter(Boolean))].sort();
-  const bodyTypes     = ['Sedan', 'SUV', 'MPV', 'Hatchback', 'Coupe', 'Pickup'];
-  const transmissions = ['Automatic', 'Manual'];
-  const fuelTypes     = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+  /* ── derived lists ── */
+  const brands    = [...new Set(allCars.map(c => c.brand || c.make).filter(Boolean))].sort();
+  const years     = [...new Set(allCars.map(c => c.year).filter(Boolean))].sort((a,b) => b-a);
+  const locations = [...new Set(allCars.map(c => c.state || c.location).filter(Boolean))].sort();
 
-  const toggle = (setState) => (val) =>
-    setState(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  const toggle = setter => val =>
+    setter(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
 
   const resetFilters = () => {
-    setSelectedPriceBracket(null);
-    setSelectedBrands([]);
-    setSelectedYear('');
-    setSelectedBodyTypes([]);
-    setSelectedTransmission([]);
-    setSelectedFuelTypes([]);
-    setSelectedLocation('');
-    setSearchQuery('');
+    setSelectedPriceBracket(null); setSelectedBrands([]);
+    setSelectedYear(''); setSelectedBodyTypes([]);
+    setSelectedTransmission([]); setSelectedFuelTypes([]);
+    setSelectedLocation(''); setSearchQuery(''); setHotDealsOnly(false);
   };
 
   const activeFilterCount = [
-    !!selectedPriceBracket,
-    selectedBrands.length > 0,
-    !!selectedYear,
-    selectedBodyTypes.length > 0,
-    selectedTransmission.length > 0,
-    selectedFuelTypes.length > 0,
-    !!selectedLocation,
+    !!selectedPriceBracket, selectedBrands.length>0, !!selectedYear,
+    selectedBodyTypes.length>0, selectedTransmission.length>0,
+    selectedFuelTypes.length>0, !!selectedLocation, hotDealsOnly,
   ].filter(Boolean).length;
 
   const activeTags = [
-    ...(selectedPriceBracket ? [{ label: selectedPriceBracket.label, remove: () => setSelectedPriceBracket(null) }] : []),
-    ...selectedBrands.map(b  => ({ label: b,  remove: () => toggle(setSelectedBrands)(b) })),
-    ...selectedBodyTypes.map(bt => ({ label: bt, remove: () => toggle(setSelectedBodyTypes)(bt) })),
-    ...selectedTransmission.map(tr => ({ label: tr, remove: () => toggle(setSelectedTransmission)(tr) })),
-    ...selectedFuelTypes.map(ft => ({ label: ft, remove: () => toggle(setSelectedFuelTypes)(ft) })),
-    ...(selectedYear     ? [{ label: selectedYear,     remove: () => setSelectedYear('') }]     : []),
-    ...(selectedLocation ? [{ label: selectedLocation, remove: () => setSelectedLocation('') }] : []),
+    ...(hotDealsOnly ? [{ label:'🔥 Hot Deals', remove:()=>setHotDealsOnly(false) }] : []),
+    ...(selectedPriceBracket ? [{ label:selectedPriceBracket.label, remove:()=>setSelectedPriceBracket(null) }] : []),
+    ...selectedBrands.map(b => ({ label:b, remove:()=>toggle(setSelectedBrands)(b) })),
+    ...selectedBodyTypes.map(bt => ({ label:bt, remove:()=>toggle(setSelectedBodyTypes)(bt) })),
+    ...selectedTransmission.map(tr => ({ label:tr, remove:()=>toggle(setSelectedTransmission)(tr) })),
+    ...selectedFuelTypes.map(ft => ({ label:ft, remove:()=>toggle(setSelectedFuelTypes)(ft) })),
+    ...(selectedYear ? [{ label:selectedYear, remove:()=>setSelectedYear('') }] : []),
+    ...(selectedLocation ? [{ label:selectedLocation, remove:()=>setSelectedLocation('') }] : []),
   ];
 
+  /* ── filter + sort ── */
   const filteredCars = allCars.filter(car => {
-    const price    = car.selling_price || car.price || 0;
-    const brand    = car.brand || car.make;
-    const location = car.state || car.location;
-    const year     = car.year || (car.registration_date ? new Date(car.registration_date).getFullYear() : null);
-    const search   = searchQuery.toLowerCase();
+    const price = car.selling_price || car.price || 0;
+    const brand = car.brand || car.make;
+    const loc   = car.state || car.location;
+    const year  = car.year;
+    const q     = searchQuery.toLowerCase();
 
+    if (hotDealsOnly) {
+      const op = car.original_price;
+      if (!op || op <= 0 || price <= 0 || price > op * 0.97) return false;
+    }
     if (selectedPriceBracket && (price < selectedPriceBracket.min || price > selectedPriceBracket.max)) return false;
     if (selectedBrands.length > 0 && !selectedBrands.includes(brand)) return false;
     if (selectedYear && String(year) !== String(selectedYear)) return false;
     if (selectedBodyTypes.length > 0 && !selectedBodyTypes.includes(car.body_type)) return false;
     if (selectedTransmission.length > 0) {
-      const norm = car.transmission === 'Auto' ? 'Automatic' : 'Manual';
+      const norm = ['Auto','Automatic','AT'].includes(car.transmission) ? 'Automatic' : 'Manual';
       if (!selectedTransmission.includes(norm)) return false;
     }
     if (selectedFuelTypes.length > 0 && !selectedFuelTypes.includes(car.fuel_type)) return false;
-    if (selectedLocation && location !== selectedLocation) return false;
-    if (search && !`${brand} ${car.model} ${year}`.toLowerCase().includes(search)) return false;
+    if (selectedLocation && loc !== selectedLocation) return false;
+    if (q && !`${brand} ${car.model} ${year}`.toLowerCase().includes(q)) return false;
     return true;
   });
 
-  const sortedCars = [...filteredCars].sort((a, b) => {
-    const pA = a.selling_price || a.price || 0, pB = b.selling_price || b.price || 0;
-    const yA = a.year || 0, yB = b.year || 0;
+  const sortedCars = [...filteredCars].sort((a,b) => {
+    const pA = a.selling_price||a.price||0, pB = b.selling_price||b.price||0;
     if (sortBy === 'price-low')  return pA - pB;
     if (sortBy === 'price-high') return pB - pA;
-    if (sortBy === 'newest')     return yB - yA;
+    if (sortBy === 'newest')     return new Date(b.created_at||0) - new Date(a.created_at||0);
     return 0;
   });
 
-  const displayedCars = sortedCars.slice(0, displayCount);
+  const displayed = sortedCars.slice(0, displayCount);
 
-  /* ── Filter Panel (shared sidebar + drawer) ──────────────── */
+  /* ── filter panel (shared sidebar + drawer) ── */
   const FilterPanel = () => (
-    <div className="space-y-0">
+    <div style={{ fontFamily:"'DM Sans',sans-serif" }}>
 
-      <FilterSection title={t('cars.filters.priceRange') || 'Price Range'}>
-        <div className="grid grid-cols-2 gap-2">
-          {PRICE_BRACKETS.map((bracket) => (
-            <button
-              key={bracket.label}
-              onClick={() => setSelectedPriceBracket(
-                selectedPriceBracket?.label === bracket.label ? null : bracket
-              )}
-              className={`text-xs font-medium px-2 py-2.5 rounded-lg border text-left transition-all
-                ${selectedPriceBracket?.label === bracket.label
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-            >
-              {bracket.label}
-            </button>
+      {/* Hot Deals toggle */}
+      <div style={{ marginBottom:'4px', borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:'16px' }}>
+        <button
+          onClick={() => setHotDealsOnly(!hotDealsOnly)}
+          style={{
+            width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
+            background: hotDealsOnly ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
+            border: hotDealsOnly ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.07)',
+            borderRadius:'10px', padding:'10px 14px', cursor:'pointer',
+            color: hotDealsOnly ? '#f87171' : '#9ca3af',
+            fontSize:'13px', fontWeight:'700',
+            fontFamily:"'DM Sans',sans-serif",
+            transition:'all 0.15s ease',
+          }}
+        >
+          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
+          {hotDealsOnly && <Check size={13}/>}
+        </button>
+      </div>
+
+      {/* Price */}
+      <FilterSection title="Price Range">
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px' }}>
+          {PRICE_BRACKETS.map(b => (
+            <Chip key={b.label} label={b.label} active={selectedPriceBracket?.label===b.label} onClick={() => setSelectedPriceBracket(selectedPriceBracket?.label===b.label ? null : b)} />
           ))}
         </div>
       </FilterSection>
 
-      <FilterSection title={t('cars.filters.brand') || 'Brand'}>
-        <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+      {/* Brand */}
+      <FilterSection title="Brand">
+        <div style={{ maxHeight:'160px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'4px', paddingRight:'4px' }}>
           {brands.length === 0
-            ? <p className="text-xs text-gray-400 italic">No brands available</p>
-            : brands.map(brand => (
-              <label key={brand} className="flex items-center gap-2.5 cursor-pointer group">
-                <Checkbox
-                  checked={selectedBrands.includes(brand)}
-                  onCheckedChange={() => toggle(setSelectedBrands)(brand)}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{brand}</span>
+            ? <p style={{ color:'#4b5563', fontSize:'12px', fontStyle:'italic' }}>No brands loaded</p>
+            : brands.map(b => (
+              <label key={b} style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', padding:'4px 2px' }}>
+                <div
+                  onClick={() => toggle(setSelectedBrands)(b)}
+                  style={{
+                    width:'16px', height:'16px', borderRadius:'4px', flexShrink:0,
+                    background: selectedBrands.includes(b) ? '#dc2626' : 'transparent',
+                    border: selectedBrands.includes(b) ? '1px solid #dc2626' : '1px solid rgba(255,255,255,0.15)',
+                    display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+                    transition:'all 0.15s ease',
+                  }}
+                >
+                  {selectedBrands.includes(b) && <Check size={10} style={{ color:'white' }}/>}
+                </div>
+                <span style={{ color: selectedBrands.includes(b) ? 'white' : '#9ca3af', fontSize:'13px', userSelect:'none' }}
+                  onClick={() => toggle(setSelectedBrands)(b)}>{b}</span>
               </label>
             ))}
         </div>
       </FilterSection>
 
-      <FilterSection title={t('cars.filters.year') || 'Year'}>
-        <FilterDropdown
-          value={selectedYear}
-          onChange={setSelectedYear}
-          options={years}
-          placeholder={t('cars.filters.allYears') || 'All Years'}
-        />
+      {/* Year */}
+      <FilterSection title="Year" defaultOpen={false}>
+        <DarkSelect value={selectedYear} onChange={setSelectedYear} options={years} placeholder="All Years"/>
       </FilterSection>
 
-      <FilterSection title={t('cars.filters.bodyType') || 'Body Type'}>
-        <div className="grid grid-cols-2 gap-2">
-          {bodyTypes.map(type => (
-            <button
-              key={type}
-              onClick={() => toggle(setSelectedBodyTypes)(type)}
-              className={`text-xs font-medium px-2 py-2.5 rounded-lg border transition-all
-                ${selectedBodyTypes.includes(type)
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-            >
-              {type}
-            </button>
+      {/* Body Type */}
+      <FilterSection title="Body Type">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {BODY_TYPES.map(bt => (
+            <Chip key={bt} label={bt} active={selectedBodyTypes.includes(bt)} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
           ))}
         </div>
       </FilterSection>
 
-      <FilterSection title={t('cars.filters.transmission') || 'Transmission'}>
-        <div className="flex gap-2">
-          {transmissions.map(trans => (
-            <button
-              key={trans}
-              onClick={() => toggle(setSelectedTransmission)(trans)}
-              className={`flex-1 py-2.5 rounded-lg border text-xs font-medium transition-all
-                ${selectedTransmission.includes(trans)
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-            >
-              {trans}
-            </button>
+      {/* Transmission */}
+      <FilterSection title="Transmission" defaultOpen={false}>
+        <div style={{ display:'flex', gap:'6px' }}>
+          {TRANSMISSIONS.map(tr => (
+            <Chip key={tr} label={tr} active={selectedTransmission.includes(tr)} onClick={() => toggle(setSelectedTransmission)(tr)}/>
           ))}
         </div>
       </FilterSection>
 
-      <FilterSection title="Fuel Type">
-        <div className="grid grid-cols-2 gap-2">
-          {fuelTypes.map(fuel => (
-            <button
-              key={fuel}
-              onClick={() => toggle(setSelectedFuelTypes)(fuel)}
-              className={`text-xs font-medium px-2 py-2.5 rounded-lg border transition-all
-                ${selectedFuelTypes.includes(fuel)
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-            >
-              {fuel}
-            </button>
+      {/* Fuel */}
+      <FilterSection title="Fuel Type" defaultOpen={false}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {FUEL_TYPES.map(ft => (
+            <Chip key={ft} label={ft} active={selectedFuelTypes.includes(ft)} onClick={() => toggle(setSelectedFuelTypes)(ft)}/>
           ))}
         </div>
       </FilterSection>
 
-      <FilterSection title={t('cars.filters.location') || 'Location'}>
-        <FilterDropdown
-          value={selectedLocation}
-          onChange={setSelectedLocation}
-          options={locations}
-          placeholder={t('cars.filters.allLocations') || 'All Locations'}
-        />
+      {/* Location */}
+      <FilterSection title="Location" defaultOpen={false}>
+        <DarkSelect value={selectedLocation} onChange={setSelectedLocation} options={locations} placeholder="All Locations"/>
       </FilterSection>
 
     </div>
   );
 
-  /* ── loading / error ─────────────────────────────────────── */
-  if (loading) return (
+  /* ─────────── loading state ─────────── */
+  if (loading && allCars.length === 0) return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-gray-500 text-sm font-medium">Loading listings…</p>
+      <div style={{ minHeight:'100vh', background:'#080C14', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ width:'36px', height:'36px', border:'3px solid rgba(220,38,38,0.3)', borderTopColor:'#dc2626', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 16px' }}/>
+          <p style={{ color:'#6b7280', fontSize:'14px' }}>Loading listings…</p>
         </div>
       </div>
       <Footer />
@@ -420,200 +378,336 @@ const CarsPage = () => {
   if (fetchError) return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-8 max-w-md w-full text-center">
-          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <X className="w-6 h-6 text-red-500" />
-          </div>
-          <p className="font-semibold text-gray-900 mb-2">Failed to load listings</p>
-          <p className="text-xs font-mono text-red-500 bg-red-50 px-3 py-2 rounded-lg">{fetchError}</p>
+      <div style={{ minHeight:'100vh', background:'#080C14', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ background:'#0d1117', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'16px', padding:'32px', maxWidth:'400px', textAlign:'center' }}>
+          <X size={28} style={{ color:'#dc2626', margin:'0 auto 12px' }}/>
+          <p style={{ color:'white', fontWeight:'700', marginBottom:'8px' }}>Failed to load listings</p>
+          <p style={{ color:'#6b7280', fontSize:'12px', fontFamily:'monospace' }}>{fetchError}</p>
         </div>
       </div>
       <Footer />
     </>
   );
 
-  /* ── page ────────────────────────────────────────────────── */
+  /* ─────────── main render ─────────── */
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
+        body { background: #080C14 !important; margin: 0 !important; }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+
+        .cars-search:focus { border-color: rgba(220,38,38,0.5) !important; outline: none !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.1) !important; }
+        .sort-select:focus { outline: none !important; }
+        .load-more:hover { border-color: rgba(220,38,38,0.4) !important; color: #f87171 !important; }
+        .reset-btn:hover { color: #f87171 !important; }
+        .filter-toggle:hover { background: rgba(220,38,38,0.08) !important; }
+
+        /* sidebar scrollbar */
+        .filter-sidebar::-webkit-scrollbar { width: 3px; }
+        .filter-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .filter-sidebar::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+        /* brand list scrollbar */
+        div[style*="overflowY"]::-webkit-scrollbar { width: 3px; }
+        div[style*="overflowY"]::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+        @media(max-width:1024px){
+          .cars-layout { flex-direction: column !important; }
+          .cars-sidebar { display: none !important; }
+        }
+        @media(max-width:640px){
+          .cars-toolbar { flex-wrap: wrap !important; }
+          .cars-grid { grid-template-columns: 1fr !important; }
+        }
+        @media(min-width:641px) and (max-width:900px){
+          .cars-grid { grid-template-columns: repeat(2,1fr) !important; }
+        }
+      `}</style>
+
       <Helmet>
-        <title>{t('cars.header.title')} – XDrive</title>
-        <meta name="description" content={t('cars.header.subtitle')} />
+        <title>Browse Cars – Drevo</title>
+        <meta name="description" content="Find your perfect used car from verified Malaysian dealers. Filter by brand, price, body type and more." />
       </Helmet>
 
       <Header />
 
+      {/* ── Mobile drawer backdrop ── */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden" aria-hidden="true" />
+        <div
+          onClick={() => setDrawerOpen(false)}
+          style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)' }}
+        />
       )}
 
+      {/* ── Mobile filter drawer ── */}
       <div
         ref={drawerRef}
-        className={`fixed inset-y-0 right-0 z-50 w-80 max-w-[90vw] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col rounded-l-2xl border-l border-gray-200 ${
-          drawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        style={{
+          position:'fixed', top:0, right:0, bottom:0, zIndex:50,
+          width:'320px', maxWidth:'90vw',
+          background:'#0d1117',
+          borderLeft:'1px solid rgba(255,255,255,0.07)',
+          transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)',
+          display:'flex', flexDirection:'column',
+          fontFamily:"'DM Sans',sans-serif",
+        }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+        {/* Drawer header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+          <h2 style={{ color:'white', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
+            <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/>
             Filters
             {activeFilterCount > 0 && (
-              <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFilterCount}</span>
+              <span style={{ background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeFilterCount}</span>
             )}
           </h2>
-          <button onClick={() => setDrawerOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
+          <button onClick={() => setDrawerOpen(false)} style={{ background:'rgba(255,255,255,0.05)', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
+            <X size={16}/>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-2">
-          <FilterPanel />
+
+        {/* Drawer filters */}
+        <div className="filter-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}>
+          <FilterPanel/>
         </div>
-        <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={resetFilters} className="flex-1 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors">
+
+        {/* Drawer footer */}
+        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'10px' }}>
+          <button onClick={resetFilters} style={{
+            flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'#9ca3af', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px',
+            cursor:'pointer', fontFamily:"'DM Sans',sans-serif",
+          }}>
             Reset all
           </button>
-          <button onClick={() => setDrawerOpen(false)} className="flex-1 bg-blue-700 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-blue-800 transition-colors">
+          <button onClick={() => setDrawerOpen(false)} style={{
+            flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)',
+            border:'none', color:'white', fontSize:'13px', fontWeight:'700',
+            borderRadius:'10px', padding:'11px', cursor:'pointer',
+            fontFamily:"'DM Sans',sans-serif",
+            boxShadow:'0 4px 16px rgba(220,38,38,0.3)',
+          }}>
             Show {filteredCars.length} cars
           </button>
         </div>
       </div>
 
-      <div className="pt-20 bg-[#F7F8FA] min-h-screen">
-        <div className="bg-white border-b border-gray-100">
-          <div className="container mx-auto px-4 py-6 lg:py-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
-              {t('cars.header.title') || 'Browse Cars'}
-            </h1>
-            <p className="text-gray-500 text-sm lg:text-base">
-              {t('cars.header.subtitle') || 'Find your perfect match from our curated inventory.'}
-            </p>
-          </div>
-        </div>
+      {/* ══════════════════════════════════════
+          PAGE BODY
+      ══════════════════════════════════════ */}
+      <div style={{ background:'#080C14', minHeight:'100vh', paddingTop:'72px', fontFamily:"'DM Sans',sans-serif" }}>
 
-        <div className="container mx-auto px-4 py-6 lg:py-8">
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search brand, model, year…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-              />
-            </div>
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className="h-full w-full sm:w-auto appearance-none border border-gray-200 rounded-2xl px-4 pr-9 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-transparent shadow-sm cursor-pointer font-semibold"
-              >
-                <option value="price-high">{t('cars.sort.priceHigh') || 'Price: High to Low'}</option>
-                <option value="price-low">{t('cars.sort.priceLow') || 'Price: Low to High'}</option>
-                <option value="newest">{t('cars.sort.newest') || 'Newest first'}</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-            <button
-              onClick={refreshData}
-              className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Refresh
-            </button>
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="lg:hidden inline-flex items-center justify-center gap-2 bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:bg-blue-800 transition-colors relative"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
+        {/* ── Page header bar ── */}
+        <div style={{ background:'rgba(13,17,23,0.8)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'sticky', top:'72px', zIndex:20 }}>
+          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'14px 24px' }}>
 
-          {/* Active tags */}
-          {activeTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mb-5">
-              <span className="text-xs text-gray-500 font-medium">Active:</span>
-              {activeTags.map((tag, i) => (
-                <Tag key={i} label={tag.label} onRemove={tag.remove} />
-              ))}
-              <button onClick={resetFilters} className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors ml-1">
-                Clear all
-              </button>
-            </div>
-          )}
+            {/* Toolbar */}
+            <div className="cars-toolbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
 
-          <div className="flex gap-6 items-start">
-            {/* Desktop sidebar */}
-            <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-24 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-blue-600" />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFilterCount}</span>
-                  )}
-                </h2>
-                {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors">
-                    <RotateCcw className="w-3 h-3" />
-                    Reset
+              {/* Search */}
+              <div style={{ position:'relative', flex:1, minWidth:'180px' }}>
+                <Search size={14} style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#4b5563', pointerEvents:'none' }}/>
+                <input
+                  ref={searchRef}
+                  type="text"
+                  placeholder="Search brand, model, year…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="cars-search"
+                  style={{
+                    width:'100%', paddingLeft:'36px', paddingRight:'12px', paddingTop:'10px', paddingBottom:'10px',
+                    background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
+                    borderRadius:'10px', color:'white', fontSize:'13px',
+                    fontFamily:"'DM Sans',sans-serif", transition:'all 0.2s',
+                  }}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#6b7280', display:'flex', alignItems:'center' }}>
+                    <X size={13}/>
                   </button>
                 )}
               </div>
-              <div className="px-5 py-2">
-                <FilterPanel />
+
+              {/* Sort */}
+              <div style={{ position:'relative', flexShrink:0 }}>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                  className="sort-select"
+                  style={{
+                    background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
+                    borderRadius:'10px', padding:'10px 32px 10px 12px', color:'white',
+                    fontSize:'13px', fontWeight:'600', cursor:'pointer',
+                    appearance:'none', WebkitAppearance:'none',
+                    fontFamily:"'DM Sans',sans-serif",
+                  }}
+                >
+                  <option value="newest"    style={{ background:'#0d1117' }}>Newest First</option>
+                  <option value="price-low" style={{ background:'#0d1117' }}>Price: Low–High</option>
+                  <option value="price-high"style={{ background:'#0d1117' }}>Price: High–Low</option>
+                </select>
+                <ChevronDown size={12} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', color:'#6b7280', pointerEvents:'none' }}/>
               </div>
+
+              {/* Refresh */}
+              <button onClick={load} style={{
+                display:'flex', alignItems:'center', gap:'6px',
+                background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
+                borderRadius:'10px', padding:'10px 14px', color:'#9ca3af',
+                fontSize:'13px', fontWeight:'600', cursor:'pointer',
+                fontFamily:"'DM Sans',sans-serif", flexShrink:0,
+              }}>
+                <RotateCcw size={13}/>
+                <span style={{ display:'none' }} className="refresh-label">Refresh</span>
+              </button>
+
+              {/* Mobile filter button */}
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="filter-toggle"
+                style={{
+                  display:'flex', alignItems:'center', gap:'6px',
+                  background: activeFilterCount > 0 ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: activeFilterCount > 0 ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius:'10px', padding:'10px 14px',
+                  color: activeFilterCount > 0 ? '#f87171' : '#9ca3af',
+                  fontSize:'13px', fontWeight:'600', cursor:'pointer',
+                  fontFamily:"'DM Sans',sans-serif", flexShrink:0,
+                  position:'relative',
+                }}
+              >
+                <SlidersHorizontal size={14}/>
+                Filters
+                {activeFilterCount > 0 && (
+                  <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', width:'16px', height:'16px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Active filter tags */}
+            {activeTags.length > 0 && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center', marginTop:'10px' }}>
+                <span style={{ color:'#4b5563', fontSize:'11px', fontWeight:'600' }}>Active:</span>
+                {activeTags.map((tag,i) => <ActiveTag key={i} label={tag.label} onRemove={tag.remove}/>)}
+                <button onClick={resetFilters} className="reset-btn" style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', transition:'color 0.15s', fontFamily:"'DM Sans',sans-serif" }}>
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Main layout ── */}
+        <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px' }}>
+
+          {/* Results count + hot deals quick filter */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'10px' }}>
+            <p style={{ color:'#6b7280', fontSize:'13px', margin:0 }}>
+              <span style={{ color:'white', fontWeight:'700' }}>{filteredCars.length}</span> cars found
+              {loading && <span style={{ marginLeft:'8px', color:'#4b5563' }}>(refreshing…)</span>}
+            </p>
+            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+              <Chip label="🔥 Hot Deals" active={hotDealsOnly} onClick={() => setHotDealsOnly(!hotDealsOnly)}/>
+              {selectedBodyTypes.length === 0 && BODY_TYPES.slice(0,4).map(bt => (
+                <Chip key={bt} label={bt} active={false} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
+              ))}
+            </div>
+          </div>
+
+          <div className="cars-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
+
+            {/* ── Desktop sidebar ── */}
+            <aside
+              className="cars-sidebar filter-sidebar"
+              style={{
+                width:'240px', flexShrink:0,
+                background:'linear-gradient(145deg,#0d1117,#111827)',
+                border:'1px solid rgba(255,255,255,0.07)',
+                borderRadius:'16px', padding:'16px 18px',
+                position:'sticky', top:'145px',
+                maxHeight:'calc(100vh - 180px)', overflowY:'auto',
+              }}
+            >
+              {/* Sidebar header */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px' }}>
+                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeFilterCount}</span>
+                  )}
+                </h2>
+                {activeFilterCount > 0 && (
+                  <button onClick={resetFilters} className="reset-btn" style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', transition:'color 0.15s', fontFamily:"'DM Sans',sans-serif" }}>
+                    <RotateCcw size={10}/> Reset
+                  </button>
+                )}
+              </div>
+              <FilterPanel/>
             </aside>
 
-            {/* Car grid */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-500 mb-4">
-                <span className="font-semibold text-gray-800">{filteredCars.length}</span>{' '}
-                {t('cars.results.found') || 'cars found'}
-              </p>
-
-              {displayedCars.length > 0 ? (
+            {/* ── Car grid ── */}
+            <div style={{ flex:1, minWidth:0 }}>
+              {displayed.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {displayedCars.map(car => (
-                      <CarCard key={car.id} car={car} />
-                    ))}
+                  <div
+                    className="cars-grid"
+                    style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'18px' }}
+                  >
+                    {displayed.map(car => <CarCard key={car.id} car={car}/>)}
+                    {loading && [...Array(3)].map((_,i) => <SkeletonCard key={`sk-${i}`}/>)}
                   </div>
+
                   {displayCount < sortedCars.length && (
-                    <div className="mt-10 text-center">
+                    <div style={{ marginTop:'44px', textAlign:'center' }}>
                       <button
                         onClick={() => setDisplayCount(prev => prev + 12)}
-                        className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold px-8 py-3 rounded-full shadow-sm hover:border-blue-400 hover:text-blue-700 transition-all hover:shadow-md"
+                        className="load-more"
+                        style={{
+                          display:'inline-flex', alignItems:'center', gap:'8px',
+                          background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)',
+                          color:'#9ca3af', fontSize:'13px', fontWeight:'600',
+                          padding:'13px 32px', borderRadius:'50px', cursor:'pointer',
+                          transition:'all 0.2s', fontFamily:"'DM Sans',sans-serif",
+                        }}
                       >
-                        Load more
-                        <ChevronDown className="w-4 h-4" />
+                        Load more <ChevronDown size={14}/>
                       </button>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Showing {displayedCars.length} of {sortedCars.length}
+                      <p style={{ color:'#4b5563', fontSize:'11px', marginTop:'8px' }}>
+                        Showing {displayed.length} of {sortedCars.length}
                       </p>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="w-6 h-6 text-gray-400" />
+                /* Empty state */
+                <div style={{ background:'linear-gradient(145deg,#0d1117,#111827)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'20px', padding:'64px 32px', textAlign:'center' }}>
+                  <div style={{ width:'56px', height:'56px', background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+                    <Car size={24} style={{ color:'#dc2626' }}/>
                   </div>
-                  <p className="text-gray-700 font-semibold mb-1">{t('cars.results.empty') || 'No cars found'}</p>
-                  <p className="text-gray-400 text-sm mb-5">Try adjusting your filters or search term.</p>
+                  <p style={{ color:'white', fontWeight:'700', fontSize:'16px', margin:'0 0 8px' }}>No cars found</p>
+                  <p style={{ color:'#6b7280', fontSize:'13px', margin:'0 0 24px', maxWidth:'300px', marginLeft:'auto', marginRight:'auto' }}>
+                    Try adjusting your filters or search term to see more results.
+                  </p>
                   <button
                     onClick={resetFilters}
-                    className="inline-flex items-center gap-1.5 text-sm text-blue-700 font-semibold hover:underline"
+                    style={{
+                      display:'inline-flex', alignItems:'center', gap:'6px',
+                      background:'linear-gradient(135deg,#dc2626,#b91c1c)',
+                      border:'none', color:'white', fontSize:'13px', fontWeight:'700',
+                      padding:'11px 24px', borderRadius:'50px', cursor:'pointer',
+                      fontFamily:"'DM Sans',sans-serif",
+                      boxShadow:'0 4px 16px rgba(220,38,38,0.3)',
+                    }}
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    {t('cars.results.resetBtn') || 'Reset all filters'}
+                    <RotateCcw size={13}/> Reset all filters
                   </button>
                 </div>
               )}
@@ -621,6 +715,37 @@ const CarsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile filter button — fixed bottom */}
+      <div style={{
+        position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
+        zIndex:30, display:'flex',
+      }} className="mobile-filter-fab">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          style={{
+            display:'flex', alignItems:'center', gap:'8px',
+            background:'linear-gradient(135deg,#dc2626,#b91c1c)',
+            border:'none', color:'white', fontSize:'13px', fontWeight:'700',
+            padding:'13px 24px', borderRadius:'50px', cursor:'pointer',
+            boxShadow:'0 8px 24px rgba(220,38,38,0.4)',
+            fontFamily:"'DM Sans',sans-serif",
+            whiteSpace:'nowrap',
+          }}
+        >
+          <SlidersHorizontal size={14}/>
+          Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+        </button>
+      </div>
+
+      <style>{`
+        .filter-toggle { display: none !important; }
+        .mobile-filter-fab { display: none !important; }
+        @media(max-width:1024px){
+          .mobile-filter-fab { display: flex !important; }
+          .filter-toggle { display: flex !important; }
+        }
+      `}</style>
 
       <Footer />
       <StickyWhatsAppButton />

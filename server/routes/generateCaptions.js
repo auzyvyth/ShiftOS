@@ -3,7 +3,7 @@ import express from 'express';
 
 const router = express.Router();
 
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
 
 router.post('/', async (req, res) => {
   try {
