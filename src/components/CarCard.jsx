@@ -1,176 +1,210 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Gauge, Settings2, MessageCircle, ChevronRight, Fuel, TrendingDown } from 'lucide-react';
-import './CarCard.css';
-
-const STATUS_CONFIG = {
-  active:   { label: 'Active',   dot: 'bg-green-400',  text: 'text-green-400',  bg: 'bg-green-400/10',  next: 'reserved' },
-  reserved: { label: 'Reserved', dot: 'bg-yellow-400', text: 'text-yellow-400', bg: 'bg-yellow-400/10', next: 'sold'     },
-  sold:     { label: 'Sold',     dot: 'bg-red-400',    text: 'text-red-400',    bg: 'bg-red-400/10',    next: 'active'   },
-};
-
-const StatusBadge = ({ car }) => {
-  const s = car.status || 'active';
-  const cfg = STATUS_CONFIG[s] || STATUS_CONFIG.active;
-  return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
-      {cfg.label}
-    </div>
-  );
-};
+import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock } from 'lucide-react';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
-  const loan  = price * 0.9;
-  const rate  = 3.5 / 100;
-  const years = 7;
-  return Math.round((loan * (1 + rate * years)) / (years * 12));
+  return Math.round((price * 0.9 * (1 + 3.5/100 * 7)) / (7 * 12));
+};
+
+const getAgeDays = (createdAt) => {
+  if (!createdAt) return null;
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
 };
 
 const CarCard = ({ car, showDiscountBadge = true }) => {
-  const navigate    = useNavigate();
-  const [imgError, setImgError] = useState(false);
+  const navigate = useNavigate();
+  const [imgError,  setImgError]  = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
-  const brand        = car.brand || car.make || 'Unknown';
-  const model        = car.model || '';
-  const variant      = car.variant || '';
-  const year         = car.year || '';
-  const price        = car.selling_price || car.price || 0;
-  const originalPrice = car.original_price || null;   // ← use original_price
-  const mileage      = car.mileage || car.odometer || null;
-  const transmission = car.transmission || null;
-  const location     = car.state || car.location || null;
-  const bodyType     = car.body_type || null;
-  const fuelType     = car.fuel_type || null;
+  const brand         = car.brand || car.make || 'Unknown';
+  const model         = car.model || '';
+  const variant       = car.variant || '';
+  const year          = car.year || '';
+  const price         = car.selling_price || car.price || 0;
+  const originalPrice = car.original_price || null;
+  const mileage       = car.mileage || car.odometer || null;
+  const transmission  = car.transmission || null;
+  const location      = car.state || car.location || null;
+  const fuelType      = car.fuel_type || null;
+  const status        = car.status || 'active';
+  const ageDays       = getAgeDays(car.created_at);
 
-  // Discount — only valid when original_price is set and strictly higher than selling_price
   const hasDiscount  = originalPrice && originalPrice > 0 && price > 0 && originalPrice > price;
-  const discountAmt  = hasDiscount ? originalPrice - price : null;
-  const discountPct  = hasDiscount ? Math.round((discountAmt / originalPrice) * 100) : null;
+  const discountPct  = hasDiscount ? Math.round(((originalPrice - price) / originalPrice) * 100) : null;
+  const isHot        = hasDiscount && discountPct >= 3;
+  const isNew        = ageDays !== null && ageDays <= 7;
+  const isSold       = status === 'sold';
+  const isReserved   = status === 'reserved';
 
   const image = !imgError && (
     (Array.isArray(car.images) && car.images[0]) ||
-    car.image_url || car.photo_url || car.thumbnail || null
+    car.image_url || car.photo_url || null
   );
 
-  const formattedPrice    = price ? 'RM ' + price.toLocaleString('en-MY') : 'Price on request';
-  const monthly           = calcMonthly(price);
-  const formattedMileage  = mileage ? Number(mileage).toLocaleString('en-MY') + ' km' : null;
+  const formattedPrice   = price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R';
+  const monthly          = calcMonthly(price);
+  const formattedMileage = mileage ? Number(mileage).toLocaleString('en-MY') + ' km' : null;
+  const normalTx =
+    ['Auto','Automatic','AT'].includes(transmission) ? 'Auto' :
+    ['Manual','MT'].includes(transmission)           ? 'Manual' : transmission || null;
 
-  const normalizedTransmission =
-    transmission === 'Auto' || transmission === 'Automatic' || transmission === 'AT' ? 'Auto' :
-    transmission === 'Manual' || transmission === 'MT' ? 'Manual' :
-    transmission || null;
+  const whatsappUrl = `https://wa.me/60174155191?text=${encodeURIComponent(
+    `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`
+  )}`;
 
-  const whatsappNumber = '60174155191';
-  const whatsappMsg    = encodeURIComponent(`Hi, I am interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''} listed on your site. Can you share more details?`);
-  const whatsappUrl    = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
+  const specs = [
+    formattedMileage && { icon: Gauge,     label: formattedMileage },
+    normalTx         && { icon: Settings2, label: normalTx         },
+    fuelType         && { icon: Fuel,      label: fuelType         },
+    location         && { icon: MapPin,    label: location         },
+  ].filter(Boolean);
 
   return (
-    <div className="car-card" onClick={() => navigate('/cars/' + car.id)}>
+    <>
+      <style>{`
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .car-card-root { transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important; }
+        .car-card-root:hover { transform: translateY(-4px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important; border-color: rgba(255,255,255,0.14) !important; }
+        .car-card-root.hot:hover { box-shadow: 0 20px 40px rgba(220,38,38,0.15) !important; border-color: rgba(220,38,38,0.45) !important; }
+        .wa-cta:hover { background: rgba(37,211,102,0.22) !important; border-color: rgba(37,211,102,0.45) !important; }
+      `}</style>
 
-      <div className="car-card-image-wrap">
-        {image ? (
-          <img
-            src={image}
-            alt={`${year} ${brand} ${model}${variant ? ' ' + variant : ''}`}
-            className="car-card-image"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="car-card-image-placeholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.2">
-              <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
-              <circle cx="7.5" cy="17.5" r="2.5"/>
-              <circle cx="16.5" cy="17.5" r="2.5"/>
-            </svg>
-            <span>No image</span>
+      <div
+        className={`car-card-root${isHot ? ' hot' : ''}`}
+        onClick={() => !isSold && navigate('/cars/' + car.id)}
+        style={{
+          background: 'linear-gradient(145deg,#0d1117 0%,#111827 100%)',
+          border: isHot ? '1px solid rgba(220,38,38,0.28)' : '1px solid rgba(255,255,255,0.07)',
+          borderRadius: '16px', overflow: 'hidden',
+          cursor: isSold ? 'default' : 'pointer',
+          fontFamily: "'DM Sans',sans-serif",
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* ── Image ── */}
+        <div style={{ position:'relative', height:'200px', background:'#08090f', flexShrink:0, overflow:'hidden' }}>
+          {image ? (
+            <>
+              {!imgLoaded && (
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#111827 25%,#1f2937 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'shimmer 1.5s infinite' }}/>
+              )}
+              <img src={image} alt={`${year} ${brand} ${model}`}
+                onError={() => setImgError(true)}
+                onLoad={() => setImgLoaded(true)}
+                style={{ width:'100%', height:'100%', objectFit:'cover', opacity: imgLoaded ? 1 : 0, transition:'opacity 0.3s ease', filter: isSold ? 'grayscale(70%)' : 'none' }}
+              />
+            </>
+          ) : (
+            <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', color:'#374151' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
+                <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
+              </svg>
+              <span style={{ fontSize:'11px' }}>No photo</span>
+            </div>
+          )}
+
+          {/* Bottom gradient */}
+          <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'70px', background:'linear-gradient(to top, rgba(13,17,23,0.95), transparent)', pointerEvents:'none' }}/>
+
+          {/* Top-left badges */}
+          <div style={{ position:'absolute', top:'10px', left:'10px', display:'flex', gap:'5px', flexWrap:'wrap' }}>
+            {isHot && showDiscountBadge && (
+              <span style={{ display:'inline-flex', alignItems:'center', gap:'3px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', boxShadow:'0 2px 10px rgba(220,38,38,0.5)' }}>
+                <Flame size={9}/> HOT −{discountPct}%
+              </span>
+            )}
+            {isNew && !isHot && (
+              <span style={{ background:'rgba(16,185,129,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px' }}>NEW</span>
+            )}
+            {isSold && (
+              <span style={{ background:'rgba(0,0,0,0.8)', border:'1px solid rgba(255,255,255,0.15)', color:'#9ca3af', fontSize:'11px', fontWeight:'700', padding:'3px 10px', borderRadius:'20px' }}>SOLD</span>
+            )}
+            {isReserved && (
+              <span style={{ background:'rgba(245,158,11,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 10px', borderRadius:'20px' }}>RESERVED</span>
+            )}
           </div>
-        )}
 
-        {year && <div className="car-card-year-badge">{year}</div>}
-        <div className="car-card-bottom-left">
-          {bodyType && <div className="car-card-body-badge-inline">{bodyType}</div>}
-          {hasDiscount && showDiscountBadge && (
-            <div className="car-card-discount-inline" title={`Save RM ${discountAmt?.toLocaleString() || ''} (${discountPct}%)`}>
-              <TrendingDown size={12} />
-              <span>−{discountPct}%</span>
+          {/* Year badge */}
+          {year && (
+            <div style={{ position:'absolute', top:'10px', right:'10px', background:'rgba(0,0,0,0.7)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', color:'white', fontSize:'11px', fontWeight:'600', padding:'3px 8px', borderRadius:'6px' }}>
+              {year}
+            </div>
+          )}
+
+          {/* Age */}
+          {ageDays !== null && ageDays > 0 && !isSold && (
+            <div style={{ position:'absolute', bottom:'10px', right:'10px', display:'inline-flex', alignItems:'center', gap:'3px', color: ageDays<=7?'#34d399':ageDays<=30?'#fbbf24':'#6b7280', fontSize:'10px', fontWeight:'500' }}>
+              <Clock size={9}/>{ageDays}d ago
             </div>
           )}
         </div>
 
-        <div className="car-card-status-badge">
-          <StatusBadge car={car} />
-        </div>
-      </div>
+        {/* ── Body ── */}
+        <div style={{ padding:'14px 16px 16px', display:'flex', flexDirection:'column', flex:1 }}>
 
-      <div className="car-card-body">
-
-        <div className="car-card-title-row">
-          <div>
-            <p className="car-card-brand">{brand}</p>
-            <h3 className="car-card-model">{model || '—'}{variant && ` ${variant}`}</h3>
+          {/* Brand / Model */}
+          <div style={{ marginBottom:'10px' }}>
+            <p style={{ color:'#6b7280', fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0 0 3px 0' }}>{brand}</p>
+            <h3 style={{ color:'white', fontSize:'15px', fontWeight:'800', margin:0, lineHeight:1.3 }}>
+              {model}{variant ? ` ${variant}` : ''}
+            </h3>
           </div>
-          <ChevronRight className="car-card-arrow" size={18} />
-        </div>
 
-        {/* Price row */}
-        <div className="car-card-price-row">
-          <div className="car-card-price-stack">
+          {/* Price block */}
+          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'10px 12px', marginBottom:'12px' }}>
             {hasDiscount && (
-              <span className="car-card-previous-price">
+              <p style={{ color:'#6b7280', fontSize:'11px', textDecoration:'line-through', margin:'0 0 2px 0' }}>
                 RM {originalPrice.toLocaleString('en-MY')}
-              </span>
+              </p>
             )}
-            <div className="car-card-price-line">
-              <span className="car-card-price">{formattedPrice}</span>
-              {monthly !== null && (
-                <span className="car-card-monthly-wrap">
-                  <span className="car-card-price-divider">/</span>
-                  <span className="car-card-monthly">
-                    RM {monthly.toLocaleString('en-MY')}
-                    <span className="car-card-monthly-label">/mo</span>
-                  </span>
-                </span>
+            <div style={{ display:'flex', alignItems:'baseline', gap:'8px', flexWrap:'wrap' }}>
+              <span style={{ color: isHot ? '#f87171' : 'white', fontSize:'20px', fontWeight:'800', lineHeight:1 }}>
+                {formattedPrice}
+              </span>
+              {monthly && (
+                <span style={{ color:'#6b7280', fontSize:'11px' }}>≈ RM {monthly.toLocaleString('en-MY')}/mo</span>
               )}
             </div>
             {hasDiscount && (
-              <span className="car-card-savings">
-                Save RM {discountAmt.toLocaleString('en-MY')}
-              </span>
+              <p style={{ color:'#34d399', fontSize:'11px', fontWeight:'600', margin:'4px 0 0 0' }}>
+                Save RM {(originalPrice - price).toLocaleString('en-MY')}
+              </p>
             )}
           </div>
+
+          {/* Specs */}
+          {specs.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'5px', marginBottom:'14px' }}>
+              {specs.map((s,i) => (
+                <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'4px 8px', color:'#9ca3af', fontSize:'11px', fontWeight:'500' }}>
+                  <s.icon size={10} style={{ color:'#6b7280' }}/>{s.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* WhatsApp CTA */}
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+            className="wa-cta"
+            onClick={e => e.stopPropagation()}
+            style={{
+              marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
+              background: isSold ? 'rgba(255,255,255,0.04)' : 'rgba(37,211,102,0.1)',
+              border: isSold ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(37,211,102,0.22)',
+              color: isSold ? '#6b7280' : '#25D366',
+              borderRadius:'10px', padding:'10px', fontSize:'12px', fontWeight:'700',
+              textDecoration:'none', transition:'all 0.2s ease',
+              pointerEvents: isSold ? 'none' : 'auto',
+            }}
+          >
+            <MessageCircle size={13}/>
+            {isSold ? 'No Longer Available' : 'Enquire via WhatsApp'}
+          </a>
         </div>
-
-        <div className="car-card-specs">
-          {formattedMileage && (
-            <div className="car-card-spec"><Gauge size={12} /><span>{formattedMileage}</span></div>
-          )}
-          {normalizedTransmission && (
-            <div className="car-card-spec"><Settings2 size={12} /><span>{normalizedTransmission}</span></div>
-          )}
-          {fuelType && (
-            <div className="car-card-spec"><Fuel size={12} /><span>{fuelType}</span></div>
-          )}
-          {location && (
-            <div className="car-card-spec"><MapPin size={12} /><span>{location}</span></div>
-          )}
-        </div>
-
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="car-card-wa-btn"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MessageCircle size={14} />
-          Enquire via WhatsApp
-        </a>
-
       </div>
-    </div>
+    </>
   );
 };
 
