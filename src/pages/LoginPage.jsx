@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 
 const ROLES = ['Sales Executive', 'Sales Manager', 'General Manager', 'Admin', 'Other'];
@@ -50,6 +51,7 @@ const TextInput = ({ id, type = 'text', placeholder, value, onChange, onFocusCha
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isRegister, setIsRegister] = useState(false);
   const [focused, setFocused] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -91,6 +93,10 @@ export default function LoginPage() {
   const isIcValid = MY_IC_REGEX.test(normalizedIc);
   const normalizedPhone = formatMalaysianPhone(phone);
   const isPhoneValid = MY_PHONE_REGEX.test(normalizedPhone);
+
+  useEffect(() => {
+    document.title = t('login.meta.title', { defaultValue: 'ShiftOS · Login' });
+  }, [t]);
 
   useEffect(() => {
     setMounted(true);

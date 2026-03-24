@@ -196,6 +196,21 @@
       "tip4Content5": "Bayaran bulanan lebih rendah dan lebih mudah diurus, tetapi anda akan membayar lebih banyak jumlah faedah sepanjang hayat pinjaman."
     }
   },
+  "login": {
+    "meta": {
+      "title": "ShiftOS · Log Masuk"
+    }
+  },
+  "salesman": {
+    "meta": {
+      "title": "ShiftOS · Panel Saya"
+    }
+  },
+  "dashboard": {
+    "meta": {
+      "title": "ShiftOS — Pentadbir"
+    }
+  },
   "footer": {
     "tagline": "Cari Kereta Idaman Anda",
     "quickLinks": "Pautan Pantas",

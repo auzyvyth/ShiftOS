@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import CarForm from '../components/CarForm';
 import TikTokGenerator from '../components/TikTokGenerator';
@@ -7,7 +8,7 @@ import {
   Car, PlusCircle, LogOut, Home, Trash2, X, TrendingUp, DollarSign,
   Eye, Menu, Building2, Clock, Users, Copy, Check, Link,
   UserPlus, ToggleLeft, ToggleRight, Video, Tag, Flame,
-  BarChart2, Send, Bot, ChevronRight, AlertCircle,
+  BarChart2, Send, Bot, ChevronRight, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 
 const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -21,10 +22,7 @@ const STYLES = `
   .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  /* top accent line on cards */
   .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.45) 35%,rgba(56,189,248,0.28) 65%,transparent); pointer-events:none; z-index:1; }
-
-  /* modal top line */
   .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(220,38,38,0.55) 38%,rgba(56,189,248,0.38) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
 
   .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
@@ -51,13 +49,15 @@ const STYLES = `
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
   @keyframes shimmer { to { left:150%; } }
 
+  /* Mark as Sold button pulse on hover */
+  .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
+
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:rgba(220,38,38,0.22); border-radius:4px; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(220,38,38,0.42); }
 `;
 
-// shared design tokens used inline
 const T = {
   card:    { position:'relative', background:'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))', border:'1px solid rgba(255,255,255,0.07)' },
   cardDark:{ position:'relative', background:'rgba(255,255,255,0.022)', border:'1px solid rgba(255,255,255,0.065)' },
@@ -66,7 +66,6 @@ const T = {
   btnRed:  { background:'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow:'0 2px 10px rgba(220,38,38,0.28)' },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function getListingAge(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
 }
@@ -150,6 +149,40 @@ function PriceEditModal({ listing, onClose, onSave }) {
   );
 }
 
+// ─── MarkSoldModal ─────────────────────────────────────────────────────────────
+function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
+  return (
+    <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.78)' }}>
+      <div className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style={T.modal}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-white">Mark as Sold?</h3>
+            <p className="text-gray-500 text-xs mt-0.5">{listing.brand} {listing.model} {listing.variant||''}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
+        </div>
+
+        <div className="rounded-xl px-4 py-3 mb-5 flex items-start gap-3" style={{ background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.18)' }}>
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"/>
+          <div>
+            <p className="text-emerald-300 text-sm font-semibold">Sold count will update automatically</p>
+            <p className="text-emerald-500/60 text-xs mt-0.5">This listing moves to "Sold" and the sold counter on the homepage and analytics updates in real-time.</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+          <button onClick={onConfirm} disabled={loading}
+            className="btn-shimmer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
+            style={{ background:'linear-gradient(135deg,#16a34a,#15803d)', boxShadow:'0 2px 10px rgba(22,163,74,0.3)' }}>
+            {loading ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Marking…</> : <><CheckCircle2 className="w-4 h-4"/>Confirm Sold</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
 function AnalyticsTab({ listings, profile }) {
   const [messages, setMessages] = useState([{ role:'assistant', content:`Hi! I'm your performance advisor. I can see your inventory and help with pricing, leads, and conversions. What would you like to know?` }]);
@@ -191,8 +224,8 @@ function AnalyticsTab({ listings, profile }) {
 
   const kpis = [
     { label:'Active',    val:active,       sub:`of ${total} total`,     grad:'grad-cyan',   icon:<Car className="w-4 h-4"/>,        glow:'rgba(103,232,249,0.14)' },
-    { label:'Sold',      val:sold,         sub:'this period',            grad:'grad-green',  icon:<TrendingUp className="w-4 h-4"/>, glow:'rgba(110,231,183,0.14)' },
-    { label:'Hot Deals', val:hot,          sub:'≥3% off',                grad:hot>0?'grad-red':'', icon:<Flame className="w-4 h-4"/>, glow:hot>0?'rgba(248,113,113,0.18)':'rgba(255,255,255,0.03)' },
+    { label:'Sold',      val:sold,         sub:'all time',              grad:'grad-green',  icon:<CheckCircle2 className="w-4 h-4"/>, glow:'rgba(110,231,183,0.14)' },
+    { label:'Hot Deals', val:hot,          sub:'≥3% off',               grad:hot>0?'grad-red':'', icon:<Flame className="w-4 h-4"/>, glow:hot>0?'rgba(248,113,113,0.18)':'rgba(255,255,255,0.03)' },
     { label:'Avg. Age',  val:`${avgAge}d`, sub:avgAge>=30?'⚠ Aging':'Healthy', grad:avgAge>=30?'grad-gold':'grad-white', icon:<Clock className="w-4 h-4"/>, glow:avgAge>=30?'rgba(251,191,36,0.14)':'rgba(255,255,255,0.03)' },
   ];
 
@@ -322,8 +355,27 @@ function TeamTab({ managerDealership }) {
   const [phone,           setPhone]           = useState('');
   const [slug,            setSlug]            = useState('');
   const [tempPw,          setTempPw]          = useState('');
+  // Live sold count for the dealership
+  const [teamSoldCount,   setTeamSoldCount]   = useState(0);
 
   useEffect(()=>{ fetchTeam(); },[managerDealership]);
+
+  // Fetch sold count for the dealership in real-time
+  useEffect(()=>{
+    if (!managerDealership) return;
+    const fetchSold = async () => {
+      const { count } = await supabase
+        .from('car_listings')
+        .select('id', { count:'exact', head:true })
+        .eq('status','sold');
+      setTeamSoldCount(count||0);
+    };
+    fetchSold();
+    const ch = supabase.channel('team_sold')
+      .on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},fetchSold)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  },[managerDealership]);
 
   const fetchTeam = async () => {
     if (!managerDealership) { setSalespeople([]); setTeamError('Dealership profile missing.'); setLoadingTeam(false); return; }
@@ -369,6 +421,18 @@ function TeamTab({ managerDealership }) {
 
   return (
     <div className="space-y-4">
+      {/* Team sold count banner */}
+      <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.15)' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.2)' }}>
+          <CheckCircle2 className="w-4 h-4 text-emerald-400"/>
+        </div>
+        <div className="flex-1">
+          <p className="text-emerald-300 text-sm font-semibold">{teamSoldCount} car{teamSoldCount!==1?'s':''} sold</p>
+          <p className="text-emerald-600/60 text-xs">Live count · updates automatically when a listing is marked as sold</p>
+        </div>
+        <p className="text-3xl font-black grad-green tabular-nums">{teamSoldCount}</p>
+      </div>
+
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <div className="flex items-center justify-between gap-3 p-4" style={T.divider}>
           <div>
@@ -419,9 +483,9 @@ function TeamTab({ managerDealership }) {
                       <div className="mb-3"><span className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg" style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.12)' }}>⚠ No slug — referral link unavailable</span></div>
                     )}
                     <div className="grid grid-cols-3 gap-2 max-w-xs">
-                      {[['0','Clicks'],['0','Enquiries'],['0','Sales']].map(([v,lbl])=>(
+                      {[['0','Clicks'],['0','Enquiries'],[String(teamSoldCount),'Team Sales']].map(([v,lbl])=>(
                         <div key={lbl} className="rounded-lg px-2.5 py-2" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
-                          <p className="text-sm font-bold grad-white">{v}</p>
+                          <p className={`text-sm font-bold ${lbl==='Team Sales'?'grad-green':'grad-white'}`}>{v}</p>
                           <p className="text-[10px] text-gray-600 mt-0.5">{lbl}</p>
                         </div>
                       ))}
@@ -513,6 +577,7 @@ function TeamTab({ managerDealership }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [listings,          setListings]          = useState([]);
   const [loading,           setLoading]           = useState(true);
   const [activeTab,         setActiveTab]         = useState('listings');
@@ -520,14 +585,20 @@ export default function DashboardPage() {
   const [sidebarOpen,       setSidebarOpen]       = useState(false);
   const [tiktokListing,     setTiktokListing]     = useState(null);
   const [priceEditListing,  setPriceEditListing]  = useState(null);
+  const [markSoldListing,   setMarkSoldListing]   = useState(null);  // ← NEW
+  const [markSoldLoading,   setMarkSoldLoading]   = useState(false); // ← NEW
   const [profile,           setProfile]           = useState(null);
   const [updatingStatus,    setUpdatingStatus]    = useState(null);
 
   useEffect(() => {
     const s = document.createElement('style'); s.textContent = STYLES;
-    document.head.appendChild(s); document.title = 'ShiftOS — Admin';
+    document.head.appendChild(s);
     return () => document.head.removeChild(s);
   }, []);
+
+  useEffect(() => {
+    document.title = t('dashboard.meta.title', { defaultValue: 'ShiftOS — Admin' });
+  }, [t]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data, error }) => {
@@ -559,6 +630,25 @@ export default function DashboardPage() {
   const handleStatus    = async (id, status) => { setUpdatingStatus(id); try { const {data,error}=await supabase.from('car_listings').update({status}).eq('id',id).select().single(); if (error) throw error; setListings(p=>p.map(l=>l.id===id?data:l)); } catch(e){console.error(e);} finally{setUpdatingStatus(null);} };
   const handlePriceSave = u => setListings(p=>p.map(l=>l.id===u.id?u:l));
 
+  // ── Mark as Sold handler ──────────────────────────────────────────────────
+  const handleMarkSold = async () => {
+    if (!markSoldListing) return;
+    setMarkSoldLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('car_listings')
+        .update({ status: 'sold' })
+        .eq('id', markSoldListing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setListings(p => p.map(l => l.id === data.id ? data : l));
+      setMarkSoldListing(null);
+    } catch (e) { console.error(e); }
+    setMarkSoldLoading(false);
+  };
+
+  const soldCount = listings.filter(l => l.status === 'sold').length;
   const totalVal  = listings.reduce((s,l)=>s+(l.selling_price||0),0);
   const avgPrice  = listings.length ? Math.round(totalVal/listings.length) : 0;
   const hotCount  = listings.filter(l=>l.original_price&&l.selling_price&&l.selling_price<=l.original_price*0.97).length;
@@ -612,10 +702,12 @@ export default function DashboardPage() {
     { id:'team',      Icon:Users,      label:'Team' },
   ];
 
+  // ── 5-column stat cards: added "Sold" ─────────────────────────────────────
   const STAT_CARDS = [
-    { label:'Total Listings', val:listings.length,                    sub:'Active inventory',   grad:'grad-cyan',   Icon:Car,        glow:'rgba(103,232,249,0.13)' },
-    { label:'Total Value',    val:`RM ${totalVal.toLocaleString()}`,   sub:'Combined price',     grad:'grad-green',  Icon:DollarSign, glow:'rgba(110,231,183,0.13)' },
-    { label:'Avg. Price',     val:`RM ${avgPrice.toLocaleString()}`,   sub:'Per vehicle',        grad:'grad-purple', Icon:TrendingUp, glow:'rgba(216,180,254,0.13)' },
+    { label:'Total Listings', val:listings.length,                    sub:'Active inventory',       grad:'grad-cyan',   Icon:Car,           glow:'rgba(103,232,249,0.13)' },
+    { label:'Sold',           val:soldCount,                          sub:'Cars sold all time',     grad:'grad-green',  Icon:CheckCircle2,  glow:'rgba(110,231,183,0.13)' },
+    { label:'Total Value',    val:`RM ${totalVal.toLocaleString()}`,   sub:'Combined price',         grad:'grad-purple', Icon:DollarSign,    glow:'rgba(216,180,254,0.13)' },
+    { label:'Avg. Price',     val:`RM ${avgPrice.toLocaleString()}`,   sub:'Per vehicle',            grad:'grad-white',  Icon:TrendingUp,    glow:'rgba(255,255,255,0.06)' },
     { label:'Hot Deals',      val:hotCount, sub:hotCount>0?'On homepage':'No discounts', grad:hotCount>0?'grad-red':'', Icon:Flame, glow:hotCount>0?'rgba(248,113,113,0.18)':'rgba(255,255,255,0.03)' },
   ];
 
@@ -627,7 +719,6 @@ export default function DashboardPage() {
       <aside className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen?'translate-x-0':'-translate-x-full'}`}
         style={{ background:'linear-gradient(155deg,#111118 0%,#0a0a0e 100%)', borderRight:'1px solid rgba(255,255,255,0.055)', boxShadow:'4px 0 28px rgba(0,0,0,0.65), inset -1px 0 0 rgba(220,38,38,0.07)' }}>
 
-        {/* Logo */}
         <div className="px-5 py-5 flex items-center gap-3" style={T.divider}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{ background:'linear-gradient(135deg,#dc2626,#7c3aed)', boxShadow:'0 0 18px rgba(220,38,38,0.42), 0 2px 8px rgba(0,0,0,0.5)' }}>S</div>
@@ -666,8 +757,6 @@ export default function DashboardPage() {
 
       {/* Main */}
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
-
-        {/* Mobile bar */}
         <div className="lg:hidden sticky top-0 z-10 flex items-center gap-3 px-4 py-3 backdrop-blur-xl"
           style={{ background:'rgba(9,9,11,0.92)', borderBottom:'1px solid rgba(255,255,255,0.05)', boxShadow:'0 1px 0 rgba(220,38,38,0.1)' }}>
           <button onClick={()=>setSidebarOpen(true)} className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"><Menu className="w-5 h-5"/></button>
@@ -680,18 +769,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-
-          {/* Page header */}
           <div className="mb-6">
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{TITLES[activeTab]?.title}</h1>
             <p className="text-gray-600 text-sm mt-0.5">{TITLES[activeTab]?.sub}</p>
             <div className="mt-4 h-px" style={{ background:'linear-gradient(90deg,rgba(220,38,38,0.32),rgba(56,189,248,0.18) 38%,transparent 68%)' }}/>
           </div>
 
-          {/* Listings tab */}
           {activeTab==='listings' && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {/* ── 5-column stat grid ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
                 {STAT_CARDS.map(({label,val,sub,grad,Icon,glow})=>(
                   <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
                     <div className="absolute inset-0 pointer-events-none" style={{ background:'radial-gradient(circle at 95% 5%, rgba(220,38,38,0.05) 0%, transparent 50%)' }}/>
@@ -734,11 +821,12 @@ export default function DashboardPage() {
                         <tbody className="divide-y divide-white/[0.04]">
                           {listings.map(l=>{
                             const age=getListingAge(l.created_at), bt=l.body_type||l.bodyType||null;
+                            const isSold = l.status === 'sold';
                             return (
-                              <tr key={l.id} className={`data-row ${age>=30?'bg-amber-950/[0.07]':''}`}>
+                              <tr key={l.id} className={`data-row ${age>=30&&!isSold?'bg-amber-950/[0.07]':''} ${isSold?'opacity-60':''}`}>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-3">
-                                    {l.images?.[0]?<img src={l.images[0]} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-800 flex-shrink-0"/>:<div className="w-9 h-9 rounded-lg bg-white/5 flex-shrink-0"/>}
+                                    {l.images?.[0]?<img src={l.images[0]} alt="" className={`w-9 h-9 rounded-lg object-cover bg-gray-800 flex-shrink-0 ${isSold?'grayscale':''}`}/>:<div className="w-9 h-9 rounded-lg bg-white/5 flex-shrink-0"/>}
                                     <div className="min-w-0">
                                       <p className="font-semibold text-white text-sm truncate">{l.brand} {l.model}</p>
                                       <div className="flex items-center gap-1.5 mt-0.5"><p className="text-gray-600 text-xs truncate">{l.variant||'—'}</p>{bt&&<span className="px-1.5 py-0.5 rounded text-[10px] bg-white/5 text-gray-600">{bt}</span>}</div>
@@ -753,6 +841,16 @@ export default function DashboardPage() {
                                 <td className="px-4 py-3"><StatusBadge listing={l}/></td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-0.5 justify-end">
+                                    {/* Mark as Sold button — only shows when NOT already sold */}
+                                    {!isSold && (
+                                      <button
+                                        onClick={() => setMarkSoldListing(l)}
+                                        title="Mark as Sold"
+                                        className="sold-btn p-1.5 rounded-lg transition-all text-gray-600"
+                                        style={{ border:'1px solid transparent' }}>
+                                        <CheckCircle2 className="w-4 h-4"/>
+                                      </button>
+                                    )}
                                     <button onClick={()=>setPriceEditListing(l)} className="p-1.5 text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Tag className="w-4 h-4"/></button>
                                     <button onClick={()=>setTiktokListing(l)} className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Video className="w-4 h-4"/></button>
                                     <button onClick={()=>setDeleteId(l.id)} className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 className="w-4 h-4"/></button>
@@ -769,10 +867,11 @@ export default function DashboardPage() {
                     <div className="md:hidden divide-y divide-white/[0.04]">
                       {listings.map(l=>{
                         const bt=l.body_type||l.bodyType||null;
+                        const isSold = l.status === 'sold';
                         return (
-                          <div key={l.id} className={`p-4 ${getListingAge(l.created_at)>=30?'bg-amber-950/[0.07]':''}`}>
+                          <div key={l.id} className={`p-4 ${getListingAge(l.created_at)>=30&&!isSold?'bg-amber-950/[0.07]':''} ${isSold?'opacity-60':''}`}>
                             <div className="flex items-start gap-3">
-                              {l.images?.[0]?<img src={l.images[0]} alt="" className="w-14 h-14 rounded-xl object-cover bg-gray-800 flex-shrink-0"/>:<div className="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0"/>}
+                              {l.images?.[0]?<img src={l.images[0]} alt="" className={`w-14 h-14 rounded-xl object-cover bg-gray-800 flex-shrink-0 ${isSold?'grayscale':''}`}/>:<div className="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0"/>}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2 mb-1">
                                   <div className="min-w-0">
@@ -780,6 +879,13 @@ export default function DashboardPage() {
                                     <p className="text-gray-600 text-xs mt-0.5">{l.variant||'—'}{bt?` · ${bt}`:''}</p>
                                   </div>
                                   <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    {!isSold && (
+                                      <button onClick={()=>setMarkSoldListing(l)} title="Mark as Sold"
+                                        className="sold-btn p-1.5 rounded-lg transition-all text-gray-600"
+                                        style={{ border:'1px solid transparent' }}>
+                                        <CheckCircle2 className="w-4 h-4"/>
+                                      </button>
+                                    )}
                                     <button onClick={()=>setPriceEditListing(l)} className="p-1.5 text-gray-600 hover:text-emerald-400 rounded-lg transition-all"><Tag className="w-4 h-4"/></button>
                                     <button onClick={()=>setTiktokListing(l)} className="p-1.5 text-gray-600 hover:text-red-400 rounded-lg transition-all"><Video className="w-4 h-4"/></button>
                                     <button onClick={()=>setDeleteId(l.id)} className="p-1.5 text-gray-600 hover:text-red-400 rounded-lg transition-all"><Trash2 className="w-4 h-4"/></button>
@@ -834,6 +940,16 @@ export default function DashboardPage() {
 
       {priceEditListing && <PriceEditModal listing={priceEditListing} onClose={()=>setPriceEditListing(null)} onSave={handlePriceSave}/>}
       {tiktokListing    && <TikTokGenerator listing={tiktokListing} onClose={()=>setTiktokListing(null)}/>}
+
+      {/* Mark as Sold modal */}
+      {markSoldListing && (
+        <MarkSoldModal
+          listing={markSoldListing}
+          onClose={()=>setMarkSoldListing(null)}
+          onConfirm={handleMarkSold}
+          loading={markSoldLoading}
+        />
+      )}
     </div>
   );
 }
