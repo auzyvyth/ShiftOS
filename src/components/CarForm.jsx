@@ -245,6 +245,16 @@ export default function CarForm({ onCreate }) {
 
   const handleSubmit = async () => {
     if (!form.images.length) { alert('Please select at least 1 image'); return; }
+
+    // ── Get current session to attach dealer_id ──────────────────────────────
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      alert('You must be logged in to publish a listing.');
+      return;
+    }
+    const dealerId = session.user.id;
+    // ─────────────────────────────────────────────────────────────────────────
+
     const mileage      = parseInt(form.mileage);
     const basePrice    = parseFloat(form.basePrice);
     const sellingPrice = parseFloat(form.sellingPrice);
@@ -264,6 +274,7 @@ export default function CarForm({ onCreate }) {
     try {
       const imageUrls = await uploadImages();
       const { data, error } = await supabase.from('car_listings').insert([{
+        dealer_id: dealerId,           // ← RLS anchor: ties listing to this dealer
         brand: form.brand, model: form.model, variant: form.variant,
         state: form.state, city: form.city,
         mileage, colour: form.colour, condition: form.condition,
@@ -271,7 +282,7 @@ export default function CarForm({ onCreate }) {
         specs: form.specs, options: form.options, features: form.features,
         base_price: basePrice,
         selling_price: sellingPrice,
-        original_price: originalPrice,   // ← correct column name
+        original_price: originalPrice,
         engine_cc: engineCc,
         images: imageUrls, year,
         transmission: form.transmission, body_type: form.bodyType, fuel_type: form.fuelType,
