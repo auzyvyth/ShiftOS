@@ -8,6 +8,7 @@ import CalculatorPage from './pages/CalculatorPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SalesmanPanel from './pages/Salesmanpanel';
+import OnboardingPage from './pages/OnboardingPage';
 import './i18n/config';
 
 function App() {
@@ -15,13 +16,19 @@ function App() {
     <Router>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/cars" element={<CarsPage />} />
+        {/* Public — Drevo */}
+        <Route path="/"           element={<HomePage />} />
+        <Route path="/cars"       element={<CarsPage />} />
+        <Route path="/cars/:id"   element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
-        <Route path="/cars/:id" element={<CarDetailPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/salesman" element={<SalesmanPanel />} />
+
+        {/* Auth */}
+        <Route path="/login"      element={<LoginPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+
+        {/* Protected — XDrive */}
+        <Route path="/dashboard"  element={<DashboardPage />} />
+        <Route path="/salesman"   element={<SalesmanPanel />} />
       </Routes>
     </Router>
   );
