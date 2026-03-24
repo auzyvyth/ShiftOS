@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 import {
   X, Download, Loader2, ChevronLeft, ChevronRight,
-  Sparkles, Trash2, Type, Image as ImageIcon, Plus,
+  Sparkles, Trash2, Image as ImageIcon, Plus,
+  Palette, Tag, Shield,
 } from 'lucide-react';
 
-// JSZip
+// ─── JSZip loader ─────────────────────────────────────────────────────────────
 let _zip = null;
 function loadJSZip() {
   if (!_zip) _zip = new Promise((res, rej) => {
@@ -38,6 +39,7 @@ function loadImage(url) {
   return IMG_CACHE.get(url);
 }
 
+// ─── Fonts ────────────────────────────────────────────────────────────────────
 export const FONTS = [
   { id: 'dm',         label: 'DM Sans',         stack: "'DM Sans', sans-serif",          weights: ['400','700','800'] },
   { id: 'bebas',      label: 'Bebas Neue',       stack: "'Bebas Neue', sans-serif",       weights: ['400','400','400'] },
@@ -69,32 +71,84 @@ function ensureFont(fontId) {
   document.head.appendChild(link);
 }
 
-async function renderSlide(canvas, slide, watermark, fontId = 'dm') {
+// ─── Default theme ────────────────────────────────────────────────────────────
+const DEFAULT_THEME = {
+  // Background
+  bgMode:        'blur',        // 'blur' | 'solid' | 'gradient'
+  bgColor:       '#0d1b2e',
+  bgGradFrom:    '#0d1b2e',
+  bgGradTo:      '#1a0a2e',
+  overlayOpacity: 0.45,
+
+  // Text
+  textColor:      '#ffffff',
+  accentColor:    '#e53935',
+  textPosition:   'bottom',     // 'bottom' | 'center' | 'top'
+  textAlign:      'left',       // 'left' | 'center'
+  headlineSize:   112,
+  line2Size:      80,
+  line3Size:      52,
+
+  // Watermark / logo
+  watermarkText:  '',
+  watermarkOpacity: 0.14,
+  watermarkPos:   'top-right',  // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  logoUrl:        null,         // base64 uploaded logo
+
+  // Price tag
+  priceTagStyle:  'plain',      // 'plain' | 'pill' | 'boxed'
+  priceTagColor:  '#e53935',
+
+  // Badges
+  showConditionBadge: false,
+  showHotDealBadge:   false,
+  customBadgeText:    '',
+  badgeColor:         '#e53935',
+};
+
+// ─── Canvas renderer ──────────────────────────────────────────────────────────
+async function renderSlide(canvas, slide, theme, fontId = 'dm') {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
+
   const fontDef = FONTS.find(f => f.id === fontId) || FONTS[0];
   const stack = fontDef.stack;
   const [w3, w2, w1] = fontDef.weights;
-  const img = await loadImage(slide.imageUrl);
 
-  if (img) {
+  const img = await loadImage(slide.imageUrl);
+  const logoImg = theme.logoUrl ? await loadImage(theme.logoUrl) : null;
+
+  // ── Background ──
+  if (theme.bgMode === 'blur' && img) {
     ctx.save();
     ctx.filter = 'blur(32px)';
     const sc = Math.max(W / img.width, H / img.height);
     ctx.drawImage(img, (W - img.width * sc) / 2, (H - img.height * sc) / 2, img.width * sc, img.height * sc);
     ctx.restore();
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
-    const PAD = 40, availW = W - PAD * 2, availH = H * 0.62, topY = H * 0.06;
-    const si = Math.min(availW / img.width, availH / img.height);
-    const dw = img.width * si, dh = img.height * si;
-    ctx.drawImage(img, (W - dw) / 2, topY + (availH - dh) / 2, dw, dh);
+    ctx.fillStyle = `rgba(0,0,0,${theme.overlayOpacity})`; ctx.fillRect(0, 0, W, H);
+  } else if (theme.bgMode === 'gradient') {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, theme.bgGradFrom); g.addColorStop(1, theme.bgGradTo);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  } else if (theme.bgMode === 'solid') {
+    ctx.fillStyle = theme.bgColor; ctx.fillRect(0, 0, W, H);
   } else {
+    // fallback dark
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#0d1b2e'); g.addColorStop(1, '#071020');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 
+  // ── Car image (centred upper region) ──
+  if (img) {
+    const PAD = 40, availW = W - PAD * 2, availH = H * 0.62, topY = H * 0.06;
+    const si = Math.min(availW / img.width, availH / img.height);
+    const dw = img.width * si, dh = img.height * si;
+    ctx.drawImage(img, (W - dw) / 2, topY + (availH - dh) / 2, dw, dh);
+  }
+
+  // ── Side + bottom gradients ──
   const lg = ctx.createLinearGradient(0, 0, W * 0.75, 0);
   lg.addColorStop(0, 'rgba(0,0,0,0.50)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
@@ -102,11 +156,13 @@ async function renderSlide(canvas, slide, watermark, fontId = 'dm') {
   bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(1, 'rgba(0,0,0,0.90)');
   ctx.fillStyle = bg; ctx.fillRect(0, H * 0.55, W, H * 0.29);
 
-  function draw(text, x, y, weight, size, colour, maxW) {
+  // ── Text draw helper ──
+  function draw(text, x, y, weight, size, colour, maxW, align = 'left') {
     if (!text) return;
     ctx.save();
     ctx.font = `${weight} ${size}px ${stack}`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.textAlign = align;
+    ctx.textBaseline = 'top';
     while (ctx.measureText(text).width > maxW && size > 16) { size -= 3; ctx.font = `${weight} ${size}px ${stack}`; }
     ctx.lineWidth = Math.max(size * 0.08, 3);
     ctx.strokeStyle = 'rgba(0,0,0,0.95)'; ctx.lineJoin = 'round';
@@ -115,55 +171,155 @@ async function renderSlide(canvas, slide, watermark, fontId = 'dm') {
     ctx.restore();
   }
 
-  const X = 64, maxW = W * 0.62;
-  const sz1 = 112, sz2 = 80, sz3 = 52;
-  const anchor = H * 0.80, gap = 12;
-  const y3 = anchor - sz3, y2 = y3 - sz2 - gap, y1 = y2 - sz1 - gap;
-  draw(slide.headline    || '', X, y1, w1, sz1, '#ffffff',                maxW);
-  draw(slide.bottomLeft  || '', X, y2, w2, sz2, '#ffffff',                maxW);
-  draw(slide.bottomRight || '', X, y3, w3, sz3, 'rgba(255,255,255,0.70)', maxW);
+  // ── Text layout by position ──
+  const isCenter = theme.textAlign === 'center';
+  const TX = isCenter ? W / 2 : 64;
+  const maxW = W * (isCenter ? 0.82 : 0.62);
+  const sz1 = Math.round(theme.headlineSize * (W / 1080));
+  const sz2 = Math.round(theme.line2Size   * (W / 1080));
+  const sz3 = Math.round(theme.line3Size   * (W / 1080));
+  const gap = Math.round(12 * (W / 1080));
 
-  if (watermark) {
+  let anchor;
+  if (theme.textPosition === 'bottom')  anchor = H * 0.82;
+  else if (theme.textPosition === 'center') anchor = H * 0.60;
+  else anchor = H * 0.38;
+
+  const y3 = anchor - sz3;
+  const y2 = y3 - sz2 - gap;
+  const y1 = y2 - sz1 - gap;
+
+  draw(slide.headline   || '', TX, y1, w1, sz1, theme.textColor, maxW, isCenter ? 'center' : 'left');
+
+  // Line 2 — price tag style
+  if (slide.bottomLeft) {
+    if (theme.priceTagStyle === 'pill' || theme.priceTagStyle === 'boxed') {
+      ctx.save();
+      ctx.font = `${w2} ${sz2}px ${stack}`;
+      const tw = ctx.measureText(slide.bottomLeft).width;
+      const padX = sz2 * 0.4, padY = sz2 * 0.18;
+      const rx = isCenter ? TX - tw / 2 - padX : TX - padX;
+      const ry = y2 - padY;
+      const rw = tw + padX * 2, rh = sz2 + padY * 2;
+      const radius = theme.priceTagStyle === 'pill' ? rh / 2 : sz2 * 0.2;
+      ctx.fillStyle = theme.priceTagColor;
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, rw, rh, radius);
+      ctx.fill();
+      draw(slide.bottomLeft, TX, y2, w2, sz2, '#ffffff', maxW, isCenter ? 'center' : 'left');
+      ctx.restore();
+    } else {
+      draw(slide.bottomLeft, TX, y2, w2, sz2, theme.accentColor, maxW, isCenter ? 'center' : 'left');
+    }
+  }
+
+  draw(slide.bottomRight || '', TX, y3, w3, sz3, `rgba(255,255,255,0.70)`, maxW, isCenter ? 'center' : 'left');
+
+  // ── Badges ──
+  const badgeH = Math.round(52 * (W / 1080));
+  const badgePadX = Math.round(22 * (W / 1080));
+  const badgeR = badgeH / 2;
+  let bx = Math.round(48 * (W / 1080));
+  const by = Math.round(52 * (H / 1920));
+
+  function drawBadge(text, color) {
     ctx.save();
-    ctx.font = `600 26px ${stack}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.14)';
-    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    ctx.fillText(watermark.toUpperCase(), W - 52, 52);
+    ctx.font = `700 ${Math.round(24 * W/1080)}px ${stack}`;
+    const tw = ctx.measureText(text).width;
+    const bw = tw + badgePadX * 2;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, badgeH, badgeR);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, bx + badgePadX, by + badgeH / 2);
+    ctx.restore();
+    bx += bw + Math.round(12 * W/1080);
+  }
+
+  if (theme.showConditionBadge && slide.condition) {
+    const labels = { new: 'NEW', recon: 'RECON', used: 'USED' };
+    const colors  = { new: '#16a34a', recon: '#d97706', used: '#6366f1' };
+    drawBadge(labels[slide.condition] || slide.condition.toUpperCase(), colors[slide.condition] || theme.badgeColor);
+  }
+  if (theme.showHotDealBadge) {
+    drawBadge('🔥 HOT DEAL', theme.badgeColor);
+  }
+  if (theme.customBadgeText) {
+    drawBadge(theme.customBadgeText.toUpperCase(), theme.badgeColor);
+  }
+
+  // ── Watermark text ──
+  const wmText = theme.watermarkText || '';
+  if (wmText) {
+    ctx.save();
+    ctx.font = `600 ${Math.round(26 * W/1080)}px ${stack}`;
+    ctx.fillStyle = `rgba(255,255,255,${theme.watermarkOpacity})`;
+    const pos = theme.watermarkPos || 'top-right';
+    const isRight  = pos.includes('right');
+    const isBottom = pos.includes('bottom');
+    ctx.textAlign = isRight ? 'right' : 'left';
+    ctx.textBaseline = 'top';
+    const wmX = isRight  ? W - Math.round(52 * W/1080) : Math.round(52 * W/1080);
+    const wmY = isBottom ? H - Math.round(80 * H/1920)  : Math.round(52 * H/1920);
+    ctx.fillText(wmText.toUpperCase(), wmX, wmY);
+    ctx.restore();
+  }
+
+  // ── Logo image ──
+  if (logoImg) {
+    const maxLogoH = Math.round(80 * H/1920);
+    const logoScale = maxLogoH / logoImg.height;
+    const lw = logoImg.width * logoScale;
+    const lh = logoImg.height * logoScale;
+    const pos = theme.watermarkPos || 'top-right';
+    const isRight  = pos.includes('right');
+    const isBottom = pos.includes('bottom');
+    const lx = isRight  ? W - Math.round(48 * W/1080) - lw : Math.round(48 * W/1080);
+    const ly = isBottom ? H - Math.round(60 * H/1920) - lh  : Math.round(40 * H/1920);
+    ctx.save();
+    ctx.globalAlpha = theme.watermarkOpacity * 6; // logos are more visible
+    ctx.drawImage(logoImg, lx, ly, lw, lh);
     ctx.restore();
   }
 }
 
+// ─── Default slides builder ───────────────────────────────────────────────────
 function buildDefaultSlides(listing, images) {
   const brand = listing?.brand || '', model = listing?.model || '', variant = listing?.variant || '';
   const year = String(listing?.year || '');
   const price = listing?.selling_price || listing?.price;
   const priceStr = price ? 'RM ' + Number(price).toLocaleString() : '';
   const mileage = listing?.mileage ? Number(listing.mileage).toLocaleString() + ' km' : '';
-  const cond = { new: 'Brand New', recon: 'Recon', used: 'Used' }[listing?.condition] || listing?.condition || '';
+  const cond = listing?.condition || '';
+  const condLabel = { new: 'Brand New', recon: 'Recon', used: 'Used' }[cond] || cond;
   const trans = listing?.transmission || '', fuel = listing?.fuel_type || listing?.fuel || '';
   const color = listing?.color || '', state = listing?.state ? '📍 ' + listing.state : '';
   const engine = listing?.engine_cc ? listing.engine_cc + 'cc' : '';
   const T = [
-    { headline: `${brand} ${model}`.trim(), bl: priceStr, br: [year, cond, mileage].filter(Boolean).join(' · ') },
+    { headline: `${brand} ${model}`.trim(), bl: priceStr, br: [year, condLabel, mileage].filter(Boolean).join(' · ') },
     { headline: variant || `${brand} ${model}`.trim(), bl: priceStr, br: [trans, fuel].filter(Boolean).join(' · ') },
-    { headline: priceStr || `${brand} ${model}`.trim(), bl: [year, cond].filter(Boolean).join(' · '), br: mileage },
+    { headline: priceStr || `${brand} ${model}`.trim(), bl: [year, condLabel].filter(Boolean).join(' · '), br: mileage },
     { headline: `${brand} ${model}`.trim(), bl: priceStr, br: [engine, fuel].filter(Boolean).join(' · ') },
-    { headline: model, bl: priceStr || [year, cond].filter(Boolean).join(' · '), br: [color, state].filter(Boolean).join(' · ') },
-    { headline: `${brand} ${model}`.trim(), bl: mileage || priceStr, br: [cond, trans].filter(Boolean).join(' · ') },
-    { headline: priceStr || model, bl: [year, cond].filter(Boolean).join(' · '), br: [trans, fuel].filter(Boolean).join(' · ') },
+    { headline: model, bl: priceStr || [year, condLabel].filter(Boolean).join(' · '), br: [color, state].filter(Boolean).join(' · ') },
+    { headline: `${brand} ${model}`.trim(), bl: mileage || priceStr, br: [condLabel, trans].filter(Boolean).join(' · ') },
+    { headline: priceStr || model, bl: [year, condLabel].filter(Boolean).join(' · '), br: [trans, fuel].filter(Boolean).join(' · ') },
     { headline: `${year} ${brand} ${model}`.trim(), bl: priceStr, br: state },
     { headline: variant || model, bl: priceStr, br: [engine, color].filter(Boolean).join(' · ') },
     { headline: 'DM for Best Price 📲', bl: `${brand} ${model}`.trim(), br: state || 'Malaysia' },
   ];
   const count = images.length > 0 ? images.length : 1;
   return Array.from({ length: count }, (_, i) => ({
-    id: i, imageUrl: images[i] || null,
+    id: i, imageUrl: images[i] || null, condition: cond,
     headline:    T[i % T.length]?.headline    || `${brand} ${model}`.trim(),
     bottomLeft:  T[i % T.length]?.bl          || '',
     bottomRight: T[i % T.length]?.br          || '',
   }));
 }
 
+// ─── AI generation ────────────────────────────────────────────────────────────
 async function generateWithClaude(listing, language, hookText, slideCount) {
   const price = listing?.selling_price || listing?.price;
   const priceStr = price ? 'RM ' + Number(price).toLocaleString() : 'Ask for Price';
@@ -190,17 +346,19 @@ Return ONLY valid JSON array: [{"headline":"...","bottomLeft":"...","bottomRight
   return JSON.parse(text.replace(/```json|```/g, '').trim());
 }
 
-const SlideCanvas = React.memo(function SlideCanvas({ slide, watermark, fontId, width, height }) {
+// ─── SlideCanvas ──────────────────────────────────────────────────────────────
+const SlideCanvas = React.memo(function SlideCanvas({ slide, theme, fontId, width, height }) {
   const ref = useRef(null);
   useEffect(() => {
     const c = ref.current; if (!c) return;
     c.width = width; c.height = height;
-    renderSlide(c, slide, watermark, fontId).catch(() => {});
-  }, [slide, watermark, fontId, width, height]);
+    renderSlide(c, slide, theme, fontId).catch(() => {});
+  }, [slide, theme, fontId, width, height]);
   return <canvas ref={ref} style={{ width: '100%', height: '100%', display: 'block' }} />;
 });
 
-const Thumb = React.memo(function Thumb({ slide, fontId, isActive, index, onClick, onDelete, showDelete }) {
+// ─── Thumb ────────────────────────────────────────────────────────────────────
+const Thumb = React.memo(function Thumb({ slide, fontId, theme, isActive, index, onClick, onDelete, showDelete }) {
   return (
     <div onClick={onClick} style={{
       position: 'relative', flexShrink: 0, cursor: 'pointer',
@@ -209,24 +367,55 @@ const Thumb = React.memo(function Thumb({ slide, fontId, isActive, index, onClic
       overflow: 'hidden', transition: 'border-color 0.15s, transform 0.15s',
       transform: isActive ? 'scale(1.06)' : 'scale(1)',
     }}>
-      <SlideCanvas slide={slide} watermark="" fontId={fontId} width={96} height={171} />
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,0,0.6)', fontSize: 9, fontWeight: 700,
-        color: isActive ? '#ff6b6b' : 'rgba(255,255,255,0.5)',
-        textAlign: 'center', padding: '2px 0', fontFamily: "'DM Sans', sans-serif",
-      }}>{index + 1}</div>
+      <SlideCanvas slide={slide} theme={theme} fontId={fontId} width={96} height={171} />
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(0,0,0,0.6)', fontSize:9, fontWeight:700, color: isActive ? '#ff6b6b' : 'rgba(255,255,255,0.5)', textAlign:'center', padding:'2px 0', fontFamily:"'DM Sans', sans-serif" }}>{index + 1}</div>
       {showDelete && (
-        <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{
-          position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%',
-          background: 'rgba(239,68,68,0.85)', border: 'none', color: '#fff', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-        }}><X size={9} /></button>
+        <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ position:'absolute', top:2, right:2, width:16, height:16, borderRadius:'50%', background:'rgba(239,68,68,0.85)', border:'none', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}><X size={9} /></button>
       )}
     </div>
   );
 });
 
+// ─── Colour swatch ────────────────────────────────────────────────────────────
+function ColorRow({ label, value, onChange }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+      <span style={{ fontSize:12, color:'rgba(255,255,255,0.45)' }}>{label}</span>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.25)', fontFamily:'monospace' }}>{value}</span>
+        <input type="color" value={value} onChange={e => onChange(e.target.value)}
+          style={{ width:28, height:28, border:'none', borderRadius:6, cursor:'pointer', padding:2, background:'transparent' }} />
+      </div>
+    </div>
+  );
+}
+
+function SliderRow({ label, value, min, max, step = 1, onChange, fmt }) {
+  return (
+    <div style={{ marginBottom:12 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</span>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', fontFamily:'monospace' }}>{fmt ? fmt(value) : value}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))}
+        style={{ width:'100%', accentColor:'#e53935' }} />
+    </div>
+  );
+}
+
+function PillRow({ options, value, onChange }) {
+  return (
+    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+      {options.map(o => (
+        <button key={o.value} onClick={() => onChange(o.value)} style={{ padding:'6px 12px', borderRadius:999, border:`1px solid ${value===o.value?'#e53935':'rgba(255,255,255,0.1)'}`, background: value===o.value?'rgba(229,57,53,0.15)':'transparent', color: value===o.value?'#e53935':'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function TikTokGenerator({ listing, onClose }) {
   const rawImages  = (listing?.images || []).filter(Boolean);
   const dealership = listing?.dealership_name || 'ShiftOS';
@@ -241,17 +430,24 @@ export default function TikTokGenerator({ listing, onClose }) {
   const [downloading, setDownloading] = useState(false);
   const [dlIdx,       setDlIdx]       = useState(null);
   const [activeTab,   setActiveTab]   = useState('text');
+  const [theme,       setTheme]       = useState(() => ({
+    ...DEFAULT_THEME,
+    watermarkText: dealership,
+  }));
 
   const slide = slides[active] || slides[0] || {};
   const total = slides.length;
   const filmRef = useRef(null);
+  const logoInputRef = useRef(null);
+
+  const patchTheme = (key, val) => setTheme(t => ({ ...t, [key]: val }));
 
   useEffect(() => { FONTS.forEach(f => ensureFont(f.id)); }, []);
 
   useEffect(() => {
     const el = filmRef.current; if (!el) return;
     const thumb = el.children[active]; if (!thumb) return;
-    thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    thumb.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
   }, [active]);
 
   useEffect(() => {
@@ -273,8 +469,14 @@ export default function TikTokGenerator({ listing, onClose }) {
     reader.readAsDataURL(file);
   };
 
+  const uploadLogo = (file) => {
+    const reader = new FileReader();
+    reader.onload = e => patchTheme('logoUrl', e.target.result);
+    reader.readAsDataURL(file);
+  };
+
   const addSlide = () => {
-    const n = { id: Date.now(), imageUrl: null, headline: `${listing?.brand || ''} ${listing?.model || ''}`.trim(), bottomLeft: '', bottomRight: '' };
+    const n = { id: Date.now(), imageUrl: null, condition: listing?.condition || '', headline: `${listing?.brand||''} ${listing?.model||''}`.trim(), bottomLeft:'', bottomRight:'' };
     setSlides(prev => [...prev, n]);
     setTimeout(() => setActive(slides.length), 0);
   };
@@ -301,15 +503,15 @@ export default function TikTokGenerator({ listing, onClose }) {
 
   const toBlob = useCallback(async idx => {
     const c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
-    await renderSlide(c, slides[idx], dealership, font);
+    await renderSlide(c, slides[idx], theme, font);
     return new Promise(res => c.toBlob(res, 'image/jpeg', 0.93));
-  }, [slides, dealership, font]);
+  }, [slides, theme, font]);
 
   const saveSingle = async idx => {
     setDlIdx(idx);
     const blob = await toBlob(idx); const url = URL.createObjectURL(blob);
     if (isIOS()) { window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 10000); }
-    else { const a = document.createElement('a'); a.download = `${listing?.brand || 'slide'}-${listing?.model || ''}-${idx + 1}.jpg`; a.href = url; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    else { const a = document.createElement('a'); a.download = `${listing?.brand||'slide'}-${listing?.model||''}-${idx+1}.jpg`; a.href = url; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
     setDlIdx(null);
   };
 
@@ -321,117 +523,204 @@ export default function TikTokGenerator({ listing, onClose }) {
     }
     try {
       const JSZip = await loadJSZip(); const zip = new JSZip();
-      const folder = zip.folder(`${listing?.brand || 'slides'}-${listing?.model || ''}`);
-      for (let i = 0; i < total; i++) folder.file(`slide-${String(i + 1).padStart(2, '0')}.jpg`, await toBlob(i));
-      const zb = await zip.generateAsync({ type: 'blob' }); const url = URL.createObjectURL(zb);
-      const a = document.createElement('a'); a.download = `${listing?.brand || 'slides'}-${listing?.model || ''}.zip`; a.href = url; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+      const folder = zip.folder(`${listing?.brand||'slides'}-${listing?.model||''}`);
+      for (let i = 0; i < total; i++) folder.file(`slide-${String(i+1).padStart(2,'0')}.jpg`, await toBlob(i));
+      const zb = await zip.generateAsync({ type:'blob' }); const url = URL.createObjectURL(zb);
+      const a = document.createElement('a'); a.download = `${listing?.brand||'slides'}-${listing?.model||''}.zip`; a.href = url; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch { for (let i = 0; i < total; i++) { await saveSingle(i); await new Promise(r => setTimeout(r, 200)); } }
     setDownloading(false);
   };
 
-  // Reusable input style
+  // ── Shared styles ──
   const inpStyle = (big) => ({
-    width: '100%', padding: big ? '11px 14px' : '9px 14px',
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 10, color: '#fff', fontFamily: "'DM Sans', sans-serif",
-    fontSize: big ? 15 : 13, fontWeight: big ? 700 : 400, outline: 'none',
-    boxSizing: 'border-box', transition: 'border-color 0.15s',
+    width:'100%', padding: big ? '11px 14px' : '9px 14px',
+    background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)',
+    borderRadius:10, color:'#fff', fontFamily:"'DM Sans', sans-serif",
+    fontSize: big ? 15 : 13, fontWeight: big ? 700 : 400, outline:'none',
+    boxSizing:'border-box', transition:'border-color 0.15s',
   });
   const focusIn  = e => e.target.style.borderColor = 'rgba(229,57,53,0.6)';
   const focusOut = e => e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-  const lbl = { fontSize: 10, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: 5, fontFamily: 'inherit' };
+  const lbl = { fontSize:10, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', display:'block', marginBottom:5, fontFamily:'inherit' };
+  const sectionHead = (t) => <p style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', margin:'20px 0 10px', paddingBottom:6, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>{t}</p>;
 
+  // ── Tab panels ──
   const renderTextPanel = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', gap:8 }}>
+        <label style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'9px 0', borderRadius:10, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.65)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
           <ImageIcon size={13} />{slide.imageUrl ? 'Swap Photo' : 'Add Photo'}
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files[0] && uploadImage(active, e.target.files[0])} />
+          <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => e.target.files[0] && uploadImage(active, e.target.files[0])} />
         </label>
         {total > 1 && (
-          <button onClick={() => removeSlide(active)} style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+          <button onClick={() => removeSlide(active)} style={{ padding:'9px 12px', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
             <Trash2 size={13} />Remove
           </button>
         )}
       </div>
-      <div><span style={lbl}>Line 1 — Brand / Model</span><input value={slide.headline || ''} onChange={e => patch('headline', e.target.value)} placeholder="e.g. BMW M4 Competition" style={inpStyle(true)} onFocus={focusIn} onBlur={focusOut} /></div>
-      <div><span style={lbl}>Line 2 — Price / Hook</span><input value={slide.bottomLeft || ''} onChange={e => patch('bottomLeft', e.target.value)} placeholder="e.g. RM 189,800" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
-      <div><span style={lbl}>Line 3 — Specs</span><input value={slide.bottomRight || ''} onChange={e => patch('bottomRight', e.target.value)} placeholder="e.g. 2023 · Recon · 28k km" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 1 — Brand / Model</span><input value={slide.headline||''} onChange={e => patch('headline', e.target.value)} placeholder="e.g. BMW M4 Competition" style={inpStyle(true)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 2 — Price / Hook</span><input value={slide.bottomLeft||''} onChange={e => patch('bottomLeft', e.target.value)} placeholder="e.g. RM 189,800" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 3 — Specs</span><input value={slide.bottomRight||''} onChange={e => patch('bottomRight', e.target.value)} placeholder="e.g. 2023 · Recon · 28k km" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
     </div>
   );
 
-  const renderStylePanel = () => (
+  const renderDesignPanel = () => (
     <div>
-      <span style={lbl}>Font</span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+      {sectionHead('Background')}
+      <div style={{ marginBottom:12 }}>
+        <span style={lbl}>Mode</span>
+        <PillRow options={[{label:'Blur',value:'blur'},{label:'Gradient',value:'gradient'},{label:'Solid',value:'solid'}]} value={theme.bgMode} onChange={v => patchTheme('bgMode', v)} />
+      </div>
+      {theme.bgMode === 'solid' && <ColorRow label="Background colour" value={theme.bgColor} onChange={v => patchTheme('bgColor', v)} />}
+      {theme.bgMode === 'gradient' && <>
+        <ColorRow label="Gradient top" value={theme.bgGradFrom} onChange={v => patchTheme('bgGradFrom', v)} />
+        <ColorRow label="Gradient bottom" value={theme.bgGradTo} onChange={v => patchTheme('bgGradTo', v)} />
+      </>}
+      {theme.bgMode === 'blur' && <SliderRow label="Overlay opacity" value={theme.overlayOpacity} min={0} max={0.85} step={0.05} onChange={v => patchTheme('overlayOpacity', v)} fmt={v => Math.round(v*100)+'%'} />}
+
+      {sectionHead('Text')}
+      <div style={{ marginBottom:12 }}>
+        <span style={lbl}>Position</span>
+        <PillRow options={[{label:'Top',value:'top'},{label:'Middle',value:'center'},{label:'Bottom',value:'bottom'}]} value={theme.textPosition} onChange={v => patchTheme('textPosition', v)} />
+      </div>
+      <div style={{ marginBottom:12 }}>
+        <span style={lbl}>Alignment</span>
+        <PillRow options={[{label:'Left',value:'left'},{label:'Centre',value:'center'}]} value={theme.textAlign} onChange={v => patchTheme('textAlign', v)} />
+      </div>
+      <ColorRow label="Text colour" value={theme.textColor} onChange={v => patchTheme('textColor', v)} />
+      <ColorRow label="Accent colour" value={theme.accentColor} onChange={v => patchTheme('accentColor', v)} />
+      <SliderRow label="Headline size" value={theme.headlineSize} min={60} max={160} step={4} onChange={v => patchTheme('headlineSize', v)} />
+      <SliderRow label="Line 2 size"   value={theme.line2Size}    min={40} max={120} step={4} onChange={v => patchTheme('line2Size', v)} />
+      <SliderRow label="Line 3 size"   value={theme.line3Size}    min={28} max={90}  step={4} onChange={v => patchTheme('line3Size', v)} />
+
+      {sectionHead('Font')}
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
         {FONTS.map(f => (
-          <button key={f.id} onClick={() => { ensureFont(f.id); setFont(f.id); }} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 10, cursor: 'pointer', width: '100%',
-            border: `1px solid ${font === f.id ? '#e53935' : 'rgba(255,255,255,0.08)'}`, background: font === f.id ? 'rgba(229,57,53,0.1)' : 'rgba(255,255,255,0.03)',
-            fontFamily: f.stack, transition: 'all 0.15s',
-          }}>
-            <span style={{ fontSize: 14, color: font === f.id ? '#e53935' : 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{f.label}</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: "'DM Sans', sans-serif" }}>Aa</span>
+          <button key={f.id} onClick={() => { ensureFont(f.id); setFont(f.id); }} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:10, cursor:'pointer', width:'100%', border:`1px solid ${font===f.id?'#e53935':'rgba(255,255,255,0.08)'}`, background: font===f.id?'rgba(229,57,53,0.1)':'rgba(255,255,255,0.03)', fontFamily:f.stack, transition:'all 0.15s' }}>
+            <span style={{ fontSize:14, color: font===f.id?'#e53935':'rgba(255,255,255,0.7)', fontWeight:600 }}>{f.label}</span>
+            <span style={{ fontSize:11, color:'rgba(255,255,255,0.2)', fontFamily:"'DM Sans', sans-serif" }}>Aa</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+
+  const renderBrandPanel = () => (
+    <div>
+      {sectionHead('Watermark Text')}
+      <div style={{ marginBottom:12 }}>
+        <span style={lbl}>Text</span>
+        <input value={theme.watermarkText} onChange={e => patchTheme('watermarkText', e.target.value)} placeholder="Your dealership name" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} />
+      </div>
+      <div style={{ marginBottom:12 }}>
+        <span style={lbl}>Position</span>
+        <PillRow options={[{label:'↗ Top R',value:'top-right'},{label:'↖ Top L',value:'top-left'},{label:'↘ Bot R',value:'bottom-right'},{label:'↙ Bot L',value:'bottom-left'}]} value={theme.watermarkPos} onChange={v => patchTheme('watermarkPos', v)} />
+      </div>
+      <SliderRow label="Opacity" value={theme.watermarkOpacity} min={0.04} max={0.6} step={0.02} onChange={v => patchTheme('watermarkOpacity', v)} fmt={v => Math.round(v*100)+'%'} />
+
+      {sectionHead('Logo / Image Watermark')}
+      <input ref={logoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => e.target.files[0] && uploadLogo(e.target.files[0])} />
+      <div style={{ display:'flex', gap:8 }}>
+        <button onClick={() => logoInputRef.current?.click()} style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.65)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <ImageIcon size={13} />{theme.logoUrl ? 'Swap Logo' : 'Upload Logo'}
+        </button>
+        {theme.logoUrl && (
+          <button onClick={() => patchTheme('logoUrl', null)} style={{ padding:'10px 12px', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
+            Remove
+          </button>
+        )}
+      </div>
+      {theme.logoUrl && (
+        <div style={{ marginTop:10, padding:8, background:'rgba(255,255,255,0.03)', borderRadius:8, display:'flex', alignItems:'center', gap:8 }}>
+          <img src={theme.logoUrl} alt="logo" style={{ height:32, objectFit:'contain', borderRadius:4 }} />
+          <span style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>Logo loaded — uses same position & opacity as watermark</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderBadgesPanel = () => (
+    <div>
+      {sectionHead('Price Tag Style')}
+      <div style={{ marginBottom:14 }}>
+        <PillRow options={[{label:'Plain',value:'plain'},{label:'Pill',value:'pill'},{label:'Boxed',value:'boxed'}]} value={theme.priceTagStyle} onChange={v => patchTheme('priceTagStyle', v)} />
+      </div>
+      {(theme.priceTagStyle === 'pill' || theme.priceTagStyle === 'boxed') && (
+        <ColorRow label="Price tag colour" value={theme.priceTagColor} onChange={v => patchTheme('priceTagColor', v)} />
+      )}
+
+      {sectionHead('Sticker Badges')}
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+          <div onClick={() => patchTheme('showConditionBadge', !theme.showConditionBadge)} style={{ width:36, height:20, borderRadius:999, background: theme.showConditionBadge?'#e53935':'rgba(255,255,255,0.1)', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+            <div style={{ position:'absolute', top:2, left: theme.showConditionBadge?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+          </div>
+          <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)' }}>Condition badge (NEW / RECON / USED)</span>
+        </label>
+        <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+          <div onClick={() => patchTheme('showHotDealBadge', !theme.showHotDealBadge)} style={{ width:36, height:20, borderRadius:999, background: theme.showHotDealBadge?'#e53935':'rgba(255,255,255,0.1)', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+            <div style={{ position:'absolute', top:2, left: theme.showHotDealBadge?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+          </div>
+          <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)' }}>🔥 Hot Deal badge</span>
+        </label>
+      </div>
+
+      {sectionHead('Custom Badge')}
+      <div style={{ marginBottom:10 }}>
+        <span style={lbl}>Badge text</span>
+        <input value={theme.customBadgeText} onChange={e => patchTheme('customBadgeText', e.target.value)} placeholder="e.g. NEGOTIABLE or MUST SELL" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} maxLength={20} />
+        <p style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:5 }}>Leave blank to hide</p>
+      </div>
+      <ColorRow label="Badge colour" value={theme.badgeColor} onChange={v => patchTheme('badgeColor', v)} />
     </div>
   );
 
   const renderAIPanel = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {['en', 'bm'].map(l => (
-          <button key={l} onClick={() => setLang(l)} style={{ flex: 1, padding: '9px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${lang === l ? '#e53935' : 'rgba(255,255,255,0.1)'}`, background: lang === l ? 'rgba(229,57,53,0.1)' : 'rgba(255,255,255,0.03)', color: lang === l ? '#e53935' : 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>
-            {l === 'en' ? '🇬🇧 English' : '🇲🇾 Bahasa'}
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'flex', gap:6 }}>
+        {['en','bm'].map(l => (
+          <button key={l} onClick={() => setLang(l)} style={{ flex:1, padding:'9px', borderRadius:10, cursor:'pointer', border:`1px solid ${lang===l?'#e53935':'rgba(255,255,255,0.1)'}`, background: lang===l?'rgba(229,57,53,0.1)':'rgba(255,255,255,0.03)', color: lang===l?'#e53935':'rgba(255,255,255,0.45)', fontSize:12, fontWeight:700, fontFamily:'inherit' }}>
+            {l==='en' ? '🇬🇧 English' : '🇲🇾 Bahasa'}
           </button>
         ))}
       </div>
-      <input value={hookText} onChange={e => setHookText(e.target.value)} onKeyDown={e => e.key === 'Enter' && generate()} placeholder={"Hook — e.g. Cleanest " + (listing?.brand || 'car') + " in Malaysia"} style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} />
-      <button onClick={generate} disabled={generating} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 10, border: 'none', background: '#e53935', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: generating ? 0.6 : 1, fontFamily: 'inherit', width: '100%' }}>
-        {generating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
-        {generating ? 'Writing ' + total + ' slides…' : 'Generate All ' + total + ' Slides'}
+      <input value={hookText} onChange={e => setHookText(e.target.value)} onKeyDown={e => e.key==='Enter' && generate()} placeholder={`Hook — e.g. Cleanest ${listing?.brand||'car'} in Malaysia`} style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} />
+      <button onClick={generate} disabled={generating} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', borderRadius:10, border:'none', background:'#e53935', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: generating?0.6:1, fontFamily:'inherit', width:'100%' }}>
+        {generating ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+        {generating ? `Writing ${total} slides…` : `Generate All ${total} Slides`}
       </button>
-      {genError && <p style={{ fontSize: 11, color: '#fbbf24', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.15)', borderRadius: 8, padding: '8px 12px', margin: 0 }}>{genError}</p>}
-    </div>
-  );
-
-  const FilmstripRow = ({ vertical }) => (
-    <div ref={vertical ? undefined : filmRef} style={{
-      display: 'flex', flexDirection: vertical ? 'column' : 'row',
-      gap: 8, padding: vertical ? '4px' : '4px 0',
-      overflowX: vertical ? 'visible' : 'auto', overflowY: vertical ? 'auto' : 'visible',
-      flex: vertical ? 1 : undefined, alignItems: vertical ? undefined : 'center',
-      scrollbarWidth: 'none',
-    }}>
-      {slides.map((s, i) => (
-        <Thumb key={s.id ?? i} slide={s} fontId={font} isActive={i === active} index={i}
-          onClick={() => setActive(i)} onDelete={() => removeSlide(i)} showDelete={total > 1} />
-      ))}
-      <button onClick={addSlide} style={{ flexShrink: 0, width: 48, height: 85, borderRadius: 7, border: '2px dashed rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Plus size={16} />
-      </button>
+      {genError && <p style={{ fontSize:11, color:'#fbbf24', background:'rgba(251,191,36,0.07)', border:'1px solid rgba(251,191,36,0.15)', borderRadius:8, padding:'8px 12px', margin:0 }}>{genError}</p>}
     </div>
   );
 
   const TABS = [
-    { id: 'text',  label: 'Text' },
-    { id: 'style', label: 'Style' },
-    { id: 'ai',    label: 'AI' },
+    { id:'text',   label:'Text',   icon: null },
+    { id:'design', label:'Design', icon: <Palette size={11} /> },
+    { id:'brand',  label:'Brand',  icon: <Shield size={11} /> },
+    { id:'badges', label:'Badges', icon: <Tag size={11} /> },
+    { id:'ai',     label:'AI',     icon: <Sparkles size={11} /> },
   ];
+
+  const tabPanel = () => {
+    if (activeTab==='text')   return renderTextPanel();
+    if (activeTab==='design') return renderDesignPanel();
+    if (activeTab==='brand')  return renderBrandPanel();
+    if (activeTab==='badges') return renderBadgesPanel();
+    if (activeTab==='ai')     return renderAIPanel();
+  };
 
   return (
     <>
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes tgIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
         .tg * { box-sizing:border-box; }
         .tg ::-webkit-scrollbar { display:none; }
-        /* desktop */
         .tg-d { display:none!important; }
         .tg-m { display:flex!important; }
         @media(min-width:768px) { .tg-d { display:flex!important; } .tg-m { display:none!important; } }
-        .tg-rtab { padding:7px 13px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; transition:all 0.15s; border:none; }
+        .tg-tab { padding:6px 10px; border-radius:7px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:11px; font-weight:700; transition:all 0.15s; border:none; display:flex; align-items:center; gap:4px; }
+        input[type=range] { height:4px; border-radius:2px; }
       `}</style>
 
       <div className="tg" onClick={onClose} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.88)', backdropFilter:'blur(14px)', fontFamily:"'DM Sans',sans-serif" }}>
@@ -449,12 +738,12 @@ export default function TikTokGenerator({ listing, onClose }) {
               <span style={{ color:'rgba(255,255,255,0.3)', fontSize:11, marginLeft:4 }}>{listing?.brand} {listing?.model} · {total} slides · 1080×1920</span>
             </div>
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => saveSingle(active)} disabled={dlIdx === active} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 13px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', opacity: dlIdx === active ? 0.5 : 1 }}>
-                {dlIdx === active ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }} /> : <Download size={12} />} This slide
+              <button onClick={() => saveSingle(active)} disabled={dlIdx===active} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 13px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', opacity: dlIdx===active?0.5:1 }}>
+                {dlIdx===active ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }} /> : <Download size={12} />} This slide
               </button>
-              <button onClick={saveAll} disabled={downloading} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:8, border:'none', background:'#e53935', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: downloading ? 0.6 : 1 }}>
+              <button onClick={saveAll} disabled={downloading} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:8, border:'none', background:'#e53935', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: downloading?0.6:1 }}>
                 {downloading ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }} /> : <Download size={12} />}
-                {downloading ? 'Packing…' : isIOS() ? 'Save All' : 'Export ZIP (' + total + ')'}
+                {downloading ? 'Packing…' : isIOS() ? 'Save All' : `Export ZIP (${total})`}
               </button>
               <button onClick={onClose} style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer' }}><X size={15} /></button>
             </div>
@@ -463,96 +752,86 @@ export default function TikTokGenerator({ listing, onClose }) {
           {/* 3-column body */}
           <div style={{ flex:1, display:'flex', overflow:'hidden', minHeight:0 }}>
 
-            {/* Left: filmstrip */}
-            <div style={{ width:78, background:'#060610', borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', padding:'12px 15px', gap:0, overflowY:'auto', flexShrink:0 }}>
+            {/* Left filmstrip */}
+            <div style={{ width:78, background:'#060610', borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', padding:'12px 15px', overflowY:'auto', flexShrink:0 }}>
               <p style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.18)', marginBottom:10, marginTop:0 }}>Slides</p>
               <div ref={filmRef} style={{ display:'flex', flexDirection:'column', gap:8, overflow:'auto', flex:1, scrollbarWidth:'none' }}>
                 {slides.map((s, i) => (
-                  <Thumb key={s.id ?? i} slide={s} fontId={font} isActive={i === active} index={i} onClick={() => setActive(i)} onDelete={() => removeSlide(i)} showDelete={total > 1} />
+                  <Thumb key={s.id??i} slide={s} theme={theme} fontId={font} isActive={i===active} index={i} onClick={() => setActive(i)} onDelete={() => removeSlide(i)} showDelete={total>1} />
                 ))}
                 <button onClick={addSlide} style={{ flexShrink:0, width:48, height:85, borderRadius:7, border:'2px dashed rgba(255,255,255,0.14)', background:'rgba(255,255,255,0.02)', color:'rgba(255,255,255,0.3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Plus size={16} /></button>
               </div>
             </div>
 
-            {/* Center: canvas */}
+            {/* Centre canvas */}
             <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#070711', gap:14, padding:'24px 20px', position:'relative' }}>
               <div style={{ aspectRatio:'9/16', height:'min(calc(100dvh - 200px), 520px)', borderRadius:14, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.8)', flexShrink:0 }}>
-                <SlideCanvas slide={slide} watermark={dealership} fontId={font} width={540} height={960} />
+                <SlideCanvas slide={slide} theme={theme} fontId={font} width={540} height={960} />
               </div>
-              <button onClick={() => setActive(i => Math.max(0, i-1))} disabled={active===0} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:34, height:34, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===0 ? 0.15 : 0.7 }}><ChevronLeft size={17} /></button>
-              <button onClick={() => setActive(i => Math.min(total-1, i+1))} disabled={active===total-1} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', width:34, height:34, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===total-1 ? 0.15 : 0.7 }}><ChevronRight size={17} /></button>
+              <button onClick={() => setActive(i => Math.max(0,i-1))} disabled={active===0} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:34, height:34, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===0?0.15:0.7 }}><ChevronLeft size={17} /></button>
+              <button onClick={() => setActive(i => Math.min(total-1,i+1))} disabled={active===total-1} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', width:34, height:34, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===total-1?0.15:0.7 }}><ChevronRight size={17} /></button>
               <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>Slide {active+1} of {total}</div>
             </div>
 
-            {/* Right: edit panel */}
-            <div style={{ width:310, background:'#0c0c16', borderLeft:'1px solid rgba(255,255,255,0.07)', display:'flex', flexDirection:'column', flexShrink:0 }}>
-              {/* Tab row */}
-              <div style={{ display:'flex', gap:4, padding:'11px 14px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
-                {TABS.map(({ id, label }) => (
-                  <button key={id} className="tg-rtab" onClick={() => setActiveTab(id)} style={{ background: activeTab===id ? 'rgba(229,57,53,0.12)' : 'rgba(255,255,255,0.03)', border: `1px solid ${activeTab===id ? 'rgba(229,57,53,0.4)' : 'rgba(255,255,255,0.07)'}`, color: activeTab===id ? '#e53935' : 'rgba(255,255,255,0.38)' }}>{label}</button>
+            {/* Right panel */}
+            <div style={{ width:320, background:'#0c0c16', borderLeft:'1px solid rgba(255,255,255,0.07)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+              {/* 5 tabs */}
+              <div style={{ display:'flex', gap:3, padding:'10px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0, flexWrap:'wrap' }}>
+                {TABS.map(({ id, label, icon }) => (
+                  <button key={id} className="tg-tab" onClick={() => setActiveTab(id)} style={{ background: activeTab===id?'rgba(229,57,53,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${activeTab===id?'rgba(229,57,53,0.4)':'rgba(255,255,255,0.07)'}`, color: activeTab===id?'#e53935':'rgba(255,255,255,0.38)' }}>
+                    {icon}{label}
+                  </button>
                 ))}
               </div>
-              <div style={{ flex:1, overflowY:'auto', padding:'18px 16px' }}>
-                {activeTab === 'text'  && renderTextPanel()}
-                {activeTab === 'style' && renderStylePanel()}
-                {activeTab === 'ai'    && renderAIPanel()}
+              <div style={{ flex:1, overflowY:'auto', padding:'16px 14px' }}>
+                {tabPanel()}
               </div>
             </div>
-
           </div>
         </div>
 
         {/* ══ MOBILE ══ */}
         <div className="tg-m" onClick={e => e.stopPropagation()} style={{ position:'fixed', inset:0, flexDirection:'column', background:'#08080f', animation:'tgIn 0.25s ease' }}>
-
-          {/* Top bar */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0c0c16', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
             <button onClick={onClose} style={{ width:32, height:32, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={16} /></button>
             <span style={{ color:'#fff', fontWeight:700, fontSize:13 }}>Slide {active+1}/{total}</span>
-            <button onClick={saveAll} disabled={downloading} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 12px', borderRadius:8, border:'none', background:'#e53935', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: downloading ? 0.6 : 1 }}>
+            <button onClick={saveAll} disabled={downloading} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 12px', borderRadius:8, border:'none', background:'#e53935', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: downloading?0.6:1 }}>
               {downloading ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }} /> : <Download size={12} />}
               {downloading ? '…' : isIOS() ? 'Save' : 'ZIP'}
             </button>
           </div>
 
-          {/* Canvas */}
           <div style={{ flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center', background:'#060610', padding:'12px 16px', position:'relative' }}>
             <div style={{ position:'relative' }}>
               <div style={{ width:138, height:245, borderRadius:10, overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.7)' }}>
-                <SlideCanvas slide={slide} watermark={dealership} fontId={font} width={276} height={490} />
+                <SlideCanvas slide={slide} theme={theme} fontId={font} width={276} height={490} />
               </div>
               <button onClick={() => saveSingle(active)} disabled={dlIdx===active} style={{ position:'absolute', bottom:5, right:5, width:24, height:24, borderRadius:'50%', background:'rgba(0,0,0,0.7)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {dlIdx===active ? <Loader2 size={9} style={{ animation:'spin 1s linear infinite' }} /> : <Download size={9} />}
               </button>
             </div>
-            <button onClick={() => setActive(i => Math.max(0, i-1))} disabled={active===0} style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===0 ? 0.15 : 0.7 }}><ChevronLeft size={14} /></button>
-            <button onClick={() => setActive(i => Math.min(total-1, i+1))} disabled={active===total-1} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===total-1 ? 0.15 : 0.7 }}><ChevronRight size={14} /></button>
+            <button onClick={() => setActive(i => Math.max(0,i-1))} disabled={active===0} style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===0?0.15:0.7 }}><ChevronLeft size={14} /></button>
+            <button onClick={() => setActive(i => Math.min(total-1,i+1))} disabled={active===total-1} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', width:28, height:28, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: active===total-1?0.15:0.7 }}><ChevronRight size={14} /></button>
           </div>
 
-          {/* Horizontal filmstrip */}
           <div ref={filmRef} style={{ flexShrink:0, display:'flex', gap:8, overflowX:'auto', padding:'8px 14px', background:'#060610', borderBottom:'1px solid rgba(255,255,255,0.06)', scrollbarWidth:'none', alignItems:'center' }}>
             {slides.map((s, i) => (
-              <Thumb key={s.id ?? i} slide={s} fontId={font} isActive={i === active} index={i} onClick={() => setActive(i)} onDelete={() => removeSlide(i)} showDelete={total > 1} />
+              <Thumb key={s.id??i} slide={s} theme={theme} fontId={font} isActive={i===active} index={i} onClick={() => setActive(i)} onDelete={() => removeSlide(i)} showDelete={total>1} />
             ))}
             <button onClick={addSlide} style={{ flexShrink:0, width:48, height:85, borderRadius:7, border:'2px dashed rgba(255,255,255,0.14)', background:'rgba(255,255,255,0.02)', color:'rgba(255,255,255,0.3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Plus size={16} /></button>
           </div>
 
-          {/* Tab bar */}
-          <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'#0c0c16', flexShrink:0 }}>
-            {TABS.map(({ id, label }) => (
-              <button key={id} onClick={() => setActiveTab(id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'9px 4px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom: activeTab===id ? '2px solid #e53935' : '2px solid transparent', color: activeTab===id ? '#e53935' : 'rgba(255,255,255,0.28)', transition:'color 0.15s' }}>
-                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.04em' }}>{label}</span>
+          <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'#0c0c16', flexShrink:0, overflowX:'auto' }}>
+            {TABS.map(({ id, label, icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)} style={{ flex:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'8px 12px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom: activeTab===id?'2px solid #e53935':'2px solid transparent', color: activeTab===id?'#e53935':'rgba(255,255,255,0.28)', transition:'color 0.15s', whiteSpace:'nowrap' }}>
+                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:3 }}>{icon}{label}</span>
               </button>
             ))}
           </div>
 
-          {/* Scrollable panel */}
           <div style={{ flex:1, overflowY:'auto', padding:'16px 14px', overscrollBehavior:'contain' }}>
-            {activeTab === 'text'  && renderTextPanel()}
-            {activeTab === 'style' && renderStylePanel()}
-            {activeTab === 'ai'    && renderAIPanel()}
+            {tabPanel()}
           </div>
-
         </div>
       </div>
     </>
