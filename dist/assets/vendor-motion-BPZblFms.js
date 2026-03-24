@@ -1,4 +1,4 @@
-import{r as x}from"./vendor-react-A3Kl3h55.js";var Ds={exports:{}},Ht={};/**
+import{r as x}from"./vendor-react-COT-2E4i.js";var Ds={exports:{}},Ht={};/**
  * @license React
  * react-jsx-runtime.production.min.js
  *

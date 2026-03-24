@@ -341,7 +341,7 @@ export default function TikTokGenerator({ listing, onClose }) {
   const focusOut = e => e.target.style.borderColor = 'rgba(255,255,255,0.1)';
   const lbl = { fontSize: 10, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: 5, fontFamily: 'inherit' };
 
-  const TextPanel = () => (
+  const renderTextPanel = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -354,13 +354,13 @@ export default function TikTokGenerator({ listing, onClose }) {
           </button>
         )}
       </div>
-      <div><span style={lbl}>Line 1 — Brand / Model</span><input key={'hl-' + active} defaultValue={slide.headline || ''} onChange={e => patch('headline', e.target.value)} placeholder="e.g. BMW M4 Competition" style={inpStyle(true)} onFocus={focusIn} onBlur={focusOut} /></div>
-      <div><span style={lbl}>Line 2 — Price / Hook</span><input key={'bl-' + active} defaultValue={slide.bottomLeft || ''} onChange={e => patch('bottomLeft', e.target.value)} placeholder="e.g. RM 189,800" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
-      <div><span style={lbl}>Line 3 — Specs</span><input key={'br-' + active} defaultValue={slide.bottomRight || ''} onChange={e => patch('bottomRight', e.target.value)} placeholder="e.g. 2023 · Recon · 28k km" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 1 — Brand / Model</span><input value={slide.headline || ''} onChange={e => patch('headline', e.target.value)} placeholder="e.g. BMW M4 Competition" style={inpStyle(true)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 2 — Price / Hook</span><input value={slide.bottomLeft || ''} onChange={e => patch('bottomLeft', e.target.value)} placeholder="e.g. RM 189,800" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
+      <div><span style={lbl}>Line 3 — Specs</span><input value={slide.bottomRight || ''} onChange={e => patch('bottomRight', e.target.value)} placeholder="e.g. 2023 · Recon · 28k km" style={inpStyle(false)} onFocus={focusIn} onBlur={focusOut} /></div>
     </div>
   );
 
-  const StylePanel = () => (
+  const renderStylePanel = () => (
     <div>
       <span style={lbl}>Font</span>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
@@ -378,7 +378,7 @@ export default function TikTokGenerator({ listing, onClose }) {
     </div>
   );
 
-  const AIPanel = () => (
+  const renderAIPanel = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 6 }}>
         {['en', 'bm'].map(l => (
@@ -415,9 +415,9 @@ export default function TikTokGenerator({ listing, onClose }) {
   );
 
   const TABS = [
-    { id: 'text',  label: 'Text',  Component: TextPanel  },
-    { id: 'style', label: 'Style', Component: StylePanel },
-    { id: 'ai',    label: 'AI',    Component: AIPanel    },
+    { id: 'text',  label: 'Text' },
+    { id: 'style', label: 'Style' },
+    { id: 'ai',    label: 'AI' },
   ];
 
   return (
@@ -493,9 +493,9 @@ export default function TikTokGenerator({ listing, onClose }) {
                 ))}
               </div>
               <div style={{ flex:1, overflowY:'auto', padding:'18px 16px' }}>
-                {activeTab === 'text'  && <TextPanel />}
-                {activeTab === 'style' && <StylePanel />}
-                {activeTab === 'ai'    && <AIPanel />}
+                {activeTab === 'text'  && renderTextPanel()}
+                {activeTab === 'style' && renderStylePanel()}
+                {activeTab === 'ai'    && renderAIPanel()}
               </div>
             </div>
 
@@ -548,9 +548,9 @@ export default function TikTokGenerator({ listing, onClose }) {
 
           {/* Scrollable panel */}
           <div style={{ flex:1, overflowY:'auto', padding:'16px 14px', overscrollBehavior:'contain' }}>
-            {activeTab === 'text'  && <TextPanel />}
-            {activeTab === 'style' && <StylePanel />}
-            {activeTab === 'ai'    && <AIPanel />}
+            {activeTab === 'text'  && renderTextPanel()}
+            {activeTab === 'style' && renderStylePanel()}
+            {activeTab === 'ai'    && renderAIPanel()}
           </div>
 
         </div>

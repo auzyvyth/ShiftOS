@@ -196,6 +196,21 @@
       "tip4Content5": "Lower, more manageable monthly payments, but you will pay significantly more in total interest over the loan's lifetime."
     }
   },
+  "login": {
+    "meta": {
+      "title": "ShiftOS · Login"
+    }
+  },
+  "salesman": {
+    "meta": {
+      "title": "ShiftOS · My Panel"
+    }
+  },
+  "dashboard": {
+    "meta": {
+      "title": "ShiftOS — Admin"
+    }
+  },
   "footer": {
     "tagline": "Find Your Perfect Car",
     "quickLinks": "Quick Links",
