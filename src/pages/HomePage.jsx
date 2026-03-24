@@ -91,12 +91,16 @@ const HomePage = () => {
   const [hotDeals,  setHotDeals]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [stock,     setStock]     = useState(0);
+  // ── Live sold count ───────────────────────────────────────────────────────
+  const [soldCount, setSoldCount] = useState(null); // null = loading, number = live
+  // ─────────────────────────────────────────────────────────────────────────
   const [brand,     setBrand]     = useState('');
   const [bodyType,  setBodyType]  = useState('');
   const [maxPrice,  setMaxPrice]  = useState('');
 
   useEffect(() => {
-    let ch;
+    let ch, soldCh;
+
     const load = async () => {
       const { data, error, count } = await supabase
         .from('car_listings')
@@ -115,9 +119,32 @@ const HomePage = () => {
       }
       setLoading(false);
     };
+
+    // Fetch live sold count
+    const fetchSoldCount = async () => {
+      const { count } = await supabase
+        .from('car_listings')
+        .select('id', { count:'exact', head:true })
+        .eq('status','sold');
+      setSoldCount(count || 0);
+    };
+
     load();
-    ch = supabase.channel('home').on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},load).subscribe();
-    return () => { if (ch) supabase.removeChannel(ch); };
+    fetchSoldCount();
+
+    ch = supabase.channel('home')
+      .on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},load)
+      .subscribe();
+
+    // Subscribe to sold count changes separately for instant homepage update
+    soldCh = supabase.channel('home_sold')
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'car_listings'},fetchSoldCount)
+      .subscribe();
+
+    return () => {
+      if (ch) supabase.removeChannel(ch);
+      if (soldCh) supabase.removeChannel(soldCh);
+    };
   }, []);
 
   const searchUrl = () => {
@@ -148,6 +175,11 @@ const HomePage = () => {
     { name:'Siti Norzahira', loc:'Selangor',     text:'Zero pressure, honest advice, best price in town. Will definitely come back.',  r:5 },
     { name:'Rajendran K.',   loc:'Penang',       text:'Found my perfect car in 3 days and saved thousands. Highly recommended.',        r:5 },
   ];
+
+  // ── Derived sold display string ───────────────────────────────────────────
+  // Shows live count if > 0, else falls back to '500+' until data loads
+  const soldDisplay = soldCount !== null && soldCount > 0 ? `${soldCount}+` : soldCount === 0 ? '0' : '500+';
+  // ─────────────────────────────────────────────────────────────────────────
 
   const SHead = ({ eyebrow, title, eyebrowColor='#dc2626', right, icon:Icon }) => (
     <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:'40px' }}>
@@ -212,7 +244,6 @@ const HomePage = () => {
 
       {/* ══════════ HERO ══════════ */}
       <section style={{ position:'relative', minHeight:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', background:'#080C14', overflow:'hidden', paddingBottom:'0' }}>
-        {/* BG */}
         <div style={{ position:'absolute', inset:0, zIndex:0 }}>
           <img src={HERO_IMG} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 30%', opacity:0.28 }}/>
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(8,12,20,0.97) 25%,rgba(8,12,20,0.65) 60%,rgba(8,12,20,0.25) 100%)' }}/>
@@ -251,9 +282,9 @@ const HomePage = () => {
             <div style={{ background:'rgba(10,14,24,0.9)', backdropFilter:'blur(24px)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'16px 16px 0 0', padding:'18px 18px 18px' }}>
               <div className="search-grid-hp" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:'10px' }}>
                 {[
-                  { label:'Brand',  Icon:Search,   value:brand,    set:setBrand,    opts:BRANDS,     ph:'All Brands' },
-                  { label:'Type',   Icon:Zap,      value:bodyType, set:setBodyType, opts:BODY_TYPES,  ph:'All Types'  },
-                  { label:'Budget', Icon:DollarSign,value:maxPrice,set:setMaxPrice, opts:null,        ph:'Any Price'  },
+                  { label:'Brand',  Icon:Search,    value:brand,    set:setBrand,    opts:BRANDS,     ph:'All Brands' },
+                  { label:'Type',   Icon:Zap,       value:bodyType, set:setBodyType, opts:BODY_TYPES,  ph:'All Types'  },
+                  { label:'Budget', Icon:DollarSign, value:maxPrice, set:setMaxPrice, opts:null,       ph:'Any Price'  },
                 ].map(f => (
                   <div key={f.label} className="search-wrap" style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'12px 14px', transition:'border-color 0.2s' }}>
                     <f.Icon size={14} style={{ color:'#4b5563', flexShrink:0 }}/>
@@ -279,9 +310,9 @@ const HomePage = () => {
             {/* Trust strip */}
             <div className="stats-flex" style={{ display:'flex', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderTop:'none', borderRadius:'0 0 16px 16px' }}>
               {[
-                { v: stock>0?`${stock}+`:'50+', l:'Cars Available'     },
-                { v:'< 1 Hour',                 l:'WhatsApp Response'  },
-                { v:'100%',                     l:'Verified Listings'  },
+                { v: stock>0?`${stock}+`:'50+', l:'Cars Available'    },
+                { v:'< 1 Hour',                  l:'WhatsApp Response' },
+                { v:'100%',                      l:'Verified Listings' },
               ].map((item,i,arr)=>(
                 <div key={i} style={{ flex:1, textAlign:'center', padding:'14px 10px', borderRight:i<arr.length-1?'1px solid rgba(255,255,255,0.05)':'none' }}>
                   <p style={{ color:'white', fontSize:'13px', fontWeight:'700', margin:'0 0 2px 0' }}>{item.v}</p>
@@ -350,14 +381,15 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ STATS ══════════ */}
+      {/* ══════════ STATS — live sold count ══════════ */}
       <section style={{ background:'#0a0e18', borderTop:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
         <div style={wrap}>
           <div className="stats-flex" style={{ display:'flex' }}>
             {[
-              { Icon:Users,  v:'500+', l:'Cars Sold'        },
-              { Icon:Star,   v:'4.9★', l:'Customer Rating'  },
-              { Icon:Shield, v:'RM 0', l:'Consultation Fee' },
+              // ── soldDisplay is the live Supabase count ──────────────────
+              { Icon:Users,  v:soldDisplay, l:'Cars Sold'        },
+              { Icon:Star,   v:'4.9★',      l:'Customer Rating'  },
+              { Icon:Shield, v:'RM 0',      l:'Consultation Fee' },
             ].map((s,i,arr)=>(
               <FadeIn key={i} delay={i*0.1} style={{ flex:1 }}>
                 <div style={{ textAlign:'center', padding:'36px 20px', borderRight:i<arr.length-1?'1px solid rgba(255,255,255,0.05)':'none' }}>

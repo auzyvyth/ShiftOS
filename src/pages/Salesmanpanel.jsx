@@ -1,22 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import { LogOut, Link, Copy, Check, Eye, MessageSquare, ShoppingBag, Clock, AlertCircle } from 'lucide-react';
 
 export default function SalesmanPanel() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-
-  const stats = {
-    clicks: 0,
-    enquiries: 0,
-    sales: 0,
-  };
+  const { t } = useTranslation();
+  const [profile,    setProfile]    = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [copied,     setCopied]     = useState(false);
+  // ── Live sold count for the dealership ─────────────────────────────────
+  const [soldCount,  setSoldCount]  = useState(0);
+  const [soldLoading,setSoldLoading]= useState(true);
+  // ───────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    document.title = 'ShiftOS · My Panel';
+    document.title = t('salesman.meta.title', { defaultValue: 'ShiftOS · My Panel' });
+  }, [t]);
+
+  useEffect(() => {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error || !data.session) { navigate('/login'); return; }
 
@@ -34,6 +37,30 @@ export default function SalesmanPanel() {
       setLoading(false);
     });
   }, [navigate]);
+
+  // ── Fetch + subscribe to live sold count ────────────────────────────────
+  useEffect(() => {
+    const fetchSold = async () => {
+      setSoldLoading(true);
+      const { count } = await supabase
+        .from('car_listings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'sold');
+      setSoldCount(count || 0);
+      setSoldLoading(false);
+    };
+
+    fetchSold();
+
+    // Real-time: re-count whenever any listing changes status
+    const ch = supabase
+      .channel('salesman_sold')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'car_listings' }, fetchSold)
+      .subscribe();
+
+    return () => supabase.removeChannel(ch);
+  }, []);
+  // ───────────────────────────────────────────────────────────────────────
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -108,29 +135,37 @@ export default function SalesmanPanel() {
           )}
         </div>
 
-        {/* Stats */}
+        {/* Stats — Sales Closed is now live */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
             <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
               <Eye className="w-4 h-4 text-blue-400" />
             </div>
-            <p className="text-2xl font-bold text-white">{stats.clicks}</p>
+            <p className="text-2xl font-bold text-white">0</p>
             <p className="text-xs text-gray-500 mt-1">Link Clicks</p>
           </div>
+
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
             <div className="w-8 h-8 bg-yellow-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
               <MessageSquare className="w-4 h-4 text-yellow-400" />
             </div>
-            <p className="text-2xl font-bold text-white">{stats.enquiries}</p>
+            <p className="text-2xl font-bold text-white">0</p>
             <p className="text-xs text-gray-500 mt-1">Enquiries</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="w-8 h-8 bg-green-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+
+          {/* ── Live sold count card ───────────────────────────────────── */}
+          <div className="rounded-xl p-4 text-center" style={{ background:'rgba(22,163,74,0.06)', border:'1px solid rgba(22,163,74,0.2)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ background:'rgba(22,163,74,0.15)' }}>
               <ShoppingBag className="w-4 h-4 text-green-400" />
             </div>
-            <p className="text-2xl font-bold text-white">{stats.sales}</p>
-            <p className="text-xs text-gray-500 mt-1">Sales Closed</p>
+            {soldLoading ? (
+              <div className="w-5 h-5 border-2 border-green-600/30 border-t-green-400 rounded-full animate-spin mx-auto my-1"/>
+            ) : (
+              <p className="text-2xl font-bold text-green-400">{soldCount}</p>
+            )}
+            <p className="text-xs mt-1" style={{ color:'rgba(74,222,128,0.6)' }}>Cars Sold</p>
           </div>
+          {/* ─────────────────────────────────────────────────────────── */}
         </div>
 
         {/* Unique link */}
