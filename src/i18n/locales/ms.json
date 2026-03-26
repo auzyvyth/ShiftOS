@@ -1,224 +1,223 @@
-
 {
   "nav": {
-    "home": "Laman Utama",
-    "browseCars": "Semak Kereta",
-    "calculator": "Kalkulator",
-    "howItWorks": "Cara Berfungsi",
-    "contact": "Hubungi",
-    "dashboard": "Papan Pemuka",
-    "login": "Log Masuk"
+    "home": "Home",
+    "browseCars": "Browse Used Cars",
+    "calculator": "Car Loan Calculator",
+    "howItWorks": "How It Works",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "login": "Login"
   },
   "common": {
-    "viewDetails": "Lihat Butiran",
-    "whatsappAboutCar": "WhatsApp Tentang Kereta Ini",
-    "whatsappUs": "WhatsApp Kami",
-    "needHelp": "Perlukan Bantuan? WhatsApp Saya",
-    "callNow": "Hubungi Sekarang",
-    "loadMore": "Muatkan Lebih Banyak Kereta",
-    "resetAll": "Set Semula Semua",
-    "applyFilters": "Gunakan Penapis",
+    "viewDetails": "View Car Details",
+    "whatsappAboutCar": "WhatsApp About This Car",
+    "whatsappUs": "WhatsApp Us",
+    "needHelp": "Need Help Buying a Car? WhatsApp Me",
+    "callNow": "Call Now",
+    "loadMore": "Load More Used Cars",
+    "resetAll": "Reset All",
+    "applyFilters": "Apply Filters",
     "badges": {
-      "HOT DEAL": "TAWARAN HEBAT",
-      "NEW": "BARU",
-      "PRICE DROP": "TURUN HARGA"
+      "HOT DEAL": "HOT DEAL",
+      "NEW": "NEW",
+      "PRICE DROP": "PRICE DROP"
     },
     "rm": "RM"
   },
   "home": {
     "hero": {
-      "headline": "Cari Kereta Idaman Anda dari",
-      "highlight": "200+ Senarai Disahkan",
-      "subheadline": "Tiada Caj Tersembunyi. Tiada Tekanan Wakil Jualan. Hanya Tawaran Jujur.",
-      "browseBtn": "Semak Semua Kereta",
-      "chatBtn": "Sembang di WhatsApp"
+      "headline": "Buy Used Cars in Malaysia from a Trusted Dealer —",
+      "highlight": "200+ Verified Listings",
+      "subheadline": "No Hidden Fees. No Dealer Pressure. Honest Used Car Deals Across Malaysia.",
+      "browseBtn": "Browse All Used Cars",
+      "chatBtn": "Chat on WhatsApp"
     },
     "trust": {
-      "carsSold": "Kereta Terjual",
-      "bestPrice": "Jaminan",
-      "guarantee": "Harga Terbaik",
-      "free": "Rundingan",
-      "consultation": "Percuma"
+      "carsSold": "Cars Sold",
+      "bestPrice": "Best Price",
+      "guarantee": "Guarantee",
+      "free": "Free",
+      "consultation": "Consultation"
     },
     "testimonials": {
-      "title": "Apa Kata Pelanggan Kami",
-      "subtitle": "Kisah benar dari orang sebenar"
+      "title": "What Our Customers Say About XDrive",
+      "subtitle": "Real stories from real Malaysian car buyers"
     },
     "hotDeals": {
-      "title": "Tawaran Hebat Minggu Ini",
-      "subtitle": "Jangan lepaskan tawaran luar biasa ini",
-      "viewAllBtn": "Lihat Semua Kereta"
+      "title": "Hot Used Car Deals This Week",
+      "subtitle": "Verified used cars at the best prices in Malaysia — updated weekly",
+      "viewAllBtn": "View All Used Cars"
     },
     "howItWorks": {
-      "title": "Cara Berfungsi",
-      "subtitle": "Mudah, telus, dan bebas tekanan",
-      "step1": "Semak Senarai Disahkan",
-      "step2": "Mesej Tentang Kereta",
-      "step3": "Saya Runding Harga Terbaik",
-      "step4": "Anda Pandu Pulang Gembira"
+      "title": "How to Buy a Used Car Through XDrive",
+      "subtitle": "Simple, transparent, and stress-free — no pushy salesmen",
+      "step1": "Browse Verified Used Car Listings",
+      "step2": "WhatsApp Us About Any Car",
+      "step3": "We Negotiate the Best Price For You",
+      "step4": "You Drive Away Happy"
     },
     "whyChoose": {
-      "title": "Mengapa Pilih XDrive?",
-      "subtitle": "Kami berbeza daripada platform kereta lain",
-      "benefit1Title": "Akses Tawaran Tersembunyi",
-      "benefit1Desc": "Dapatkan akses eksklusif kepada kereta sebelum ia memasuki pasaran",
-      "benefit2Title": "Rundingan Pakar",
-      "benefit2Desc": "Saya berunding bagi pihak anda untuk mendapatkan harga terbaik",
-      "benefit3Title": "Perlindungan Penipuan",
-      "benefit3Desc": "Setiap kereta disahkan dan diperiksa ketulenannya",
-      "benefit4Title": "Tiada Yuran",
-      "benefit4Desc": "Perkhidmatan saya adalah percuma sepenuhnya untuk pembeli kereta"
+      "title": "Why Buy Your Used Car Through XDrive?",
+      "subtitle": "Malaysia's trusted used car platform — different from other classifieds",
+      "benefit1Title": "Access to Off-Market Deals",
+      "benefit1Desc": "Get exclusive access to used cars before they're listed publicly — deals other buyers miss",
+      "benefit2Title": "Expert Price Negotiation",
+      "benefit2Desc": "We negotiate with dealers on your behalf to secure the lowest price possible",
+      "benefit3Title": "Scam & Fraud Protection",
+      "benefit3Desc": "Every listing is verified and inspected — no clone cars, no odometer fraud",
+      "benefit4Title": "100% Free for Buyers",
+      "benefit4Desc": "Our car buying service is completely free — no commission, no hidden charges"
     },
     "budget": {
-      "title": "Ketahui Bajet Anda",
-      "subtitle": "Gunakan kalkulator pembiayaan kami untuk menganggar ansuran bulanan kereta anda, bandingkan tempoh pinjaman, dan rancang bajet anda sebelum membeli.",
-      "calcBtn": "Kira Bayaran Anda"
+      "title": "Calculate Your Car Loan Repayment",
+      "subtitle": "Use our free Malaysia car loan calculator to estimate your monthly hire purchase installment, compare loan tenures, and plan your budget before you commit.",
+      "calcBtn": "Calculate My Monthly Payment"
     },
     "cta": {
-      "title": "Bersedia Mencari Kereta Idaman Anda?",
-      "subtitle": "Biar saya bantu anda mencari kereta sempurna pada harga terbaik. Tiada tekanan, tiada kerumitan.",
-      "browseBtn": "Semak Semua Kereta",
-      "whatsappBtn": "WhatsApp Saya Sekarang"
+      "title": "Ready to Find Your Next Car in Malaysia?",
+      "subtitle": "Let us help you find a verified used car at the best price — no pressure, no hidden fees.",
+      "browseBtn": "Browse All Used Cars",
+      "whatsappBtn": "WhatsApp Us Now"
     }
   },
   "cars": {
     "header": {
-      "title": "Semak Kereta Kami",
-      "subtitle": "200+ senarai disahkan dikemas kini setiap hari"
+      "title": "Browse Used Cars in Malaysia",
+      "subtitle": "200+ verified used car listings updated daily — Peninsular Malaysia"
     },
     "filters": {
-      "show": "Tunjuk Penapis",
-      "hide": "Sembunyi Penapis",
-      "title": "Penapis",
-      "priceRange": "Julat Harga",
-      "brand": "Jenama",
-      "year": "Tahun",
-      "allYears": "Semua Tahun",
-      "bodyType": "Jenis Badan",
-      "transmission": "Transmisi",
-      "location": "Lokasi",
-      "allLocations": "Semua Lokasi"
+      "show": "Show Filters",
+      "hide": "Hide Filters",
+      "title": "Filter Used Cars",
+      "priceRange": "Price Range (RM)",
+      "brand": "Car Brand",
+      "year": "Year",
+      "allYears": "All Years",
+      "bodyType": "Body Type",
+      "transmission": "Transmission",
+      "location": "Location",
+      "allLocations": "All Malaysia"
     },
     "sort": {
-      "label": "Susun ikut:",
-      "newest": "Terbaru",
-      "priceLow": "Harga: Rendah ke Tinggi",
-      "priceHigh": "Harga: Tinggi ke Rendah"
+      "label": "Sort by:",
+      "newest": "Newest Listings",
+      "priceLow": "Price: Low to High",
+      "priceHigh": "Price: High to Low"
     },
     "results": {
-      "found": "kereta ditemui",
-      "empty": "Tiada kereta ditemui yang sepadan dengan penapis anda",
-      "resetBtn": "Set Semula Penapis"
+      "found": "used cars found",
+      "empty": "No used cars found matching your filters",
+      "resetBtn": "Reset Filters"
     }
   },
   "carDetail": {
     "specs": {
-      "mileage": "Jarak Perbatuan",
-      "transmission": "Transmisi",
-      "year": "Tahun",
-      "ownership": "Pemilikan"
+      "mileage": "Mileage",
+      "transmission": "Transmission",
+      "year": "Year",
+      "ownership": "Ownership"
     },
-    "aboutTitle": "Tentang Kereta Ini",
+    "aboutTitle": "About This Used Car",
     "sidebar": {
-      "interested": "Berminat dengan kereta ini?",
-      "calcBtn": "Kira Bayaran Anda",
-      "responseTime": "Masa maklum balas: Biasanya dalam masa 5 minit",
-      "whyContact": "Mengapa hubungi saya?",
-      "benefit1": "Saya berunding harga terbaik untuk anda",
-      "benefit2": "Nasihat pemeriksaan kereta percuma",
-      "benefit3": "Tiada caj atau yuran tersembunyi",
-      "benefit4": "Maklum balas pantas & jujur"
+      "interested": "Interested in this car?",
+      "calcBtn": "Calculate My Monthly Loan Payment",
+      "responseTime": "Response time: Usually within 5 minutes",
+      "whyContact": "Why buy through XDrive?",
+      "benefit1": "We negotiate the best price with the dealer for you",
+      "benefit2": "Free Puspakom inspection advice",
+      "benefit3": "No hidden fees or agent charges",
+      "benefit4": "Fast, honest response — no runaround"
     },
-    "similar": "Anda Mungkin Juga Suka"
+    "similar": "You Might Also Like"
   },
   "calculator": {
     "header": {
-      "title": "Kalkulator Pembiayaan Kereta",
-      "subtitle": "Kira bayaran bulanan kereta anda dalam beberapa saat. Rancang bajet anda sebelum membeli."
+      "title": "Malaysia Car Loan Calculator (Hire Purchase)",
+      "subtitle": "Calculate your monthly hire purchase installment instantly. Free car loan calculator for used and new cars in Malaysia."
     },
     "inputs": {
-      "title": "Parameter Pinjaman",
-      "price": "Harga Kereta (RM)",
-      "downPayment": "Wang Pendahuluan",
-      "loanTerm": "Tempoh Pinjaman",
-      "interestRate": "Kadar Faedah",
-      "years": "Tahun",
-      "year": "Tahun"
+      "title": "Loan Details",
+      "price": "Car Price (RM)",
+      "downPayment": "Down Payment (RM)",
+      "loanTerm": "Loan Tenure",
+      "interestRate": "Interest Rate (% p.a.)",
+      "years": "Years",
+      "year": "Year"
     },
     "errors": {
-      "price": "Harga kereta mesti melebihi 0.",
-      "downPaymentNegative": "Wang pendahuluan tidak boleh negatif.",
-      "downPaymentExcess": "Wang pendahuluan mesti kurang daripada harga kereta.",
-      "loanTerm": "Tempoh pinjaman mesti antara 1 dan 15 tahun.",
-      "interestRate": "Kadar faedah mesti antara 0.1% dan 20%."
+      "price": "Car price must be greater than 0.",
+      "downPaymentNegative": "Down payment cannot be negative.",
+      "downPaymentExcess": "Down payment must be less than the car price.",
+      "loanTerm": "Loan term must be between 1 and 15 years.",
+      "interestRate": "Interest rate must be between 0.1% and 20%."
     },
     "results": {
-      "monthly": "Anggaran Ansuran Bulanan",
-      "mo": "/bln",
-      "principal": "Jumlah Pinjaman Pokok",
-      "totalInterest": "Jumlah Faedah Dikenakan",
-      "totalRepay": "Jumlah Pinjaman Perlu Dibayar",
-      "preApprovedBtn": "Dapatkan Pra-Kelulusan",
-      "findCarsBtn": "Cari Kereta Dalam Julat Harga Ini"
+      "monthly": "Estimated Monthly Installment",
+      "mo": "/mo",
+      "principal": "Principal Loan Amount",
+      "totalInterest": "Total Interest Payable",
+      "totalRepay": "Total Hire Purchase Repayment",
+      "preApprovedBtn": "Get Loan Pre-Approval",
+      "findCarsBtn": "Find Used Cars in This Budget"
     },
     "schedule": {
-      "title": "Jadual Pelunasan (Kadar Rata)",
-      "month": "Bulan",
-      "payment": "Bayaran",
-      "principal": "Pokok",
-      "interest": "Faedah",
-      "balance": "Baki"
+      "title": "Hire Purchase Amortization Schedule (Flat Rate)",
+      "month": "Month",
+      "payment": "Payment",
+      "principal": "Principal",
+      "interest": "Interest",
+      "balance": "Balance"
     },
     "tips": {
-      "title": "Tip Pembiayaan Berguna",
-      "tip1Title": "Apa yang mempengaruhi bayaran bulanan saya?",
-      "tip1Content1": "Bayaran bulanan kereta anda terutamanya ditentukan oleh tiga faktor:",
-      "tip1L1": "Jumlah Pinjaman: Harga kereta tolak wang pendahuluan anda.",
-      "tip1L2": "Kadar Faedah: Peratusan yang bank caj untuk meminjamkan wang kepada anda. Lebih rendah lebih baik.",
-      "tip1L3": "Tempoh Pinjaman: Berapa lama masa anda ambil untuk membayar balik pinjaman. Tempoh lebih panjang bermakna bayaran bulanan lebih rendah tetapi lebih banyak jumlah faedah dibayar dari masa ke masa.",
-      "tip2Title": "Kadar faedah biasa di Malaysia",
-      "tip2Content1": "Di Malaysia, kadar faedah pinjaman kereta (sewa beli) biasanya beroperasi pada asas kadar rata dan berkisar antara 2.5% hingga 4.5% untuk kereta baru, dan 3.0% hingga 8.0% untuk kereta terpakai, bergantung kepada:",
-      "tip2L1": "Umur dan keadaan kereta",
-      "tip2L2": "Kempen semasa bank peminjam",
-      "tip2L3": "Skor kredit peribadi anda (CTOS/CCRIS)",
-      "tip2L4": "Tempoh pinjaman (pinjaman lebih lama kadang-kadang mempunyai kadar lebih tinggi)",
-      "tip3Title": "Kelebihan wang pendahuluan yang lebih besar",
-      "tip3Content1": "Walaupun wang pendahuluan minimum di Malaysia biasanya 10%, meletakkan lebih banyak pendahuluan mempunyai beberapa kelebihan utama:",
-      "tip3L1": "Ansuran Bulanan Lebih Rendah: Mengurangkan beban kewangan bulanan anda.",
-      "tip3L2": "Kurang Faedah Dibayar: Anda meminjam kurang, bermakna anda membayar kurang jumlah faedah sepanjang tempoh pinjaman.",
-      "tip3L3": "Peluang Kelulusan Lebih Baik: Bank melihat anda sebagai peminjam berisiko lebih rendah.",
-      "tip3L4": "Elakkan Menjadi 'Under Water': Melindungi anda daripada berhutang lebih daripada nilai kereta semasa ia menyusut.",
-      "tip4Title": "Memilih tempoh pinjaman yang betul",
-      "tip4Content1": "Pinjaman kereta Malaysia biasanya berkisar antara 5 hingga 9 tahun (60 hingga 108 bulan).",
-      "tip4Content2": "Tempoh Lebih Pendek (cth., 5 tahun):",
-      "tip4Content3": "Bayaran bulanan lebih tinggi, tetapi anda melunaskan kereta lebih cepat dan menjimatkan ribuan ringgit dalam jumlah faedah.",
-      "tip4Content4": "Tempoh Lebih Panjang (cth., 9 tahun):",
-      "tip4Content5": "Bayaran bulanan lebih rendah dan lebih mudah diurus, tetapi anda akan membayar lebih banyak jumlah faedah sepanjang hayat pinjaman."
+      "title": "Malaysia Car Loan Tips You Should Know",
+      "tip1Title": "What affects my monthly hire purchase payment?",
+      "tip1Content1": "Your monthly car loan installment in Malaysia is determined by three key factors:",
+      "tip1L1": "Loan Amount: The car price minus your down payment.",
+      "tip1L2": "Interest Rate: The flat rate charged by the bank or financier. Lower is better — always compare offers.",
+      "tip1L3": "Loan Tenure: How long you take to repay. Longer tenure = lower monthly payment but higher total interest paid.",
+      "tip2Title": "Typical hire purchase interest rates in Malaysia (2024)",
+      "tip2Content1": "Malaysian car loans (hire purchase) use a flat rate system. Typical rates are 2.5%–4.5% for new cars and 3.0%–8.0% for used cars, depending on:",
+      "tip2L1": "Car age and condition",
+      "tip2L2": "The bank's current promotion or campaign rate",
+      "tip2L3": "Your CTOS / CCRIS credit score",
+      "tip2L4": "Loan tenure — longer tenures may attract higher rates",
+      "tip3Title": "Why a bigger down payment saves you money",
+      "tip3Content1": "The minimum down payment in Malaysia is 10%, but putting down more has major advantages:",
+      "tip3L1": "Lower Monthly Installment: Less financial pressure each month.",
+      "tip3L2": "Less Total Interest: Borrow less, pay less — it's that simple.",
+      "tip3L3": "Higher Loan Approval Chances: Banks see you as a lower-risk borrower.",
+      "tip3L4": "Avoid Going Underwater: Protects you from owing more than the car's market value as it depreciates.",
+      "tip4Title": "Choosing the right loan tenure in Malaysia",
+      "tip4Content1": "Malaysian car loans typically run from 5 to 9 years (60–108 months).",
+      "tip4Content2": "Shorter Tenure (e.g., 5 years):",
+      "tip4Content3": "Higher monthly installment, but you clear the loan faster and save significantly on total interest.",
+      "tip4Content4": "Longer Tenure (e.g., 9 years):",
+      "tip4Content5": "Lower monthly installment and easier on cash flow, but you pay considerably more in total interest over the loan period."
     }
   },
   "login": {
     "meta": {
-      "title": "ShiftOS · Log Masuk"
+      "title": "XDrive · Dealer Login"
     }
   },
   "salesman": {
     "meta": {
-      "title": "ShiftOS · Panel Saya"
+      "title": "XDrive · Sales Panel"
     }
   },
   "dashboard": {
     "meta": {
-      "title": "ShiftOS — Pentadbir"
+      "title": "XDrive — Dealer Dashboard"
     }
   },
   "footer": {
-    "tagline": "Cari Kereta Idaman Anda",
-    "quickLinks": "Pautan Pantas",
-    "contactUs": "Hubungi Kami",
+    "tagline": "Malaysia's Trusted Used Car Platform",
+    "quickLinks": "Quick Links",
+    "contactUs": "Contact Us",
     "whatsapp": "WhatsApp",
-    "email": "E-mel",
-    "hours": "Waktu Operasi",
-    "hoursText": "Isn-Sab 9PG-8MLM",
-    "rights": "XDrive. Hak cipta terpelihara."
+    "email": "Email",
+    "hours": "Business Hours",
+    "hoursText": "Mon–Sat, 9AM–8PM",
+    "rights": "XDrive. All rights reserved."
   }
 }
