@@ -106,7 +106,6 @@ export default function LoginPage() {
     });
   }, []);
 
-  // ← FIX 1: gate on onboarding_complete
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
@@ -115,13 +114,13 @@ export default function LoginPage() {
       .eq('id', user.id)
       .maybeSingle();
 
-    if (!profile || !profile.onboarding_complete) {
-      navigate('/onboarding');
-      return;
-    }
-    if (profile.role === 'salesman') navigate('/salesman');
-    else if (profile.role === 'superadmin') navigate('/dashboard');
-    else navigate('/dashboard');
+    // Salespeople skip onboarding entirely — go straight to their panel
+    if (profile?.role === 'salesman') { navigate('/salesman'); return; }
+
+    // All other roles: gate on onboarding_complete
+    if (!profile || !profile.onboarding_complete) { navigate('/onboarding'); return; }
+
+    navigate('/dashboard');
   };
 
   const handlePhotoChange = (e) => {
