@@ -13,6 +13,8 @@ export default function SalesmanPanel() {
   // ── Live sold count for the dealership ─────────────────────────────────
   const [soldCount,  setSoldCount]  = useState(0);
   const [soldLoading,setSoldLoading]= useState(true);
+  const [myClicks,   setMyClicks]   = useState(0);
+  const [myEnquiries,setMyEnquiries]= useState(0);
   // ───────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -31,10 +33,18 @@ export default function SalesmanPanel() {
         .single();
 
       if (!profileData) { navigate('/login'); return; }
-      if (profileData.role === 'manager') { navigate('/dashboard'); return; }
+      if (profileData.role !== 'salesman') { navigate('/dashboard'); return; }
 
       setProfile(profileData);
       setLoading(false);
+
+      if (profileData.slug) {
+        const { data: evts } = await supabase.from('analytics_events').select('event_type').eq('salesman_slug', profileData.slug);
+        if (evts) {
+          setMyClicks(evts.filter(e=>e.event_type==='link_visit'||e.event_type==='car_view').length);
+          setMyEnquiries(evts.filter(e=>e.event_type==='whatsapp_click'||e.event_type==='call_click').length);
+        }
+      }
     });
   }, [navigate]);
 
@@ -141,7 +151,7 @@ export default function SalesmanPanel() {
             <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
               <Eye className="w-4 h-4 text-blue-400" />
             </div>
-            <p className="text-2xl font-bold text-white">0</p>
+            <p className="text-2xl font-bold text-white">{myClicks}</p>
             <p className="text-xs text-gray-500 mt-1">Link Clicks</p>
           </div>
 
@@ -149,7 +159,7 @@ export default function SalesmanPanel() {
             <div className="w-8 h-8 bg-yellow-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
               <MessageSquare className="w-4 h-4 text-yellow-400" />
             </div>
-            <p className="text-2xl font-bold text-white">0</p>
+            <p className="text-2xl font-bold text-white">{myEnquiries}</p>
             <p className="text-xs text-gray-500 mt-1">Enquiries</p>
           </div>
 

@@ -9,9 +9,10 @@ import {
   Eye, Menu, Building2, Clock, Users, Copy, Check, Link,
   UserPlus, ToggleLeft, ToggleRight, Video, Tag, Flame,
   BarChart2, Send, Bot, ChevronRight, AlertCircle, CheckCircle2,
+  MessageSquare, MessageCircle, Phone,
 } from 'lucide-react';
 
-const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const SERVER_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1';
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
@@ -192,6 +193,20 @@ function AnalyticsTab({ listings, profile }) {
   const endRef = useRef(null);
   useEffect(() => { if (chatOpen) endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, chatOpen]);
 
+  // Traffic analytics
+  const [events,       setEvents]       = useState([]);
+  const [eventsLoading,setEventsLoading]= useState(true);
+  useEffect(() => {
+    supabase.from('analytics_events').select('*').order('created_at',{ascending:false}).then(({data})=>{ setEvents(data||[]); setEventsLoading(false); });
+  }, []);
+  const totalClicks    = events.filter(e=>e.event_type==='link_visit'||e.event_type==='car_view').length;
+  const totalEnquiries = events.filter(e=>e.event_type==='whatsapp_click'||e.event_type==='call_click').length;
+  const totalWa        = events.filter(e=>e.event_type==='whatsapp_click').length;
+  const totalCalls     = events.filter(e=>e.event_type==='call_click').length;
+  // per-salesman rollup
+  const bySlug = events.reduce((acc,e)=>{ if(!acc[e.salesman_slug])acc[e.salesman_slug]={clicks:0,enquiries:0}; if(e.event_type==='link_visit'||e.event_type==='car_view')acc[e.salesman_slug].clicks++; if(e.event_type==='whatsapp_click'||e.event_type==='call_click')acc[e.salesman_slug].enquiries++; return acc; },{});
+  const topSalesmen = Object.entries(bySlug).sort((a,b)=>b[1].enquiries-a[1].enquiries);
+
   const total  = listings.length;
   const active = listings.filter(l=>(l.status||'active')==='active').length;
   const sold   = listings.filter(l=>l.status==='sold').length;
@@ -245,10 +260,50 @@ function AnalyticsTab({ listings, profile }) {
         ))}
       </div>
 
-      <div className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background:'rgba(56,189,248,0.04)', border:'1px solid rgba(56,189,248,0.1)' }}>
-        <BarChart2 className="w-4 h-4 text-sky-500 flex-shrink-0 mt-0.5"/>
-        <div><p className="text-sky-300 text-sm font-semibold">Website tracking coming soon</p><p className="text-sky-500/40 text-xs mt-0.5">Views, clicks, and lead conversion will appear here.</p></div>
+      {/* ── Traffic KPIs ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label:'Total Clicks',   val:totalClicks,    grad:'grad-cyan',   glow:'rgba(103,232,249,0.14)', icon:<Eye className="w-4 h-4"/> },
+          { label:'Enquiries',      val:totalEnquiries, grad:'grad-gold',   glow:'rgba(251,191,36,0.14)',  icon:<MessageSquare className="w-4 h-4"/> },
+          { label:'WhatsApp',       val:totalWa,        grad:'grad-green',  glow:'rgba(110,231,183,0.14)', icon:<MessageCircle className="w-4 h-4"/> },
+          { label:'Call Clicks',    val:totalCalls,     grad:'grad-purple', glow:'rgba(216,180,254,0.14)', icon:<Phone className="w-4 h-4"/> },
+        ].map(({label,val,grad,glow,icon})=>(
+          <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:glow }}>{icon}</div>
+            </div>
+            {eventsLoading
+              ? <div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin"/>
+              : <p className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad}`}>{val}</p>}
+          </div>
+        ))}
       </div>
+
+      {/* ── Per-salesman leaderboard ── */}
+      {topSalesmen.length > 0 && (
+        <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+          <div className="flex items-center gap-2 p-4" style={T.divider}>
+            <BarChart2 className="w-4 h-4 text-red-400"/>
+            <p className="font-semibold text-white text-sm">Salesman Performance</p>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {topSalesmen.map(([slug,{clicks,enquiries}],i)=>(
+              <div key={slug} className="flex items-center gap-3 px-4 py-3">
+                <span className="text-xs text-gray-600 w-4 tabular-nums">{i+1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium truncate">/{slug}</p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs text-gray-500"><span className="text-sky-400 font-semibold">{clicks}</span> clicks</span>
+                    <span className="text-xs text-gray-500"><span className="text-amber-400 font-semibold">{enquiries}</span> enquiries</span>
+                  </div>
+                </div>
+                {enquiries > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.2)', color:'#fbbf24' }}>🔥 Active</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {stale.length>0 && (
         <div className="rounded-xl p-4" style={{ background:'rgba(251,191,36,0.04)', border:'1px solid rgba(251,191,36,0.12)' }}>
@@ -357,8 +412,22 @@ function TeamTab({ managerDealership }) {
   const [tempPw,          setTempPw]          = useState('');
   // Live sold count for the dealership
   const [teamSoldCount,   setTeamSoldCount]   = useState(0);
+  // Analytics per salesman slug: { [slug]: { clicks, enquiries } }
+  const [analyticsMap,    setAnalyticsMap]    = useState({});
 
-  useEffect(()=>{ fetchTeam(); },[managerDealership]);
+  const fetchAnalytics = async () => {
+    const { data } = await supabase.from('analytics_events').select('salesman_slug,event_type');
+    if (!data) return;
+    const map = {};
+    data.forEach(({ salesman_slug, event_type }) => {
+      if (!map[salesman_slug]) map[salesman_slug] = { clicks: 0, enquiries: 0 };
+      if (event_type === 'link_visit' || event_type === 'car_view') map[salesman_slug].clicks++;
+      if (event_type === 'whatsapp_click' || event_type === 'call_click') map[salesman_slug].enquiries++;
+    });
+    setAnalyticsMap(map);
+  };
+
+  useEffect(()=>{ fetchTeam(); fetchAnalytics(); },[managerDealership]);
 
   // Fetch sold count for the dealership in real-time
   useEffect(()=>{
@@ -399,7 +468,8 @@ function TeamTab({ managerDealership }) {
     if (!/^[a-z0-9]+$/.test(s)) { setAddError('Slug: lowercase + numbers only.'); return; }
     setAddLoading(true);
     try {
-      const res = await fetch(`${SERVER_URL}/invites`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:n,email:e,phone:p,dealership:managerDealership,slug:s,password:tempPw})});
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SERVER_URL}/invites`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session?.access_token}`},body:JSON.stringify({full_name:n,email:e,phone:p,dealership:managerDealership,slug:s,password:tempPw})});
       const json = await res.json().catch(()=>({}));
       if (!res.ok) { setAddError(json.message||'Failed.'); setAddLoading(false); return; }
       setSalespeople(p=>[json.invite,...p]);
@@ -411,7 +481,7 @@ function TeamTab({ managerDealership }) {
 
   const copyLink = s => { navigator.clipboard.writeText(`${window.location.origin}/cars?ref=${s.slug}`); setCopiedId(s.id); setTimeout(()=>setCopiedId(null),2000); };
   const toggleActive = async s => { setTogglingId(s.id); const {error}=await supabase.from('profiles').update({is_active:!s.is_active}).eq('id',s.id); if (!error) setSalespeople(p=>p.map(x=>x.id===s.id?{...x,is_active:!s.is_active}:x)); setTogglingId(null); };
-  const deleteSalesman = async id => { const res=await fetch(`${SERVER_URL}/invites/${id}`,{method:'DELETE'}); if (res.ok) setSalespeople(p=>p.filter(x=>x.id!==id)); setDeleteConfirmId(null); };
+  const deleteSalesman = async id => { const { data: { session } } = await supabase.auth.getSession(); const res=await fetch(`${SERVER_URL}/invites/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${session?.access_token}`}}); if (res.ok) setSalespeople(p=>p.filter(x=>x.id!==id)); setDeleteConfirmId(null); };
 
   const activeCount   = salespeople.filter(s=>s.is_active!==false).length;
   const inactiveCount = salespeople.filter(s=>s.is_active===false).length;
@@ -483,9 +553,9 @@ function TeamTab({ managerDealership }) {
                       <div className="mb-3"><span className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg" style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.12)' }}>⚠ No slug — referral link unavailable</span></div>
                     )}
                     <div className="grid grid-cols-3 gap-2 max-w-xs">
-                      {[['0','Clicks'],['0','Enquiries'],[String(teamSoldCount),'Team Sales']].map(([v,lbl])=>(
+                      {[[String(analyticsMap[s.slug]?.clicks||0),'Clicks'],[String(analyticsMap[s.slug]?.enquiries||0),'Enquiries'],[String(teamSoldCount),'Team Sales']].map(([v,lbl])=>(
                         <div key={lbl} className="rounded-lg px-2.5 py-2" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
-                          <p className={`text-sm font-bold ${lbl==='Team Sales'?'grad-green':'grad-white'}`}>{v}</p>
+                          <p className={`text-sm font-bold ${lbl==='Team Sales'?'grad-green':lbl==='Enquiries'&&Number(v)>0?'grad-gold':'grad-white'}`}>{v}</p>
                           <p className="text-[10px] text-gray-600 mt-0.5">{lbl}</p>
                         </div>
                       ))}
@@ -604,8 +674,11 @@ export default function DashboardPage() {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error||!data.session) { navigate('/login'); return; }
       const { data: p } = await supabase.from('profiles').select('*').eq('id',data.session.user.id).single();
-      if (p) { if (p.role==='salesman') { navigate('/salesman'); return; } setProfile(p); }
-      else { const m=data.session.user.user_metadata; setProfile({ full_name:m?.full_name||m?.name||data.session.user.email, email:data.session.user.email, avatar_url:m?.avatar_url||null, role:m?.role||null, dealership:m?.dealership||null }); }
+      if (p) {
+        if (p.role === 'salesman') { navigate('/salesman'); return; }
+        if (!['dealer','superadmin','admin','manager'].includes(p.role)) { navigate('/login'); return; }
+        setProfile(p);
+      } else { navigate('/login'); return; }
     });
     supabase.from('car_listings').select('*').order('created_at',{ascending:false}).then(({data,error})=>{ setListings(error?[]:data||[]); setLoading(false); });
   }, [navigate]);
