@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
+import { setRef, trackEvent } from '../lib/analytics';
 import {
   RotateCcw, ChevronDown, Search, SlidersHorizontal, X,
   ChevronUp, Flame, Car, Check,
@@ -128,6 +130,7 @@ const SkeletonCard = () => (
 ───────────────────────────────────────── */
 const CarsPage = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const drawerRef    = useRef(null);
   const searchRef    = useRef(null);
 
@@ -148,6 +151,13 @@ const CarsPage = () => {
   const [selectedLocation,      setSelectedLocation]      = useState('');
   const [hotDealsOnly,          setHotDealsOnly]          = useState(false);
   const [sortBy,                setSortBy]                = useState('newest');
+
+  /* ── ref tracking ── */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const ref = params.get('ref');
+    if (ref) { setRef(ref); trackEvent('link_visit'); }
+  }, [location.search]);
 
   /* ── data ── */
   const load = async () => {

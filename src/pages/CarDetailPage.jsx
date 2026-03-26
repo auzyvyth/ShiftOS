@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link } from 'react-router-dom';
+import { trackEvent, getRef } from '../lib/analytics';
 import {
   MapPin, Gauge, Settings, Calendar, CheckCircle, MessageCircle,
   Phone, Clock, ChevronRight, Fuel, Tag, Palette, FileText,
@@ -212,6 +213,7 @@ const CarDetailPage = () => {
       if (error) { setLoading(false); return; }
       setCar(data);
       if (data?.images?.length) preloadImages(data.images);
+      if (getRef()) trackEvent('car_view', { carId: data.id, carName: `${data.brand} ${data.model}` });
       const { data: sim } = await supabase.from('car_listings').select('*').eq('brand', data.brand).neq('id', id).eq('status','active').limit(3);
       setSimilarCars(sim || []);
       setLoading(false);
@@ -299,6 +301,8 @@ const CarDetailPage = () => {
 
   const waMsg  = `Hi, I'm interested in the ${carName} listed at RM ${price.toLocaleString()}. Is it still available?`;
   const waLink = `https://wa.me/60174155191?text=${encodeURIComponent(waMsg)}`;
+  const waClick   = () => trackEvent('whatsapp_click', { carId: car?.id, carName });
+  const callClick = () => { trackEvent('call_click', { carId: car?.id, carName }); window.location.href = 'tel:+60174155191'; };
 
   const specs = [
     { icon: Calendar,    label: 'Year',         value: year ? String(year) : null },
@@ -443,12 +447,12 @@ const CarDetailPage = () => {
 
               {/* Mobile CTAs */}
               <div className="vdp-sidebar-mobile" style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="vdp-wa"
+                <a href={waLink} target="_blank" rel="noopener noreferrer" onClick={waClick} className="vdp-wa"
                   style={{ ...btnBase, background: '#25D366', color: 'white' }}>
                   <MessageCircle size={16}/> WhatsApp Us
                 </a>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <button onClick={() => window.location.href = 'tel:+60174155191'} className="vdp-call"
+                  <button onClick={callClick} className="vdp-call"
                     style={{ ...btnBase, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171', padding: '12px' }}>
                     <Phone size={15}/> Call Now
                   </button>
@@ -566,11 +570,11 @@ const CarDetailPage = () => {
 
               {/* CTAs */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="vdp-wa"
+                <a href={waLink} target="_blank" rel="noopener noreferrer" onClick={waClick} className="vdp-wa"
                   style={{ ...btnBase, background: '#25D366', color: 'white', boxShadow: '0 4px 16px rgba(37,211,102,0.25)' }}>
                   <MessageCircle size={16}/> WhatsApp Us
                 </a>
-                <button onClick={() => window.location.href = 'tel:+60174155191'} className="vdp-call"
+                <button onClick={callClick} className="vdp-call"
                   style={{ ...btnBase, background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', color: '#f87171' }}>
                   <Phone size={16}/> Call Now
                 </button>
@@ -630,7 +634,7 @@ const CarDetailPage = () => {
         padding: '12px 16px', display: 'flex', gap: '10px',
         fontFamily: "'DM Sans',sans-serif",
       }} className="mobile-sticky-bar">
-        <a href={waLink} target="_blank" rel="noopener noreferrer"
+        <a href={waLink} target="_blank" rel="noopener noreferrer" onClick={waClick}
           style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: 'white', fontWeight: '700', fontSize: '14px', padding: '13px', borderRadius: '12px', textDecoration: 'none' }}>
           <MessageCircle size={16}/> WhatsApp
         </a>
