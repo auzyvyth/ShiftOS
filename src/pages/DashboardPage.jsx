@@ -9,10 +9,14 @@ import {
   Eye, Menu, Building2, Clock, Users, Copy, Check, Link,
   UserPlus, ToggleLeft, ToggleRight, Video, Tag, Flame,
   BarChart2, Send, Bot, ChevronRight, AlertCircle, CheckCircle2,
-  MessageSquare, MessageCircle, Phone,
+  MessageSquare, MessageCircle, Phone, Pencil, Clipboard, Search,
+  Settings, Save, Lock, Globe, Megaphone, Instagram, Facebook,
+  Shield, KeyRound, AlertTriangle, RefreshCw, ExternalLink,
+  ChevronDown, ChevronUp, Palette,
 } from 'lucide-react';
 
 const SERVER_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1';
+const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
@@ -50,8 +54,10 @@ const STYLES = `
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
   @keyframes shimmer { to { left:150%; } }
 
-  /* Mark as Sold button pulse on hover */
   .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
+
+  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.065); border-radius:16px; overflow:hidden; }
+  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.35) 35%,rgba(56,189,248,0.2) 65%,transparent); pointer-events:none; }
 
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -67,6 +73,9 @@ const T = {
   btnRed:  { background:'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow:'0 2px 10px rgba(220,38,38,0.28)' },
 };
 
+const iCls = "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+const taCls = "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all resize-none";
+
 function getListingAge(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
 }
@@ -76,6 +85,327 @@ function AgeBadge({ createdAt }) {
   if (d < 14) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 badge-glow-cyan"><Clock className="w-3 h-3" />{d===0?'Today':`${d}d`}</span>;
   if (d < 30) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20 badge-glow-gold"><Clock className="w-3 h-3" />{d}d</span>;
   return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-400 border border-red-400/20 badge-glow-red"><Clock className="w-3 h-3" />{d}d</span>;
+}
+
+// ─── Settings Section wrapper ─────────────────────────────────────────────────
+function SettingsSection({ title, subtitle, icon: Icon, iconColor = 'text-red-400', iconBg = 'rgba(220,38,38,0.1)', iconBorder = 'rgba(220,38,38,0.18)', children }) {
+  return (
+    <div className="settings-section">
+      <div className="flex items-center gap-3 px-5 py-4" style={T.divider}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg, border: `1px solid ${iconBorder}` }}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <div>
+          <p className="text-white text-sm font-semibold">{title}</p>
+          {subtitle && <p className="text-gray-600 text-xs mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function SettingsField({ label, hint, children }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</label>
+        {hint && <span className="text-xs text-gray-600">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── SettingsTab ──────────────────────────────────────────────────────────────
+function SettingsTab({ profile, onProfileUpdate }) {
+  const [saving,    setSaving]    = useState({});
+  const [saved,     setSaved]     = useState({});
+  const [errors,    setErrors]    = useState({});
+
+  // Section states
+  const [dealership,       setDealership]       = useState(profile?.dealership || '');
+  const [siteName,         setSiteName]         = useState(profile?.site_name || '');
+  const [brandColor,       setBrandColor]       = useState(profile?.brand_color || '#c9a84c');
+  const [whatsapp,         setWhatsapp]         = useState(profile?.whatsapp_number || '');
+  const [tiktok,           setTiktok]           = useState(profile?.social_tiktok || '');
+  const [instagram,        setInstagram]        = useState(profile?.social_instagram || '');
+  const [facebook,         setFacebook]         = useState(profile?.social_facebook || '');
+  const [heroTitle,        setHeroTitle]        = useState(profile?.hero_title || '');
+  const [heroSubtitle,     setHeroSubtitle]     = useState(profile?.hero_subtitle || '');
+  const [heroCta,          setHeroCta]          = useState(profile?.hero_cta_text || '');
+  const [announcementText, setAnnouncementText] = useState(profile?.announcement_bar || '');
+  const [announcementOn,   setAnnouncementOn]   = useState(profile?.announcement_bar_enabled || false);
+  const [aboutText,        setAboutText]        = useState(profile?.about_text || '');
+  const [newPassword,      setNewPassword]      = useState('');
+  const [confirmPassword,  setConfirmPassword]  = useState('');
+  const [deleteConfirm,    setDeleteConfirm]    = useState('');
+  const [showDanger,       setShowDanger]       = useState(false);
+
+  const changeCount    = profile?.dealership_change_count || 0;
+  const changesLeft    = MAX_DEALERSHIP_CHANGES - changeCount;
+  const dealershipLocked = changesLeft <= 0;
+
+  const flash = (key) => {
+    setSaved(p => ({ ...p, [key]: true }));
+    setTimeout(() => setSaved(p => ({ ...p, [key]: false })), 2500);
+  };
+
+  const saveSection = async (key, payload) => {
+    setSaving(p => ({ ...p, [key]: true }));
+    setErrors(p => ({ ...p, [key]: '' }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ ...payload, settings_updated_at: new Date().toISOString() })
+        .eq('id', session.user.id)
+        .select()
+        .single();
+      if (error) throw error;
+      onProfileUpdate(data);
+      flash(key);
+    } catch (e) {
+      setErrors(p => ({ ...p, [key]: e.message }));
+    }
+    setSaving(p => ({ ...p, [key]: false }));
+  };
+
+  const saveDealership = async () => {
+    if (dealershipLocked) return;
+    if (!dealership.trim()) { setErrors(p => ({ ...p, identity: 'Dealership name cannot be empty.' })); return; }
+    if (dealership.trim() === profile?.dealership) { flash('identity'); return; }
+    await saveSection('identity', {
+      dealership: dealership.trim(),
+      site_name: siteName.trim() || dealership.trim(),
+      brand_color: brandColor,
+      dealership_change_count: changeCount + 1,
+      dealership_name_changed_at: new Date().toISOString(),
+    });
+  };
+
+  const saveContact = () => saveSection('contact', {
+    whatsapp_number: whatsapp.trim(),
+    social_tiktok: tiktok.trim(),
+    social_instagram: instagram.trim(),
+    social_facebook: facebook.trim(),
+  });
+
+  const saveFrontPage = () => saveSection('frontpage', {
+    hero_title: heroTitle.trim(),
+    hero_subtitle: heroSubtitle.trim(),
+    hero_cta_text: heroCta.trim(),
+    announcement_bar: announcementText.trim(),
+    announcement_bar_enabled: announcementOn,
+    about_text: aboutText.trim(),
+  });
+
+  const savePassword = async () => {
+    if (!newPassword || newPassword.length < 8) { setErrors(p => ({ ...p, password: 'Password must be at least 8 characters.' })); return; }
+    if (newPassword !== confirmPassword) { setErrors(p => ({ ...p, password: 'Passwords do not match.' })); return; }
+    setSaving(p => ({ ...p, password: true }));
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) { setErrors(p => ({ ...p, password: error.message })); }
+    else { flash('password'); setNewPassword(''); setConfirmPassword(''); }
+    setSaving(p => ({ ...p, password: false }));
+  };
+
+  const SaveBtn = ({ sectionKey, onClick, disabled }) => (
+    <button
+      onClick={onClick}
+      disabled={saving[sectionKey] || disabled}
+      className="btn-shimmer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all"
+      style={saved[sectionKey]
+        ? { background:'linear-gradient(135deg,#16a34a,#15803d)', boxShadow:'0 2px 10px rgba(22,163,74,0.28)' }
+        : T.btnRed}>
+      {saving[sectionKey]
+        ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Saving…</>
+        : saved[sectionKey]
+        ? <><Check className="w-3.5 h-3.5"/>Saved!</>
+        : <><Save className="w-3.5 h-3.5"/>Save</>}
+    </button>
+  );
+
+  const ErrMsg = ({ k }) => errors[k]
+    ? <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3 flex-shrink-0"/>{errors[k]}</p>
+    : null;
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+
+      {/* ── 1. Dealership Identity ── */}
+      <SettingsSection title="Dealership Identity" subtitle="Your brand name, site title & accent colour" icon={Building2}>
+        {/* Change count badge */}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? 'text-red-400' : changesLeft === 1 ? 'text-amber-400' : 'text-emerald-400'}`}
+          style={{ background: dealershipLocked ? 'rgba(220,38,38,0.07)' : changesLeft === 1 ? 'rgba(251,191,36,0.07)' : 'rgba(52,211,153,0.07)', border: `1px solid ${dealershipLocked ? 'rgba(220,38,38,0.18)' : changesLeft === 1 ? 'rgba(251,191,36,0.18)' : 'rgba(52,211,153,0.18)'}` }}>
+          {dealershipLocked
+            ? <><Lock className="w-3.5 h-3.5"/>Dealership name is locked — contact support to change</>
+            : <><Shield className="w-3.5 h-3.5"/>{changesLeft} name change{changesLeft !== 1 ? 's' : ''} remaining — choose carefully</>}
+        </div>
+
+        <SettingsField label="Dealership Name" hint={dealershipLocked ? 'Locked' : `${changesLeft} left`}>
+          <div className="relative">
+            <input
+              value={dealership}
+              onChange={e => setDealership(e.target.value)}
+              disabled={dealershipLocked}
+              placeholder="e.g. Auto City Penang"
+              className={`${iCls} ${dealershipLocked ? 'opacity-40 cursor-not-allowed' : ''} pr-9`}
+            />
+            {dealershipLocked && <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600"/>}
+          </div>
+        </SettingsField>
+
+        <SettingsField label="Site / Tab Name" hint="Shows in browser tab">
+          <input value={siteName} onChange={e=>setSiteName(e.target.value)} placeholder="e.g. Auto City — Used Cars Penang" className={iCls}/>
+        </SettingsField>
+
+        <SettingsField label="Brand Accent Colour" hint="Used on Drevo public site">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input type="color" value={brandColor} onChange={e=>setBrandColor(e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0.5 bg-white/5"/>
+            </div>
+            <input value={brandColor} onChange={e=>setBrandColor(e.target.value)} placeholder="#c9a84c"
+              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-red-600/50 transition-all font-mono"/>
+            <div className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10" style={{ background: brandColor }}/>
+          </div>
+        </SettingsField>
+
+        <ErrMsg k="identity"/>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="identity" onClick={saveDealership} disabled={dealershipLocked}/>
+        </div>
+      </SettingsSection>
+
+      {/* ── 2. Contact & Socials ── */}
+      <SettingsSection title="Contact & Socials" subtitle="What customers see when they click enquire or visit your profile"
+        icon={Phone} iconColor="text-sky-400" iconBg="rgba(56,189,248,0.08)" iconBorder="rgba(56,189,248,0.18)">
+
+        <SettingsField label="WhatsApp Number" hint="Include country code">
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-sm pointer-events-none">+60</span>
+            <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="12-345 6789"
+              className={`${iCls} pl-12`}/>
+          </div>
+          <p className="text-xs text-gray-700 mt-1">This powers the WhatsApp enquiry button on every listing card.</p>
+        </SettingsField>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SettingsField label="TikTok">
+            <input value={tiktok} onChange={e=>setTiktok(e.target.value)} placeholder="@yourhandle" className={iCls}/>
+          </SettingsField>
+          <SettingsField label="Instagram">
+            <input value={instagram} onChange={e=>setInstagram(e.target.value)} placeholder="@yourhandle" className={iCls}/>
+          </SettingsField>
+          <SettingsField label="Facebook">
+            <input value={facebook} onChange={e=>setFacebook(e.target.value)} placeholder="page name or URL" className={iCls}/>
+          </SettingsField>
+        </div>
+
+        <ErrMsg k="contact"/>
+        <div className="flex justify-end pt-1"><SaveBtn sectionKey="contact" onClick={saveContact}/></div>
+      </SettingsSection>
+
+      {/* ── 3. Front Page Control ── */}
+      <SettingsSection title="Front Page Control" subtitle="Full control over what customers see on Drevo"
+        icon={Globe} iconColor="text-purple-400" iconBg="rgba(167,139,250,0.08)" iconBorder="rgba(167,139,250,0.18)">
+
+        {/* Announcement bar */}
+        <div className="rounded-xl p-4 space-y-3" style={{ background:'rgba(56,189,248,0.04)', border:'1px solid rgba(56,189,248,0.1)' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-sky-400"/>
+              <p className="text-white text-sm font-semibold">Announcement Bar</p>
+            </div>
+            <button
+              onClick={() => setAnnouncementOn(v => !v)}
+              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? 'bg-red-600' : 'bg-white/10'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${announcementOn ? 'left-5' : 'left-0.5'}`}/>
+            </button>
+          </div>
+          <input
+            value={announcementText}
+            onChange={e=>setAnnouncementText(e.target.value)}
+            placeholder="🔥 Raya sale — all recon cars discounted this week!"
+            className={iCls}
+            disabled={!announcementOn}
+            style={{ opacity: announcementOn ? 1 : 0.4 }}
+          />
+          <p className="text-xs text-gray-600">Shows as a sticky banner at the top of Drevo when enabled.</p>
+        </div>
+
+        <SettingsField label="Hero Title" hint="Main headline">
+          <input value={heroTitle} onChange={e=>setHeroTitle(e.target.value)} placeholder="Your Trusted Recon Specialist" className={iCls}/>
+        </SettingsField>
+
+        <SettingsField label="Hero Subtitle" hint="Tagline under the title">
+          <input value={heroSubtitle} onChange={e=>setHeroSubtitle(e.target.value)} placeholder="Quality cars at honest prices, based in Penang" className={iCls}/>
+        </SettingsField>
+
+        <SettingsField label="CTA Button Text" hint="The main action button">
+          <input value={heroCta} onChange={e=>setHeroCta(e.target.value)} placeholder="Browse Our Cars" className={iCls}/>
+        </SettingsField>
+
+        <SettingsField label="About Us" hint="Shown on your homepage">
+          <textarea value={aboutText} onChange={e=>setAboutText(e.target.value)} rows={4}
+            placeholder="Tell customers who you are, what you specialize in, and why they should buy from you..."
+            className={taCls}/>
+          <p className="text-xs text-gray-700 mt-1">{aboutText.length}/500 characters</p>
+        </SettingsField>
+
+        <ErrMsg k="frontpage"/>
+        <div className="flex justify-end pt-1"><SaveBtn sectionKey="frontpage" onClick={saveFrontPage}/></div>
+      </SettingsSection>
+
+      {/* ── 4. Account / Password ── */}
+      <SettingsSection title="Account Security" subtitle="Change your login password"
+        icon={KeyRound} iconColor="text-amber-400" iconBg="rgba(251,191,36,0.08)" iconBorder="rgba(251,191,36,0.18)">
+
+        <SettingsField label="New Password">
+          <input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)}
+            placeholder="Min 8 characters" className={iCls}/>
+        </SettingsField>
+        <SettingsField label="Confirm Password">
+          <input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)}
+            placeholder="Re-enter new password" className={iCls}/>
+        </SettingsField>
+
+        <ErrMsg k="password"/>
+        <div className="flex justify-end pt-1"><SaveBtn sectionKey="password" onClick={savePassword}/></div>
+      </SettingsSection>
+
+      {/* ── 5. Danger Zone ── */}
+      <div className="rounded-xl overflow-hidden" style={{ border:'1px solid rgba(220,38,38,0.22)', background:'rgba(220,38,38,0.03)' }}>
+        <button onClick={()=>setShowDanger(v=>!v)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-red-500/[0.04] transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:'rgba(220,38,38,0.12)', border:'1px solid rgba(220,38,38,0.22)' }}>
+              <AlertTriangle className="w-4 h-4 text-red-400"/>
+            </div>
+            <p className="text-red-400 text-sm font-semibold">Danger Zone</p>
+          </div>
+          {showDanger ? <ChevronUp className="w-4 h-4 text-red-500/50"/> : <ChevronDown className="w-4 h-4 text-red-500/50"/>}
+        </button>
+
+        {showDanger && (
+          <div className="px-5 pb-5 space-y-4" style={{ borderTop:'1px solid rgba(220,38,38,0.12)' }}>
+            <p className="text-gray-500 text-xs pt-4">Deleting your account is permanent and cannot be undone. All your listings, team, and data will be removed.</p>
+            <SettingsField label={`Type "DELETE" to confirm`}>
+              <input value={deleteConfirm} onChange={e=>setDeleteConfirm(e.target.value)}
+                placeholder="DELETE" className={iCls}/>
+            </SettingsField>
+            <button
+              disabled={deleteConfirm !== 'DELETE'}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-30 transition-all"
+              style={{ background:'linear-gradient(135deg,#dc2626,#991b1b)', border:'1px solid rgba(220,38,38,0.3)' }}>
+              Permanently Delete Account
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
 }
 
 // ─── PriceEditModal ───────────────────────────────────────────────────────────
@@ -99,9 +429,9 @@ function PriceEditModal({ listing, onClose, onSave }) {
       let payload = { selling_price: npv };
       if (isReset) payload.original_price = null;
       else if (!orig && npv < cur) payload.original_price = cur;
-      const { data, error } = await supabase.from('car_listings').update(payload).eq('id', listing.id).select().single();
+      const { data, error } = await supabase.from('car_listings').update(payload).eq('id', listing.id).select();
       if (error) throw error;
-      onSave(data); onClose();
+      onSave(data?.[0] ?? { ...listing, ...payload }); onClose();
     } catch (e) { setErr(e.message); }
     setSaving(false);
   };
@@ -150,27 +480,22 @@ function PriceEditModal({ listing, onClose, onSave }) {
   );
 }
 
-// ─── MarkSoldModal ─────────────────────────────────────────────────────────────
+// ─── MarkSoldModal ────────────────────────────────────────────────────────────
 function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
   return (
     <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.78)' }}>
       <div className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style={T.modal}>
         <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="font-semibold text-white">Mark as Sold?</h3>
-            <p className="text-gray-500 text-xs mt-0.5">{listing.brand} {listing.model} {listing.variant||''}</p>
-          </div>
+          <div><h3 className="font-semibold text-white">Mark as Sold?</h3><p className="text-gray-500 text-xs mt-0.5">{listing.brand} {listing.model} {listing.variant||''}</p></div>
           <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
         </div>
-
         <div className="rounded-xl px-4 py-3 mb-5 flex items-start gap-3" style={{ background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.18)' }}>
           <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"/>
           <div>
             <p className="text-emerald-300 text-sm font-semibold">Sold count will update automatically</p>
-            <p className="text-emerald-500/60 text-xs mt-0.5">This listing moves to "Sold" and the sold counter on the homepage and analytics updates in real-time.</p>
+            <p className="text-emerald-500/60 text-xs mt-0.5">This listing moves to "Sold" and the sold counter updates in real-time.</p>
           </div>
         </div>
-
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
           <button onClick={onConfirm} disabled={loading}
@@ -193,9 +518,8 @@ function AnalyticsTab({ listings, profile }) {
   const endRef = useRef(null);
   useEffect(() => { if (chatOpen) endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, chatOpen]);
 
-  // Traffic analytics
-  const [events,       setEvents]       = useState([]);
-  const [eventsLoading,setEventsLoading]= useState(true);
+  const [events,        setEvents]        = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
     supabase.from('analytics_events').select('*').order('created_at',{ascending:false}).then(({data})=>{ setEvents(data||[]); setEventsLoading(false); });
   }, []);
@@ -203,7 +527,6 @@ function AnalyticsTab({ listings, profile }) {
   const totalEnquiries = events.filter(e=>e.event_type==='whatsapp_click'||e.event_type==='call_click').length;
   const totalWa        = events.filter(e=>e.event_type==='whatsapp_click').length;
   const totalCalls     = events.filter(e=>e.event_type==='call_click').length;
-  // per-salesman rollup
   const bySlug = events.reduce((acc,e)=>{ if(!acc[e.salesman_slug])acc[e.salesman_slug]={clicks:0,enquiries:0}; if(e.event_type==='link_visit'||e.event_type==='car_view')acc[e.salesman_slug].clicks++; if(e.event_type==='whatsapp_click'||e.event_type==='call_click')acc[e.salesman_slug].enquiries++; return acc; },{});
   const topSalesmen = Object.entries(bySlug).sort((a,b)=>b[1].enquiries-a[1].enquiries);
 
@@ -236,7 +559,6 @@ function AnalyticsTab({ listings, profile }) {
   };
 
   const PROMPTS = ['Why aren\'t my listings converting?','Which car should I reprice?','Any I should remove?','How to write better listings?'];
-
   const kpis = [
     { label:'Active',    val:active,       sub:`of ${total} total`,     grad:'grad-cyan',   icon:<Car className="w-4 h-4"/>,        glow:'rgba(103,232,249,0.14)' },
     { label:'Sold',      val:sold,         sub:'all time',              grad:'grad-green',  icon:<CheckCircle2 className="w-4 h-4"/>, glow:'rgba(110,231,183,0.14)' },
@@ -259,14 +581,12 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         ))}
       </div>
-
-      {/* ── Traffic KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label:'Total Clicks',   val:totalClicks,    grad:'grad-cyan',   glow:'rgba(103,232,249,0.14)', icon:<Eye className="w-4 h-4"/> },
-          { label:'Enquiries',      val:totalEnquiries, grad:'grad-gold',   glow:'rgba(251,191,36,0.14)',  icon:<MessageSquare className="w-4 h-4"/> },
-          { label:'WhatsApp',       val:totalWa,        grad:'grad-green',  glow:'rgba(110,231,183,0.14)', icon:<MessageCircle className="w-4 h-4"/> },
-          { label:'Call Clicks',    val:totalCalls,     grad:'grad-purple', glow:'rgba(216,180,254,0.14)', icon:<Phone className="w-4 h-4"/> },
+          { label:'Total Clicks',  val:totalClicks,    grad:'grad-cyan',   glow:'rgba(103,232,249,0.14)', icon:<Eye className="w-4 h-4"/> },
+          { label:'Enquiries',     val:totalEnquiries, grad:'grad-gold',   glow:'rgba(251,191,36,0.14)',  icon:<MessageSquare className="w-4 h-4"/> },
+          { label:'WhatsApp',      val:totalWa,        grad:'grad-green',  glow:'rgba(110,231,183,0.14)', icon:<MessageCircle className="w-4 h-4"/> },
+          { label:'Call Clicks',   val:totalCalls,     grad:'grad-purple', glow:'rgba(216,180,254,0.14)', icon:<Phone className="w-4 h-4"/> },
         ].map(({label,val,grad,glow,icon})=>(
           <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
             <div className="flex items-center justify-between mb-3">
@@ -279,14 +599,9 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         ))}
       </div>
-
-      {/* ── Per-salesman leaderboard ── */}
       {topSalesmen.length > 0 && (
         <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-          <div className="flex items-center gap-2 p-4" style={T.divider}>
-            <BarChart2 className="w-4 h-4 text-red-400"/>
-            <p className="font-semibold text-white text-sm">Salesman Performance</p>
-          </div>
+          <div className="flex items-center gap-2 p-4" style={T.divider}><BarChart2 className="w-4 h-4 text-red-400"/><p className="font-semibold text-white text-sm">Salesman Performance</p></div>
           <div className="divide-y divide-white/[0.04]">
             {topSalesmen.map(([slug,{clicks,enquiries}],i)=>(
               <div key={slug} className="flex items-center gap-3 px-4 py-3">
@@ -304,7 +619,6 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         </div>
       )}
-
       {stale.length>0 && (
         <div className="rounded-xl p-4" style={{ background:'rgba(251,191,36,0.04)', border:'1px solid rgba(251,191,36,0.12)' }}>
           <div className="flex items-center gap-2 mb-3"><AlertCircle className="w-4 h-4 text-amber-400"/><p className="text-amber-300 text-sm font-semibold">{stale.length} listing{stale.length>1?'s':''} aging 30+ days</p></div>
@@ -321,7 +635,6 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         </div>
       )}
-
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <div className="flex items-center justify-between p-4" style={T.divider}>
           <div><h2 className="font-semibold text-white text-sm">Listing Performance</h2><p className="text-xs text-gray-600 mt-0.5">Views & leads tracking activates once traffic is live</p></div>
@@ -352,7 +665,6 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         )}
       </div>
-
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <button onClick={()=>setChatOpen(v=>!v)} className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
           <div className="flex items-center gap-3">
@@ -410,9 +722,7 @@ function TeamTab({ managerDealership }) {
   const [phone,           setPhone]           = useState('');
   const [slug,            setSlug]            = useState('');
   const [tempPw,          setTempPw]          = useState('');
-  // Live sold count for the dealership
   const [teamSoldCount,   setTeamSoldCount]   = useState(0);
-  // Analytics per salesman slug: { [slug]: { clicks, enquiries } }
   const [analyticsMap,    setAnalyticsMap]    = useState({});
 
   const fetchAnalytics = async () => {
@@ -429,20 +739,14 @@ function TeamTab({ managerDealership }) {
 
   useEffect(()=>{ fetchTeam(); fetchAnalytics(); },[managerDealership]);
 
-  // Fetch sold count for the dealership in real-time
   useEffect(()=>{
     if (!managerDealership) return;
     const fetchSold = async () => {
-      const { count } = await supabase
-        .from('car_listings')
-        .select('id', { count:'exact', head:true })
-        .eq('status','sold');
+      const { count } = await supabase.from('car_listings').select('id', { count:'exact', head:true }).eq('status','sold');
       setTeamSoldCount(count||0);
     };
     fetchSold();
-    const ch = supabase.channel('team_sold')
-      .on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},fetchSold)
-      .subscribe();
+    const ch = supabase.channel('team_sold').on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},fetchSold).subscribe();
     return () => supabase.removeChannel(ch);
   },[managerDealership]);
 
@@ -483,56 +787,37 @@ function TeamTab({ managerDealership }) {
   const toggleActive = async s => { setTogglingId(s.id); const {error}=await supabase.from('profiles').update({is_active:!s.is_active}).eq('id',s.id); if (!error) setSalespeople(p=>p.map(x=>x.id===s.id?{...x,is_active:!s.is_active}:x)); setTogglingId(null); };
   const deleteSalesman = async id => { const { data: { session } } = await supabase.auth.getSession(); const res=await fetch(`${SERVER_URL}/invites/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${session?.access_token}`}}); if (res.ok) setSalespeople(p=>p.filter(x=>x.id!==id)); setDeleteConfirmId(null); };
 
-  const activeCount   = salespeople.filter(s=>s.is_active!==false).length;
+  const activeCount = salespeople.filter(s=>s.is_active!==false).length;
   const inactiveCount = salespeople.filter(s=>s.is_active===false).length;
-  const activeRate    = salespeople.length ? Math.round((activeCount/salespeople.length)*100) : 0;
-
-  const iCls = "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+  const activeRate = salespeople.length ? Math.round((activeCount/salespeople.length)*100) : 0;
+  const inputCls = "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
 
   return (
     <div className="space-y-4">
-      {/* Team sold count banner */}
       <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.15)' }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.2)' }}>
-          <CheckCircle2 className="w-4 h-4 text-emerald-400"/>
-        </div>
-        <div className="flex-1">
-          <p className="text-emerald-300 text-sm font-semibold">{teamSoldCount} car{teamSoldCount!==1?'s':''} sold</p>
-          <p className="text-emerald-600/60 text-xs">Live count · updates automatically when a listing is marked as sold</p>
-        </div>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.2)' }}><CheckCircle2 className="w-4 h-4 text-emerald-400"/></div>
+        <div className="flex-1"><p className="text-emerald-300 text-sm font-semibold">{teamSoldCount} car{teamSoldCount!==1?'s':''} sold</p><p className="text-emerald-600/60 text-xs">Live count · updates automatically</p></div>
         <p className="text-3xl font-black grad-green tabular-nums">{teamSoldCount}</p>
       </div>
-
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <div className="flex items-center justify-between gap-3 p-4" style={T.divider}>
-          <div>
-            <h2 className="font-semibold text-white">Salespeople</h2>
-            <p className="text-xs text-gray-600 mt-0.5 hidden sm:block">{salespeople.length>0?`${activeCount} active · ${inactiveCount} inactive · ${activeRate}% active rate`:'Manage accounts, links, and status.'}</p>
-          </div>
-          <button onClick={()=>{setShowAddForm(true);resetForm();}} disabled={!managerDealership}
-            className="btn-shimmer inline-flex items-center gap-2 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={T.btnRed}>
-            <UserPlus className="w-4 h-4"/><span className="hidden sm:inline">Add Salesman</span><span className="sm:hidden">Add</span>
-          </button>
+          <div><h2 className="font-semibold text-white">Salespeople</h2><p className="text-xs text-gray-600 mt-0.5 hidden sm:block">{salespeople.length>0?`${activeCount} active · ${inactiveCount} inactive · ${activeRate}% active rate`:'Manage accounts, links, and status.'}</p></div>
+          <button onClick={()=>{setShowAddForm(true);resetForm();}} disabled={!managerDealership} className="btn-shimmer inline-flex items-center gap-2 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={T.btnRed}><UserPlus className="w-4 h-4"/><span className="hidden sm:inline">Add Salesman</span><span className="sm:hidden">Add</span></button>
         </div>
-
         {teamError && <div className="m-4 rounded-lg px-3 py-2.5 text-amber-300 text-xs" style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.14)' }}>⚠ {teamError}</div>}
-
-        {loadingTeam ? (
-          <div className="p-12 text-center text-gray-600 text-sm">Loading team...</div>
-        ) : salespeople.length===0 ? (
+        {loadingTeam ? <div className="p-12 text-center text-gray-600 text-sm">Loading team...</div>
+        : salespeople.length===0 ? (
           <div className="p-12 text-center">
             <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.12)' }}><Users className="w-5 h-5 text-red-500/40"/></div>
             <p className="text-gray-600 text-sm mb-4">No salespeople added yet</p>
-            <button onClick={()=>{setShowAddForm(true);resetForm();}} disabled={!managerDealership}
-              className="btn-shimmer text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={T.btnRed}>Add your first salesman</button>
+            <button onClick={()=>{setShowAddForm(true);resetForm();}} disabled={!managerDealership} className="btn-shimmer text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={T.btnRed}>Add your first salesman</button>
           </div>
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {salespeople.map(s=>(
               <div key={s.id} className={`p-4 transition-colors ${s.is_active===false?'opacity-50':'hover:bg-white/[0.02]'}`}>
                 <div className="flex items-start gap-3">
-                  {s.avatar_url?<img src={s.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0"/>
-                    :<div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background:'linear-gradient(135deg,#dc2626,#7c3aed)' }}>{(s.full_name||'S')[0].toUpperCase()}</div>}
+                  {s.avatar_url?<img src={s.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0"/>:<div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background:'linear-gradient(135deg,#dc2626,#7c3aed)' }}>{(s.full_name||'S')[0].toUpperCase()}</div>}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p className="font-semibold text-white truncate">{s.full_name}</p>
@@ -549,9 +834,7 @@ function TeamTab({ managerDealership }) {
                           {copiedId===s.id?<><Check className="w-3 h-3 text-emerald-400"/><span className="text-emerald-400">Copied</span></>:<><Copy className="w-3 h-3"/>Copy</>}
                         </button>
                       </div>
-                    ) : (
-                      <div className="mb-3"><span className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg" style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.12)' }}>⚠ No slug — referral link unavailable</span></div>
-                    )}
+                    ) : <div className="mb-3"><span className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg" style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.12)' }}>⚠ No slug — referral link unavailable</span></div>}
                     <div className="grid grid-cols-3 gap-2 max-w-xs">
                       {[[String(analyticsMap[s.slug]?.clicks||0),'Clicks'],[String(analyticsMap[s.slug]?.enquiries||0),'Enquiries'],[String(teamSoldCount),'Team Sales']].map(([v,lbl])=>(
                         <div key={lbl} className="rounded-lg px-2.5 py-2" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
@@ -562,14 +845,10 @@ function TeamTab({ managerDealership }) {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 flex-shrink-0">
-                    <button onClick={()=>toggleActive(s)} disabled={togglingId===s.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-white transition-all disabled:opacity-40"
-                      style={{ border:'1px solid rgba(255,255,255,0.08)' }}>
+                    <button onClick={()=>toggleActive(s)} disabled={togglingId===s.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-white transition-all disabled:opacity-40" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>
                       {s.is_active!==false?<><ToggleRight className="w-3.5 h-3.5 text-emerald-400"/><span className="hidden sm:inline">Deactivate</span></>:<><ToggleLeft className="w-3.5 h-3.5 text-gray-600"/><span className="hidden sm:inline">Activate</span></>}
                     </button>
-                    <button onClick={()=>setDeleteConfirmId(s.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition-all" style={{ border:'1px solid rgba(220,38,38,0.18)' }}>
-                      <Trash2 className="w-3.5 h-3.5"/><span className="hidden sm:inline">Remove</span>
-                    </button>
+                    <button onClick={()=>setDeleteConfirmId(s.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition-all" style={{ border:'1px solid rgba(220,38,38,0.18)' }}><Trash2 className="w-3.5 h-3.5"/><span className="hidden sm:inline">Remove</span></button>
                   </div>
                 </div>
               </div>
@@ -577,63 +856,42 @@ function TeamTab({ managerDealership }) {
           </div>
         )}
       </div>
-
       {deleteConfirmId && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style={T.modal}>
-            <div className="flex items-start justify-between mb-3">
-              <div><h3 className="font-semibold text-white">Remove Salesman?</h3><p className="text-gray-500 text-xs mt-0.5">Deletes their account and referral link permanently.</p></div>
-              <button onClick={()=>setDeleteConfirmId(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={()=>setDeleteConfirmId(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
-              <button onClick={()=>deleteSalesman(deleteConfirmId)} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>Remove</button>
-            </div>
+            <div className="flex items-start justify-between mb-3"><div><h3 className="font-semibold text-white">Remove Salesman?</h3><p className="text-gray-500 text-xs mt-0.5">Deletes their account and referral link permanently.</p></div><button onClick={()=>setDeleteConfirmId(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button></div>
+            <div className="flex gap-3 mt-5"><button onClick={()=>setDeleteConfirmId(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button><button onClick={()=>deleteSalesman(deleteConfirmId)} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>Remove</button></div>
           </div>
         </div>
       )}
-
       {showAddForm && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={T.modal}>
-            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={T.divider}>
-              <div><h3 className="font-semibold text-white">Add Salesman</h3><p className="text-xs text-gray-500 mt-0.5">Create account and trackable referral link</p></div>
-              <button onClick={()=>setShowAddForm(false)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
-            </div>
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={T.divider}><div><h3 className="font-semibold text-white">Add Salesman</h3><p className="text-xs text-gray-500 mt-0.5">Create account and trackable referral link</p></div><button onClick={()=>setShowAddForm(false)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button></div>
             <div className="p-5 overflow-y-auto flex-1">
               {addSuccess ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background:'rgba(52,211,153,0.12)', border:'1px solid rgba(52,211,153,0.22)' }}><Check className="w-6 h-6 text-emerald-400"/></div>
-                  <p className="text-emerald-400 font-semibold mb-1">Salesman added!</p>
-                  <p className="text-gray-500 text-sm mb-6">{addSuccess}</p>
-                  <div className="flex gap-3">
-                    <button onClick={()=>setShowAddForm(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Done</button>
-                    <button onClick={resetForm} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>Add Another</button>
-                  </div>
+                  <p className="text-emerald-400 font-semibold mb-1">Salesman added!</p><p className="text-gray-500 text-sm mb-6">{addSuccess}</p>
+                  <div className="flex gap-3"><button onClick={()=>setShowAddForm(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Done</button><button onClick={resetForm} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>Add Another</button></div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Full Name *</label><input type="text" placeholder="Ahmad bin Abdullah" value={name} onChange={e=>handleNameChange(e.target.value)} autoComplete="off" className={iCls}/></div>
-                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Email *</label><input type="email" placeholder="ahmad@autocity.my" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="off" className={iCls}/></div>
+                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Full Name *</label><input type="text" placeholder="Ahmad bin Abdullah" value={name} onChange={e=>handleNameChange(e.target.value)} autoComplete="off" className={inputCls}/></div>
+                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Email *</label><input type="email" placeholder="ahmad@autocity.my" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="off" className={inputCls}/></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Phone</label><input type="tel" placeholder="+60 12-345 6789" value={phone} onChange={e=>setPhone(e.target.value)} autoComplete="off" className={iCls}/></div>
-                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Temp Password *</label><input type="text" placeholder="Min 8 characters" value={tempPw} onChange={e=>setTempPw(e.target.value)} autoComplete="off" className={iCls}/></div>
+                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Phone</label><input type="tel" placeholder="+60 12-345 6789" value={phone} onChange={e=>setPhone(e.target.value)} autoComplete="off" className={inputCls}/></div>
+                    <div><label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Temp Password *</label><input type="text" placeholder="Min 8 characters" value={tempPw} onChange={e=>setTempPw(e.target.value)} autoComplete="off" className={inputCls}/></div>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Unique Slug *</label>
-                    <div className="flex">
-                      <span className="rounded-l-xl px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRight:'none' }}>/cars?ref=</span>
-                      <input type="text" placeholder="ahmad" value={slug} onChange={e=>setSlug(slugify(e.target.value))} autoComplete="off" className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-red-600/50 transition-colors" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)' }}/>
-                    </div>
+                    <div className="flex"><span className="rounded-l-xl px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRight:'none' }}>/cars?ref=</span><input type="text" placeholder="ahmad" value={slug} onChange={e=>setSlug(slugify(e.target.value))} autoComplete="off" className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-red-600/50 transition-colors" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)' }}/></div>
                     <p className="text-xs text-gray-700 mt-1">Auto-filled from first name. Lowercase + numbers only.</p>
                   </div>
                   {addError && <div className="rounded-xl px-3 py-2.5 text-red-400 text-xs" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.18)' }}>⚠ {addError}</div>}
-                  <div className="flex gap-3 pt-1">
-                    <button onClick={()=>setShowAddForm(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
-                    <button onClick={handleAdd} disabled={addLoading} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40" style={T.btnRed}>{addLoading?'Creating...':'Add Salesman'}</button>
-                  </div>
+                  <div className="flex gap-3 pt-1"><button onClick={()=>setShowAddForm(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button><button onClick={handleAdd} disabled={addLoading} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40" style={T.btnRed}>{addLoading?'Creating...':'Add Salesman'}</button></div>
                 </div>
               )}
             </div>
@@ -648,17 +906,21 @@ function TeamTab({ managerDealership }) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [listings,          setListings]          = useState([]);
-  const [loading,           setLoading]           = useState(true);
-  const [activeTab,         setActiveTab]         = useState('listings');
-  const [deleteId,          setDeleteId]          = useState(null);
-  const [sidebarOpen,       setSidebarOpen]       = useState(false);
-  const [tiktokListing,     setTiktokListing]     = useState(null);
-  const [priceEditListing,  setPriceEditListing]  = useState(null);
-  const [markSoldListing,   setMarkSoldListing]   = useState(null);  // ← NEW
-  const [markSoldLoading,   setMarkSoldLoading]   = useState(false); // ← NEW
-  const [profile,           setProfile]           = useState(null);
-  const [updatingStatus,    setUpdatingStatus]    = useState(null);
+  const [listings,         setListings]         = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [activeTab,        setActiveTab]        = useState('listings');
+  const [deleteId,         setDeleteId]         = useState(null);
+  const [sidebarOpen,      setSidebarOpen]      = useState(false);
+  const [tiktokListing,    setTiktokListing]    = useState(null);
+  const [priceEditListing, setPriceEditListing] = useState(null);
+  const [markSoldListing,  setMarkSoldListing]  = useState(null);
+  const [markSoldLoading,  setMarkSoldLoading]  = useState(false);
+  const [profile,          setProfile]          = useState(null);
+  const [updatingStatus,   setUpdatingStatus]   = useState(null);
+  const [editListing,      setEditListing]      = useState(null);
+  const [searchQuery,      setSearchQuery]      = useState('');
+  const [copiedListingId,  setCopiedListingId]  = useState(null);
+  const [userId,           setUserId]           = useState(null);
 
   useEffect(() => {
     const s = document.createElement('style'); s.textContent = STYLES;
@@ -673,19 +935,25 @@ export default function DashboardPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error||!data.session) { navigate('/login'); return; }
-      const { data: p } = await supabase.from('profiles').select('*').eq('id',data.session.user.id).single();
+      const uid = data.session.user.id;
+      setUserId(uid);
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', uid).single();
       if (p) {
         if (p.role === 'salesman') { navigate('/salesman'); return; }
         if (!['dealer','superadmin','admin','manager'].includes(p.role)) { navigate('/login'); return; }
         setProfile(p);
       } else { navigate('/login'); return; }
+      const { data: cars, error: carsError } = await supabase
+        .from('car_listings').select('*').eq('dealer_id', uid).order('created_at',{ascending:false});
+      setListings(carsError ? [] : cars || []);
+      setLoading(false);
     });
-    supabase.from('car_listings').select('*').order('created_at',{ascending:false}).then(({data,error})=>{ setListings(error?[]:data||[]); setLoading(false); });
   }, [navigate]);
 
   useEffect(() => {
+    if (!userId) return;
     const ch = supabase.channel('dash_listings')
-      .on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},payload=>{
+      .on('postgres_changes',{event:'*',schema:'public',table:'car_listings', filter:`dealer_id=eq.${userId}`},payload=>{
         setListings(prev => {
           if (payload.eventType==='INSERT') return [payload.new,...prev];
           if (payload.eventType==='UPDATE') return prev.map(l=>l.id===payload.new.id?{...l,...payload.new}:l);
@@ -694,34 +962,64 @@ export default function DashboardPage() {
         });
       }).subscribe();
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [userId]);
 
   const handleLogout    = async () => { await supabase.auth.signOut(); navigate('/login'); };
   const handleNew       = l => { setListings(p=>[l,...p]); setActiveTab('listings'); };
-  const handleTabChange = t => { setActiveTab(t); setSidebarOpen(false); };
+  const handleTabChange = tab => { setActiveTab(tab); setSidebarOpen(false); };
   const handleDelete    = async id => { const {error}=await supabase.from('car_listings').delete().eq('id',id); if (!error) setListings(p=>p.filter(l=>l.id!==id)); setDeleteId(null); };
-  const handleStatus    = async (id, status) => { setUpdatingStatus(id); try { const {data,error}=await supabase.from('car_listings').update({status}).eq('id',id).select().single(); if (error) throw error; setListings(p=>p.map(l=>l.id===id?data:l)); } catch(e){console.error(e);} finally{setUpdatingStatus(null);} };
+  const handleStatus    = async (id, status) => { setUpdatingStatus(id); try { const {data,error}=await supabase.from('car_listings').update({status}).eq('id',id).select(); if (error) throw error; setListings(p=>p.map(l=>l.id===id?(data?.[0]??{...l,status}):l)); } catch(e){console.error(e);} finally{setUpdatingStatus(null);} };
   const handlePriceSave = u => setListings(p=>p.map(l=>l.id===u.id?u:l));
+  const handleUpdate    = u => { setListings(p=>p.map(l=>l.id===u.id?u:l)); setEditListing(null); };
+  const handleProfileUpdate = updated => setProfile(updated);
 
-  // ── Mark as Sold handler ──────────────────────────────────────────────────
   const handleMarkSold = async () => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('car_listings')
-        .update({ status: 'sold' })
-        .eq('id', markSoldListing.id)
-        .select()
-        .single();
+      const { data, error } = await supabase.from('car_listings').update({ status: 'sold' }).eq('id', markSoldListing.id).select();
       if (error) throw error;
-      setListings(p => p.map(l => l.id === data.id ? data : l));
+      const updated = data?.[0] ?? { ...markSoldListing, status: 'sold' };
+      setListings(p => p.map(l => l.id === updated.id ? updated : l));
       setMarkSoldListing(null);
     } catch (e) { console.error(e); }
     setMarkSoldLoading(false);
   };
 
-  const soldCount = listings.filter(l => l.status === 'sold').length;
+  const filteredListings = searchQuery.trim()
+    ? listings.filter(l => {
+        const q = searchQuery.toLowerCase();
+        return (l.brand||'').toLowerCase().includes(q) ||
+               (l.model||'').toLowerCase().includes(q) ||
+               (l.variant||'').toLowerCase().includes(q) ||
+               (l.vin_number||'').toLowerCase().includes(q);
+      })
+    : listings;
+
+  const copyListing = l => {
+    const lines = [
+      `🚗 ${l.year} ${l.brand} ${l.model}${l.variant ? ' ' + l.variant : ''}`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,``,`📋 DETAILS`,
+      l.mileage      ? `• Mileage: ${Number(l.mileage).toLocaleString()} km` : null,
+      l.engine_cc    ? `• Engine: ${Number(l.engine_cc).toLocaleString()} cc` : null,
+      l.transmission ? `• Transmission: ${l.transmission}` : null,
+      l.colour       ? `• Colour: ${l.colour}` : null,
+      l.condition    ? `• Condition: ${l.condition.charAt(0).toUpperCase()+l.condition.slice(1)}` : null,
+      (l.city||l.state) ? `• Location: ${[l.city,l.state].filter(Boolean).join(', ')}` : null,
+      l.vin_number   ? `• VIN: ${l.vin_number}` : null,``,
+      `💰 PRICE: RM ${(l.selling_price||0).toLocaleString()}`,
+      l.original_price && l.original_price > l.selling_price
+        ? `(Was: RM ${l.original_price.toLocaleString()} | Save RM ${(l.original_price - l.selling_price).toLocaleString()})` : null,
+    ];
+    if (l.features) lines.push(``,`✨ FEATURES`,l.features);
+    if (l.specs)    lines.push(``,`🔧 SPECS`,l.specs);
+    if (l.options)  lines.push(``,`📝 ABOUT`,l.options);
+    const tags = [l.brand,l.model,l.condition,l.state,'UsedCars','Malaysia','CarForSale'].filter(Boolean).map(t=>`#${t.replace(/\s+/g,'')}`).join(' ');
+    lines.push(``,tags);
+    navigator.clipboard.writeText(lines.filter(x=>x!==null).join('\n')).then(()=>{ setCopiedListingId(l.id); setTimeout(()=>setCopiedListingId(null),2000); });
+  };
+
+  const soldCount = listings.filter(l=>l.status==='sold').length;
   const totalVal  = listings.reduce((s,l)=>s+(l.selling_price||0),0);
   const avgPrice  = listings.length ? Math.round(totalVal/listings.length) : 0;
   const hotCount  = listings.filter(l=>l.original_price&&l.selling_price&&l.selling_price<=l.original_price*0.97).length;
@@ -767,20 +1065,26 @@ export default function DashboardPage() {
 
   const condCls = c => ({ new:'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 badge-glow-cyan', recon:'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 badge-glow-cyan', used:'bg-white/[0.06] text-gray-400 border border-white/10' }[c]||'bg-white/[0.06] text-gray-400 border border-white/10');
 
-  const TITLES = { listings:{title:'Listings',sub:'Manage your inventory'}, add:{title:'Add Listing',sub:'Upload a new car'}, team:{title:'Team',sub:'Manage salespeople'}, analytics:{title:'Analytics',sub:'Performance & AI advisor'} };
+  const TITLES = {
+    listings:  { title:'Listings',   sub:'Manage your inventory' },
+    add:       { title:'Add Listing', sub:'Upload a new car' },
+    team:      { title:'Team',        sub:'Manage salespeople' },
+    analytics: { title:'Analytics',   sub:'Performance & AI advisor' },
+    settings:  { title:'Settings',    sub:'Dealership, front page & account' },
+  };
+
   const NAV = [
-    { id:'listings',  Icon:Car,        label:'Listings',   badge:listings.length },
+    { id:'listings',  Icon:Car,        label:'Listings',  badge:listings.length },
     { id:'add',       Icon:PlusCircle, label:'Add Listing' },
     { id:'analytics', Icon:BarChart2,  label:'Analytics' },
     { id:'team',      Icon:Users,      label:'Team' },
   ];
 
-  // ── 5-column stat cards: added "Sold" ─────────────────────────────────────
   const STAT_CARDS = [
-    { label:'Total Listings', val:listings.length,                    sub:'Active inventory',       grad:'grad-cyan',   Icon:Car,           glow:'rgba(103,232,249,0.13)' },
-    { label:'Sold',           val:soldCount,                          sub:'Cars sold all time',     grad:'grad-green',  Icon:CheckCircle2,  glow:'rgba(110,231,183,0.13)' },
-    { label:'Total Value',    val:`RM ${totalVal.toLocaleString()}`,   sub:'Combined price',         grad:'grad-purple', Icon:DollarSign,    glow:'rgba(216,180,254,0.13)' },
-    { label:'Avg. Price',     val:`RM ${avgPrice.toLocaleString()}`,   sub:'Per vehicle',            grad:'grad-white',  Icon:TrendingUp,    glow:'rgba(255,255,255,0.06)' },
+    { label:'Total Listings', val:listings.length,                   sub:'Active inventory',        grad:'grad-cyan',   Icon:Car,          glow:'rgba(103,232,249,0.13)' },
+    { label:'Sold',           val:soldCount,                         sub:'Cars sold all time',      grad:'grad-green',  Icon:CheckCircle2, glow:'rgba(110,231,183,0.13)' },
+    { label:'Total Value',    val:`RM ${totalVal.toLocaleString()}`,  sub:'Combined price',          grad:'grad-purple', Icon:DollarSign,   glow:'rgba(216,180,254,0.13)' },
+    { label:'Avg. Price',     val:`RM ${avgPrice.toLocaleString()}`,  sub:'Per vehicle',             grad:'grad-white',  Icon:TrendingUp,   glow:'rgba(255,255,255,0.06)' },
     { label:'Hot Deals',      val:hotCount, sub:hotCount>0?'On homepage':'No discounts', grad:hotCount>0?'grad-red':'', Icon:Flame, glow:hotCount>0?'rgba(248,113,113,0.18)':'rgba(255,255,255,0.03)' },
   ];
 
@@ -788,7 +1092,7 @@ export default function DashboardPage() {
     <div className="min-h-screen text-white flex" style={{ fontFamily:"'DM Sans',sans-serif", background:'radial-gradient(ellipse 65% 40% at 0% 0%, rgba(220,38,38,0.06) 0%, transparent 55%), #09090b' }}>
       {sidebarOpen && <div className="fixed inset-0 bg-black/65 z-20 lg:hidden backdrop-blur-sm" onClick={()=>setSidebarOpen(false)}/>}
 
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen?'translate-x-0':'-translate-x-full'}`}
         style={{ background:'linear-gradient(155deg,#111118 0%,#0a0a0e 100%)', borderRight:'1px solid rgba(255,255,255,0.055)', boxShadow:'4px 0 28px rgba(0,0,0,0.65), inset -1px 0 0 rgba(220,38,38,0.07)' }}>
 
@@ -801,7 +1105,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-px mt-1">
+        <nav className="flex-1 p-3 space-y-px mt-1 overflow-y-auto">
           {NAV.map(({id,Icon,label,badge})=>(
             <button key={id} onClick={()=>handleTabChange(id)}
               className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab===id?'nav-active text-white':'text-gray-500 hover:text-white'}`}>
@@ -815,21 +1119,42 @@ export default function DashboardPage() {
           </a>
         </nav>
 
-        <div className="p-3" style={T.divider}>
+        {/* ── Sidebar bottom: profile + settings + logout ── */}
+        <div className="p-3 space-y-1" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+          {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
-            <Avatar size="lg"/><div className="flex-1 min-w-0"><p className="text-sm font-semibold text-white truncate">{profile?.full_name||'—'}</p><p className="text-xs text-gray-600 truncate">{profile?.email||''}</p></div>
+            <Avatar size="lg"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{profile?.full_name||'—'}</p>
+              <p className="text-xs text-gray-600 truncate">{profile?.email||''}</p>
+            </div>
           </div>
+
+          {/* Dealership chip */}
           {profile?.dealership && (
-            <div className="flex items-center gap-2 rounded-lg px-3 py-2 mt-1 mx-1" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.13)' }}>
-              <Building2 className="w-3.5 h-3.5 text-red-500/60 flex-shrink-0"/><p className="text-xs font-semibold text-gray-300 truncate">{profile.dealership}</p>
+            <div className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.13)' }}>
+              <Building2 className="w-3.5 h-3.5 text-red-500/60 flex-shrink-0"/>
+              <p className="text-xs font-semibold text-gray-300 truncate flex-1">{profile.dealership}</p>
             </div>
           )}
-          <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-red-400 hover:bg-red-500/[0.06] transition-all mt-0.5"><LogOut className="w-4 h-4"/>Sign out</button>
+
+          {/* ✅ Settings button — sits right under username */}
+          <button
+            onClick={()=>handleTabChange('settings')}
+            className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab==='settings'?'nav-active text-white':'text-gray-500 hover:text-white'}`}>
+            <Settings className={`w-4 h-4 flex-shrink-0 ${activeTab==='settings'?'text-red-400':''}`}/>
+            Settings
+          </button>
+
+          <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-red-400 hover:bg-red-500/[0.06] transition-all">
+            <LogOut className="w-4 h-4"/>Sign out
+          </button>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ── Main ── */}
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
+        {/* Mobile topbar */}
         <div className="lg:hidden sticky top-0 z-10 flex items-center gap-3 px-4 py-3 backdrop-blur-xl"
           style={{ background:'rgba(9,9,11,0.92)', borderBottom:'1px solid rgba(255,255,255,0.05)', boxShadow:'0 1px 0 rgba(220,38,38,0.1)' }}>
           <button onClick={()=>setSidebarOpen(true)} className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"><Menu className="w-5 h-5"/></button>
@@ -848,9 +1173,9 @@ export default function DashboardPage() {
             <div className="mt-4 h-px" style={{ background:'linear-gradient(90deg,rgba(220,38,38,0.32),rgba(56,189,248,0.18) 38%,transparent 68%)' }}/>
           </div>
 
+          {/* ── Listings Tab ── */}
           {activeTab==='listings' && (
             <>
-              {/* ── 5-column stat grid ── */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
                 {STAT_CARDS.map(({label,val,sub,grad,Icon,glow})=>(
                   <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
@@ -867,13 +1192,21 @@ export default function DashboardPage() {
 
               <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
                 <div className="flex items-center justify-between p-4" style={T.divider}>
-                  <h2 className="font-semibold text-white text-sm">All Vehicles <span className="text-gray-600 font-normal">({listings.length})</span></h2>
+                  <h2 className="font-semibold text-white text-sm">All Vehicles <span className="text-gray-600 font-normal">({filteredListings.length}{searchQuery.trim() && listings.length !== filteredListings.length ? ` of ${listings.length}` : ''})</span></h2>
                   <button onClick={()=>setActiveTab('add')} className="btn-shimmer flex items-center gap-1.5 text-white px-3 py-1.5 rounded-lg text-sm font-semibold" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5"/>Add</button>
                 </div>
+                <div className="px-4 pb-3 pt-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none"/>
+                    <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search by brand, model, variant, VIN…"
+                      className="w-full pl-9 pr-8 py-2 text-sm text-white placeholder-gray-600 rounded-lg focus:outline-none focus:border-red-500/40 transition-colors"
+                      style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }}/>
+                    {searchQuery && <button onClick={()=>setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors"><X className="w-3.5 h-3.5"/></button>}
+                  </div>
+                </div>
 
-                {loading ? (
-                  <div className="p-12 text-center text-gray-600 text-sm">Loading…</div>
-                ) : listings.length===0 ? (
+                {loading ? <div className="p-12 text-center text-gray-600 text-sm">Loading…</div>
+                : listings.length===0 ? (
                   <div className="p-12 text-center">
                     <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.12)' }}><Car className="w-6 h-6 text-red-500/40"/></div>
                     <p className="text-gray-600 text-sm mb-4">No listings yet</p>
@@ -892,7 +1225,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
-                          {listings.map(l=>{
+                          {filteredListings.map(l=>{
                             const age=getListingAge(l.created_at), bt=l.body_type||l.bodyType||null;
                             const isSold = l.status === 'sold';
                             return (
@@ -914,16 +1247,9 @@ export default function DashboardPage() {
                                 <td className="px-4 py-3"><StatusBadge listing={l}/></td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-0.5 justify-end">
-                                    {/* Mark as Sold button — only shows when NOT already sold */}
-                                    {!isSold && (
-                                      <button
-                                        onClick={() => setMarkSoldListing(l)}
-                                        title="Mark as Sold"
-                                        className="sold-btn p-1.5 rounded-lg transition-all text-gray-600"
-                                        style={{ border:'1px solid transparent' }}>
-                                        <CheckCircle2 className="w-4 h-4"/>
-                                      </button>
-                                    )}
+                                    {!isSold && <button onClick={()=>setMarkSoldListing(l)} title="Mark as Sold" className="sold-btn p-1.5 rounded-lg transition-all text-gray-600" style={{ border:'1px solid transparent' }}><CheckCircle2 className="w-4 h-4"/></button>}
+                                    <button onClick={()=>setEditListing(l)} title="Edit" className="p-1.5 text-gray-600 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"><Pencil className="w-4 h-4"/></button>
+                                    <button onClick={()=>copyListing(l)} title="Copy" className={`p-1.5 rounded-lg transition-all ${copiedListingId===l.id?'text-emerald-400 bg-emerald-500/10':'text-gray-600 hover:text-amber-400 hover:bg-amber-500/10'}`}>{copiedListingId===l.id?<Check className="w-4 h-4"/>:<Clipboard className="w-4 h-4"/>}</button>
                                     <button onClick={()=>setPriceEditListing(l)} className="p-1.5 text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Tag className="w-4 h-4"/></button>
                                     <button onClick={()=>setTiktokListing(l)} className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Video className="w-4 h-4"/></button>
                                     <button onClick={()=>setDeleteId(l.id)} className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 className="w-4 h-4"/></button>
@@ -938,41 +1264,35 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden divide-y divide-white/[0.04]">
-                      {listings.map(l=>{
+                      {filteredListings.map(l=>{
                         const bt=l.body_type||l.bodyType||null;
                         const isSold = l.status === 'sold';
+                        const copied = copiedListingId === l.id;
                         return (
                           <div key={l.id} className={`p-4 ${getListingAge(l.created_at)>=30&&!isSold?'bg-amber-950/[0.07]':''} ${isSold?'opacity-60':''}`}>
-                            <div className="flex items-start gap-3">
+                            <div className="flex gap-3 mb-3">
                               {l.images?.[0]?<img src={l.images[0]} alt="" className={`w-14 h-14 rounded-xl object-cover bg-gray-800 flex-shrink-0 ${isSold?'grayscale':''}`}/>:<div className="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0"/>}
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <div className="min-w-0">
-                                    <p className="font-semibold text-white text-sm leading-tight">{l.brand} {l.model}</p>
-                                    <p className="text-gray-600 text-xs mt-0.5">{l.variant||'—'}{bt?` · ${bt}`:''}</p>
-                                  </div>
-                                  <div className="flex items-center gap-0.5 flex-shrink-0">
-                                    {!isSold && (
-                                      <button onClick={()=>setMarkSoldListing(l)} title="Mark as Sold"
-                                        className="sold-btn p-1.5 rounded-lg transition-all text-gray-600"
-                                        style={{ border:'1px solid transparent' }}>
-                                        <CheckCircle2 className="w-4 h-4"/>
-                                      </button>
-                                    )}
-                                    <button onClick={()=>setPriceEditListing(l)} className="p-1.5 text-gray-600 hover:text-emerald-400 rounded-lg transition-all"><Tag className="w-4 h-4"/></button>
-                                    <button onClick={()=>setTiktokListing(l)} className="p-1.5 text-gray-600 hover:text-red-400 rounded-lg transition-all"><Video className="w-4 h-4"/></button>
-                                    <button onClick={()=>setDeleteId(l.id)} className="p-1.5 text-gray-600 hover:text-red-400 rounded-lg transition-all"><Trash2 className="w-4 h-4"/></button>
-                                  </div>
-                                </div>
-                                <div className="mb-2"><DiscountCell listing={l}/></div>
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${condCls(l.condition)}`}>{l.condition}</span>
-                                  {l.mileage&&<span className="text-xs text-gray-400">{Number(l.mileage).toLocaleString()} km</span>}
-                                  {l.state&&<span className="text-xs text-gray-400">{l.state}</span>}
-                                  <AgeBadge createdAt={l.created_at}/>
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="min-w-0"><p className="font-semibold text-white text-sm leading-tight truncate">{l.brand} {l.model}</p><p className="text-gray-600 text-xs mt-0.5 truncate">{l.variant||'—'}{bt?` · ${bt}`:''}</p></div>
                                   <StatusBadge listing={l}/>
                                 </div>
+                                <div className="mt-1.5"><DiscountCell listing={l}/></div>
                               </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${condCls(l.condition)}`}>{l.condition}</span>
+                              {l.mileage&&<span className="text-xs text-gray-500">{Number(l.mileage).toLocaleString()} km</span>}
+                              {l.state&&<span className="text-xs text-gray-500">{l.state}</span>}
+                              <AgeBadge createdAt={l.created_at}/>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button onClick={()=>setEditListing(l)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-sky-400 transition-all" style={{ background:'rgba(56,189,248,0.07)', border:'1px solid rgba(56,189,248,0.15)' }}><Pencil className="w-3.5 h-3.5"/>Edit</button>
+                              <button onClick={()=>copyListing(l)} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${copied?'text-emerald-400':'text-amber-400'}`} style={{ background:copied?'rgba(52,211,153,0.07)':'rgba(251,191,36,0.07)', border:`1px solid ${copied?'rgba(52,211,153,0.2)':'rgba(251,191,36,0.15)'}` }}>{copied?<Check className="w-3.5 h-3.5"/>:<Clipboard className="w-3.5 h-3.5"/>}{copied?'Copied!':'Copy'}</button>
+                              <button onClick={()=>setPriceEditListing(l)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-emerald-400 transition-all" style={{ background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.15)' }}><Tag className="w-3.5 h-3.5"/>Price</button>
+                              <button onClick={()=>setTiktokListing(l)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-400 transition-all" style={{ background:'rgba(220,38,38,0.07)', border:'1px solid rgba(220,38,38,0.15)' }}><Video className="w-3.5 h-3.5"/>TikTok</button>
+                              {!isSold && <button onClick={()=>setMarkSoldListing(l)} className="sold-btn flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-500 transition-all" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}><CheckCircle2 className="w-3.5 h-3.5"/>Sold</button>}
+                              <button onClick={()=>setDeleteId(l.id)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-500 transition-all" style={{ background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.14)' }}><Trash2 className="w-3.5 h-3.5"/>Delete</button>
                             </div>
                           </div>
                         );
@@ -984,24 +1304,18 @@ export default function DashboardPage() {
             </>
           )}
 
-          {activeTab==='add' && (
-            <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
-              <CarForm onCreate={handleNew}/>
-            </div>
-          )}
+          {activeTab==='add'       && <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}><CarForm onCreate={handleNew}/></div>}
           {activeTab==='analytics' && <AnalyticsTab listings={listings} profile={profile}/>}
           {activeTab==='team'      && <TeamTab managerDealership={profile?.dealership}/>}
+          {activeTab==='settings'  && profile && <SettingsTab profile={profile} onProfileUpdate={handleProfileUpdate}/>}
         </div>
       </main>
 
-      {/* Delete modal */}
+      {/* ── Delete modal ── */}
       {deleteId && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style={T.modal}>
-            <div className="flex items-start justify-between mb-3">
-              <div><h3 className="font-semibold text-white">Delete Listing?</h3><p className="text-gray-500 text-xs mt-0.5">This cannot be undone.</p></div>
-              <button onClick={()=>setDeleteId(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
-            </div>
+            <div className="flex items-start justify-between mb-3"><div><h3 className="font-semibold text-white">Delete Listing?</h3><p className="text-gray-500 text-xs mt-0.5">This cannot be undone.</p></div><button onClick={()=>setDeleteId(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button></div>
             <p className="text-gray-400 text-sm mb-5">This will permanently remove the car listing from your inventory.</p>
             <div className="flex gap-3">
               <button onClick={()=>setDeleteId(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border:'1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
@@ -1014,15 +1328,20 @@ export default function DashboardPage() {
       {priceEditListing && <PriceEditModal listing={priceEditListing} onClose={()=>setPriceEditListing(null)} onSave={handlePriceSave}/>}
       {tiktokListing    && <TikTokGenerator listing={tiktokListing} onClose={()=>setTiktokListing(null)}/>}
 
-      {/* Mark as Sold modal */}
-      {markSoldListing && (
-        <MarkSoldModal
-          listing={markSoldListing}
-          onClose={()=>setMarkSoldListing(null)}
-          onConfirm={handleMarkSold}
-          loading={markSoldLoading}
-        />
+      {/* Edit listing modal */}
+      {editListing && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background:'rgba(0,0,0,0.82)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col" style={T.modal}>
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={T.divider}>
+              <div><h3 className="font-semibold text-white">Edit Listing</h3><p className="text-xs text-gray-500 mt-0.5">{editListing.brand} {editListing.model} {editListing.variant||''}</p></div>
+              <button onClick={()=>setEditListing(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5"><CarForm listing={editListing} onUpdate={handleUpdate} onCreate={()=>{}}/></div>
+          </div>
+        </div>
       )}
+
+      {markSoldListing && <MarkSoldModal listing={markSoldListing} onClose={()=>setMarkSoldListing(null)} onConfirm={handleMarkSold} loading={markSoldLoading}/>}
     </div>
   );
 }

@@ -1,15 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck } from 'lucide-react';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-
 const initialListing = {
   brand: '', model: '', variant: '', year: '',
   bodyType: '', fuelType: '', transmission: 'Auto', condition: 'used',
   engineCc: '',
-  mileage: '', colour: '', registrationDate: '',
+  mileage: '', colour: '', registrationDate: '', vin_number: '',
   state: '', city: '',
   basePrice: '', sellingPrice: '', originalPrice: '',
   specs: '', options: '', features: '',
@@ -69,7 +68,7 @@ const STATE_CITIES = {
   'Sarawak': ['Kuching', 'Miri', 'Sibu', 'Bintulu', 'Limbang', 'Kota Samarahan'],
 };
 
-const CONDITIONS = ['used', 'recon', 'new'];
+const CONDITIONS  = ['used', 'recon', 'new'];
 const BODY_TYPES  = ['Sedan', 'SUV', 'MPV', 'Hatchback', 'Coupe', 'Pickup'];
 const FUEL_TYPES  = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
 const CC_PRESETS  = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
@@ -84,24 +83,102 @@ const STEPS = [
   { id: 7, label: 'Photos',    icon: Camera,     desc: 'Upload images' },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Copy formatter (also exported for DashboardPage use) ────────────────────
+export function buildCopyText(l) {
+  const condLabel = { used: 'Used', recon: 'Recon', new: 'New' }[l.condition] || l.condition || '';
+  const condEmoji = { used: '🚗', recon: '✨', new: '🆕' }[l.condition] || '🚗';
 
+  const hasDiscount = l.original_price && l.selling_price && l.original_price > l.selling_price;
+  const discountPct = hasDiscount ? Math.round(((l.original_price - l.selling_price) / l.original_price) * 100) : 0;
+  const isHot       = discountPct >= 3;
+
+  // Auto hashtags
+  const brand   = (l.brand || '').toLowerCase().replace(/\s+/g, '');
+  const model   = (l.model || '').toLowerCase().replace(/\s+/g, '');
+  const state   = (l.state || '').toLowerCase().replace(/\s+/g, '');
+  const cond    = (l.condition || '').toLowerCase();
+  const tags    = ['#keretamurah', '#keretamalaysia', `#${brand}`, `#${model}`, state ? `#kereta${state}` : '', `#${cond}`, '#keretabekas', '#jualbeli'].filter(Boolean).join(' ');
+
+  const lines = [];
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`${condEmoji} ${l.year || ''} ${l.brand || ''} ${l.model || ''}${l.variant ? ' ' + l.variant : ''} (${condLabel})`);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  lines.push('');
+
+  // Core info
+  if (l.year)              lines.push(`📅 Year        : ${l.year}`);
+  if (l.registration_date) lines.push(`📋 Reg Date    : ${l.registration_date}`);
+  if (l.mileage)           lines.push(`🔢 Mileage     : ${Number(l.mileage).toLocaleString()} km`);
+  if (l.engine_cc)         lines.push(`⚙️  Engine      : ${Number(l.engine_cc).toLocaleString()}cc`);
+  if (l.transmission)      lines.push(`🔧 Transmission: ${l.transmission}`);
+  if (l.fuel_type)         lines.push(`⛽ Fuel        : ${l.fuel_type}`);
+  if (l.body_type)         lines.push(`🚘 Body Type   : ${l.body_type}`);
+  if (l.colour)            lines.push(`🎨 Colour      : ${l.colour}`);
+  if (l.state || l.city)   lines.push(`📍 Location    : ${[l.city, l.state].filter(Boolean).join(', ')}`);
+  if (l.vin_number)        lines.push(`🔑 VIN         : ${l.vin_number}`);
+  lines.push('');
+
+  // Pricing
+  lines.push(`💰 PRICING`);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  if (hasDiscount) {
+    lines.push(`   Was  : RM ${Number(l.original_price).toLocaleString()}`);
+    lines.push(`   Now  : RM ${Number(l.selling_price).toLocaleString()} ${isHot ? '🔥' : ''}`);
+    lines.push(`   Save : RM ${Number(l.original_price - l.selling_price).toLocaleString()} (${discountPct}% off)`);
+  } else {
+    lines.push(`   Price: RM ${Number(l.selling_price).toLocaleString()}`);
+  }
+  lines.push('');
+
+  // Features
+  if (l.features && l.features.trim()) {
+    lines.push(`✨ FEATURES`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    const featureList = l.features.split(/[\n,]+/).map(f => f.trim()).filter(Boolean);
+    featureList.forEach(f => lines.push(`   • ${f}`));
+    lines.push('');
+  }
+
+  // Specs
+  if (l.specs && l.specs.trim()) {
+    lines.push(`🔩 SPECS`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    const specList = l.specs.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    specList.forEach(s => lines.push(`   • ${s}`));
+    lines.push('');
+  }
+
+  // About / Options
+  if (l.options && l.options.trim()) {
+    lines.push(`📋 ABOUT THIS CAR`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`   ${l.options.trim()}`);
+    lines.push('');
+  }
+
+  lines.push(`📞 DM or WhatsApp to enquire!`);
+  lines.push(`Loan available ✅ Trade-in welcome ✅`);
+  lines.push('');
+  lines.push(tags);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+
+  return lines.join('\n');
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 function Combobox({ value, onChange, options, placeholder, disabled }) {
   const [query, setQuery] = useState(value || '');
   const [open, setOpen]   = useState(false);
   const ref = useRef(null);
-
   const filtered = query
     ? options.filter(o => o.toLowerCase().includes(query.toLowerCase())).slice(0, 20)
     : options.slice(0, 20);
-
   useEffect(() => { setQuery(value || ''); }, [value]);
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
-
   return (
     <div ref={ref} className="relative">
       <input
@@ -156,12 +233,12 @@ const selectCls   = "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 r
 const textareaCls = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors resize-none";
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-
-export default function CarForm({ onCreate }) {
+export default function CarForm({ onCreate, listing, onUpdate }) {
   const [form, setForm]           = useState(initialListing);
   const [step, setStep]           = useState(1);
   const [uploading, setUploading] = useState(false);
   const [previews, setPreviews]   = useState([]);
+  const [copied, setCopied]       = useState(false);
   const [draggingIndex, setDraggingIndex]     = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const photosInputRef = useRef(null);
@@ -169,11 +246,42 @@ export default function CarForm({ onCreate }) {
   const navigate = useNavigate();
 
   useEffect(() => { previewUrlsRef.current = previews; }, [previews]);
-  useEffect(() => () => { previewUrlsRef.current.forEach(URL.revokeObjectURL); }, []);
+  useEffect(() => () => { previewUrlsRef.current.forEach(p => { if (typeof p !== 'string') URL.revokeObjectURL(p); }); }, []);
+
+  // Pre-fill form when in edit mode
+  useEffect(() => {
+    if (listing) {
+      setForm({
+        brand: listing.brand || '',
+        model: listing.model || '',
+        variant: listing.variant || '',
+        year: String(listing.year || ''),
+        bodyType: listing.body_type || '',
+        fuelType: listing.fuel_type || '',
+        transmission: listing.transmission || 'Auto',
+        condition: listing.condition || 'used',
+        engineCc: listing.engine_cc ? String(listing.engine_cc) : '',
+        mileage: listing.mileage ? String(listing.mileage) : '',
+        colour: listing.colour || '',
+        registrationDate: listing.registration_date || '',
+        vin_number: listing.vin_number || '',
+        state: listing.state || '',
+        city: listing.city || '',
+        basePrice: listing.base_price ? String(listing.base_price) : '',
+        sellingPrice: listing.selling_price ? String(listing.selling_price) : '',
+        originalPrice: listing.original_price ? String(listing.original_price) : '',
+        specs: listing.specs || '',
+        options: listing.options || '',
+        features: listing.features || '',
+        images: listing.images || [],
+      });
+      setPreviews(listing.images || []);
+      setStep(1);
+    }
+  }, [listing]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const handleChange = e => set(e.target.name, e.target.value);
-
   const modelOptions = form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
   const cityOptions  = form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
 
@@ -184,6 +292,23 @@ export default function CarForm({ onCreate }) {
   const discountAmt      = hasDiscount ? originalPriceVal - sellingPriceVal : null;
   const discountPct      = hasDiscount ? ((discountAmt / originalPriceVal) * 100).toFixed(1) : null;
   const isHotDeal        = hasDiscount && parseFloat(discountPct) >= 3;
+
+  // ── Copy listing data handler ──
+  const handleCopy = () => {
+    const src = listing || {
+      brand: form.brand, model: form.model, variant: form.variant,
+      year: form.year, body_type: form.bodyType, fuel_type: form.fuelType,
+      transmission: form.transmission, condition: form.condition,
+      engine_cc: form.engineCc, mileage: form.mileage, colour: form.colour,
+      registration_date: form.registrationDate, vin_number: form.vin_number,
+      state: form.state, city: form.city,
+      selling_price: form.sellingPrice, original_price: form.originalPrice,
+      specs: form.specs, options: form.options, features: form.features,
+    };
+    navigator.clipboard.writeText(buildCopyText(src));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   /* ── image handlers ── */
   const handleFiles = (e) => {
@@ -235,6 +360,7 @@ export default function CarForm({ onCreate }) {
   const uploadImages = async () => {
     const urls = [];
     for (const file of form.images) {
+      if (typeof file === 'string') { urls.push(file); continue; }
       const name = `${Date.now()}-${file.name}`;
       const { error } = await supabase.storage.from('car-images').upload(name, file);
       if (error) throw error;
@@ -245,22 +371,12 @@ export default function CarForm({ onCreate }) {
 
   const handleSubmit = async () => {
     if (!form.images.length) { alert('Please select at least 1 image'); return; }
-
-    // ── Get current session to attach dealer_id ──────────────────────────────
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      alert('You must be logged in to publish a listing.');
-      return;
-    }
-    const dealerId = session.user.id;
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const mileage      = parseInt(form.mileage);
-    const basePrice    = parseFloat(form.basePrice);
-    const sellingPrice = parseFloat(form.sellingPrice);
+    const mileage       = parseInt(form.mileage);
+    const basePrice     = parseFloat(form.basePrice);
+    const sellingPrice  = parseFloat(form.sellingPrice);
     const originalPrice = form.originalPrice ? parseFloat(form.originalPrice) : null;
-    const year         = parseInt(form.year);
-    const engineCc     = form.engineCc ? parseInt(form.engineCc) : null;
+    const year          = parseInt(form.year);
+    const engineCc      = form.engineCc ? parseInt(form.engineCc) : null;
 
     if (isNaN(mileage) || mileage < 0)          { alert('Invalid mileage'); return; }
     if (isNaN(basePrice) || basePrice < 0)       { alert('Invalid base price'); return; }
@@ -273,8 +389,7 @@ export default function CarForm({ onCreate }) {
     setUploading(true);
     try {
       const imageUrls = await uploadImages();
-      const { data, error } = await supabase.from('car_listings').insert([{
-        dealer_id: dealerId,           // ← RLS anchor: ties listing to this dealer
+      const payload = {
         brand: form.brand, model: form.model, variant: form.variant,
         state: form.state, city: form.city,
         mileage, colour: form.colour, condition: form.condition,
@@ -286,12 +401,33 @@ export default function CarForm({ onCreate }) {
         engine_cc: engineCc,
         images: imageUrls, year,
         transmission: form.transmission, body_type: form.bodyType, fuel_type: form.fuelType,
-        status: 'active',
-      }]).select().single();
-      if (error) throw error;
-      onCreate(data);
-      previews.forEach(URL.revokeObjectURL);
-      setForm(initialListing); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); setStep(1);
+        vin_number: form.vin_number || null,
+      };
+
+      if (listing) {
+        // Edit mode — update by id
+        const { data, error } = await supabase
+          .from('car_listings')
+          .update(payload)
+          .eq('id', listing.id)
+          .select('*');
+        if (error) throw error;
+        if (!data?.length) throw new Error('Update blocked — your dealer_id may not match your account. Run the fix SQL in Supabase (see README or ask your admin).');
+        onUpdate(data[0]);
+      } else {
+        // Create mode — insert new record
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) { alert('You must be logged in to publish a listing.'); setUploading(false); return; }
+        const { data, error } = await supabase
+          .from('car_listings')
+          .insert([{ dealer_id: session.user.id, ...payload, status: 'active' }])
+          .select()
+          .single();
+        if (error) throw error;
+        onCreate(data);
+        previews.forEach(p => { if (typeof p !== 'string') URL.revokeObjectURL(p); });
+        setForm(initialListing); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); setStep(1);
+      }
     } catch (err) { alert('Error: ' + err.message); }
     setUploading(false);
   };
@@ -300,7 +436,6 @@ export default function CarForm({ onCreate }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-
       {/* Progress */}
       <div className="mb-8">
         <div className="relative h-1 bg-gray-800 rounded-full mb-6">
@@ -321,10 +456,22 @@ export default function CarForm({ onCreate }) {
       </div>
 
       {/* Step header */}
-      <div className="mb-6">
-        <p className="text-xs text-red-500 font-semibold uppercase tracking-widest mb-1">Step {step} of {STEPS.length}</p>
-        <h2 className="text-xl font-bold text-white">{STEPS[step - 1].label}</h2>
-        <p className="text-sm text-gray-500">{STEPS[step - 1].desc}</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-red-500 font-semibold uppercase tracking-widest mb-1">Step {step} of {STEPS.length}</p>
+          <h2 className="text-xl font-bold text-white">{STEPS[step - 1].label}</h2>
+          <p className="text-sm text-gray-500">{STEPS[step - 1].desc}</p>
+        </div>
+        {/* Copy button — only shows in edit mode */}
+        {listing && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            title="Copy listing data"
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border flex-shrink-0 ${copied ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20'}`}>
+            {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
+          </button>
+        )}
       </div>
 
       {/* ── Step 1: Identity ── */}
@@ -402,6 +549,9 @@ export default function CarForm({ onCreate }) {
           <Field label="Registration Date">
             <input type="date" name="registrationDate" value={form.registrationDate} onChange={handleChange} className={inputCls} />
           </Field>
+          <Field label="VIN Number" hint="Vehicle Identification Number">
+            <input name="vin_number" value={form.vin_number} onChange={handleChange} placeholder="e.g. JN1CA31D1XT000001" className={inputCls} />
+          </Field>
         </div>
       )}
 
@@ -432,25 +582,18 @@ export default function CarForm({ onCreate }) {
               <input type="number" name="basePrice" value={form.basePrice} onChange={handleChange} placeholder="0" min="0" className={`${inputCls} pl-12`} />
             </div>
           </Field>
-
           <Field label="Selling Price (RM)" required hint="What you're selling it for">
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
               <input type="number" name="sellingPrice" value={form.sellingPrice} onChange={handleChange} placeholder="0" min="0" className={`${inputCls} pl-12`} />
             </div>
           </Field>
-
-          {/* Original price — the "was" price for discount badge */}
           <Field label="Original Price (RM)" hint="Optional — set if this is a discounted price">
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
               <input type="number" name="originalPrice" value={form.originalPrice} onChange={handleChange} placeholder="Leave blank if no discount" min="0" className={`${inputCls} pl-12`} />
             </div>
-            <p className="text-xs text-gray-600 mt-1.5">
-              This becomes the crossed-out "was" price on the listing card. Must be higher than selling price.
-            </p>
-
-            {/* Live discount preview */}
+            <p className="text-xs text-gray-600 mt-1.5">This becomes the crossed-out "was" price on the listing card. Must be higher than selling price.</p>
             {hasDiscount && (
               <div className={`flex items-center gap-3 mt-3 px-4 py-3 rounded-xl border ${isHotDeal ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
                 <span className="text-2xl leading-none">{isHotDeal ? '🔥' : '↓'}</span>
@@ -468,8 +611,6 @@ export default function CarForm({ onCreate }) {
               </div>
             )}
           </Field>
-
-          {/* Margin check */}
           {form.basePrice && form.sellingPrice && (
             <div className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
               {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
@@ -505,7 +646,6 @@ export default function CarForm({ onCreate }) {
             <p className="text-red-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
             <input ref={photosInputRef} type="file" multiple accept="image/*" onChange={handleFiles} className="hidden" />
           </label>
-
           {previews.length > 0 && (
             <>
               <div className="sticky top-3 z-20 rounded-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-sm p-3 sm:p-4 space-y-2.5">
@@ -530,9 +670,7 @@ export default function CarForm({ onCreate }) {
                   </div>
                 </div>
               </div>
-
               <p className="text-xs text-gray-500">Drag to reorder on desktop · use arrows on mobile · Image #1 is the main thumbnail</p>
-
               <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-800 p-1.5 sm:p-2">
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
                   {previews.map((src, i) => (
@@ -558,7 +696,6 @@ export default function CarForm({ onCreate }) {
               </div>
             </>
           )}
-
           {form.brand && (
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
               <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">Listing Summary</p>
@@ -611,7 +748,7 @@ export default function CarForm({ onCreate }) {
           </button>
         ) : (
           <button type="button" onClick={handleSubmit} disabled={uploading || !canNext()} className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-            {uploading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</> : <><Check className="w-4 h-4" />Publish Listing</>}
+            {uploading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</> : <><Check className="w-4 h-4" />{listing ? 'Save Changes' : 'Publish Listing'}</>}
           </button>
         )}
       </div>
