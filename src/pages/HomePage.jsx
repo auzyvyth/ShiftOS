@@ -13,6 +13,7 @@ import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 const CAR_FIELDS = 'id,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
 const HERO_IMG   = 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1400&auto=format&fit=crop&q=70';
@@ -149,6 +150,7 @@ const card = {
 
 const HomePage = () => {
   const { t } = useTranslation();
+  const { siteName, waUrl } = useSiteProfile();
   const [featured,  setFeatured]  = useState([]);
   const [hotDeals,  setHotDeals]  = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -292,7 +294,7 @@ const HomePage = () => {
       `}</style>
 
       <Helmet>
-        <title>XDrive — Buy Trusted Used Cars in Malaysia</title>
+        <title>{siteName} — Buy Trusted Used Cars in Malaysia</title>
         <meta name="description" content="Browse 200+ verified used cars from trusted Malaysian dealers. Transparent pricing, no hidden fees, free consultation." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="preload" as="image" href={HERO_IMG} />
@@ -333,7 +335,7 @@ const HomePage = () => {
             {/* CTA buttons */}
             <div className="hero-btns-hp">
               <Link to="/cars" className="shine-hp red-btn-hp" style={redBtn}>Browse Cars <ArrowRight size={15}/></Link>
-              <a href="https://wa.me/60174155191?text=Hi%20XDrive%2C%20I%20need%20help%20finding%20a%20car" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
+              <a href="{waUrl(`Hi ${siteName}, I need help finding a car`)}" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
                 <MessageCircle size={15}/> WhatsApp Us
               </a>
             </div>
@@ -456,7 +458,7 @@ const HomePage = () => {
         <div style={wrap}>
           <FadeIn>
             <div style={{ marginBottom:'32px' }}>
-              <p style={{ color:'#dc2626', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.15em', margin:'0 0 8px 0' }}>Why XDrive</p>
+              <p style={{ color:'#dc2626', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.15em', margin:'0 0 8px 0' }}>Why {siteName}</p>
               <h2 style={{ color:'white', fontSize:'clamp(1.4rem,5vw,2.2rem)', fontWeight:'800', margin:0 }}>{t('home.whyChoose.title')}</h2>
               <div style={{ width:'40px', height:'3px', background:'#dc2626', borderRadius:'2px', marginTop:'10px' }}/>
             </div>
@@ -598,7 +600,7 @@ const HomePage = () => {
             <p style={{ color:'#6b7280', fontSize:'clamp(13px,3.5vw,15px)', lineHeight:'1.7', margin:'0 0 32px 0' }}>{t('home.cta.subtitle')}</p>
             <div style={{ display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap' }}>
               <Link to="/cars" className="shine-hp red-btn-hp" style={redBtn}>{t('home.cta.browseBtn')} <ArrowRight size={15}/></Link>
-              <a href="https://wa.me/60174155191?text=Hi%20XDrive%2C%20I%20need%20help%20finding%20a%20car" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
+              <a href="{waUrl(`Hi ${siteName}, I need help finding a car`)}" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
                 <MessageCircle size={15}/>{t('home.cta.whatsappBtn')}
               </a>
             </div>
