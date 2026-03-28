@@ -16,6 +16,7 @@ import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import { supabase } from '../supabaseClient';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const calcMonthly = (price) => {
@@ -114,7 +115,7 @@ const PhotoGallery = ({ images, carName }) => {
   const remaining = images.length - 5;
 
   if (images.length === 0) return (
-    <div style={{ height: '320px', background: '#0d1117', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div style={{ height: 'clamp(240px,33vh,300px)', background: '#0d1117', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div style={{ textAlign: 'center' }}>
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ margin: '0 auto 8px', display: 'block' }}>
           <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
@@ -128,7 +129,7 @@ const PhotoGallery = ({ images, carName }) => {
   return (
     <>
       {/* Main grid */}
-      <div className="photo-grid-main" style={{ display: 'grid', gridTemplateColumns: images.length > 1 ? '1fr 1fr' : '1fr', gridTemplateRows: '240px 160px', gap: '6px', borderRadius: '16px', overflow: 'hidden' }}>
+      <div className="photo-grid-main" style={{ display: 'grid', gridTemplateColumns: images.length > 1 ? '1fr 1fr' : '1fr', gridTemplateRows: 'clamp(150px,20vh,200px) clamp(95px,13vh,130px)', gap: '6px', borderRadius: '16px', overflow: 'hidden' }}>
         {/* Hero image */}
         <div style={{ gridRow: '1 / 3', position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
           onClick={() => setLightboxIdx(0)}>
@@ -198,6 +199,7 @@ const Section = ({ title, icon: Icon, children }) => (
 const CarDetailPage = () => {
   const { id }  = useParams();
   const { t }   = useTranslation();
+  const { siteName } = useSiteProfile();
   const [car,          setCar]          = useState(null);
   const [similarCars,  setSimilarCars]  = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -340,6 +342,9 @@ const CarDetailPage = () => {
         .vdp-calc:hover { border-color: rgba(220,38,38,0.5) !important; color: #f87171 !important; }
         .photo-grid img { transition: transform 0.3s ease; }
         .share-toast { animation: fadeUp 0.2s ease; }
+        @media(min-width:1025px){
+          .vdp-sidebar-mobile { display: none !important; }
+        }
         @media(max-width:1024px){
           .vdp-layout { flex-direction: column !important; }
           .vdp-sidebar { display: none !important; }
@@ -352,7 +357,7 @@ const CarDetailPage = () => {
       `}</style>
 
       <Helmet>
-        <title>{carName} – RM {price.toLocaleString('en-MY')} | Drevo</title>
+        <title>{carName} – RM {price.toLocaleString('en-MY')} | {siteName}</title>
         <meta name="description" content={`${carName} for sale at RM ${price.toLocaleString('en-MY')}. ${car.mileage ? Number(car.mileage).toLocaleString() + ' km. ' : ''}${location ? 'Located in ' + location + '.' : ''}`} />
       </Helmet>
 
@@ -508,8 +513,8 @@ const CarDetailPage = () => {
                 </Section>
               )}
 
-              {/* Why buy with Drevo */}
-              <Section title="Why Buy with Drevo" icon={ShieldCheck}>
+              {/* Why buy with dealer */}
+              <Section title={`Why Buy with ${siteName}`} icon={ShieldCheck}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   {[
                     { icon: ShieldCheck, t: 'Verified Listing',       d: 'Every car is manually verified by our team.' },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Route, Routes, BrowserRouter as Router } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import CarsPage from './pages/CarsPage';
@@ -15,6 +16,12 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: { background: '#111118', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', fontFamily: "'DM Sans',sans-serif" },
+        }}
+      />
       <Routes>
         {/* Public — Drevo */}
         <Route path="/"           element={<HomePage />} />

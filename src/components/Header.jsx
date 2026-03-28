@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, MessageCircle, Globe, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 const Header = () => {
   const [isScrolled, setIsScrolled]       = useState(false);
   const [isMobileMenuOpen, setMobileMenu] = useState(false);
   const location  = useLocation();
   const { t, i18n } = useTranslation();
+  const { siteName, siteInitial, waUrl } = useSiteProfile();
   const isDashboard = location.pathname.startsWith('/dashboard');
   const token = localStorage.getItem('authToken');
 
@@ -110,10 +112,10 @@ const Header = () => {
             <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
               <div className="relative w-9 h-9 flex items-center justify-center">
                 <div className="absolute inset-0 bg-red-600 rounded-lg rotate-6 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="relative text-white font-black text-lg" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.05em' }}>D</span>
+                <span className="relative text-white font-black text-lg" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.05em' }}>{siteInitial}</span>
               </div>
               <span className="text-white font-bold text-xl tracking-tight">
-                Drevo<span className="text-red-500">.</span>
+                {siteName}<span className="text-red-500">.</span>
               </span>
             </Link>
 
@@ -167,7 +169,7 @@ const Header = () => {
               )}
 
               <a
-                href="https://wa.me/60174155191?text=Hi%20Drevo%2C%20I%20need%20help%20finding%20a%20car"
+                href="{waUrl(`Hi ${siteName}, I need help finding a car`)}"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shine-btn flex items-center gap-2 bg-[#25D366] text-white text-sm px-5 py-2.5 rounded-full font-semibold hover:bg-[#22c55e] transition-colors shadow-lg shadow-green-900/30"
@@ -235,7 +237,7 @@ const Header = () => {
               ))}
               <div className="pt-4 border-t border-white/5 mt-4">
                 <a
-                  href="https://wa.me/60174155191?text=Hi%20Drevo%2C%20I%20need%20help%20finding%20a%20car"
+                  href="{waUrl(`Hi ${siteName}, I need help finding a car`)}"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="shine-btn flex items-center justify-center gap-2 bg-[#25D366] text-white px-6 py-3.5 rounded-full font-semibold hover:bg-[#22c55e] transition-colors w-full"

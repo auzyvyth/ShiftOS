@@ -12,6 +12,7 @@ import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 /* ─────────────────────────────────────────
    PRICE BRACKETS
@@ -130,6 +131,7 @@ const SkeletonCard = () => (
 ───────────────────────────────────────── */
 const CarsPage = () => {
   const { t } = useTranslation();
+  const { siteName } = useSiteProfile();
   const location = useLocation();
   const drawerRef    = useRef(null);
   const searchRef    = useRef(null);
@@ -431,7 +433,10 @@ const CarsPage = () => {
         }
         @media(max-width:640px){
           .cars-toolbar { flex-wrap: wrap !important; }
-          .cars-grid { grid-template-columns: 1fr !important; }
+          .cars-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
+          .cars-page-body { padding-top: 60px !important; }
+          .cars-header-bar { top: 60px !important; padding: 10px 16px !important; }
+          .cars-main-layout { padding: 16px 12px 60px !important; }
         }
         @media(min-width:641px) and (max-width:900px){
           .cars-grid { grid-template-columns: repeat(2,1fr) !important; }
@@ -439,7 +444,7 @@ const CarsPage = () => {
       `}</style>
 
       <Helmet>
-        <title>Browse Cars – Drevo</title>
+        <title>Browse Cars – {siteName}</title>
         <meta name="description" content="Find your perfect used car from verified Malaysian dealers. Filter by brand, price, body type and more." />
       </Helmet>
 
@@ -510,10 +515,10 @@ const CarsPage = () => {
       {/* ══════════════════════════════════════
           PAGE BODY
       ══════════════════════════════════════ */}
-      <div style={{ background:'#080C14', minHeight:'100vh', paddingTop:'72px', fontFamily:"'DM Sans',sans-serif" }}>
+      <div className="cars-page-body" style={{ background:'#080C14', minHeight:'100vh', paddingTop:'72px', fontFamily:"'DM Sans',sans-serif" }}>
 
         {/* ── Page header bar ── */}
-        <div style={{ background:'rgba(13,17,23,0.8)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'sticky', top:'72px', zIndex:20 }}>
+        <div className="cars-header-bar" style={{ background:'rgba(13,17,23,0.8)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'sticky', top:'72px', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'14px 24px' }}>
 
             {/* Toolbar */}
@@ -615,7 +620,7 @@ const CarsPage = () => {
         </div>
 
         {/* ── Main layout ── */}
-        <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px' }}>
+        <div className="cars-main-layout" style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px' }}>
 
           {/* Results count + hot deals quick filter */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'10px' }}>
