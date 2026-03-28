@@ -2,10 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, MessageCircle, Mail, Clock, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const { t } = useTranslation();
+  const { siteName, siteInitial, waUrl, profile } = useSiteProfile();
+  const fbUrl   = profile?.social_facebook  ? `https://facebook.com/${profile.social_facebook.replace(/^@/,'')}` : 'https://facebook.com';
+  const igUrl   = profile?.social_instagram ? `https://instagram.com/${profile.social_instagram.replace(/^@/,'')}` : 'https://instagram.com';
+  const waPhone = profile?.whatsapp_number ? (profile.whatsapp_number.replace(/\D/g,'').startsWith('60') ? profile.whatsapp_number.replace(/\D/g,'') : `60${profile.whatsapp_number.replace(/\D/g,'')}`) : '60174155191';
+  const waDisplay = waPhone.replace(/^60/, '+60 ').replace(/(\d{2})(\d{3,4})(\d{4})$/, '$1-$2 $3');
 
   return (
     <footer
@@ -23,29 +29,29 @@ const Footer = () => {
             <Link to="/" className="flex items-center gap-2.5 mb-4 group w-fit">
               <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
                 <div className="absolute inset-0 bg-red-600 rounded-lg rotate-6 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="relative text-white font-black text-lg" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>D</span>
+                <span className="relative text-white font-black text-lg" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{siteInitial}</span>
               </div>
               <span className="text-white font-bold text-xl tracking-tight">
-                Drevo<span className="text-red-500">.</span>
+                {siteName}<span className="text-red-500">.</span>
               </span>
             </Link>
             <p className="text-gray-500 text-sm leading-relaxed mb-6">{t('footer.tagline')}</p>
             <div className="flex gap-3">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+              <a href={fbUrl} target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                 aria-label="Facebook"
               >
                 <Facebook className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+              <a href={igUrl} target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                 aria-label="Instagram"
               >
                 <Instagram className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
               </a>
-              <a href="https://wa.me/60174155191" target="_blank" rel="noopener noreferrer"
+              <a href={waUrl()} target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg flex items-center justify-center"
                 style={{ background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.25)' }}
                 aria-label="WhatsApp"
@@ -85,9 +91,9 @@ const Footer = () => {
                 <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#25D366]" />
                 <div>
                   <p className="text-white text-sm font-medium">{t('footer.whatsapp')}</p>
-                  <a href="https://wa.me/60174155191"
+                  <a href={waUrl()}
                     className="text-gray-500 hover:text-white text-sm transition-colors">
-                    +60 17-415 5191
+                    {waDisplay}
                   </a>
                 </div>
               </li>
@@ -139,7 +145,7 @@ const Footer = () => {
           className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600"
           style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
         >
-          <p>&copy; {currentYear} Drevo. {t('footer.rights')}</p>
+          <p>&copy; {currentYear} {siteName}. {t('footer.rights')}</p>
           <p>Powered by <span className="text-red-600 font-semibold">ShiftOS</span></p>
         </div>
       </div>
