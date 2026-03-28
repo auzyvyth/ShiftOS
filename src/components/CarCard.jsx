@@ -68,6 +68,22 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
         .car-card-root:hover { transform: translateY(-4px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important; border-color: rgba(255,255,255,0.14) !important; }
         .car-card-root.hot:hover { box-shadow: 0 20px 40px rgba(220,38,38,0.15) !important; border-color: rgba(220,38,38,0.45) !important; }
         .wa-cta:hover { background: rgba(37,211,102,0.22) !important; border-color: rgba(37,211,102,0.45) !important; }
+        @media(max-width:640px){
+          .car-card-img { height:120px !important; }
+          .car-card-body { padding:9px 10px 11px !important; }
+          .car-card-brand { font-size:9px !important; margin-bottom:2px !important; }
+          .car-card-model { font-size:12px !important; }
+          .car-card-price-box { padding:7px 9px !important; margin-bottom:8px !important; }
+          .car-card-price { font-size:14px !important; }
+          .car-card-monthly { display:none !important; }
+          .car-card-save { display:none !important; }
+          .car-card-specs { gap:4px !important; margin-bottom:9px !important; }
+          .car-card-spec { font-size:10px !important; padding:3px 6px !important; }
+          .car-card-spec-hide { display:none !important; }
+          .car-card-wa { padding:8px 6px !important; border-radius:8px !important; font-size:11px !important; gap:4px !important; }
+          .car-card-wa-text { display:none !important; }
+          .car-card-brand-row { margin-bottom:7px !important; }
+        }
       `}</style>
 
       <div
@@ -83,7 +99,7 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
         }}
       >
         {/* ── Image ── */}
-        <div style={{ position:'relative', height:'200px', background:'#08090f', flexShrink:0, overflow:'hidden' }}>
+        <div className="car-card-img" style={{ position:'relative', height:'200px', background:'#08090f', flexShrink:0, overflow:'hidden' }}>
           {image ? (
             <>
               {!imgLoaded && (
@@ -142,33 +158,33 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding:'14px 16px 16px', display:'flex', flexDirection:'column', flex:1 }}>
+        <div className="car-card-body" style={{ padding:'14px 16px 16px', display:'flex', flexDirection:'column', flex:1 }}>
 
           {/* Brand / Model */}
-          <div style={{ marginBottom:'10px' }}>
-            <p style={{ color:'#6b7280', fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0 0 3px 0' }}>{brand}</p>
-            <h3 style={{ color:'white', fontSize:'15px', fontWeight:'800', margin:0, lineHeight:1.3 }}>
+          <div className="car-card-brand-row" style={{ marginBottom:'10px' }}>
+            <p className="car-card-brand" style={{ color:'#6b7280', fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0 0 3px 0' }}>{brand}</p>
+            <h3 className="car-card-model" style={{ color:'white', fontSize:'15px', fontWeight:'800', margin:0, lineHeight:1.3 }}>
               {model}{variant ? ` ${variant}` : ''}
             </h3>
           </div>
 
           {/* Price block */}
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'10px 12px', marginBottom:'12px' }}>
+          <div className="car-card-price-box" style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'10px 12px', marginBottom:'12px' }}>
             {hasDiscount && (
-              <p style={{ color:'#6b7280', fontSize:'11px', textDecoration:'line-through', margin:'0 0 2px 0' }}>
+              <p className="car-card-save" style={{ color:'#6b7280', fontSize:'11px', textDecoration:'line-through', margin:'0 0 2px 0' }}>
                 RM {originalPrice.toLocaleString('en-MY')}
               </p>
             )}
             <div style={{ display:'flex', alignItems:'baseline', gap:'8px', flexWrap:'wrap' }}>
-              <span style={{ color: isHot ? '#f87171' : 'white', fontSize:'20px', fontWeight:'800', lineHeight:1 }}>
+              <span className="car-card-price" style={{ color: isHot ? '#f87171' : 'white', fontSize:'20px', fontWeight:'800', lineHeight:1 }}>
                 {formattedPrice}
               </span>
               {monthly && (
-                <span style={{ color:'#6b7280', fontSize:'11px' }}>≈ RM {monthly.toLocaleString('en-MY')}/mo</span>
+                <span className="car-card-monthly" style={{ color:'#6b7280', fontSize:'11px' }}>≈ RM {monthly.toLocaleString('en-MY')}/mo</span>
               )}
             </div>
             {hasDiscount && (
-              <p style={{ color:'#34d399', fontSize:'11px', fontWeight:'600', margin:'4px 0 0 0' }}>
+              <p className="car-card-save" style={{ color:'#34d399', fontSize:'11px', fontWeight:'600', margin:'4px 0 0 0' }}>
                 Save RM {(originalPrice - price).toLocaleString('en-MY')}
               </p>
             )}
@@ -176,9 +192,9 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
 
           {/* Specs */}
           {specs.length > 0 && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:'5px', marginBottom:'14px' }}>
+            <div className="car-card-specs" style={{ display:'flex', flexWrap:'wrap', gap:'5px', marginBottom:'14px' }}>
               {specs.map((s,i) => (
-                <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'4px 8px', color:'#9ca3af', fontSize:'11px', fontWeight:'500' }}>
+                <span key={i} className={`car-card-spec${i >= 2 ? ' car-card-spec-hide' : ''}`} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'4px 8px', color:'#9ca3af', fontSize:'11px', fontWeight:'500' }}>
                   <s.icon size={10} style={{ color:'#6b7280' }}/>{s.label}
                 </span>
               ))}
@@ -187,7 +203,7 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
 
           {/* WhatsApp CTA */}
           <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-            className="wa-cta"
+            className="wa-cta car-card-wa"
             onClick={e => e.stopPropagation()}
             style={{
               marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
@@ -200,7 +216,7 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
             }}
           >
             <MessageCircle size={13}/>
-            {isSold ? 'No Longer Available' : 'Enquire via WhatsApp'}
+            <span className="car-card-wa-text">{isSold ? 'No Longer Available' : 'Enquire via WhatsApp'}</span>
           </a>
         </div>
       </div>

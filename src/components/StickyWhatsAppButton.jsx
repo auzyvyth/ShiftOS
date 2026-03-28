@@ -1,10 +1,16 @@
 import { MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 
 export default function StickyWhatsAppButton({ phoneNumber, message }) {
   const { t } = useTranslation();
-  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message || t('common.needHelp'))}`;
+  const { waUrl } = useSiteProfile();
+
+  // If phoneNumber prop is passed explicitly, use it; otherwise fall back to profile
+  const url = phoneNumber
+    ? `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message || t('common.needHelp'))}`
+    : waUrl(message || t('common.needHelp'));
 
   return (
     <motion.a
