@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock } from 'lucide-react';
+import GradeBadge from './GradeBadge';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -41,6 +42,11 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
     (Array.isArray(car.images) && car.images[0]) ||
     car.image_url || car.photo_url || null
   );
+  const isRecon        = car.is_recon || false;
+  const auctionGrade   = car.auction_grade || null;
+  const interiorGrade  = car.interior_grade || null;
+  const importCountry  = car.import_country || null;
+  const hasGrade       = auctionGrade || interiorGrade;
 
   const formattedPrice   = price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R';
   const monthly          = calcMonthly(price);
@@ -131,7 +137,10 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
                 <Flame size={9}/> HOT −{discountPct}%
               </span>
             )}
-            {isNew && !isHot && (
+            {isRecon && (
+              <span style={{ background:'rgba(220,38,38,0.85)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', letterSpacing:'0.04em' }}>RECON</span>
+            )}
+            {isNew && !isHot && !isRecon && (
               <span style={{ background:'rgba(16,185,129,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px' }}>NEW</span>
             )}
             {isSold && (
@@ -146,6 +155,18 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
           {year && (
             <div style={{ position:'absolute', top:'10px', right:'10px', background:'rgba(0,0,0,0.7)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', color:'white', fontSize:'11px', fontWeight:'600', padding:'3px 8px', borderRadius:'6px' }}>
               {year}
+            </div>
+          )}
+
+          {/* Grade badge + import country (bottom-left of image) */}
+          {(hasGrade || (isRecon && importCountry)) && (
+            <div style={{ position:'absolute', bottom:'10px', left:'10px', display:'flex', flexDirection:'column', gap:'4px', alignItems:'flex-start' }}>
+              {hasGrade && <GradeBadge auctionGrade={auctionGrade} interiorGrade={interiorGrade} size="sm"/>}
+              {isRecon && importCountry && (
+                <span style={{ background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', border:'1px solid rgba(255,255,255,0.12)', color:'#d1d5db', fontSize:'10px', fontWeight:'600', padding:'2px 7px', borderRadius:'5px' }}>
+                  {importCountry}
+                </span>
+              )}
             </div>
           )}
 
