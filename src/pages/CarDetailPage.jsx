@@ -6,7 +6,7 @@ import {
   MapPin, Gauge, Settings, Calendar, CheckCircle, MessageCircle,
   Phone, Clock, ChevronRight, Fuel, Tag, Palette, FileText,
   TrendingDown, ArrowLeft, Share2, Heart, X, ZoomIn,
-  ShieldCheck, Star, Calculator, ChevronLeft, ChevronDown,
+  ShieldCheck, Star, Calculator, ChevronLeft, ChevronDown, Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,8 @@ import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import FinancingCalculator from '@/components/FinancingCalculator';
+import GradeBadge from '@/components/GradeBadge';
+import DamageMap from '@/components/DamageMap';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 
@@ -510,6 +512,58 @@ const CarDetailPage = () => {
                       </div>
                     ))}
                   </div>
+                </Section>
+              )}
+
+              {/* Recon / Import section */}
+              {car.is_recon && (
+                <Section title="Recon & Import Details" icon={Globe}>
+                  {/* Grade + chassis row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: '12px', marginBottom: '16px' }}>
+                    {/* Grade */}
+                    {(car.auction_grade || car.interior_grade) && (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px 16px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Auction Grade</p>
+                        <GradeBadge auctionGrade={car.auction_grade} interiorGrade={car.interior_grade} size="lg"/>
+                      </div>
+                    )}
+                    {car.import_country && (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px 16px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Import Country</p>
+                        <p style={{ color: 'white', fontSize: '14px', fontWeight: '700', margin: 0 }}>{car.import_country}</p>
+                      </div>
+                    )}
+                    {car.auction_house && (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px 16px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Auction House</p>
+                        <p style={{ color: 'white', fontSize: '14px', fontWeight: '700', margin: 0 }}>{car.auction_house}</p>
+                      </div>
+                    )}
+                    {car.local_reg_date && (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px 16px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Local Reg Date</p>
+                        <p style={{ color: 'white', fontSize: '14px', fontWeight: '700', margin: 0 }}>{new Date(car.local_reg_date).toLocaleDateString('en-MY', { year:'numeric', month:'short', day:'numeric' })}</p>
+                      </div>
+                    )}
+                    {car.chassis_status && (
+                      <div style={{ background: car.chassis_status === 'clean' ? 'rgba(34,197,94,0.06)' : car.chassis_status === 'repaired' ? 'rgba(249,115,22,0.06)' : 'rgba(220,38,38,0.06)', border: `1px solid ${car.chassis_status === 'clean' ? 'rgba(34,197,94,0.2)' : car.chassis_status === 'repaired' ? 'rgba(249,115,22,0.2)' : 'rgba(220,38,38,0.2)'}`, borderRadius: '12px', padding: '14px 16px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Chassis Status</p>
+                        <p style={{ color: car.chassis_status === 'clean' ? '#4ade80' : car.chassis_status === 'repaired' ? '#fb923c' : '#f87171', fontSize: '14px', fontWeight: '700', margin: 0, textTransform: 'capitalize' }}>
+                          {car.chassis_status.replace('_', ' ')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Damage map */}
+                  {Array.isArray(car.damage_map) && (
+                    <div>
+                      <p style={{ color: '#6b7280', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px' }}>
+                        Damage Map {car.damage_map.length === 0 ? '— None recorded' : `— ${car.damage_map.length} marker${car.damage_map.length !== 1 ? 's' : ''}`}
+                      </p>
+                      <DamageMap value={car.damage_map} readOnly={true} />
+                    </div>
+                  )}
                 </Section>
               )}
 

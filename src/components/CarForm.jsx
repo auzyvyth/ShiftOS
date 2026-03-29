@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck, ShieldCheck, Globe } from 'lucide-react';
+import DamageMap from './DamageMap';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -13,6 +14,15 @@ const initialListing = {
   basePrice: '', sellingPrice: '', originalPrice: '',
   specs: '', options: '', features: '',
   images: [],
+  // Recon / grading fields
+  isRecon: false,
+  auctionGrade: '',
+  interiorGrade: '',
+  importCountry: '',
+  auctionHouse: '',
+  localRegDate: '',
+  chassisStatus: '',
+  damageMap: [],
 };
 
 const CAR_DATA = {
@@ -74,13 +84,14 @@ const FUEL_TYPES  = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
 const CC_PRESETS  = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: 'Identity',  icon: Car,        desc: 'Brand & model' },
-  { id: 2, label: 'Specs',     icon: Gauge,      desc: 'Type & engine' },
-  { id: 3, label: 'Condition', icon: Check,      desc: 'Mileage & colour' },
-  { id: 4, label: 'Location',  icon: MapPin,     desc: 'State & city' },
-  { id: 5, label: 'Pricing',   icon: DollarSign, desc: 'Prices & discount' },
-  { id: 6, label: 'Details',   icon: FileText,   desc: 'Specs & features' },
-  { id: 7, label: 'Photos',    icon: Camera,     desc: 'Upload images' },
+  { id: 1, label: 'Identity',  icon: Car,         desc: 'Brand & model' },
+  { id: 2, label: 'Specs',     icon: Gauge,       desc: 'Type & engine' },
+  { id: 3, label: 'Condition', icon: Check,       desc: 'Mileage & colour' },
+  { id: 4, label: 'History',   icon: ShieldCheck, desc: 'Recon & import' },
+  { id: 5, label: 'Location',  icon: MapPin,      desc: 'State & city' },
+  { id: 6, label: 'Pricing',   icon: DollarSign,  desc: 'Prices & discount' },
+  { id: 7, label: 'Details',   icon: FileText,    desc: 'Specs & features' },
+  { id: 8, label: 'Photos',    icon: Camera,      desc: 'Upload images' },
 ];
 
 // ─── Copy formatter (also exported for DashboardPage use) ────────────────────
@@ -274,6 +285,14 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         options: listing.options || '',
         features: listing.features || '',
         images: listing.images || [],
+        isRecon: listing.is_recon || false,
+        auctionGrade: listing.auction_grade || '',
+        interiorGrade: listing.interior_grade || '',
+        importCountry: listing.import_country || '',
+        auctionHouse: listing.auction_house || '',
+        localRegDate: listing.local_reg_date || '',
+        chassisStatus: listing.chassis_status || '',
+        damageMap: listing.damage_map || [],
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -284,6 +303,16 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const handleChange = e => set(e.target.name, e.target.value);
   const modelOptions = form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
   const cityOptions  = form.state && STATE_CITIES[form.state] ? STATE_CITIES[form.state] : [];
+
+  // Auto-suggest auction grade based on mileage + age
+  const suggestedGrade = useMemo(() => {
+    const km  = parseInt(form.mileage) || 0;
+    const age = new Date().getFullYear() - (parseInt(form.year) || new Date().getFullYear());
+    if (km < 30000 && age < 3) return '4.5';
+    if (km < 70000 || age < 6) return '4';
+    if (km < 100000 || age < 9) return '3.5';
+    return '3';
+  }, [form.mileage, form.year]);
 
   // Discount preview calculations
   const originalPriceVal = form.originalPrice ? parseFloat(form.originalPrice) : null;
@@ -351,9 +380,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     if (step === 1) return form.brand && form.model && form.year;
     if (step === 2) return form.bodyType && form.fuelType;
     if (step === 3) return form.mileage && form.colour && form.condition;
-    if (step === 4) return form.state && form.city;
-    if (step === 5) return form.basePrice && form.sellingPrice;
-    if (step === 7) return form.images.length > 0;
+    if (step === 4) return true; // History step — always optional
+    if (step === 5) return form.state && form.city;
+    if (step === 6) return form.basePrice && form.sellingPrice;
+    if (step === 8) return form.images.length > 0;
     return true;
   };
 
@@ -402,6 +432,15 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         images: imageUrls, year,
         transmission: form.transmission, body_type: form.bodyType, fuel_type: form.fuelType,
         vin_number: form.vin_number || null,
+        // Recon / grading
+        is_recon: form.isRecon,
+        auction_grade:  form.isRecon ? (form.auctionGrade  || null) : null,
+        interior_grade: form.isRecon ? (form.interiorGrade || null) : null,
+        import_country: form.isRecon ? (form.importCountry || null) : null,
+        auction_house:  form.isRecon ? (form.auctionHouse  || null) : null,
+        local_reg_date: form.isRecon ? (form.localRegDate  || null) : null,
+        chassis_status: form.isRecon ? (form.chassisStatus || null) : null,
+        damage_map: form.damageMap || [],
       };
 
       if (listing) {
@@ -459,6 +498,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-red-500 font-semibold uppercase tracking-widest mb-1">Step {step} of {STEPS.length}</p>
+
           <h2 className="text-xl font-bold text-white">{STEPS[step - 1].label}</h2>
           <p className="text-sm text-gray-500">{STEPS[step - 1].desc}</p>
         </div>
@@ -555,8 +595,104 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 4: Location ── */}
+      {/* ── Step 4: History (Recon & Import) ── */}
       {step === 4 && (
+        <div className="space-y-6">
+          {/* Toggle */}
+          <div className="flex items-center justify-between p-4 bg-gray-800 border border-gray-700 rounded-2xl">
+            <div>
+              <p className="text-white font-semibold text-sm">Recon / Grey Import Vehicle</p>
+              <p className="text-gray-500 text-xs mt-0.5">Enable if this car was imported from overseas</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set('isRecon', !form.isRecon)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? 'bg-red-600' : 'bg-gray-600'}`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? 'translate-x-6' : 'translate-x-1'}`}/>
+            </button>
+          </div>
+
+          {form.isRecon && (
+            <div className="space-y-5">
+              {/* Grade row */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Auction Grade" hint={`Suggested: ${suggestedGrade}`}>
+                  <div className="relative">
+                    <select name="auctionGrade" value={form.auctionGrade} onChange={handleChange} className={selectCls}>
+                      <option value="">— Select grade —</option>
+                      {['S','5','4.5','4','3.5','3','R','RA','2','1'].map(g => (
+                        <option key={g} value={g}>{g}{g === suggestedGrade ? ' ★ suggested' : ''}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                  {!form.auctionGrade && (
+                    <button type="button" onClick={() => set('auctionGrade', suggestedGrade)}
+                      className="mt-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                      Use suggested: {suggestedGrade}
+                    </button>
+                  )}
+                </Field>
+                <Field label="Interior Grade">
+                  <div className="relative">
+                    <select name="interiorGrade" value={form.interiorGrade} onChange={handleChange} className={selectCls}>
+                      <option value="">— Select —</option>
+                      {['A','B','C','D'].map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                </Field>
+              </div>
+
+              {/* Import country + auction house */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Import Country">
+                  <div className="relative">
+                    <select name="importCountry" value={form.importCountry} onChange={handleChange} className={selectCls}>
+                      <option value="">— Select —</option>
+                      {['Japan','UK','Australia','Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                </Field>
+                <Field label="Auction House" hint="e.g. USS, TAA, JAA">
+                  <input name="auctionHouse" value={form.auctionHouse} onChange={handleChange}
+                    placeholder="e.g. USS Tokyo" className={inputCls} />
+                </Field>
+              </div>
+
+              {/* Local reg date + chassis status */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Local Reg Date" hint="When first registered in MY">
+                  <input type="date" name="localRegDate" value={form.localRegDate} onChange={handleChange} className={inputCls} />
+                </Field>
+                <Field label="Chassis Status">
+                  <div className="relative">
+                    <select name="chassisStatus" value={form.chassisStatus} onChange={handleChange} className={selectCls}>
+                      <option value="">— Select —</option>
+                      <option value="clean">Clean</option>
+                      <option value="repaired">Repaired</option>
+                      <option value="written_off">Written Off</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                </Field>
+              </div>
+
+              {/* Damage map */}
+              <Field label="Damage Map" hint="Click car to mark damage areas">
+                <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-2xl">
+                  <DamageMap value={form.damageMap} onChange={v => set('damageMap', v)} />
+                </div>
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Step 5: Location ── */}
+      {step === 5 && (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -573,8 +709,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 5: Pricing ── */}
-      {step === 5 && (
+      {/* ── Step 6: Pricing ── */}
+      {step === 6 && (
         <div className="space-y-5">
           <Field label="Base Price (RM)" required hint="Your cost / purchase price">
             <div className="relative">
@@ -621,8 +757,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 6: Details ── */}
-      {step === 6 && (
+      {/* ── Step 7: Details ── */}
+      {step === 7 && (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea name="specs" value={form.specs} onChange={handleChange} placeholder="e.g. 1.5L DOHC, 107hp, 140Nm..." className={textareaCls} rows={3} />
@@ -636,8 +772,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 7: Photos ── */}
-      {step === 7 && (
+      {/* ── Step 8: Photos ── */}
+      {step === 8 && (
         <div className="space-y-5">
           <label className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group">
             <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
@@ -729,6 +865,15 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 )}
                 <span className="text-gray-500">Photos</span>
                 <span className="text-white">{form.images.length} selected</span>
+                {form.isRecon && (
+                  <>
+                    <span className="text-gray-500">Type</span>
+                    <span className="text-red-400 font-semibold">Recon / Import</span>
+                    {form.auctionGrade && <><span className="text-gray-500">Auction Grade</span><span className="text-white">{form.auctionGrade}{form.interiorGrade ? ' | ' + form.interiorGrade : ''}</span></>}
+                    {form.importCountry && <><span className="text-gray-500">Import Country</span><span className="text-white">{form.importCountry}</span></>}
+                    {form.chassisStatus && <><span className="text-gray-500">Chassis</span><span className="text-white capitalize">{form.chassisStatus.replace('_',' ')}</span></>}
+                  </>
+                )}
               </div>
             </div>
           )}
