@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient";
 import CarForm from "../components/CarForm";
 import TikTokGenerator from "../components/TikTokGenerator";
 import LeadsPage from "./LeadsPage";
+import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import {
   Car,
@@ -138,6 +139,23 @@ const iCls =
   "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
 const taCls =
   "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all resize-none";
+
+// Inline SVG icon for the Hero Carousel sidebar nav item
+const HeroCarouselIcon = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M9 21V9" />
+  </svg>
+);
 
 function getListingAge(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
@@ -280,7 +298,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const saveDealership = async () => {
     if (dealershipLocked) return;
     if (!dealership.trim()) {
-      setErrors((p) => ({ ...p, identity: "Dealership name cannot be empty." }));
+      setErrors((p) => ({
+        ...p,
+        identity: "Dealership name cannot be empty.",
+      }));
       return;
     }
     const dealershipChanged = dealership.trim() !== profile?.dealership;
@@ -578,7 +599,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             style={{ opacity: announcementOn ? 1 : 0.4 }}
           />
           <p className="text-xs text-gray-600">
-            Shows as a sticky banner at the top of your public site when enabled.
+            Shows as a sticky banner at the top of your public site when
+            enabled.
           </p>
         </div>
 
@@ -2306,7 +2328,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const name = profile?.site_name || profile?.dealership || 'XDrive';
+    const name = profile?.site_name || profile?.dealership || "XDrive";
     document.title = `${name} — Admin`;
   }, [profile]);
 
@@ -2613,6 +2635,10 @@ export default function DashboardPage() {
     analytics: { title: "Analytics", sub: "Performance & AI advisor" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     leads: { title: "Leads", sub: "Pipeline & CRM" },
+    hero: {
+      title: "Hero Carousel",
+      sub: "Manage your Drevo homepage spotlight — up to 5 slides",
+    },
   };
 
   const NAV = [
@@ -2621,6 +2647,7 @@ export default function DashboardPage() {
     { id: "leads", Icon: Inbox, label: "Leads" },
     { id: "analytics", Icon: BarChart2, label: "Analytics" },
     { id: "team", Icon: Users, label: "Team" },
+    { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
   ];
 
   const STAT_CARDS = [
@@ -3293,6 +3320,9 @@ export default function DashboardPage() {
             >
               <LeadsPage />
             </div>
+          )}
+          {activeTab === "hero" && userId && (
+            <HeroSlidesPage userId={userId} profile={profile} />
           )}
         </div>
       </main>

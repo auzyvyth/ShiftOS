@@ -12,6 +12,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
+import HeroCarousel from '@/components/HeroCarousel';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 
@@ -156,9 +157,11 @@ const HomePage = () => {
   const [loading,   setLoading]   = useState(true);
   const [stock,     setStock]     = useState(0);
   const [soldCount, setSoldCount] = useState(null);
-  const [brand,     setBrand]     = useState('');
-  const [bodyType,  setBodyType]  = useState('');
-  const [maxPrice,  setMaxPrice]  = useState('');
+  const [brand,       setBrand]       = useState('');
+  const [bodyType,    setBodyType]    = useState('');
+  const [maxPrice,    setMaxPrice]    = useState('');
+  const [heroSlides,  setHeroSlides]  = useState([]);
+  const [heroLoading, setHeroLoading] = useState(true);
 
   useEffect(() => {
     let ch, soldCh;
@@ -181,6 +184,19 @@ const HomePage = () => {
     ch     = supabase.channel('home').on('postgres_changes',{event:'*',schema:'public',table:'car_listings'},load).subscribe();
     soldCh = supabase.channel('home_sold').on('postgres_changes',{event:'UPDATE',schema:'public',table:'car_listings'},fetchSoldCount).subscribe();
     return () => { if (ch) supabase.removeChannel(ch); if (soldCh) supabase.removeChannel(soldCh); };
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from('hero_carousel_slides')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+      .limit(5)
+      .then(({ data }) => {
+        setHeroSlides(data ?? []);
+        setHeroLoading(false);
+      });
   }, []);
 
   const searchUrl = () => {
@@ -235,13 +251,24 @@ const HomePage = () => {
         .card-hp { transition:transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important; }
         .card-hp:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(0,0,0,0.45) !important; border-color:rgba(220,38,38,0.25) !important; }
 
+        /* ── Hero section ── */
+        .hero-section-hp { min-height: 680px; }
+        .hc-spacer { height: 330px; }
+
+        /* ── Car grid ── */
+        .car-grid-hp { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+        @media(max-width:640px) {
+          .car-grid-hp { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+        }
+
         /* ── Search grid ── */
         .search-grid-hp {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr auto;
-          gap: 10px;
+          gap: 8px;
           align-items: stretch;
         }
+        .search-hide-mobile { display: contents; }
 
         /* ── Hero buttons ── */
         .hero-btns-hp { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
@@ -254,6 +281,8 @@ const HomePage = () => {
 
         /* ── Tablet ── */
         @media(max-width: 768px) {
+          .hero-section-hp { min-height: 580px; }
+          .hc-spacer { height: 260px; }
           .search-grid-hp {
             grid-template-columns: 1fr 1fr !important;
           }
@@ -264,11 +293,13 @@ const HomePage = () => {
 
         /* ── Mobile ── */
         @media(max-width: 480px) {
+          .hero-section-hp { min-height: 520px; }
+          .hc-spacer { height: 210px; }
           .search-grid-hp {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: 1fr auto !important;
           }
-          .search-btn-hp {
-            grid-column: 1 !important;
+          .search-hide-mobile {
+            display: none !important;
           }
           .hero-btns-hp {
             flex-direction: column !important;
@@ -303,78 +334,95 @@ const HomePage = () => {
       <Header />
 
       {/* ══════════ HERO ══════════ */}
-      <section style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'center', background:'#080C14', overflow:'visible', paddingTop:'80px', paddingBottom:'80px' }}>
-        {/* Background */}
+      <section className={(heroLoading || heroSlides.length > 0) ? 'hero-section-hp' : ''} style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'center', background:'#060910', overflow:'hidden', paddingTop: (heroLoading || heroSlides.length > 0) ? 0 : '80px', paddingBottom:'0' }}>
+        {/* Full-bleed carousel — rendered as absolute background layer */}
+        {(heroLoading || heroSlides.length > 0) && (
+          <HeroCarousel slides={heroSlides} isLoading={heroLoading} />
+        )}
+
+        {/* Static background — only when no carousel slides */}
+        {!heroLoading && heroSlides.length === 0 && (
         <div style={{ position:'absolute', inset:0, zIndex:0, overflow:'hidden' }}>
           <img src={HERO_IMG} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 30%', opacity:0.28 }}/>
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(8,12,20,0.97) 25%,rgba(8,12,20,0.65) 60%,rgba(8,12,20,0.25) 100%)' }}/>
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,#080C14 0%,transparent 50%)' }}/>
         </div>
+        )}
 
-        <div style={{ ...wrap, position:'relative', zIndex:1, width:'100%' }}>
-          <motion.div initial={{ opacity:0, y:40 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.8, ease:[0.22,1,0.36,1] }}>
-            {/* Eyebrow */}
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
-              <div style={{ width:'28px', height:'2px', background:'#dc2626', flexShrink:0 }}/>
-              <span style={{ color:'#dc2626', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.15em' }}>Malaysia's Trusted Car Platform</span>
-            </div>
+        <div style={{ ...wrap, position:'relative', zIndex:2, width:'100%', paddingBottom:'40px' }}>
+          {/* Spacer pushing search bar below carousel content — only when carousel is active */}
+          {(heroLoading || heroSlides.length > 0) ? (
+            <div className="hc-spacer" />
+          ) : (
+            /* Static fallback when no carousel slides are configured */
+            <motion.div initial={{ opacity:0, y:40 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.8, ease:[0.22,1,0.36,1] }} style={{ paddingTop:'80px' }}>
+              {/* Eyebrow */}
+              <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
+                <div style={{ width:'28px', height:'2px', background:'#dc2626', flexShrink:0 }}/>
+                <span style={{ color:'#dc2626', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.15em' }}>Malaysia's Trusted Car Platform</span>
+              </div>
 
-            {/* Headline */}
-            <h1 style={{ color:'white', margin:'0 0 14px 0', lineHeight:1, fontSize:'clamp(2.6rem,10vw,5.5rem)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em', wordBreak:'break-word' }}>
-              Find Your<br/>
-              <span style={{ background:'linear-gradient(135deg,#ffffff 0%,#dc2626 55%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                Perfect Drive.
-              </span>
-            </h1>
+              {/* Headline */}
+              <h1 style={{ color:'white', margin:'0 0 14px 0', lineHeight:1, fontSize:'clamp(2.6rem,10vw,5.5rem)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em', wordBreak:'break-word' }}>
+                Find Your<br/>
+                <span style={{ background:'linear-gradient(135deg,#ffffff 0%,#dc2626 55%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                  Perfect Drive.
+                </span>
+              </h1>
 
-            {/* Subheadline */}
-            <p style={{ color:'#9ca3af', fontSize:'clamp(13px,3.5vw,16px)', margin:'0 0 24px 0', maxWidth:'100%', lineHeight:1.6 }}>
-              Browse <span style={{ color:'white', fontWeight:'700' }}>{stock > 0 ? `${stock}+` : 'verified'} cars</span> from trusted Malaysian dealers. Transparent pricing, no hidden fees.
-            </p>
+              {/* Subheadline */}
+              <p style={{ color:'#9ca3af', fontSize:'clamp(13px,3.5vw,16px)', margin:'0 0 24px 0', maxWidth:'100%', lineHeight:1.6 }}>
+                Browse <span style={{ color:'white', fontWeight:'700' }}>{stock > 0 ? `${stock}+` : 'verified'} cars</span> from trusted Malaysian dealers. Transparent pricing, no hidden fees.
+              </p>
 
-            {/* CTA buttons */}
-            <div className="hero-btns-hp">
-              <Link to="/cars" className="shine-hp red-btn-hp" style={redBtn}>Browse Cars <ArrowRight size={15}/></Link>
-              <a href="{waUrl(`Hi ${siteName}, I need help finding a car`)}" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
-                <MessageCircle size={15}/> WhatsApp Us
-              </a>
-            </div>
-          </motion.div>
+              {/* CTA buttons */}
+              <div className="hero-btns-hp">
+                <Link to="/cars" className="shine-hp red-btn-hp" style={redBtn}>Browse Cars <ArrowRight size={15}/></Link>
+                <a href="{waUrl(`Hi ${siteName}, I need help finding a car`)}" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
+                  <MessageCircle size={15}/> WhatsApp Us
+                </a>
+              </div>
+            </motion.div>
+          )}
 
           {/* ── Search bar ── */}
           <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.45, duration:0.65, ease:[0.22,1,0.36,1] }} style={{ position:'relative', zIndex:10 }}>
-            <div style={{ background:'rgba(10,14,24,0.92)', backdropFilter:'blur(24px)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'16px 16px 0 0', padding:'14px' }}>
+            <div style={{ background:'rgba(8,11,20,0.94)', backdropFilter:'blur(24px)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'14px 14px 0 0', padding:'10px' }}>
               <div className="search-grid-hp">
                 <CustomSelect label="Brand"  icon={Search}     value={brand}    onChange={setBrand}    placeholder="All Brands" options={BRANDS.map(b=>({ value:b, label:b }))} />
-                <CustomSelect label="Type"   icon={Zap}        value={bodyType} onChange={setBodyType} placeholder="All Types"  options={BODY_TYPES.map(b=>({ value:b, label:b }))} />
-                <CustomSelect label="Budget" icon={DollarSign} value={maxPrice} onChange={setMaxPrice} placeholder="Any Price" options={BUDGET_OPTIONS} />
+                <div className="search-hide-mobile">
+                  <CustomSelect label="Type"   icon={Zap}        value={bodyType} onChange={setBodyType} placeholder="All Types"  options={BODY_TYPES.map(b=>({ value:b, label:b }))} />
+                </div>
+                <div className="search-hide-mobile">
+                  <CustomSelect label="Budget" icon={DollarSign} value={maxPrice} onChange={setMaxPrice} placeholder="Any Price" options={BUDGET_OPTIONS} />
+                </div>
                 <Link
                   to={searchUrl()}
                   className="search-btn-hp shine-hp"
-                  style={{ ...redBtn, borderRadius:'10px', padding:'12px 20px', whiteSpace:'nowrap', justifyContent:'center', animation:'pulse-red 2.5s infinite', textAlign:'center' }}
+                  style={{ ...redBtn, borderRadius:'10px', padding:'11px 18px', whiteSpace:'nowrap', justifyContent:'center', animation:'pulse-red 2.5s infinite', textAlign:'center', display:'flex', alignItems:'center', gap:6, fontSize:14 }}
                 >
-                  <Search size={15}/> Search
+                  <Search size={14}/> Search
                 </Link>
               </div>
             </div>
 
             {/* Trust strip */}
-            <div className="stats-flex" style={{ background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderTop:'none', borderRadius:'0 0 16px 16px' }}>
+            <div className="stats-flex" style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderTop:'none', borderRadius:'0 0 14px 14px' }}>
               {[
                 { v: stock>0?`${stock}+`:'50+', l:'Cars Available'    },
                 { v:'< 1 Hour',                  l:'WhatsApp Response' },
                 { v:'100%',                      l:'Verified Listings' },
               ].map((item,i,arr)=>(
-                <div key={i} style={{ flex:1, textAlign:'center', padding:'12px 8px', borderRight:i<arr.length-1?'1px solid rgba(255,255,255,0.05)':'none' }}>
-                  <p style={{ color:'white', fontSize:'13px', fontWeight:'700', margin:'0 0 2px 0' }}>{item.v}</p>
-                  <p style={{ color:'#4b5563', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>{item.l}</p>
+                <div key={i} style={{ flex:1, textAlign:'center', padding:'10px 8px', borderRight:i<arr.length-1?'1px solid rgba(255,255,255,0.05)':'none' }}>
+                  <p style={{ color:'white', fontSize:'12px', fontWeight:'700', margin:'0 0 1px 0' }}>{item.v}</p>
+                  <p style={{ color:'#4b5563', fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>{item.l}</p>
                 </div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'80px', background:'linear-gradient(to bottom,transparent,#080C14)', zIndex:0, pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'80px', background:'linear-gradient(to bottom,transparent,#080C14)', zIndex:3, pointerEvents:'none' }}/>
       </section>
 
       {/* ══════════ HOT DEALS ══════════ */}
@@ -396,7 +444,7 @@ const HomePage = () => {
                 </Link>
               </div>
             </FadeIn>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:'16px' }}>
+            <div className="car-grid-hp">
               {loading ? [...Array(3)].map((_,i)=><SkeletonCard key={i}/>) : hotDeals.map(c=><CarCard key={c.id} car={c}/>)}
             </div>
           </div>
@@ -421,7 +469,7 @@ const HomePage = () => {
               </Link>
             </div>
           </FadeIn>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:'16px', marginBottom:'32px' }}>
+          <div className="car-grid-hp" style={{ marginBottom:'32px' }}>
             {loading ? [...Array(3)].map((_,i)=><SkeletonCard key={i}/>) : featured.map(c=><CarCard key={c.id} car={c}/>)}
           </div>
           <div style={{ textAlign:'center' }}>
