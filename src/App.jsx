@@ -10,6 +10,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SalesmanPanel from './pages/Salesmanpanel';
 import OnboardingPage from './pages/OnboardingPage';
+import AdminPanel from './pages/AdminPanel';
+import AccountsPanel from './pages/AccountsPanel';
 import './i18n/config';
 
 function App() {
@@ -36,6 +38,8 @@ function App() {
         {/* Protected — XDrive */}
         <Route path="/dashboard"  element={<DashboardPage />} />
         <Route path="/salesman"   element={<SalesmanPanel />} />
+        <Route path="/admin"      element={<AdminPanel />} />
+        <Route path="/accounts"   element={<AccountsPanel />} />
       </Routes>
     </Router>
   );
