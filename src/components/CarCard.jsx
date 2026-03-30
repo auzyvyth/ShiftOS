@@ -75,6 +75,7 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
         .car-card-root.hot:hover { box-shadow: 0 20px 40px rgba(220,38,38,0.15) !important; border-color: rgba(220,38,38,0.45) !important; }
         .wa-cta:hover { background: rgba(37,211,102,0.22) !important; border-color: rgba(37,211,102,0.45) !important; }
         @media(max-width:640px){
+          .car-card-badge { font-size:10px !important; padding:2px 6px !important; }
           .car-card-img { height:120px !important; }
           .car-card-body { padding:9px 10px 11px !important; }
           .car-card-brand { font-size:9px !important; margin-bottom:2px !important; }
@@ -133,21 +134,21 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
           {/* Top-left badges */}
           <div style={{ position:'absolute', top:'10px', left:'10px', display:'flex', gap:'5px', flexWrap:'wrap' }}>
             {isHot && showDiscountBadge && (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:'3px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', boxShadow:'0 2px 10px rgba(220,38,38,0.5)' }}>
+              <span className="car-card-badge" style={{ display:'inline-flex', alignItems:'center', gap:'3px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', boxShadow:'0 2px 10px rgba(220,38,38,0.5)' }}>
                 <Flame size={9}/> HOT −{discountPct}%
               </span>
             )}
             {isRecon && (
-              <span style={{ background:'rgba(220,38,38,0.85)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', letterSpacing:'0.04em' }}>RECON</span>
+              <span className="car-card-badge" style={{ background:'rgba(220,38,38,0.85)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px', letterSpacing:'0.04em' }}>RECON</span>
             )}
             {isNew && !isHot && !isRecon && (
-              <span style={{ background:'rgba(16,185,129,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px' }}>NEW</span>
+              <span className="car-card-badge" style={{ background:'rgba(16,185,129,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px' }}>NEW</span>
             )}
             {isSold && (
-              <span style={{ background:'rgba(0,0,0,0.8)', border:'1px solid rgba(255,255,255,0.15)', color:'#9ca3af', fontSize:'11px', fontWeight:'700', padding:'3px 10px', borderRadius:'20px' }}>SOLD</span>
+              <span className="car-card-badge" style={{ background:'rgba(0,0,0,0.8)', border:'1px solid rgba(255,255,255,0.15)', color:'#9ca3af', fontSize:'11px', fontWeight:'700', padding:'3px 10px', borderRadius:'20px' }}>SOLD</span>
             )}
             {isReserved && (
-              <span style={{ background:'rgba(245,158,11,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 10px', borderRadius:'20px' }}>RESERVED</span>
+              <span className="car-card-badge" style={{ background:'rgba(245,158,11,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 10px', borderRadius:'20px' }}>RESERVED</span>
             )}
           </div>
 

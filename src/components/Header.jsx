@@ -4,21 +4,57 @@ import { Menu, X, MessageCircle, Globe, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useSiteProfile } from '../hooks/useSiteProfile';
+import { supabase } from '../supabaseClient';
 
 const Header = () => {
   const [isScrolled, setIsScrolled]       = useState(false);
   const [isMobileMenuOpen, setMobileMenu] = useState(false);
+  const [authUser, setAuthUser]           = useState(null);
+  const [userRole, setUserRole]           = useState(null);
   const location  = useLocation();
   const { t, i18n } = useTranslation();
   const { siteName, siteInitial, waUrl } = useSiteProfile();
-  const isDashboard = location.pathname.startsWith('/dashboard');
-  const token = localStorage.getItem('authToken');
+  const isDashboard = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/salesman');
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // ── Auth state ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchRole = async (userId) => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      setUserRole(data?.role || null);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setAuthUser(data.session.user);
+        fetchRole(data.session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+        fetchRole(session.user.id);
+      } else {
+        setAuthUser(null);
+        setUserRole(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const isLoggedIn    = !!authUser;
+  const dashboardPath = userRole === 'salesman' ? '/salesman' : '/dashboard';
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language.startsWith('en') ? 'ms' : 'en');
@@ -31,8 +67,8 @@ const Header = () => {
     { name: t('nav.howItWorks'), path: '/#how-it-works'},
     { name: 'For Dealers',       path: '/for-dealers'  },
   ];
-  if (token) {
-    navLinks.push({ name: t('nav.dashboard'), path: '/dashboard' });
+  if (isLoggedIn) {
+    navLinks.push({ name: t('nav.dashboard'), path: dashboardPath });
   } else {
     navLinks.push({ name: t('nav.login'), path: '/login' });
   }
@@ -159,9 +195,9 @@ const Header = () => {
                 <span className={i18n.language.startsWith('ms') ? 'text-white font-semibold' : ''}>BM</span>
               </button>
 
-              {token && (
+              {isLoggedIn && (
                 <button
-                  onClick={() => { localStorage.removeItem('authToken'); window.location.href = '/'; }}
+                  onClick={async () => { await supabase.auth.signOut(); window.location.href = '/'; }}
                   className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2"
                 >
                   Logout

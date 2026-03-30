@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
@@ -12,16 +11,14 @@ import { motion } from 'framer-motion';
 
 const CalculatorPage = () => {
   const [searchParams] = useSearchParams();
-  const [initialPrice, setInitialPrice] = useState(85000);
-  const [engineCcParam, setEngineCcParam] = useState(null);
-  const [bodyTypeParam, setBodyTypeParam] = useState(null);
+  const [initialPrice,   setInitialPrice]   = useState(85000);
+  const [engineCcParam,  setEngineCcParam]  = useState(null);
+  const [bodyTypeParam,  setBodyTypeParam]  = useState(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     const priceParam = searchParams.get('carPrice');
-    if (priceParam && !isNaN(parseFloat(priceParam))) {
-      setInitialPrice(parseFloat(priceParam));
-    }
+    if (priceParam && !isNaN(parseFloat(priceParam))) setInitialPrice(parseFloat(priceParam));
     const ccParam = searchParams.get('engineCc');
     if (ccParam && !isNaN(parseInt(ccParam))) setEngineCcParam(parseInt(ccParam));
     const bt = searchParams.get('bodyType');
@@ -32,38 +29,56 @@ const CalculatorPage = () => {
     <>
       <Helmet>
         <title>{t('calculator.header.title')} | XDrive</title>
-        <meta
-          name="description"
-          content={t('calculator.header.subtitle')}
-        />
+        <meta name="description" content={t('calculator.header.subtitle')} />
       </Helmet>
 
       <Header />
 
-      <main className="pt-20 bg-[#F7F8FA] min-h-screen">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+      <main style={{ paddingTop: 72, background: '#060910', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
+          {/* Page header */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            style={{ marginBottom: 28 }}
           >
-            {/* Inline header inside the card */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-extrabold text-gray-900">{t('calculator.header.title')}</h1>
-                <p className="text-xs text-gray-400 mt-0.5">{t('calculator.header.subtitle')}</p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 24, height: 2, background: '#dc2626' }} />
+              <span style={{ color: '#dc2626', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                Financing Tools
+              </span>
             </div>
-            <FinancingCalculator initialPrice={initialPrice} engineCc={engineCcParam} bodyType={bodyTypeParam} key={`${initialPrice}-${engineCcParam || ''}-${bodyTypeParam || ''}`} flat compact />
+            <h1 style={{ color: 'white', fontSize: 'clamp(1.5rem,4vw,2rem)', fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
+              {t('calculator.header.title')}
+            </h1>
+            <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+              {t('calculator.header.subtitle')}
+            </p>
           </motion.div>
 
+          {/* Calculator */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <FinancingCalculator
+              initialPrice={initialPrice}
+              engineCc={engineCcParam}
+              bodyType={bodyTypeParam}
+              key={`${initialPrice}-${engineCcParam || ''}-${bodyTypeParam || ''}`}
+            />
+          </motion.div>
+
+          {/* Info section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.5 }}
+            style={{ marginTop: 40 }}
           >
             <CalculatorInfoSection />
           </motion.div>

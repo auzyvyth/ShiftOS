@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, AlertCircle, RefreshCw, MessageCircle, Search, TrendingDown, Car, Shield } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Calculator, RefreshCw, MessageCircle, Search, Download, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AmortizationSchedule from './AmortizationSchedule';
+import { supabase } from '../supabaseClient';
 
 // ─── Road tax (JPJ, private, Peninsular Malaysia) ─────────────────────────────
 const calcRoadTax = (cc, bodyType = 'Sedan') => {
@@ -31,215 +32,439 @@ const calcInsurance = (sum, ncd) => {
   return { gross: Math.round(gross), discount: Math.round(discount), net: Math.round(gross - discount) };
 };
 
-// ─── Shared sub-components ────────────────────────────────────────────────────
+const BODY_TYPES = ['Sedan', 'Hatchback', 'Coupe', 'SUV', 'MPV', 'Pickup'];
+const CC_QUICK   = [1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000];
 
-const TabBtn = ({ active, onClick, icon: Icon, label }) => (
-  <button onClick={onClick}
-    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-t-xl border-b-2 transition-all whitespace-nowrap ${
-      active ? 'border-[#1E3A8A] text-[#1E3A8A] bg-white' : 'border-transparent text-gray-400 hover:text-gray-600 bg-transparent'
-    }`}>
-    <Icon className="w-3.5 h-3.5" />{label}
-  </button>
+// ─── Shared styled primitives ─────────────────────────────────────────────────
+
+const Label = ({ children }) => (
+  <p style={{ color: '#6b7280', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px 0', fontFamily: "'DM Sans',sans-serif" }}>
+    {children}
+  </p>
 );
 
-const RightPanel = ({ children, compact }) => (
-  <div className={`${compact ? 'p-5' : 'p-8'} md:w-1/2 bg-[#1E3A8A] text-white flex flex-col justify-between relative overflow-hidden`}>
-    <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
-    <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
-    <div className="relative w-full">{children}</div>
+const InputBase = ({ prefix, suffix, ...props }) => (
+  <div style={{ position: 'relative' }}>
+    {prefix && <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', fontSize: 13, fontWeight: 600, pointerEvents: 'none' }}>{prefix}</span>}
+    <input
+      {...props}
+      style={{
+        width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 600, outline: 'none',
+        padding: prefix ? '10px 12px 10px 32px' : suffix ? '10px 32px 10px 12px' : '10px 12px',
+        fontFamily: "'DM Sans',sans-serif", transition: 'border-color 0.15s',
+        ...props.style,
+      }}
+      onFocus={e => { e.target.style.borderColor = 'rgba(220,38,38,0.5)'; }}
+      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+    />
+    {suffix && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', fontSize: 12, pointerEvents: 'none' }}>{suffix}</span>}
   </div>
 );
 
-const BigNumber = ({ value, unit = '/yr', label }) => {
-  const numeric = value != null
-    ? (typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.-]+/g, '')))
-    : null;
-  const display = numeric != null && !Number.isNaN(numeric) ? numeric.toLocaleString('en-MY') : '—';
-  return (
-    <div className="mb-6">
-      <p className="text-blue-200 text-sm font-medium mb-1">{label}</p>
-      <motion.div key={String(value)} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-blue-200">RM</span>
-        <span className="text-5xl sm:text-6xl font-extrabold tracking-tight">{display}</span>
-        <span className="text-lg text-blue-300 font-medium">{unit}</span>
-      </motion.div>
-    </div>
-  );
+const SelectBase = ({ children, ...props }) => (
+  <div style={{ position: 'relative' }}>
+    <select
+      {...props}
+      style={{
+        width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 600, outline: 'none',
+        padding: '10px 32px 10px 12px', appearance: 'none', cursor: 'pointer',
+        fontFamily: "'DM Sans',sans-serif",
+      }}
+    >
+      {children}
+    </select>
+    <ChevronDown size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} />
+  </div>
+);
+
+const ResultRow = ({ label, value, highlight, muted, borderTop }) => (
+  <div style={{
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: highlight ? '10px 12px' : '8px 0',
+    background: highlight ? 'rgba(220,38,38,0.08)' : 'transparent',
+    borderRadius: highlight ? 8 : 0,
+    borderTop: borderTop ? '1px solid rgba(255,255,255,0.07)' : 'none',
+    marginTop: borderTop ? 8 : 0,
+  }}>
+    <span style={{ color: muted ? '#6b7280' : '#9ca3af', fontSize: 13 }}>{label}</span>
+    <span style={{ color: highlight ? '#f87171' : muted ? '#6b7280' : 'white', fontWeight: highlight ? 700 : 600, fontSize: highlight ? 15 : 14 }}>
+      {value}
+    </span>
+  </div>
+);
+
+// ─── PDF generation ───────────────────────────────────────────────────────────
+
+const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt }) => {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ format: 'a4', unit: 'mm' });
+
+  const PW = 210, MARGIN = 18, CW = PW - MARGIN * 2;
+  let y = 0;
+
+  const setFont = (size, weight = 'normal', color = [30, 30, 30]) => {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', weight);
+    doc.setTextColor(...color);
+  };
+
+  // ── Red header bar ─────────────────────────────────────────────────────────
+  doc.setFillColor(220, 38, 38);
+  doc.rect(0, 0, PW, 22, 'F');
+
+  // Header text
+  setFont(14, 'bold', [255, 255, 255]);
+  doc.text('VEHICLE FINANCING QUOTATION', MARGIN, 14);
+  setFont(9, 'normal', [255, 200, 200]);
+  const dateStr = new Date().toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+  doc.text(`Date: ${dateStr}`, PW - MARGIN, 14, { align: 'right' });
+  y = 32;
+
+  // ── Dealership info ────────────────────────────────────────────────────────
+  if (dealer) {
+    setFont(13, 'bold', [30, 30, 30]);
+    doc.text(dealer.dealership || dealer.site_name || 'Dealership', MARGIN, y);
+    y += 6;
+    if (dealer.whatsapp_number) {
+      setFont(10, 'normal', [100, 100, 100]);
+      doc.text(`WhatsApp / Phone: ${dealer.whatsapp_number}`, MARGIN, y);
+      y += 5;
+    }
+    y += 4;
+  }
+
+  // Divider
+  doc.setDrawColor(220, 220, 220);
+  doc.line(MARGIN, y, PW - MARGIN, y);
+  y += 8;
+
+  // ── Two-column: Salesman | Car Details ────────────────────────────────────
+  const colW = CW / 2 - 4;
+
+  // Left: Salesman
+  setFont(8, 'bold', [150, 150, 150]);
+  doc.text('PREPARED BY', MARGIN, y);
+  setFont(11, 'bold', [30, 30, 30]);
+  doc.text(salesman?.full_name || salesman?.name || 'Sales Consultant', MARGIN, y + 6);
+  if (salesman?.phone) {
+    setFont(9, 'normal', [80, 80, 80]);
+    doc.text(`Contact: ${salesman.phone}`, MARGIN, y + 12);
+  }
+
+  // Right: Car Details
+  const rx = MARGIN + colW + 8;
+  setFont(8, 'bold', [150, 150, 150]);
+  doc.text('VEHICLE DETAILS', rx, y);
+  setFont(11, 'bold', [30, 30, 30]);
+  doc.text(carDetails.name || 'Vehicle', rx, y + 6);
+  setFont(9, 'normal', [80, 80, 80]);
+  if (carDetails.year) doc.text(`Year: ${carDetails.year}`, rx, y + 12);
+  if (carDetails.color) doc.text(`Colour: ${carDetails.color}`, rx, y + 17);
+  setFont(10, 'bold', [220, 38, 38]);
+  doc.text(`Listed Price: RM ${fmt(carDetails.price)}`, rx, y + (carDetails.color ? 23 : 18));
+
+  y += 32;
+
+  // Divider
+  doc.setDrawColor(220, 220, 220);
+  doc.line(MARGIN, y, PW - MARGIN, y);
+  y += 10;
+
+  // ── Financing Breakdown ───────────────────────────────────────────────────
+  setFont(10, 'bold', [30, 30, 30]);
+  doc.text('FINANCING BREAKDOWN', MARGIN, y);
+  y += 8;
+
+  const rows = [
+    ['Car Price',            `RM ${fmt(calc.carPrice)}`],
+    ['Down Payment',         `RM ${fmt(calc.downPayment)} (${calc.dpPct}%)`],
+    ['Loan Amount',          `RM ${fmt(calc.loanAmt)}`],
+    ['Loan Tenure',          `${calc.loanTerm} years`],
+    ['Interest Rate (flat)', `${calc.intRate}% p.a.`],
+    ['Total Interest',       `RM ${fmt(calc.interest)}`],
+    ['Total Loan Repayment', `RM ${fmt(calc.totalLoan)}`],
+    ['Monthly Installment',  `RM ${fmt(calc.monthly, 2)}/month`],
+  ];
+
+  rows.forEach(([label, value], i) => {
+    const rowY = y + i * 8;
+    if (i % 2 === 0) {
+      doc.setFillColor(248, 248, 248);
+      doc.rect(MARGIN, rowY - 4, CW, 8, 'F');
+    }
+    setFont(9, 'normal', [80, 80, 80]);
+    doc.text(label, MARGIN + 3, rowY);
+    setFont(9, 'bold', [30, 30, 30]);
+    doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
+  });
+
+  y += rows.length * 8 + 6;
+
+  // Road tax + insurance section
+  if (calc.roadTax != null || calc.insurance != null) {
+    setFont(10, 'bold', [30, 30, 30]);
+    doc.text('ON-ROAD COSTS (ESTIMATE)', MARGIN, y);
+    y += 8;
+
+    const onRoadRows = [];
+    if (calc.roadTax != null) onRoadRows.push(['Road Tax (annual)', `RM ${fmt(calc.roadTax)}`]);
+    if (calc.insurance != null) onRoadRows.push([`Insurance Est. (NCD ${calc.insNcd}%)`, `RM ${fmt(calc.insurance)}`]);
+
+    onRoadRows.forEach(([label, value], i) => {
+      const rowY = y + i * 8;
+      if (i % 2 === 0) {
+        doc.setFillColor(248, 248, 248);
+        doc.rect(MARGIN, rowY - 4, CW, 8, 'F');
+      }
+      setFont(9, 'normal', [80, 80, 80]);
+      doc.text(label, MARGIN + 3, rowY);
+      setFont(9, 'bold', [30, 30, 30]);
+      doc.text(value, PW - MARGIN - 3, rowY, { align: 'right' });
+    });
+
+    y += onRoadRows.length * 8 + 6;
+  }
+
+  // Grand total
+  doc.setFillColor(220, 38, 38);
+  doc.rect(MARGIN, y, CW, 12, 'F');
+  setFont(10, 'bold', [255, 255, 255]);
+  doc.text('ESTIMATED ON-ROAD PRICE', MARGIN + 3, y + 8);
+  doc.text(`RM ${fmt(calc.onRoadPrice)}`, PW - MARGIN - 3, y + 8, { align: 'right' });
+  y += 20;
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  doc.setDrawColor(220, 220, 220);
+  doc.line(MARGIN, y, PW - MARGIN, y);
+  y += 6;
+
+  setFont(8, 'italic', [150, 150, 150]);
+  doc.text('This quotation is valid for 7 days and is subject to change without prior notice.', MARGIN, y);
+  y += 5;
+  doc.text('All figures shown are estimates only. Final pricing subject to confirmation from the dealership.', MARGIN, y);
+
+  doc.save(`quotation-${Date.now()}.pdf`);
 };
 
-const ResultRow = ({ label, value, highlight, accent }) => (
-  <div className={`flex justify-between items-center py-3 ${highlight ? 'bg-white/10 rounded-xl px-3' : 'border-b border-white/10'}`}>
-    <span className="text-blue-200 text-sm">{label}</span>
-    <span className={`font-bold ${highlight ? 'text-white text-lg' : accent ? 'text-green-300' : 'text-white'}`}>{value}</span>
-  </div>
-);
+// ─── Main component ───────────────────────────────────────────────────────────
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null, flat = false, compact = false }) => {
+const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null }) => {
   const { t } = useTranslation();
-  const [tab, setTab] = useState('loan');
 
-  // — Loan state —
-  const [carPrice,    setCarPrice]    = useState(initialPrice);
-  const [dpPct,       setDpPct]       = useState(10);
-  const [loanTerm,    setLoanTerm]    = useState(7);
-  const [intRate,     setIntRate]     = useState(3.5);
-  const [error,       setError]       = useState('');
+  // Financing inputs
+  const [carPrice,  setCarPrice]  = useState(initialPrice);
+  const [dpPct,     setDpPct]     = useState(10);
+  const [loanTerm,  setLoanTerm]  = useState(7);
+  const [intRate,   setIntRate]   = useState(3.5);
 
-  // — Road tax state —
+  // Road tax inputs
   const [rtCc,   setRtCc]   = useState(engineCc ? String(engineCc) : '');
   const [rtBody, setRtBody] = useState(bodyType || 'Sedan');
 
-  // — Insurance state —
+  // Insurance inputs
   const [insSum, setInsSum] = useState(initialPrice);
   const [insNcd, setInsNcd] = useState(55);
+
+  // Car details for PDF
+  const [carName,  setCarName]  = useState('');
+  const [carYear,  setCarYear]  = useState('');
+  const [carColor, setCarColor] = useState('');
+
+  // PDF state
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => { setCarPrice(initialPrice); setInsSum(initialPrice); }, [initialPrice]);
   useEffect(() => { if (engineCc) setRtCc(String(engineCc)); }, [engineCc]);
   useEffect(() => { if (bodyType) setRtBody(bodyType); }, [bodyType]);
 
+  // Calculations
   const downPayment = (carPrice * dpPct) / 100;
-
-  const validate = () => {
-    if (!carPrice || carPrice <= 0)                              return t('calculator.errors.price');
-    if (downPayment < 0)                                         return t('calculator.errors.downPaymentNegative');
-    if (downPayment >= carPrice)                                 return t('calculator.errors.downPaymentExcess');
-    if (loanTerm <= 0 || loanTerm > 15)                         return t('calculator.errors.loanTerm');
-    if (!intRate || intRate <= 0 || intRate > 20)               return t('calculator.errors.interestRate');
-    return '';
-  };
-
-  const loanResults = (() => {
-    if (validate()) return null;
-    const loanAmt    = carPrice - downPayment;
-    const interest   = loanAmt * (intRate / 100) * loanTerm;
-    const total      = loanAmt + interest;
-    return { loanAmt, monthly: total / (loanTerm * 12), interest, total };
-  })();
-
-  useEffect(() => { setError(validate()); }, [carPrice, downPayment, loanTerm, intRate]);
-
-  const reset = () => { setCarPrice(initialPrice); setDpPct(10); setLoanTerm(7); setIntRate(3.5); setError(''); };
-  const fmt   = (n, d = 0) => n != null ? n.toLocaleString('en-MY', { minimumFractionDigits: d, maximumFractionDigits: d }) : '0';
+  const loanAmt     = Math.max(0, carPrice - downPayment);
+  const interest    = loanAmt * (intRate / 100) * loanTerm;
+  const totalLoan   = loanAmt + interest;
+  const monthly     = loanTerm > 0 ? totalLoan / (loanTerm * 12) : 0;
 
   const roadTax  = calcRoadTax(Number(rtCc), rtBody);
-  const insCalc  = calcInsurance(insSum, insNcd);
+  const insCalc  = calcInsurance(insSum || carPrice, insNcd);
 
-  // Debug: surface current inputs and computed outputs in browser console
-  try {
-    // eslint-disable-next-line no-console
-    console.debug('FinancingCalculator debug', { tab, rtCc, rtBody, roadTax, insSum, insNcd, insCalc });
-  } catch (e) {
-    // ignore in environments where console is unavailable
-  }
+  const onRoadPrice = carPrice + (roadTax || 0) + (insCalc?.net || 0);
+
+  const isValid = carPrice > 0 && downPayment < carPrice && loanTerm > 0 && intRate > 0;
+
+  const fmt = (n, d = 0) => n != null && !Number.isNaN(n)
+    ? n.toLocaleString('en-MY', { minimumFractionDigits: d, maximumFractionDigits: d })
+    : '—';
+
+  const reset = () => { setCarPrice(initialPrice); setDpPct(10); setLoanTerm(7); setIntRate(3.5); setRtCc(engineCc ? String(engineCc) : ''); setRtBody(bodyType || 'Sedan'); setInsSum(initialPrice); setInsNcd(55); };
+
+  const handleDownloadPDF = async () => {
+    setPdfLoading(true);
+    try {
+      const [{ data: dealer }, { data: { user } }] = await Promise.all([
+        supabase.from('profiles').select('site_name,dealership,whatsapp_number,avatar_url').eq('role', 'dealer').limit(1).single(),
+        supabase.auth.getUser(),
+      ]);
+
+      let salesmanProfile = null;
+      if (user) {
+        const { data: sp } = await supabase.from('profiles').select('full_name,phone,role').eq('id', user.id).single();
+        salesmanProfile = sp;
+      }
+
+      await generateQuotationPDF({
+        dealer,
+        salesman: salesmanProfile,
+        carDetails: {
+          name:  carName  || `${carYear ? carYear + ' ' : ''}Vehicle`,
+          year:  carYear,
+          color: carColor,
+          price: carPrice,
+        },
+        calc: {
+          carPrice, downPayment, dpPct, loanAmt, loanTerm, intRate,
+          interest, totalLoan, monthly,
+          roadTax, insurance: insCalc?.net ?? null, insNcd,
+          onRoadPrice,
+        },
+        fmt,
+      });
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const preApprovedLink = 'https://wa.me/60174155191?text=' + encodeURIComponent("Hi! I'm interested in getting pre-approved for car financing. Can you help?");
-  const BODY_TYPES = ['Sedan', 'Hatchback', 'Coupe', 'SUV', 'MPV', 'Pickup'];
-  const CC_QUICK   = [1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000];
+
+  const card = {
+    background: 'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 14,
+    padding: '20px 22px',
+  };
+
+  const sectionTitle = (label) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <div style={{ width: 3, height: 16, background: '#dc2626', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ color: 'white', fontSize: 13, fontWeight: 700, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{label}</p>
+    </div>
+  );
 
   return (
-    <div className={flat ? 'w-full' : 'w-full max-w-5xl mx-auto'}>
-      <div className={flat ? 'overflow-hidden' : 'bg-white rounded-2xl shadow-xl overflow-hidden'}>
+    <>
+      <style>{`
+        .calc-input::placeholder { color: #374151; }
+        .calc-input::-webkit-inner-spin-button,
+        .calc-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#9ca3af; font-family:'DM Sans',sans-serif; }
+        .calc-pill:hover { border-color:rgba(220,38,38,0.35); color:white; }
+        .calc-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:#f87171; }
+        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#9ca3af; font-family:'DM Sans',sans-serif; }
+        .calc-body-pill:hover { border-color:rgba(220,38,38,0.35); }
+        .calc-body-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:#f87171; }
+        select.calc-select option { background:#0d1117; color:white; }
+        @media(max-width:768px) {
+          .calc-layout { flex-direction: column !important; }
+          .calc-results { position: static !important; }
+        }
+      `}</style>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 px-6 pt-4 bg-white border-b border-gray-100 overflow-x-auto scrollbar-hide">
-          <TabBtn active={tab === 'loan'}      onClick={() => setTab('loan')}      icon={Calculator} label="Financing" />
-          <TabBtn active={tab === 'roadtax'}   onClick={() => setTab('roadtax')}   icon={Car}        label="Road Tax" />
-          <TabBtn active={tab === 'insurance'} onClick={() => setTab('insurance')} icon={Shield}     label="Insurance Est." />
-        </div>
+      <div style={{ fontFamily: "'DM Sans',sans-serif", maxWidth: 1024, margin: '0 auto' }}>
 
-        {/* ══ LOAN ══ */}
-        {tab === 'loan' && (
-          <div className="flex flex-col md:flex-row">
-            {/* Inputs */}
-            <div className={`${compact ? 'p-5' : 'p-8'} md:w-1/2 bg-white`}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900">{t('calculator.inputs.title')}</h2>
-                <button onClick={reset} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#1E3A8A] transition-colors">
-                  <RefreshCw className="w-3.5 h-3.5" />{t('common.resetAll')}
-                </button>
-              </div>
+        {/* ── Two-column layout ── */}
+        <div className="calc-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
-              <AnimatePresence>
-                {error && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                    className="bg-red-50 text-red-600 p-3 rounded-lg mb-5 flex items-start gap-2 text-sm overflow-hidden">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{error}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+          {/* ══ LEFT: Inputs ══════════════════════════════════════════════════ */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-              <div className="space-y-5">
-                {/* Price */}
+            {/* Financing section */}
+            <div style={card}>
+              {sectionTitle('Financing')}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {/* Car Price */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Label>Car Price</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    prefix="RM"
+                    value={carPrice || ''}
+                    onChange={e => setCarPrice(parseFloat(e.target.value) || 0)}
+                    placeholder="85000"
+                  />
+                </div>
+
+                {/* Down Payment */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t('calculator.inputs.price')}</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">RM</span>
-                    <input type="number" value={carPrice || ''} onChange={e => setCarPrice(parseFloat(e.target.value) || 0)} placeholder="e.g. 85000"
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 bg-white text-sm" />
+                  <Label>Down Payment</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    prefix="RM"
+                    value={Math.round(downPayment) || ''}
+                    onChange={e => { const v = parseFloat(e.target.value) || 0; if (carPrice > 0) setDpPct((v / carPrice) * 100); }}
+                    placeholder="8500"
+                  />
+                </div>
+
+                <div>
+                  <Label>Down %</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    suffix="%"
+                    value={dpPct || ''}
+                    onChange={e => setDpPct(parseFloat(e.target.value) || 0)}
+                    placeholder="10"
+                  />
+                </div>
+
+                {/* Slider full width */}
+                <div style={{ gridColumn: '1 / -1', margin: '-4px 0 4px' }}>
+                  <input type="range" min="0" max="50" step="5" value={dpPct} onChange={e => setDpPct(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: '#dc2626', height: 4 }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                    {['0%','10%','20%','30%','40%','50%'].map(l => <span key={l} style={{ color:'#374151', fontSize:10 }}>{l}</span>)}
                   </div>
                 </div>
 
-                {/* Down payment */}
+                {/* Tenure */}
                 <div>
-                  <div className="flex justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('calculator.inputs.downPayment')}</label>
-                    <span className="text-xs font-bold text-[#1E3A8A] bg-[#1E3A8A]/10 px-2 py-0.5 rounded-full">{dpPct.toFixed(1)}%</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">RM</span>
-                      <input type="number" value={Math.round(downPayment) || ''}
-                        onChange={e => { const v = parseFloat(e.target.value) || 0; if (carPrice > 0) setDpPct((v / carPrice) * 100); }}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 bg-white text-sm" />
-                    </div>
-                    <div className="relative w-24">
-                      <input type="number" value={dpPct || ''} onChange={e => setDpPct(parseFloat(e.target.value) || 0)}
-                        className="w-full pr-7 pl-3 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 bg-white text-sm" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <input type="range" min="0" max="50" step="5" value={dpPct} onChange={e => setDpPct(parseFloat(e.target.value))}
-                      className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#1E3A8A]" />
-                    <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                      {['0%','10%','20%','30%','40%','50%'].map(l => <span key={l}>{l}</span>)}
-                    </div>
-                  </div>
+                  <Label>Tenure</Label>
+                  <SelectBase
+                    className="calc-select"
+                    value={loanTerm}
+                    onChange={e => setLoanTerm(parseInt(e.target.value))}
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10].map(y => (
+                      <option key={y} value={y}>{y} {y === 1 ? 'year' : 'years'}</option>
+                    ))}
+                  </SelectBase>
                 </div>
 
-                {/* Term + rate */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t('calculator.inputs.loanTerm')}</label>
-                    <div className="relative">
-                      <select value={loanTerm} onChange={e => setLoanTerm(parseInt(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 bg-white appearance-none text-sm">
-                        {[1,2,3,4,5,6,7,8,9,10].map(y => <option key={y} value={y}>{y} {y === 1 ? t('calculator.inputs.year') : t('calculator.inputs.years')}</option>)}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-                        <svg className="fill-current h-3.5 w-3.5" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t('calculator.inputs.interestRate')}</label>
-                    <div className="relative">
-                      <input type="number" step="0.1" value={intRate || ''} onChange={e => setIntRate(parseFloat(e.target.value))}
-                        className="w-full pr-8 pl-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 bg-white text-sm" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                    </div>
-                  </div>
+                {/* Interest Rate */}
+                <div>
+                  <Label>Interest Rate</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    step="0.1"
+                    suffix="% p.a."
+                    value={intRate || ''}
+                    onChange={e => setIntRate(parseFloat(e.target.value))}
+                    placeholder="3.5"
+                  />
                 </div>
 
                 {/* Quick term */}
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Quick select term</p>
-                  <div className="flex gap-2">
-                    {[3,5,7,9].map(y => (
-                      <button key={y} onClick={() => setLoanTerm(y)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${loanTerm === y ? 'bg-[#1E3A8A] text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Label>Quick Select Tenure</Label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[3, 5, 7, 9].map(y => (
+                      <button key={y} className={`calc-pill${loanTerm === y ? ' active' : ''}`} onClick={() => setLoanTerm(y)} style={{ flex: 1 }}>
                         {y}yr
                       </button>
                     ))}
@@ -248,178 +473,222 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
               </div>
             </div>
 
-            {/* Results */}
-            <RightPanel compact={compact}>
-              <BigNumber value={loanResults && !error ? fmt(loanResults.monthly) : null} unit="/mo" label={t('calculator.results.monthly')} />
-              <div className="space-y-1 mb-6">
-                <ResultRow label={t('calculator.results.principal')}   value={`RM ${loanResults && !error ? fmt(loanResults.loanAmt) : '—'}`} />
-                <ResultRow label={t('calculator.results.totalInterest')} value={`RM ${loanResults && !error ? fmt(loanResults.interest) : '—'}`} />
-                <ResultRow label={t('calculator.results.totalRepay')} value={`RM ${loanResults && !error ? fmt(loanResults.total) : '—'}`} highlight />
-              </div>
-              {loanResults && !error && (
-                <div className="bg-white/10 rounded-xl p-3 flex items-start gap-2 mb-6">
-                  <TrendingDown className="w-4 h-4 text-green-300 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-100 leading-relaxed">
-                    Increasing down payment to 20% saves{' '}
-                    <strong className="text-white">RM {fmt((carPrice * 0.1) * (intRate / 100) * loanTerm)}</strong>{' '}
-                    in interest over {loanTerm} years.
-                  </p>
-                </div>
-              )}
-              <div className="space-y-2 mt-auto">
-                <a href={preApprovedLink} target="_blank" rel="noopener noreferrer"
-                  className="w-full bg-[#25D366] text-white py-4 rounded-xl font-bold hover:bg-[#1fba59] transition-all shadow-lg flex items-center justify-center gap-2 hover:-translate-y-0.5">
-                  <MessageCircle className="w-5 h-5" />{t('calculator.results.preApprovedBtn')}
-                </a>
-                <Link to={`/cars?maxPrice=${carPrice}`}
-                  className="w-full bg-white/10 text-white border border-white/20 py-4 rounded-xl font-bold hover:bg-white/20 transition-all flex items-center justify-center gap-2">
-                  <Search className="w-5 h-5" />{t('calculator.results.findCarsBtn')}
-                </Link>
-              </div>
-            </RightPanel>
-          </div>
-        )}
+            {/* Road Tax & Insurance section */}
+            <div style={card}>
+              {sectionTitle('Road Tax & Insurance')}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
 
-        {/* ══ ROAD TAX ══ */}
-        {tab === 'roadtax' && (
-          <div className="flex flex-col md:flex-row">
-            <div className={`${compact ? 'p-5' : 'p-8'} md:w-1/2 bg-white`}>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Road Tax Estimate</h2>
-              <p className="text-xs text-gray-400 mb-6">JPJ rates for private vehicles — Peninsular Malaysia.</p>
-
-              <div className="space-y-5">
+                {/* Engine CC */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Engine Displacement (CC)</label>
-                  <div className="relative">
-                    <input type="number" value={rtCc} onChange={e => setRtCc(e.target.value)} placeholder="e.g. 1500" min="50" max="10000"
-                      className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 text-sm" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium pointer-events-none">cc</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Label>Engine CC</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    suffix="cc"
+                    value={rtCc}
+                    onChange={e => setRtCc(e.target.value)}
+                    placeholder="1500"
+                  />
+                </div>
+
+                {/* Body Type */}
+                <div>
+                  <Label>Body Type</Label>
+                  <SelectBase className="calc-select" value={rtBody} onChange={e => setRtBody(e.target.value)}>
+                    {BODY_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+                  </SelectBase>
+                </div>
+
+                {/* CC quick picks */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Label>Quick CC</Label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {CC_QUICK.map(cc => (
-                      <button key={cc} onClick={() => setRtCc(String(cc))}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(rtCc) === String(cc) ? 'bg-[#1E3A8A] border-[#1E3A8A] text-white' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-[#1E3A8A] hover:text-[#1E3A8A]'}`}>
+                      <button key={cc} className={`calc-pill${String(rtCc) === String(cc) ? ' active' : ''}`} onClick={() => setRtCc(String(cc))}>
                         {cc >= 1000 ? (cc / 1000).toFixed(1).replace('.0', '') + 'k' : cc}
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Sum insured */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Body Type</label>
-                  <div className="flex flex-wrap gap-2">
-                    {BODY_TYPES.map(bt => (
-                      <button key={bt} onClick={() => setRtBody(bt)}
-                        className={`px-3 py-2 rounded-full text-xs font-medium transition-all border ${rtBody === bt ? 'bg-[#1E3A8A] border-[#1E3A8A] text-white' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-[#1E3A8A]'}`}>
-                        {bt}
-                      </button>
-                    ))}
-                  </div>
+                  <Label>Sum Insured</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="number"
+                    prefix="RM"
+                    value={insSum || ''}
+                    onChange={e => setInsSum(parseFloat(e.target.value) || 0)}
+                    placeholder={String(carPrice)}
+                  />
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">JPJ Rate Reference</p>
-                  <div className="space-y-1.5">
-                    {[['≤ 1,000cc','RM 20'],['1,001–1,200cc','RM 55'],['1,201–1,400cc','RM 70'],['1,401–1,600cc','RM 90'],['1,601–1,800cc','RM 200 + 0.50/cc'],['1,801–2,000cc','RM 280 + 0.50/cc'],['2,001–2,500cc','RM 380 + 1.00/cc'],['2,501–3,000cc','RM 880 + 4.50/cc'],['> 3,000cc','RM 3,130 + 4.50/cc']].map(([r, v]) => (
-                      <div key={r} className="flex justify-between text-xs">
-                        <span className="text-gray-400">{r}</span>
-                        <span className="text-gray-700 font-medium">{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <RightPanel compact={compact}>
-              <BigNumber value={roadTax != null ? fmt(roadTax) : null} unit="/yr" label="Annual Road Tax" />
-              {rtCc && roadTax != null && (
-                <div className="space-y-1 mb-6">
-                  <ResultRow label="Engine"         value={`${Number(rtCc).toLocaleString()}cc`} />
-                  <ResultRow label="Body type"      value={rtBody} />
-                  <ResultRow label="Road tax / year" value={`RM ${fmt(roadTax)}`} highlight />
-                  <ResultRow label="Per month"       value={`≈ RM ${fmt(roadTax / 12, 2)}`} />
-                </div>
-              )}
-              {(!rtCc || roadTax == null) && <div className="bg-white/10 rounded-xl p-4 text-blue-200 text-sm mb-6">Enter a valid engine CC on the left to calculate.</div>}
-              <div className="bg-white/10 rounded-xl p-3">
-                <p className="text-xs text-blue-100 leading-relaxed">Renew road tax online via JPJ portal, MyEG, or at the post office — usually bundled with your insurance renewal.</p>
-              </div>
-            </RightPanel>
-          </div>
-        )}
-
-        {/* ══ INSURANCE ══ */}
-        {tab === 'insurance' && (
-          <div className="flex flex-col md:flex-row">
-            <div className={`${compact ? 'p-5' : 'p-8'} md:w-1/2 bg-white`}>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Insurance Estimate</h2>
-              <p className="text-xs text-gray-400 mb-6">Estimated comprehensive premium. Actual rates vary by insurer.</p>
-
-              <div className="space-y-5">
+                {/* NCD */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Sum Insured (Market Value)</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">RM</span>
-                    <input type="number" value={insSum || ''} onChange={e => setInsSum(parseFloat(e.target.value) || 0)} placeholder="e.g. 45000"
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all text-gray-900 text-sm" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">No Claim Discount (NCD)</label>
-                    <span className="text-xs font-bold text-[#1E3A8A] bg-[#1E3A8A]/10 px-2 py-0.5 rounded-full">{insNcd}%</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label>NCD Tier</Label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {NCD_TIERS.map(n => (
-                      <button key={n} onClick={() => setInsNcd(n)}
-                        className={`py-2.5 rounded-xl text-xs font-semibold transition-all border ${insNcd === n ? 'bg-[#1E3A8A] border-[#1E3A8A] text-white shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-[#1E3A8A]'}`}>
+                      <button key={n} className={`calc-pill${insNcd === n ? ' active' : ''}`} onClick={() => setInsNcd(n)}>
                         {n}%
                       </button>
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">NCD Entitlement Guide</p>
-                  {[['0%','First year / after a claim'],['25%','1 claim-free year'],['30%','2 claim-free years'],['38.33%','3 claim-free years'],['45%','4 claim-free years'],['55%','5+ claim-free years']].map(([pct, desc]) => (
-                    <div key={pct} className="flex items-center gap-2 py-1 text-xs border-b border-gray-100 last:border-0">
-                      <span className="font-bold text-[#1E3A8A] w-12 shrink-0">{pct}</span>
-                      <span className="text-gray-500">{desc}</span>
-                    </div>
-                  ))}
+            {/* Car Details for PDF (optional) */}
+            <div style={card}>
+              {sectionTitle('Car Details (for Quotation PDF)')}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Label>Car Name / Model</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="text"
+                    value={carName}
+                    onChange={e => setCarName(e.target.value)}
+                    placeholder="e.g. Honda Civic 1.5 TC-P"
+                  />
+                </div>
+                <div>
+                  <Label>Year</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="text"
+                    value={carYear}
+                    onChange={e => setCarYear(e.target.value)}
+                    placeholder="2023"
+                  />
+                </div>
+                <div>
+                  <Label>Colour (optional)</Label>
+                  <InputBase
+                    className="calc-input"
+                    type="text"
+                    value={carColor}
+                    onChange={e => setCarColor(e.target.value)}
+                    placeholder="Platinum White"
+                  />
                 </div>
               </div>
             </div>
 
-            <RightPanel compact={compact}>
-              <BigNumber value={insCalc ? fmt(insCalc.net) : null} unit="/yr" label="Est. Annual Premium (after NCD)" />
-              {insCalc && (
-                <div className="space-y-1 mb-6">
-                  <ResultRow label="Gross premium (est. 3%)"  value={`RM ${fmt(insCalc.gross)}`} />
-                  <ResultRow label={`NCD discount (${insNcd}%)`} value={`− RM ${fmt(insCalc.discount)}`} accent />
-                  <ResultRow label="Net premium / year"        value={`RM ${fmt(insCalc.net)}`} highlight />
-                  <ResultRow label="Per month"                 value={`≈ RM ${fmt(insCalc.net / 12, 2)}`} />
-                </div>
-              )}
-              {!insCalc && <div className="bg-white/10 rounded-xl p-4 text-blue-200 text-sm mb-6">Enter the sum insured to estimate premium.</div>}
-              <div className="bg-white/10 rounded-xl p-3">
-                <p className="text-xs text-blue-100 leading-relaxed">
-                  Estimate based on ~3% of sum insured (industry average). Compare actual quotes on <strong className="text-white">PolicyStreet</strong> or <strong className="text-white">CompareHero</strong> for the best rate.
-                </p>
+          </div>
+
+          {/* ══ RIGHT: Results ════════════════════════════════════════════════ */}
+          <div className="calc-results" style={{ width: 300, flexShrink: 0, position: 'sticky', top: 88 }}>
+            <div style={{ ...card, border: '1px solid rgba(220,38,38,0.18)' }}>
+
+              {/* Monthly installment hero */}
+              <div style={{ textAlign: 'center', padding: '16px 0 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 14 }}>
+                <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Monthly Installment</p>
+                <motion.div
+                  key={isValid ? fmt(monthly, 2) : 'invalid'}
+                  initial={{ scale: 0.92, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                >
+                  <p style={{ color: isValid ? 'white' : '#374151', fontSize: 38, fontWeight: 800, margin: 0, lineHeight: 1 }}>
+                    {isValid ? <>
+                      <span style={{ fontSize: 16, color: '#9ca3af', fontWeight: 600, marginRight: 3 }}>RM</span>
+                      {fmt(monthly, 0)}
+                      <span style={{ fontSize: 14, color: '#9ca3af', fontWeight: 500, marginLeft: 3 }}>/mo</span>
+                    </> : '—'}
+                  </p>
+                </motion.div>
               </div>
-            </RightPanel>
+
+              {/* Breakdown rows */}
+              <div style={{ marginBottom: 14 }}>
+                <ResultRow label="Loan Amount"       value={isValid ? `RM ${fmt(loanAmt)}` : '—'} />
+                <ResultRow label="Down Payment"      value={isValid ? `RM ${fmt(downPayment)}` : '—'} />
+                <ResultRow label="Total Interest"    value={isValid ? `RM ${fmt(interest)}` : '—'} />
+                <ResultRow label="Total Repayment"   value={isValid ? `RM ${fmt(totalLoan)}` : '—'} highlight />
+              </div>
+
+              {/* Road tax + insurance */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12, marginBottom: 14 }}>
+                <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>On-Road Costs</p>
+                <ResultRow label="Road Tax (annual)" value={roadTax != null ? `RM ${fmt(roadTax)}` : 'Enter CC'} muted={roadTax == null} />
+                <ResultRow label={`Insurance (NCD ${insNcd}%)`} value={insCalc ? `RM ${fmt(insCalc.net)}` : '—'} muted={!insCalc} />
+              </div>
+
+              {/* Grand total */}
+              <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#9ca3af', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>On-Road Price</span>
+                  <span style={{ color: '#f87171', fontSize: 18, fontWeight: 800 }}>RM {fmt(onRoadPrice)}</span>
+                </div>
+                <p style={{ color: '#6b7280', fontSize: 10, margin: '4px 0 0' }}>Incl. road tax + insurance est.</p>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={pdfLoading}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    background: pdfLoading ? 'rgba(220,38,38,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
+                    border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 700,
+                    padding: '11px', cursor: pdfLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 12px rgba(220,38,38,0.3)', transition: 'all 0.2s',
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <Download size={14} />
+                  {pdfLoading ? 'Generating…' : 'Download Quotation PDF'}
+                </button>
+
+                <a href={preApprovedLink} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)',
+                    borderRadius: 10, color: '#25D366', fontSize: 13, fontWeight: 700,
+                    padding: '11px', textDecoration: 'none', transition: 'all 0.2s',
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <MessageCircle size={14} /> Get Pre-Approved
+                </a>
+
+                <Link to={`/cars?max_price=${Math.round(carPrice)}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 10, color: '#9ca3af', fontSize: 13, fontWeight: 600,
+                    padding: '11px', textDecoration: 'none', transition: 'all 0.2s',
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <Search size={14} /> Browse Cars in Budget
+                </Link>
+
+                <button onClick={reset}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    background: 'none', border: 'none', color: '#4b5563', fontSize: 12, cursor: 'pointer',
+                    padding: '6px', fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <RefreshCw size={12} /> Reset All
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Amortization schedule */}
+        {isValid && loanAmt > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <AmortizationSchedule loanAmount={loanAmt} interestRate={intRate} years={loanTerm} />
           </div>
         )}
-
       </div>
-
-      {/* Amortization — loan tab only */}
-      {tab === 'loan' && !error && loanResults?.loanAmt > 0 && (
-        <AmortizationSchedule loanAmount={loanResults.loanAmt} interestRate={intRate} years={loanTerm} />
-      )}
-    </div>
+    </>
   );
 };
 
