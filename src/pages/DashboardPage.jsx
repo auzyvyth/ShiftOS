@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
 import TikTokGenerator from "../components/TikTokGenerator";
 import LeadsPage from "./LeadsPage";
@@ -2304,6 +2305,7 @@ function TeamTab({ managerDealership }) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const redirectByRole = useRoleRedirect("dealer");
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listings");
@@ -2319,6 +2321,9 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [salesmen,         setSalesmen]         = useState([]);
+  const [assignDropdownId, setAssignDropdownId] = useState(null);
+  const [assignToast,      setAssignToast]      = useState(null);
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -2346,11 +2351,8 @@ export default function DashboardPage() {
         .eq("id", uid)
         .single();
       if (p) {
-        if (p.role === "salesman") {
-          navigate("/salesman");
-          return;
-        }
-        if (!["dealer", "superadmin", "admin", "manager"].includes(p.role)) {
+        if (redirectByRole(p.role)) return;
+        if (!["dealer", "superadmin", "admin", "manager", "owner"].includes(p.role)) {
           navigate("/login");
           return;
         }
@@ -2365,6 +2367,11 @@ export default function DashboardPage() {
         .eq("dealer_id", uid)
         .order("created_at", { ascending: false });
       setListings(carsError ? [] : cars || []);
+      const { data: sm } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .eq("role", "salesman");
+      setSalesmen(sm || []);
       setLoading(false);
     });
   }, [navigate]);
@@ -2414,6 +2421,24 @@ export default function DashboardPage() {
     const { error } = await supabase.from("car_listings").delete().eq("id", id);
     if (!error) setListings((p) => p.filter((l) => l.id !== id));
     setDeleteId(null);
+  };
+  const handleAssign = async (listingId, salesmanId, name) => {
+    setAssignDropdownId(null);
+    await supabase.from("car_listings").update({ assigned_to: salesmanId }).eq("id", listingId);
+    setListings((prev) =>
+      prev.map((l) => (l.id === listingId ? { ...l, assigned_to: salesmanId } : l))
+    );
+    setAssignToast({ listingId, msg: `Assigned to ${name}` });
+    setTimeout(() => setAssignToast(null), 2000);
+  };
+  const handleUnassign = async (listingId) => {
+    setAssignDropdownId(null);
+    await supabase.from("car_listings").update({ assigned_to: null }).eq("id", listingId);
+    setListings((prev) =>
+      prev.map((l) => (l.id === listingId ? { ...l, assigned_to: null } : l))
+    );
+    setAssignToast({ listingId, msg: "Unassigned" });
+    setTimeout(() => setAssignToast(null), 2000);
   };
   const handleStatus = async (id, status) => {
     setUpdatingStatus(id);
@@ -2471,6 +2496,8 @@ export default function DashboardPage() {
         );
       })
     : listings;
+
+  const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
   const copyListing = (l) => {
     const lines = [
@@ -3067,6 +3094,12 @@ export default function DashboardPage() {
                                           </span>
                                         )}
                                       </div>
+                                      {l.assigned_to && salesmenById[l.assigned_to] && (
+                                        <p className="text-[10px] text-purple-400/80 mt-0.5 flex items-center gap-1">
+                                          <UserPlus className="w-2.5 h-2.5 flex-shrink-0" />
+                                          {salesmenById[l.assigned_to].full_name}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
@@ -3138,6 +3171,56 @@ export default function DashboardPage() {
                                     >
                                       <Video className="w-4 h-4" />
                                     </button>
+                                    {/* Assign to salesman */}
+                                    <div className="relative">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setAssignDropdownId(assignDropdownId === l.id ? null : l.id);
+                                        }}
+                                        title={l.assigned_to && salesmenById[l.assigned_to] ? `Assigned: ${salesmenById[l.assigned_to].full_name}` : "Assign to salesman"}
+                                        className={`p-1.5 rounded-lg transition-all ${l.assigned_to ? "text-purple-400 bg-purple-500/10" : "text-gray-600 hover:text-purple-400 hover:bg-purple-500/10"}`}
+                                      >
+                                        <UserPlus className="w-4 h-4" />
+                                      </button>
+                                      {assignDropdownId === l.id && (
+                                        <div
+                                          className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-50 py-1"
+                                          style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {l.assigned_to && (
+                                            <button
+                                              onClick={() => handleUnassign(l.id)}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                            >
+                                              <X className="w-3 h-3" />
+                                              Unassign
+                                            </button>
+                                          )}
+                                          {l.assigned_to && salesmen.length > 0 && (
+                                            <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                                          )}
+                                          {salesmen.length === 0 ? (
+                                            <p className="px-3 py-2 text-xs text-gray-600">No salesmen found</p>
+                                          ) : (
+                                            salesmen.map((s) => (
+                                              <button
+                                                key={s.id}
+                                                onClick={() => handleAssign(l.id, s.id, s.full_name)}
+                                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${l.assigned_to === s.id ? "text-purple-400 bg-purple-500/10" : "text-gray-300 hover:text-white hover:bg-white/5"}`}
+                                              >
+                                                <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                                                  {(s.full_name || "S")[0].toUpperCase()}
+                                                </div>
+                                                <span className="truncate">{s.full_name || "Unknown"}</span>
+                                                {l.assigned_to === s.id && <Check className="w-3 h-3 ml-auto flex-shrink-0" />}
+                                              </button>
+                                            ))
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                     <button
                                       onClick={() => setDeleteId(l.id)}
                                       className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
@@ -3209,6 +3292,12 @@ export default function DashboardPage() {
                                 </span>
                               )}
                               <AgeBadge createdAt={l.created_at} />
+                              {l.assigned_to && salesmenById[l.assigned_to] && (
+                                <span className="flex items-center gap-1 text-[10px] text-purple-400/80">
+                                  <UserPlus className="w-2.5 h-2.5" />
+                                  {salesmenById[l.assigned_to].full_name}
+                                </span>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
                               <button
@@ -3274,6 +3363,56 @@ export default function DashboardPage() {
                                   Sold
                                 </button>
                               )}
+                              {/* Assign — mobile */}
+                              <div className="relative col-span-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignDropdownId(assignDropdownId === l.id ? null : l.id);
+                                  }}
+                                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all"
+                                  style={{
+                                    background: l.assigned_to ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)",
+                                    border: l.assigned_to ? "1px solid rgba(168,85,247,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                                    color: l.assigned_to ? "#c084fc" : "#9ca3af",
+                                  }}
+                                >
+                                  <UserPlus className="w-3.5 h-3.5" />
+                                  {l.assigned_to && salesmenById[l.assigned_to]
+                                    ? salesmenById[l.assigned_to].full_name
+                                    : "Assign"}
+                                </button>
+                                {assignDropdownId === l.id && (
+                                  <div
+                                    className="absolute left-0 bottom-full mb-1 w-full rounded-xl overflow-hidden z-50 py-1"
+                                    style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 -8px 32px rgba(0,0,0,0.7)" }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {l.assigned_to && (
+                                      <button
+                                        onClick={() => handleUnassign(l.id)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                      >
+                                        <X className="w-3 h-3" />
+                                        Unassign
+                                      </button>
+                                    )}
+                                    {salesmen.map((s) => (
+                                      <button
+                                        key={s.id}
+                                        onClick={() => handleAssign(l.id, s.id, s.full_name)}
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${l.assigned_to === s.id ? "text-purple-400 bg-purple-500/10" : "text-gray-300 hover:text-white hover:bg-white/5"}`}
+                                      >
+                                        <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                                          {(s.full_name || "S")[0].toUpperCase()}
+                                        </div>
+                                        <span className="truncate">{s.full_name || "Unknown"}</span>
+                                        {l.assigned_to === s.id && <Check className="w-3 h-3 ml-auto flex-shrink-0" />}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                               <button
                                 onClick={() => setDeleteId(l.id)}
                                 className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-500 transition-all"
@@ -3381,6 +3520,30 @@ export default function DashboardPage() {
           onSave={handlePriceSave}
         />
       )}
+      {/* Assign dropdown backdrop — closes any open assign dropdown */}
+      {assignDropdownId && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setAssignDropdownId(null)}
+        />
+      )}
+
+      {/* Assign toast */}
+      {assignToast && (
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white"
+          style={{
+            background: "rgba(22,163,74,0.92)",
+            border: "1px solid rgba(74,222,128,0.3)",
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+          }}
+        >
+          <Check className="w-4 h-4 text-green-200" />
+          {assignToast.msg}
+        </div>
+      )}
+
       {tiktokListing && (
         <TikTokGenerator
           listing={tiktokListing}
