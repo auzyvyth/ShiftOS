@@ -6,20 +6,19 @@ import { useTranslation } from 'react-i18next';
 import AmortizationSchedule from './AmortizationSchedule';
 import { supabase } from '../supabaseClient';
 
-// ─── Road tax (JPJ, private, Peninsular Malaysia) ─────────────────────────────
-const calcRoadTax = (cc, bodyType = 'Sedan') => {
-  if (!cc || cc <= 0) return null;
-  const nonSaloon = bodyType && ['SUV', 'MPV', 'Pickup'].includes(bodyType);
-  const c = Number(cc);
+// ─── Road tax (JPJ, private, Peninsular Malaysia — Saloon) ────────────────────
+const calcRoadTax = (cc) => {
+  const c = parseFloat(cc);
+  if (!c || c <= 0) return null;
   if (c <= 1000) return 20;
   if (c <= 1200) return 55;
   if (c <= 1400) return 70;
   if (c <= 1600) return 90;
-  if (c <= 1800) return Math.round(200 + (c - 1600) * (nonSaloon ? 0.40 : 0.50));
-  if (c <= 2000) return Math.round(280 + (c - 1800) * (nonSaloon ? 0.40 : 0.50));
-  if (c <= 2500) return Math.round(380 + (c - 2000) * 1.00);
-  if (c <= 3000) return Math.round(880 + (c - 2500) * (nonSaloon ? 2.50 : 4.50));
-  return Math.round((nonSaloon ? 2130 : 3130) + (c - 3000) * (nonSaloon ? 2.50 : 4.50));
+  if (c <= 1800) return 200 + (c - 1600) * 0.40;
+  if (c <= 2000) return 280 + (c - 1800) * 1.00;
+  if (c <= 2500) return 480 + (c - 2000) * 2.00;
+  if (c <= 3000) return 1480 + (c - 2500) * 3.00;
+  return 2980 + (c - 3000) * 4.00;
 };
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
@@ -209,7 +208,10 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
     y += 8;
 
     const onRoadRows = [];
-    if (calc.roadTax != null) onRoadRows.push(['Road Tax (annual)', `RM ${fmt(calc.roadTax)}`]);
+    if (calc.roadTax != null) {
+      const ccLabel = calc.rtCc ? `${Number(calc.rtCc).toLocaleString()}cc` : '';
+      onRoadRows.push([`Road Tax (annual)${ccLabel ? ` — ${ccLabel}` : ''}`, `RM ${fmt(Math.round(calc.roadTax))}`]);
+    }
     if (calc.insurance != null) onRoadRows.push([`Insurance Est. (NCD ${calc.insNcd}%)`, `RM ${fmt(calc.insurance)}`]);
 
     onRoadRows.forEach(([label, value], i) => {
@@ -250,7 +252,7 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null }) => {
+const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null, carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '' }) => {
   const { t } = useTranslation();
 
   // Financing inputs
@@ -267,10 +269,10 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const [insSum, setInsSum] = useState(initialPrice);
   const [insNcd, setInsNcd] = useState(55);
 
-  // Car details for PDF
-  const [carName,  setCarName]  = useState('');
-  const [carYear,  setCarYear]  = useState('');
-  const [carColor, setCarColor] = useState('');
+  // Car details for PDF (pre-filled from props when coming from a listing)
+  const [carName,  setCarName]  = useState(carNameProp);
+  const [carYear,  setCarYear]  = useState(carYearProp);
+  const [carColor, setCarColor] = useState(carColorProp);
 
   // PDF state
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -278,6 +280,9 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   useEffect(() => { setCarPrice(initialPrice); setInsSum(initialPrice); }, [initialPrice]);
   useEffect(() => { if (engineCc) setRtCc(String(engineCc)); }, [engineCc]);
   useEffect(() => { if (bodyType) setRtBody(bodyType); }, [bodyType]);
+  useEffect(() => { if (carNameProp)  setCarName(carNameProp); },  [carNameProp]);
+  useEffect(() => { if (carYearProp)  setCarYear(carYearProp); },  [carYearProp]);
+  useEffect(() => { if (carColorProp) setCarColor(carColorProp); }, [carColorProp]);
 
   // Calculations
   const downPayment = (carPrice * dpPct) / 100;
@@ -286,10 +291,10 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const totalLoan   = loanAmt + interest;
   const monthly     = loanTerm > 0 ? totalLoan / (loanTerm * 12) : 0;
 
-  const roadTax  = calcRoadTax(Number(rtCc), rtBody);
+  const roadTax  = calcRoadTax(Number(rtCc));
   const insCalc  = calcInsurance(insSum || carPrice, insNcd);
 
-  const onRoadPrice = carPrice + (roadTax || 0) + (insCalc?.net || 0);
+  const onRoadPrice = carPrice + (roadTax != null ? Math.round(roadTax) : 0) + (insCalc?.net || 0);
 
   const isValid = carPrice > 0 && downPayment < carPrice && loanTerm > 0 && intRate > 0;
 
@@ -325,7 +330,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
         calc: {
           carPrice, downPayment, dpPct, loanAmt, loanTerm, intRate,
           interest, totalLoan, monthly,
-          roadTax, insurance: insCalc?.net ?? null, insNcd,
+          roadTax, rtCc, insurance: insCalc?.net ?? null, insNcd,
           onRoadPrice,
         },
         fmt,
@@ -611,7 +616,11 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
               {/* Road tax + insurance */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12, marginBottom: 14 }}>
                 <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>On-Road Costs</p>
-                <ResultRow label="Road Tax (annual)" value={roadTax != null ? `RM ${fmt(roadTax)}` : 'Enter CC'} muted={roadTax == null} />
+                <ResultRow
+                  label={rtCc ? `Road Tax — ${Number(rtCc).toLocaleString()}cc` : 'Road Tax (annual)'}
+                  value={roadTax != null ? `RM ${fmt(Math.round(roadTax))}` : 'Enter CC'}
+                  muted={roadTax == null}
+                />
                 <ResultRow label={`Insurance (NCD ${insNcd}%)`} value={insCalc ? `RM ${fmt(insCalc.net)}` : '—'} muted={!insCalc} />
               </div>
 
