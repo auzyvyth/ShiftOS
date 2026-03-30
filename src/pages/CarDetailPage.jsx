@@ -208,6 +208,9 @@ const CarDetailPage = () => {
   const [calcOpen,     setCalcOpen]     = useState(false);
   const [saved,        setSaved]        = useState(false);
   const [shareToast,   setShareToast]   = useState(false);
+  const [bookingOpen,  setBookingOpen]  = useState(false);
+  const [bookingForm,  setBookingForm]  = useState({ name: '', phone: '', date: '', time: '10:00 AM', notes: '' });
+  const [bookingStatus, setBookingStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
   const stickyRef = useRef(null);
 
   useEffect(() => {
@@ -257,6 +260,139 @@ const CarDetailPage = () => {
       setTimeout(() => setShareToast(false), 2000);
     }
   };
+
+  const handleBooking = async (e) => {
+    e.preventDefault();
+    setBookingStatus('loading');
+    try {
+      const [timePart, period] = bookingForm.time.split(' ');
+      let [hrs, mins] = timePart.split(':').map(Number);
+      if (period === 'PM' && hrs !== 12) hrs += 12;
+      if (period === 'AM' && hrs === 12) hrs = 0;
+      const dt = new Date(bookingForm.date);
+      dt.setHours(hrs, mins, 0, 0);
+      const { error } = await supabase.from('appointments').insert({
+        dealer_id:        car.dealer_id,
+        salesman_id:      car.assigned_to || null,
+        car_listing_id:   car.id,
+        buyer_name:       bookingForm.name.trim(),
+        buyer_phone:      bookingForm.phone.trim(),
+        appointment_date: dt.toISOString(),
+        notes:            bookingForm.notes.trim() || null,
+        status:           'confirmed',
+      });
+      if (error) throw error;
+      setBookingStatus('success');
+    } catch {
+      setBookingStatus('error');
+    }
+  };
+
+  const bookingInputStyle = {
+    width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px', padding: '10px 14px', color: 'white', fontSize: '13px',
+    fontFamily: "'DM Sans',sans-serif", outline: 'none', boxSizing: 'border-box',
+    colorScheme: 'dark',
+  };
+
+  const BookingWidget = () => (
+    <div style={{ marginTop: '10px' }}>
+      {!bookingOpen && bookingStatus !== 'success' && (
+        <button
+          onClick={() => { setBookingOpen(true); setBookingStatus('idle'); }}
+          disabled={isSold}
+          style={{
+            ...btnBase,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#e5e7eb',
+          }}
+          onMouseEnter={e => { if (!isSold) e.currentTarget.style.borderColor = 'rgba(220,38,38,0.5)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+        >
+          📅 Book a Viewing
+        </button>
+      )}
+
+      {bookingStatus === 'success' && (
+        <div style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: '12px', padding: '16px', color: '#4ade80', fontSize: '14px', textAlign: 'center' }}>
+          ✅ Viewing booked! We'll confirm with you shortly on WhatsApp.
+        </div>
+      )}
+
+      {bookingStatus === 'error' && (
+        <div style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '12px', padding: '16px', color: '#f87171', fontSize: '14px', textAlign: 'center' }}>
+          Something went wrong. Please WhatsApp us directly.
+        </div>
+      )}
+
+      {bookingOpen && bookingStatus === 'idle' && (
+        <form
+          onSubmit={handleBooking}
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}
+        >
+          <p style={{ color: '#9ca3af', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Book a Viewing</p>
+          <input
+            required
+            type="text"
+            placeholder="Your name"
+            value={bookingForm.name}
+            onChange={e => setBookingForm(f => ({ ...f, name: e.target.value }))}
+            style={bookingInputStyle}
+          />
+          <input
+            required
+            type="tel"
+            placeholder="01X-XXXXXXX"
+            value={bookingForm.phone}
+            onChange={e => setBookingForm(f => ({ ...f, phone: e.target.value }))}
+            style={bookingInputStyle}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <input
+              required
+              type="date"
+              min={new Date().toISOString().split('T')[0]}
+              value={bookingForm.date}
+              onChange={e => setBookingForm(f => ({ ...f, date: e.target.value }))}
+              style={bookingInputStyle}
+            />
+            <select
+              value={bookingForm.time}
+              onChange={e => setBookingForm(f => ({ ...f, time: e.target.value }))}
+              style={bookingInputStyle}
+            >
+              {['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM'].map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            placeholder="Anything you'd like us to know?"
+            rows={3}
+            value={bookingForm.notes}
+            onChange={e => setBookingForm(f => ({ ...f, notes: e.target.value }))}
+            style={{ ...bookingInputStyle, resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="submit"
+              style={{ flex: 1, padding: '11px', borderRadius: '10px', background: '#dc2626', color: 'white', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+            >
+              Confirm Booking
+            </button>
+            <button
+              type="button"
+              onClick={() => setBookingOpen(false)}
+              style={{ padding: '11px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
 
   /* ── loading ── */
   if (loading) return (
@@ -468,6 +604,7 @@ const CarDetailPage = () => {
                     <Calculator size={15}/> Calculator
                   </button>
                 </div>
+                <BookingWidget />
               </div>
 
               {/* Horizontal spec strip */}
@@ -641,6 +778,7 @@ const CarDetailPage = () => {
                   style={{ ...btnBase, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af' }}>
                   <Calculator size={15}/> Financing Calculator
                 </button>
+                <BookingWidget />
               </div>
 
               {/* Response time */}
