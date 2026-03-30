@@ -731,7 +731,15 @@ const CarDetailPage = () => {
                 </button>
               </div>
               <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-                <FinancingCalculator initialPrice={price} engineCc={engineCc} bodyType={car.body_type} flat />
+                <FinancingCalculator
+                  initialPrice={price}
+                  engineCc={engineCc}
+                  bodyType={car.body_type}
+                  carName={carName}
+                  carYear={year ? String(year) : ''}
+                  carColor={car.colour || ''}
+                  flat
+                />
               </div>
             </motion.div>
           </motion.div>
