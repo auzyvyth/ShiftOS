@@ -835,7 +835,7 @@ export default function OnboardingPage() {
                   </div>
                   <div className="ob-divider"/>
                   <Input label="WhatsApp Business Number" value={whatsapp} onChange={setWhatsapp} placeholder="+60123456789" hint="Used for customer enquiry routing (optional)" />
-                  <Input label="Website / Social Link" value={website} onChange={setWebsite} placeholder="https://facebook.com/yourdealer" hint="Optional — helps complete your Drevo profile" />
+                  <Input label="Website / Social Link" value={website} onChange={setWebsite} placeholder="https://facebook.com/yourdealer" hint="Optional — helps complete your XDrive profile" />
                 </div>
               </>
             )}
