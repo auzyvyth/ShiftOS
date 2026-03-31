@@ -16,7 +16,7 @@ export const STAGE_CONFIG = {
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
-  drevo_enquiry: { label: 'Drevo Enquiry', bg: 'bg-blue-900/50',    text: 'text-blue-400',    border: 'border-blue-500/30' },
+  drevo_enquiry: { label: 'XDrive Enquiry', bg: 'bg-blue-900/50',    text: 'text-blue-400',    border: 'border-blue-500/30' },
   walk_in:       { label: 'Walk-In',       bg: 'bg-purple-900/50',  text: 'text-purple-400',  border: 'border-purple-500/30' },
   referral:      { label: 'Referral',      bg: 'bg-green-900/50',   text: 'text-green-400',   border: 'border-green-500/30' },
   whatsapp:      { label: 'WhatsApp',      bg: 'bg-emerald-900/50', text: 'text-emerald-400', border: 'border-emerald-500/30' },

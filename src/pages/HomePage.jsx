@@ -17,7 +17,6 @@ import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 
 const CAR_FIELDS = 'id,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
-const HERO_IMG   = 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1400&auto=format&fit=crop&q=70';
 const BRANDS     = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes','Hyundai','Nissan','Mitsubishi'];
 const BODY_TYPES = ['Sedan','SUV','Hatchback','MPV','Pickup','Coupe'];
 const BUDGET_OPTIONS = [
@@ -149,6 +148,7 @@ const card = {
   borderRadius:'16px',
 };
 
+
 const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl } = useSiteProfile();
@@ -160,8 +160,6 @@ const HomePage = () => {
   const [brand,       setBrand]       = useState('');
   const [bodyType,    setBodyType]    = useState('');
   const [maxPrice,    setMaxPrice]    = useState('');
-  const [heroSlides,  setHeroSlides]  = useState([]);
-  const [heroLoading, setHeroLoading] = useState(true);
 
   useEffect(() => {
     let ch, soldCh;
@@ -186,18 +184,6 @@ const HomePage = () => {
     return () => { if (ch) supabase.removeChannel(ch); if (soldCh) supabase.removeChannel(soldCh); };
   }, []);
 
-  useEffect(() => {
-    supabase
-      .from('hero_carousel_slides')
-      .select('*')
-      .eq('active', true)
-      .order('sort_order', { ascending: true })
-      .limit(5)
-      .then(({ data }) => {
-        setHeroSlides(data ?? []);
-        setHeroLoading(false);
-      });
-  }, []);
 
   const searchUrl = () => {
     const p = new URLSearchParams();
@@ -241,6 +227,7 @@ const HomePage = () => {
         @keyframes shimmer  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         @keyframes pulse-red{ 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45)} 50%{box-shadow:0 0 0 12px rgba(220,38,38,0)} }
         @keyframes dropIn   { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin      { to{transform:rotate(360deg)} }
 
         .shine-hp { position:relative; overflow:hidden; }
         .shine-hp::before { content:''; position:absolute; top:0; left:-80%; width:60%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,0.2),transparent); transform:skewX(-20deg); transition:left 0.5s ease; }
@@ -251,9 +238,6 @@ const HomePage = () => {
         .card-hp { transition:transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important; }
         .card-hp:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(0,0,0,0.45) !important; border-color:rgba(220,38,38,0.25) !important; }
 
-        /* ── Hero section ── */
-        .hero-section-hp { min-height: 680px; }
-        .hc-spacer { height: 330px; }
 
         /* ── Car grid ── */
         .car-grid-hp { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
@@ -281,8 +265,6 @@ const HomePage = () => {
 
         /* ── Tablet ── */
         @media(max-width: 768px) {
-          .hero-section-hp { min-height: 580px; }
-          .hc-spacer { height: 260px; }
           .search-grid-hp {
             grid-template-columns: 1fr 1fr !important;
           }
@@ -293,8 +275,6 @@ const HomePage = () => {
 
         /* ── Mobile ── */
         @media(max-width: 480px) {
-          .hero-section-hp { min-height: 520px; }
-          .hc-spacer { height: 210px; }
           .search-grid-hp {
             grid-template-columns: 1fr auto !important;
           }
@@ -328,65 +308,17 @@ const HomePage = () => {
         <title>{siteName} — Buy Trusted Used Cars in Malaysia</title>
         <meta name="description" content="Browse 200+ verified used cars from trusted Malaysian dealers. Transparent pricing, no hidden fees, free consultation." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="preload" as="image" href={HERO_IMG} />
       </Helmet>
 
       <Header />
 
       {/* ══════════ HERO ══════════ */}
-      <section className={(heroLoading || heroSlides.length > 0) ? 'hero-section-hp' : ''} style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'center', background:'#060910', overflow:'hidden', paddingTop: (heroLoading || heroSlides.length > 0) ? 0 : '80px', paddingBottom:'0' }}>
-        {/* Full-bleed carousel — rendered as absolute background layer */}
-        {(heroLoading || heroSlides.length > 0) && (
-          <HeroCarousel slides={heroSlides} isLoading={heroLoading} />
-        )}
+      <HeroCarousel siteName={siteName} />
 
-        {/* Static background — only when no carousel slides */}
-        {!heroLoading && heroSlides.length === 0 && (
-        <div style={{ position:'absolute', inset:0, zIndex:0, overflow:'hidden' }}>
-          <img src={HERO_IMG} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 30%', opacity:0.28 }}/>
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(8,12,20,0.97) 25%,rgba(8,12,20,0.65) 60%,rgba(8,12,20,0.25) 100%)' }}/>
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,#080C14 0%,transparent 50%)' }}/>
-        </div>
-        )}
-
-        <div style={{ ...wrap, position:'relative', zIndex:2, width:'100%', paddingBottom:'40px' }}>
-          {/* Spacer pushing search bar below carousel content — only when carousel is active */}
-          {(heroLoading || heroSlides.length > 0) ? (
-            <div className="hc-spacer" />
-          ) : (
-            /* Static fallback when no carousel slides are configured */
-            <motion.div initial={{ opacity:0, y:40 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.8, ease:[0.22,1,0.36,1] }} style={{ paddingTop:'80px' }}>
-              {/* Eyebrow */}
-              <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
-                <div style={{ width:'28px', height:'2px', background:'#dc2626', flexShrink:0 }}/>
-                <span style={{ color:'#dc2626', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.15em' }}>Malaysia's Trusted Car Platform</span>
-              </div>
-
-              {/* Headline */}
-              <h1 style={{ color:'white', margin:'0 0 14px 0', lineHeight:1, fontSize:'clamp(2.6rem,10vw,5.5rem)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em', wordBreak:'break-word' }}>
-                Find Your<br/>
-                <span style={{ background:'linear-gradient(135deg,#ffffff 0%,#dc2626 55%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                  Perfect Drive.
-                </span>
-              </h1>
-
-              {/* Subheadline */}
-              <p style={{ color:'#9ca3af', fontSize:'clamp(13px,3.5vw,16px)', margin:'0 0 24px 0', maxWidth:'100%', lineHeight:1.6 }}>
-                Browse <span style={{ color:'white', fontWeight:'700' }}>{stock > 0 ? `${stock}+` : 'verified'} cars</span> from trusted Malaysian dealers. Transparent pricing, no hidden fees.
-              </p>
-
-              {/* CTA buttons */}
-              <div className="hero-btns-hp">
-                <Link to="/cars" className="shine-hp red-btn-hp" style={redBtn}>Browse Cars <ArrowRight size={15}/></Link>
-                <a href="{waUrl(`Hi ${siteName}, I need help finding a car`)}" target="_blank" rel="noopener noreferrer" className="wa-btn-hp" style={waBtn}>
-                  <MessageCircle size={15}/> WhatsApp Us
-                </a>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Search bar ── */}
-          <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.45, duration:0.65, ease:[0.22,1,0.36,1] }} style={{ position:'relative', zIndex:10 }}>
+      {/* ══════════ SEARCH ══════════ */}
+      <div style={{ background:'#060910', position:'relative', zIndex:10 }}>
+        <div style={{ ...wrap, paddingBottom:'40px' }}>
+          <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3, duration:0.65, ease:[0.22,1,0.36,1] }} style={{ position:'relative', zIndex:10 }}>
             <div style={{ background:'rgba(8,11,20,0.94)', backdropFilter:'blur(24px)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'14px 14px 0 0', padding:'10px' }}>
               <div className="search-grid-hp">
                 <CustomSelect label="Brand"  icon={Search}     value={brand}    onChange={setBrand}    placeholder="All Brands" options={BRANDS.map(b=>({ value:b, label:b }))} />
@@ -421,9 +353,7 @@ const HomePage = () => {
             </div>
           </motion.div>
         </div>
-
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'80px', background:'linear-gradient(to bottom,transparent,#080C14)', zIndex:3, pointerEvents:'none' }}/>
-      </section>
+      </div>
 
       {/* ══════════ HOT DEALS ══════════ */}
       {(hotDeals.length > 0 || loading) && (

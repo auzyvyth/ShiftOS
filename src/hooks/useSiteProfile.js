@@ -56,7 +56,7 @@ export function useSiteProfile() {
   };
 
   /** Display name: site_name > dealership > fallback */
-  const siteName = profile?.site_name || profile?.dealership || 'Drevo';
+  const siteName = profile?.site_name || profile?.dealership || 'XDrive';
 
   /** First letter of site name (for logo icon) */
   const siteInitial = siteName.charAt(0).toUpperCase();

@@ -180,7 +180,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
     setLoadingListings(true);
     supabase
       .from('car_listings')
-      .select('id, make, model, year, price, images, mileage, engine_cc, horsepower, transmission, fuel_type')
+      .select('id, brand, model, year, selling_price, images, mileage, engine_cc, horsepower, transmission, fuel_type')
       .eq('dealer_id', userId)
       .neq('status', 'sold')
       .order('created_at', { ascending: false })
@@ -229,7 +229,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
 
     // Build stats from listing data — filter out blank values, then pad to min 4
     const rawStats = [
-      { id: genId(), type: 'Price',       value: listing.price       ? Number(listing.price).toLocaleString()      : '', unit: 'RM' },
+      { id: genId(), type: 'Price',       value: listing.selling_price ? Number(listing.selling_price).toLocaleString() : '', unit: 'RM' },
       { id: genId(), type: 'Mileage',     value: listing.mileage     ? Number(listing.mileage).toLocaleString()    : '', unit: 'km' },
       { id: genId(), type: 'Year',        value: listing.year        ? String(listing.year)                        : '', unit: ''   },
       { id: genId(), type: 'Engine CC',   value: listing.engine_cc   ? Number(listing.engine_cc).toLocaleString()  : '', unit: 'cc' },
@@ -249,7 +249,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
 
     setForm(f => ({
       ...f,
-      car_name:     `${listing.make || ''} ${listing.model || ''}`.trim(),
+      car_name:     `${listing.brand || ''} ${listing.model || ''}`.trim(),
       year:         String(listing.year || ''),
       transmission: listing.transmission || f.transmission,
       fuel_type:    listing.fuel_type    || f.fuel_type,
@@ -323,7 +323,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
   const currentYear = new Date().getFullYear();
   const filteredListings = listingSearch.trim()
     ? dealerListings.filter(l =>
-        `${l.make || ''} ${l.model || ''} ${l.year || ''}`.toLowerCase().includes(listingSearch.toLowerCase())
+        `${l.brand || ''} ${l.model || ''} ${l.year || ''}`.toLowerCase().includes(listingSearch.toLowerCase())
       )
     : dealerListings;
 
@@ -486,11 +486,11 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ color: 'white', fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {l.year} {l.make} {l.model}
+                            {l.year} {l.brand} {l.model}
                           </p>
-                          {l.price && (
+                          {l.selling_price && (
                             <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>
-                              RM {Number(l.price).toLocaleString()}
+                              RM {Number(l.selling_price).toLocaleString()}
                             </p>
                           )}
                         </div>

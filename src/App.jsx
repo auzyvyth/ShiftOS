@@ -25,7 +25,7 @@ function App() {
         }}
       />
       <Routes>
-        {/* Public — Drevo */}
+        {/* Public — XDrive */}
         <Route path="/"           element={<HomePage />} />
         <Route path="/cars"       element={<CarsPage />} />
         <Route path="/cars/:id"   element={<CarDetailPage />} />

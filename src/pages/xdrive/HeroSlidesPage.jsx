@@ -131,7 +131,7 @@ export default function HeroSlidesPage({ userId, profile }) {
             Hero Carousel
           </h2>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4, maxWidth: 360 }}>
-            Manage your Drevo homepage spotlight — up to {MAX_SLIDES} slides
+            Manage your XDrive homepage spotlight — up to {MAX_SLIDES} slides
           </p>
         </div>
 
