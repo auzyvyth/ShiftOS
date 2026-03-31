@@ -101,9 +101,9 @@ const Footer = () => {
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
                 <div>
                   <p className="text-white text-sm font-medium">{t('footer.email')}</p>
-                  <a href="mailto:info@drevo.my"
+                  <a href="mailto:info@xdrive.my"
                     className="text-gray-500 hover:text-white text-sm transition-colors">
-                    info@drevo.my
+                    info@xdrive.my
                   </a>
                 </div>
               </li>

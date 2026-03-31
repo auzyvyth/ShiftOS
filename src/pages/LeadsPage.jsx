@@ -75,7 +75,7 @@ function EmptyState({ onAdd }) {
       </div>
       <h3 className="text-white font-bold text-lg mb-2">No leads yet</h3>
       <p className="text-gray-500 text-sm max-w-xs leading-relaxed mb-6">
-        Add your first lead manually or share your Drevo listing to start capturing enquiries.
+        Add your first lead manually or share your XDrive listing to start capturing enquiries.
       </p>
       <button onClick={onAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>
         <Plus className="w-4 h-4" />Add Your First Lead
