@@ -264,6 +264,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [showDanger, setShowDanger] = useState(false);
 
+  // Sync all form fields whenever the profile prop changes.
+  // useState initial values are only read on mount, so without this effect
+  // the form would show stale data after a save (onProfileUpdate) or an
+  // account switch where SettingsTab stays mounted.
+  useEffect(() => {
+    if (!profile) return;
+    setDealership(profile.dealership || "");
+    setSiteName(profile.site_name || "");
+    setBrandColor(profile.brand_color || "#c9a84c");
+    setWhatsapp(profile.whatsapp_number || "");
+    setTiktok(profile.social_tiktok || "");
+    setInstagram(profile.social_instagram || "");
+    setFacebook(profile.social_facebook || "");
+    setHeroTitle(profile.hero_title || "");
+    setHeroSubtitle(profile.hero_subtitle || "");
+    setHeroCta(profile.hero_cta_text || "");
+    setAnnouncementText(profile.announcement_bar || "");
+    setAnnouncementOn(profile.announcement_bar_enabled || false);
+    setAboutText(profile.about_text || "");
+  }, [profile]);
+
   const changeCount = profile?.dealership_change_count || 0;
   const changesLeft = MAX_DEALERSHIP_CHANGES - changeCount;
   const dealershipLocked = changesLeft <= 0;
@@ -1031,15 +1052,17 @@ function AnalyticsTab({ listings, profile }) {
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
+    if (!profile?.id) return;
     supabase
       .from("analytics_events")
       .select("*")
+      .eq("dealer_id", profile.id)   // scope to logged-in dealer only
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setEvents(data || []);
         setEventsLoading(false);
       });
-  }, []);
+  }, [profile?.id]);
   const totalClicks = events.filter(
     (e) => e.event_type === "link_visit" || e.event_type === "car_view",
   ).length;
@@ -1622,7 +1645,7 @@ function AnalyticsTab({ listings, profile }) {
 }
 
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
-function TeamTab({ managerDealership }) {
+function TeamTab({ managerDealership, dealerId }) {
   const [salespeople, setSalespeople] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   const [teamError, setTeamError] = useState("");
@@ -1642,9 +1665,11 @@ function TeamTab({ managerDealership }) {
   const [analyticsMap, setAnalyticsMap] = useState({});
 
   const fetchAnalytics = async () => {
+    if (!dealerId) return;
     const { data } = await supabase
       .from("analytics_events")
-      .select("salesman_slug,event_type");
+      .select("salesman_slug,event_type")
+      .eq("dealer_id", dealerId);   // scope to this dealer's salesmen only
     if (!data) return;
     const map = {};
     data.forEach(({ salesman_slug, event_type }) => {
@@ -2338,18 +2363,29 @@ export default function DashboardPage() {
   }, [profile]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      if (error || !data.session) {
-        navigate("/login");
-        return;
-      }
-      const uid = data.session.user.id;
+    let active = true;
+
+    // Shared loader — called on first mount AND on every auth state change so
+    // switching accounts always loads the correct owner's data.
+    const loadSession = async (session) => {
+      if (!session) { navigate("/login"); return; }
+      const uid = session.user.id;
+
+      // Reset to a clean slate before populating for this session.
+      // Prevents any previous owner's branding from bleeding through.
+      setProfile(null);
+      setListings([]);
+      setSalesmen([]);
+      setLoading(true);
       setUserId(uid);
+
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", uid)
+        .eq("id", uid)   // always scoped to the live session user
         .single();
+      if (!active) return;
+
       if (p) {
         if (redirectByRole(p.role)) return;
         if (!["dealer", "superadmin", "admin", "manager", "owner"].includes(p.role)) {
@@ -2361,19 +2397,39 @@ export default function DashboardPage() {
         navigate("/login");
         return;
       }
+
       const { data: cars, error: carsError } = await supabase
         .from("car_listings")
         .select("*")
         .eq("dealer_id", uid)
         .order("created_at", { ascending: false });
-      setListings(carsError ? [] : cars || []);
+      if (active) setListings(carsError ? [] : cars || []);
+
       const { data: sm } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
         .eq("role", "salesman");
-      setSalesmen(sm || []);
-      setLoading(false);
-    });
+      if (active) {
+        setSalesmen(sm || []);
+        setLoading(false);
+      }
+    };
+
+    // Fast initial load from cached session
+    supabase.auth.getSession().then(({ data }) => loadSession(data.session));
+
+    // Re-run the full loader on every auth event so account-switching is safe
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN") loadSession(session);
+        else if (event === "SIGNED_OUT") navigate("/login");
+      }
+    );
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -2407,6 +2463,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.clear(); // prevent stale branding from a previous session bleeding through
     navigate("/login");
   };
   const handleNew = (l) => {
@@ -3444,7 +3501,7 @@ export default function DashboardPage() {
             <AnalyticsTab listings={listings} profile={profile} />
           )}
           {activeTab === "team" && (
-            <TeamTab managerDealership={profile?.dealership} />
+            <TeamTab managerDealership={profile?.dealership} dealerId={profile?.id} />
           )}
           {activeTab === "settings" && profile && (
             <SettingsTab
