@@ -135,7 +135,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               <option value="walk_in">Walk-In</option>
               <option value="whatsapp">WhatsApp</option>
               <option value="referral">Referral</option>
-              <option value="drevo_enquiry">Drevo Enquiry</option>
+              <option value="drevo_enquiry">XDrive Enquiry</option>
             </select>
             {errors.lead_source && <p className="text-xs text-red-400 mt-1">{errors.lead_source}</p>}
           </div>

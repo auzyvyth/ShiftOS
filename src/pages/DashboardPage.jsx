@@ -2721,7 +2721,7 @@ export default function DashboardPage() {
     leads: { title: "Leads", sub: "Pipeline & CRM" },
     hero: {
       title: "Hero Carousel",
-      sub: "Manage your Drevo homepage spotlight — up to 5 slides",
+      sub: "Manage your XDrive homepage spotlight — up to 5 slides",
     },
   };
 
@@ -3008,7 +3008,7 @@ export default function DashboardPage() {
               </div>
 
               <div
-                className="card-top rounded-xl overflow-hidden"
+                className={`card-top rounded-xl ${assignDropdownId ? 'overflow-visible' : 'overflow-hidden'}`}
                 style={T.cardDark}
               >
                 <div
@@ -3088,7 +3088,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block overflow-x-auto">
+                    <div className="hidden md:block overflow-x-auto overflow-y-visible">
                       <table className="w-full text-sm">
                         <thead>
                           <tr
@@ -3242,8 +3242,8 @@ export default function DashboardPage() {
                                       </button>
                                       {assignDropdownId === l.id && (
                                         <div
-                                          className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-50 py-1"
-                                          style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}
+                                          className="absolute right-0 bottom-full mb-1 w-44 rounded-xl overflow-hidden z-50 py-1"
+                                          style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 -8px 32px rgba(0,0,0,0.7)" }}
                                           onClick={(e) => e.stopPropagation()}
                                         >
                                           {l.assigned_to && (
