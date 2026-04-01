@@ -165,7 +165,7 @@ export default function SalesmanPanel() {
     supabase
       .from("car_listings")
       .select(
-        "id, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
+        "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
       )
       .eq("assigned_to", userId)
       .neq("status", "sold")
@@ -215,7 +215,7 @@ export default function SalesmanPanel() {
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `${window.location.origin}/cars/${car.id}?ref=${profile?.slug || ""}`;
+    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
       const price = Number(car.selling_price || 0);

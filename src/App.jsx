@@ -28,7 +28,7 @@ function App() {
         {/* Public — XDrive */}
         <Route path="/"           element={<HomePage />} />
         <Route path="/cars"       element={<CarsPage />} />
-        <Route path="/cars/:id"   element={<CarDetailPage />} />
+        <Route path="/cars/:slug" element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
 
         {/* Auth */}

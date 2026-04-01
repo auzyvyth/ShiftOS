@@ -85,7 +85,7 @@ function Skeleton() {
 
 /* ─── main ─── */
 export default function CarDetailPage() {
-  const { id }    = useParams();
+  const { slug }  = useParams();
   const navigate  = useNavigate();
 
   const [car, setCar]         = useState(null);
@@ -154,7 +154,7 @@ export default function CarDetailPage() {
     async function load() {
       setLoading(true);
       const { data: carData, error } = await supabase
-        .from('car_listings').select('*').eq('id', id).single();
+        .from('car_listings').select('*').eq('slug', slug).maybeSingle();
       if (error || !carData) { setNotFound(true); setLoading(false); return; }
       setCar(carData);
       if (carData.dealer_id) {
@@ -168,7 +168,7 @@ export default function CarDetailPage() {
       setLoading(false);
     }
     load();
-  }, [id]);
+  }, [slug]);
 
   /* ── auto-slide ── */
   useEffect(() => {
