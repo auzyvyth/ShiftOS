@@ -138,7 +138,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
       try {
         const { data, error } = await supabase
           .from('hero_carousel_slides')
-          .select('*')
+          .select('*, car_listings(slug)')
           .eq('active', true)
           .order('sort_order', { ascending: true });
 
@@ -275,7 +275,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                 </a>
               )}
               {s.car_listing_id && (
-                <Link to={`/cars/${s.car_listing_id}`} className="hc2-details-btn">
+                <Link to={`/cars/${s.car_listings?.slug || s.car_listing_id}`} className="hc2-details-btn">
                   View Details
                 </Link>
               )}
