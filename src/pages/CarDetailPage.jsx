@@ -224,12 +224,30 @@ export default function CarDetailPage() {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
+
+    // Resolve salesman_id: prefer ?ref= slug → profile id, fall back to assigned_to
+    let salesmanId = car.assigned_to || null;
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) {
+      const { data: sm } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('slug', ref)
+        .maybeSingle();
+      if (sm?.id) salesmanId = sm.id;
+    }
+
     const [h, m] = form.time.split(':');
     const dt = new Date(`${form.date}T${h.padStart(2,'0')}:${m}:00`);
     await supabase.from('appointments').insert({
-      dealer_id: car.dealer_id, salesman_id: car.assigned_to || null,
-      car_listing_id: car.id, buyer_name: form.name, buyer_phone: form.phone,
-      appointment_date: dt.toISOString(), notes: form.notes || null, status: 'confirmed',
+      dealer_id: car.dealer_id,
+      salesman_id: salesmanId,
+      car_listing_id: car.id,
+      buyer_name: form.name,
+      buyer_phone: form.phone,
+      appointment_date: dt.toISOString(),
+      notes: form.notes || null,
+      status: 'confirmed',
     });
     setSubmitting(false);
     setBooked(true);

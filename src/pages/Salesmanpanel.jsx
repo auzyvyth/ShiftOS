@@ -189,13 +189,9 @@ export default function SalesmanPanel() {
     // Upcoming appointments
     supabase
       .from("appointments")
-      .select(
-        "id, buyer_name, buyer_phone, appointment_date, notes, status, car_listings(year, brand, model)",
-      )
+      .select("*, car_listings(brand, model, year, images)")
       .eq("salesman_id", userId)
-      .gte("appointment_date", new Date().toISOString())
       .order("appointment_date", { ascending: true })
-      .limit(5)
       .then(({ data }) => setAppointments(data || []));
 
     return () => supabase.removeChannel(ch);
