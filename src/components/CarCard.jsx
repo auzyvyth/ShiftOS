@@ -95,7 +95,7 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
 
       <div
         className={`car-card-root${isHot ? ' hot' : ''}`}
-        onClick={() => !isSold && navigate('/cars/' + car.id)}
+        onClick={() => !isSold && navigate('/cars/' + car.slug)}
         style={{
           background: 'linear-gradient(145deg,#0d1117 0%,#111827 100%)',
           border: isHot ? '1px solid rgba(220,38,38,0.28)' : '1px solid rgba(255,255,255,0.07)',
