@@ -16,7 +16,7 @@ import HeroCarousel from '@/components/HeroCarousel';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 
-const CAR_FIELDS = 'id,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
+const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
 const BRANDS     = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes','Hyundai','Nissan','Mitsubishi'];
 const BODY_TYPES = ['Sedan','SUV','Hatchback','MPV','Pickup','Coupe'];
 const BUDGET_OPTIONS = [

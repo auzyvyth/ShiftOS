@@ -8,6 +8,12 @@ import FinancingCalculator from '../components/FinancingCalculator';
 const fmt      = (n) => Number(n).toLocaleString('en-MY');
 const fmtPrice = (n) => `RM ${fmt(n)}`;
 
+/* 90% loan, 3.5% flat p.a., 7-year tenure */
+const calcMonthly = (price) => {
+  if (!price || price <= 0) return null;
+  return Math.round((price * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12));
+};
+
 function daysAgo(dateStr) {
   if (!dateStr) return null;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
@@ -124,11 +130,14 @@ export default function CarDetailPage() {
   const [lbOpen, setLbOpen]   = useState(false);
   const [lbZoom, setLbZoom]   = useState(1);
   const [lbPan,  setLbPan]    = useState({ x: 0, y: 0 });
-  const lbDrag = useRef({ active: false, ox: 0, oy: 0 });
+  const lbDrag    = useRef({ active: false, ox: 0, oy: 0 });
+  const lbOpenRef = useRef(false);   // readable inside interval without stale closure
+  const lbTouch   = useRef({ startX: 0, startY: 0 });  // touch swipe tracking
 
   function closeLb() { setLbOpen(false); setLbZoom(1); setLbPan({ x: 0, y: 0 }); }
 
   useEffect(() => {
+    lbOpenRef.current = lbOpen;
     if (!lbOpen) return;
     const onKey = (e) => { if (e.key === 'Escape') closeLb(); };
     window.addEventListener('keydown', onKey);
@@ -148,6 +157,23 @@ export default function CarDetailPage() {
     setLbPan({ x: e.clientX - lbDrag.current.ox, y: e.clientY - lbDrag.current.oy });
   }
   function lbMouseUp() { lbDrag.current.active = false; }
+
+  function lbTouchStart(e) {
+    lbTouch.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  }
+  function lbTouchEnd(e) {
+    const dx = e.changedTouches[0].clientX - lbTouch.current.startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - lbTouch.current.startY);
+    if (Math.abs(dx) < 40 || dy > Math.abs(dx)) return; // not a clear horizontal swipe
+    const dir = dx < 0 ? 'next' : 'prev';
+    setSlideDir(dir);
+    setSlideKey(k => k + 1);
+    setLbZoom(1); setLbPan({ x: 0, y: 0 });
+    setActiveIdx(prev => {
+      const len = car?.images?.length || 1;
+      return dir === 'next' ? (prev + 1) % len : (prev - 1 + len) % len;
+    });
+  }
 
   /* ── fetch ── */
   useEffect(() => {
@@ -176,6 +202,7 @@ export default function CarDetailPage() {
     const imgs = car?.images?.length ? car.images : [];
     if (imgs.length <= 1) return;
     autoRef.current = setInterval(() => {
+      if (lbOpenRef.current) return;   // paused while lightbox is open
       setSlideDir('next');
       setSlideKey(k => k + 1);
       setActiveIdx(i => (i + 1) % imgs.length);
@@ -205,6 +232,7 @@ export default function CarDetailPage() {
     const imgs = car?.images?.length ? car.images : [];
     if (imgs.length <= 1) return;
     autoRef.current = setInterval(() => {
+      if (lbOpenRef.current) return;   // paused while lightbox is open
       setSlideDir('next');
       setSlideKey(k => k + 1);
       setActiveIdx(i => (i + 1) % imgs.length);
@@ -370,7 +398,7 @@ export default function CarDetailPage() {
 
         /* gallery column */
         .cdp-gallery-col {
-          flex: 1.3; display: flex; gap: 8px; min-width: 0;
+          flex: 1.7; display: flex; gap: 8px; min-width: 0;
           overflow: hidden;
         }
 
@@ -434,6 +462,7 @@ export default function CarDetailPage() {
           flex: 1; min-width: 0;
           display: flex; flex-direction: column; justify-content: center;
           gap: 0; overflow-y: auto; scrollbar-width: none;
+          padding-left: 16px;
         }
         .cdp-info-col::-webkit-scrollbar { display: none; }
 
@@ -658,9 +687,16 @@ export default function CarDetailPage() {
             <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', marginBottom: 3 }}>
               Selling price
             </p>
-            <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', color: 'white', lineHeight: 1, marginBottom: 6 }}>
-              {fmtPrice(car.selling_price)}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', color: 'white', lineHeight: 1, margin: 0 }}>
+                {fmtPrice(car.selling_price)}
+              </p>
+              {calcMonthly(car.selling_price) && (
+                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+                  / mo: <span style={{ color: '#9ca3af', fontWeight: 500 }}>RM {fmt(calcMonthly(car.selling_price))}</span>
+                </span>
+              )}
+            </div>
 
             {isHot && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -960,6 +996,8 @@ export default function CarDetailPage() {
               }}
               onMouseDown={lbMouseDown}
               onWheel={lbWheel}
+              onTouchStart={lbTouchStart}
+              onTouchEnd={lbTouchEnd}
             >
               <img
                 className="cdp-lb-img"
