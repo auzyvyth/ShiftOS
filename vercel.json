@@ -1,13 +1,5 @@
 {
-  "routes": [
-    {
-      "src": "/cars/(?<slug>[^/]+)",
-      "dest": "/api/og?slug=$slug",
-      "continue": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
