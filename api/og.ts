@@ -11,9 +11,12 @@ export default async function handler(req: Request) {
     return new Response('Missing slug', { status: 400 })
   }
 
-  // Non-bots get redirected straight to the React SPA
+  // Non-bots: serve index.html directly — no redirect (redirect → loop)
   if (!BOT_AGENTS.test(ua)) {
-    return Response.redirect(`https://xdrive.my/cars/${slug}`, 302)
+    const indexRes = await fetch(new URL('/', req.url).toString())
+    return new Response(indexRes.body, {
+      headers: { 'Content-Type': 'text/html' },
+    })
   }
 
   const res = await fetch(
