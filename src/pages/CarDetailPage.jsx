@@ -58,13 +58,13 @@ const inputStyle = (focused) => ({
 /* ─── skeleton ─── */
 function Skeleton() {
   return (
-    <div style={{ background: '#080C14', minHeight: '100vh' }}>
+    <div style={{ background: '#0d0d0d', minHeight: '100vh' }}>
       <style>{`
         @keyframes shimmer {
           0%   { background-position: -600px 0; }
           100% { background-position:  600px 0; }
         }
-        .sk { background: linear-gradient(90deg,#0d1117 25%,#131920 50%,#0d1117 75%);
+        .sk { background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
               background-size: 600px 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
       `}</style>
       {/* header bar skeleton */}
@@ -130,9 +130,12 @@ export default function CarDetailPage() {
   const [lbOpen, setLbOpen]   = useState(false);
   const [lbZoom, setLbZoom]   = useState(1);
   const [lbPan,  setLbPan]    = useState({ x: 0, y: 0 });
-  const lbDrag    = useRef({ active: false, ox: 0, oy: 0 });
-  const lbOpenRef = useRef(false);   // readable inside interval without stale closure
-  const lbTouch   = useRef({ startX: 0, startY: 0 });  // touch swipe tracking
+  const lbDrag       = useRef({ active: false, ox: 0, oy: 0 });
+  const lbOpenRef    = useRef(false);   // readable inside interval without stale closure
+  const lbTouch      = useRef({ startX: 0, startY: 0 });  // lightbox touch swipe
+  const pauseRef     = useRef(false);   // true while autoplay is paused after manual nav
+  const resumeTimer  = useRef(null);    // timer id to resume autoplay
+  const galleryTouch = useRef({ startX: 0, startY: 0 });  // main gallery touch swipe
 
   function closeLb() { setLbOpen(false); setLbZoom(1); setLbPan({ x: 0, y: 0 }); }
 
@@ -202,7 +205,7 @@ export default function CarDetailPage() {
     const imgs = car?.images?.length ? car.images : [];
     if (imgs.length <= 1) return;
     autoRef.current = setInterval(() => {
-      if (lbOpenRef.current) return;   // paused while lightbox is open
+      if (lbOpenRef.current || pauseRef.current) return;  // paused while lightbox open or after manual nav
       setSlideDir('next');
       setSlideKey(k => k + 1);
       setActiveIdx(i => (i + 1) % imgs.length);
@@ -220,23 +223,29 @@ export default function CarDetailPage() {
     return () => obs.disconnect();
   }, [car]);
 
-  /* ── manual nav (resets interval) ── */
+  /* ── manual nav — pauses autoplay for 4s then resumes ── */
   function go(idx, dir) {
-    clearInterval(autoRef.current);
+    pauseRef.current = true;
+    clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => { pauseRef.current = false; }, 4000);
     setSlideDir(dir);
     setSlideKey(k => k + 1);
     setActiveIdx(idx);
     setLbZoom(1); setLbPan({ x: 0, y: 0 });
-    // restart auto-slide
-    if (!car) return;
-    const imgs = car?.images?.length ? car.images : [];
-    if (imgs.length <= 1) return;
-    autoRef.current = setInterval(() => {
-      if (lbOpenRef.current) return;   // paused while lightbox is open
-      setSlideDir('next');
-      setSlideKey(k => k + 1);
-      setActiveIdx(i => (i + 1) % imgs.length);
-    }, 2000);
+  }
+
+  /* ── main gallery swipe ── */
+  function galleryTouchStart(e) {
+    galleryTouch.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  }
+  function galleryTouchEnd(e) {
+    const dx = e.changedTouches[0].clientX - galleryTouch.current.startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - galleryTouch.current.startY);
+    if (Math.abs(dx) < 40 || dy > Math.abs(dx)) return;
+    const dir = dx < 0 ? 'next' : 'prev';
+    const len = car?.images?.length || 1;
+    const targetIdx = dir === 'next' ? (activeIdx + 1) % len : (activeIdx - 1 + len) % len;
+    go(targetIdx, dir);
   }
 
   /* ── WhatsApp ── */
@@ -284,7 +293,7 @@ export default function CarDetailPage() {
   /* ── early returns ── */
   if (loading)  return <Skeleton />;
   if (notFound) return (
-    <div style={{ background:'#080C14', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans',sans-serif" }}>
+    <div style={{ background:'#0d0d0d', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans',sans-serif" }}>
       <p style={{ fontSize:15, color:'#6b7280', marginBottom:20 }}>This listing is no longer available.</p>
       <Link to="/cars" style={{ color:'#dc2626', fontSize:13, textDecoration:'none' }}>← Browse all cars</Link>
     </div>
@@ -309,7 +318,7 @@ export default function CarDetailPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #080C14; overflow-x: hidden; }
+        body { background: #0d0d0d; overflow-x: hidden; }
 
         /* slide animations — run on absolutely-positioned img so they never affect page layout */
         @keyframes cdp-from-right {
@@ -330,7 +339,7 @@ export default function CarDetailPage() {
         }
         .cdp-img-shimmer {
           position: absolute; inset: 0;
-          background: linear-gradient(90deg, #0d1117 25%, #131920 50%, #0d1117 75%);
+          background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
           background-size: 400px 100%;
           animation: cdp-shimmer-sweep 1.4s ease-in-out infinite;
           pointer-events: none;
@@ -342,17 +351,17 @@ export default function CarDetailPage() {
           100% { background-position:  600px 0; }
         }
         .sk {
-          background: linear-gradient(90deg,#0d1117 25%,#131920 50%,#0d1117 75%);
+          background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
           background-size: 600px 100%;
           animation: shimmer 1.5s infinite;
           border-radius: 4px;
         }
 
         .cdp-root {
-          background: #080C14;
+          background: #0d0d0d;
           min-height: 100vh;
           font-family: 'DM Sans', sans-serif;
-          color: white;
+          color: #f5f5f5;
         }
 
         /* sticky header */
@@ -360,19 +369,19 @@ export default function CarDetailPage() {
           position: sticky; top: 0; z-index: 100;
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 24px; height: 52px;
-          background: rgba(8,12,20,0.92);
+          background: rgba(13,13,13,0.94);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,0.07);
         }
         .cdp-back-btn {
           display: flex; align-items: center; gap: 6px;
-          background: none; border: none; color: #6b7280;
+          background: none; border: none; color: #a0a0a0;
           font-size: 13px; cursor: pointer;
           font-family: 'DM Sans', sans-serif; padding: 0;
           transition: color 0.2s;
         }
-        .cdp-back-btn:hover { color: white; }
+        .cdp-back-btn:hover { color: #f5f5f5; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
           opacity: 0; transition: opacity 0.3s; pointer-events: none;
@@ -409,7 +418,7 @@ export default function CarDetailPage() {
         .cdp-main-wrap {
           flex: 1; position: relative;
           overflow: clip;
-          border-radius: 6px; background: #0d1117;
+          border-radius: 6px; background: #111111;
         }
         .cdp-main-img {
           width: 100%; height: 100%;
@@ -428,17 +437,18 @@ export default function CarDetailPage() {
         .cdp-arrow-l { left: 10px; }
         .cdp-arrow-r { right: 10px; }
 
-        /* dot counter */
+        /* dot counter — dynamic sliding window, max 5 visible */
         .cdp-dots {
           position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-          display: flex; gap: 5px; z-index: 2;
+          max-width: 54px; overflow: hidden; z-index: 2; padding: 4px 0;
         }
         .cdp-dot {
-          width: 5px; height: 5px; border-radius: 50%;
-          background: rgba(255,255,255,0.35); transition: background 0.3s, width 0.3s;
-          cursor: pointer; border: none;
+          width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+          background: rgba(255,255,255,0.45); padding: 0; border: none;
+          cursor: pointer;
+          transition: transform 0.35s ease, opacity 0.35s ease, background 0.2s;
         }
-        .cdp-dot.active { background: white; width: 16px; border-radius: 3px; }
+        .cdp-dot.active { background: white; }
 
         /* vertical thumb strip */
         .cdp-thumbs-v {
@@ -468,8 +478,8 @@ export default function CarDetailPage() {
 
         /* specs strip */
         .cdp-specs {
-          border-top: 1px solid rgba(255,255,255,0.06);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-top: 1px solid rgba(255,255,255,0.07);
+          border-bottom: 1px solid rgba(255,255,255,0.07);
           display: flex; overflow-x: auto;
           scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
@@ -509,7 +519,7 @@ export default function CarDetailPage() {
           .cdp-thumbs-v { display: none; }
           .cdp-info-col { justify-content: flex-start; }
           .cdp-details { flex-direction: column; gap: 36px; padding: 36px 16px 60px; }
-          .cdp-details-right { min-width: 0; width: 100%; }
+          .cdp-details-right { min-width: 0; width: 100%; max-width: 480px; margin-left: auto; margin-right: auto; }
         }
         @media (max-width: 480px) {
           .cdp-arrow { display: none; }
@@ -591,7 +601,10 @@ export default function CarDetailPage() {
           <div className="cdp-gallery-col">
 
             {/* main image */}
-            <div className="cdp-main-wrap">
+            <div className="cdp-main-wrap"
+              onTouchStart={galleryTouchStart}
+              onTouchEnd={galleryTouchEnd}
+            >
               {/* shimmer holds space and shows while image is loading */}
               {!imgLoaded && <div className="cdp-img-shimmer" />}
               <img
@@ -615,17 +628,35 @@ export default function CarDetailPage() {
                     <ChevronRight size={18} />
                   </button>
 
-                  {/* dot indicators */}
-                  <div className="cdp-dots">
-                    {images.slice(0, Math.min(images.length, 8)).map((_, i) => (
-                      <button
-                        key={i}
-                        className={`cdp-dot${i === activeIdx ? ' active' : ''}`}
-                        onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
-                        aria-label={`Image ${i + 1}`}
-                      />
-                    ))}
-                  </div>
+                  {/* dot indicators — dynamic 5-dot sliding window */}
+                  {(() => {
+                    const DOT_SLOT = 12; // 6px dot + 6px gap
+                    const rawOffset  = -(activeIdx - 2) * DOT_SLOT;
+                    const minOffset  = imgCount > 5 ? -(imgCount - 5) * DOT_SLOT : 0;
+                    const trackShift = Math.min(0, Math.max(minOffset, rawOffset));
+                    return (
+                      <div className="cdp-dots">
+                        <div style={{ display:'flex', gap:6, transform:`translateX(${trackShift}px)`, transition:'transform 0.35s ease' }}>
+                          {images.map((_, i) => {
+                            const dist = Math.abs(i - activeIdx);
+                            return (
+                              <button
+                                key={i}
+                                className={`cdp-dot${i === activeIdx ? ' active' : ''}`}
+                                onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                                aria-label={`Image ${i + 1}`}
+                                style={{
+                                  opacity:   dist === 0 ? 1 : dist === 1 ? 0.65 : dist === 2 ? 0.35 : 0,
+                                  transform: dist === 0 ? 'scaleX(2.8)' : dist === 1 ? 'scale(0.9)' : dist === 2 ? 'scale(0.7)' : 'scale(0)',
+                                  pointerEvents: dist > 2 ? 'none' : 'auto',
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -667,7 +698,7 @@ export default function CarDetailPage() {
             )}
 
             {/* brand */}
-            <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', marginBottom: 5 }}>
+            <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#a0a0a0', marginBottom: 5 }}>
               {car.brand}
             </p>
 
@@ -677,14 +708,14 @@ export default function CarDetailPage() {
             </h1>
 
             {/* meta */}
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: 20 }}>
+            <p style={{ fontSize: '13px', color: '#a0a0a0', marginBottom: 20 }}>
               {[car.year, car.body_type, car.transmission].filter(Boolean).join(' · ')}
             </p>
 
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginBottom: 20 }} />
 
             {/* price */}
-            <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', marginBottom: 3 }}>
+            <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a0a0a0', marginBottom: 3 }}>
               Selling price
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -710,7 +741,7 @@ export default function CarDetailPage() {
             )}
 
             {/* CTA card */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '20px', marginTop: 20 }}>
+            <div style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '20px', marginTop: 20 }}>
               <p style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
                 Interested in this car?
               </p>
@@ -768,8 +799,8 @@ export default function CarDetailPage() {
             { Icon: Palette,  label: 'Colour',       value: car.colour      || '—' },
           ].map(({ Icon, label, value }) => (
             <div key={label} className="cdp-spec">
-              <Icon size={15} style={{ color: '#6b7280', marginBottom: 6 }} />
-              <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', marginBottom: 3 }}>{label}</p>
+              <Icon size={15} style={{ color: '#a0a0a0', marginBottom: 6 }} />
+              <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a0a0a0', marginBottom: 3 }}>{label}</p>
               <p style={{ fontSize: '15px', fontWeight: 500, color: 'white' }}>{value}</p>
             </div>
           ))}
@@ -782,7 +813,7 @@ export default function CarDetailPage() {
           <div className="cdp-details-left">
 
             {/* about text — always visible */}
-            <p style={{ fontSize: '15px', color: '#d1d5db', lineHeight: 1.8, marginBottom: 32 }}>
+            <p style={{ fontSize: '15px', color: '#f5f5f5', lineHeight: 1.8, marginBottom: 32 }}>
               {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
             </p>
 
