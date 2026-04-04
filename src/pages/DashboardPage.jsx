@@ -263,6 +263,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [showDanger, setShowDanger] = useState(false);
+  const [tgToken, setTgToken] = useState(profile?.telegram_bot_token || "");
+  const [tgChannel, setTgChannel] = useState(profile?.telegram_channel_id || "");
+  const [tgAutoPost, setTgAutoPost] = useState(profile?.telegram_auto_post || false);
+  const [tgTesting, setTgTesting] = useState(false);
+  const [tgTestResult, setTgTestResult] = useState(null);
 
   // Sync all form fields whenever the profile prop changes.
   // useState initial values are only read on mount, so without this effect
@@ -283,6 +288,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementText(profile.announcement_bar || "");
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
+    setTgToken(profile.telegram_bot_token || "");
+    setTgChannel(profile.telegram_channel_id || "");
+    setTgAutoPost(profile.telegram_auto_post || false);
   }, [profile]);
 
   const changeCount = profile?.dealership_change_count || 0;
@@ -348,6 +356,47 @@ function SettingsTab({ profile, onProfileUpdate }) {
       social_facebook: facebook.trim(),
     });
 
+  const saveTelegram = () =>
+    saveSection("telegram", {
+      telegram_bot_token: tgToken.trim(),
+      telegram_channel_id: tgChannel.trim(),
+      telegram_auto_post: tgAutoPost,
+    });
+
+  const testTelegram = async () => {
+    if (!tgToken.trim() || !tgChannel.trim()) {
+      setErrors((p) => ({ ...p, telegram: "Fill in bot token and channel ID first." }));
+      return;
+    }
+    setTgTesting(true);
+    setTgTestResult(null);
+    setErrors((p) => ({ ...p, telegram: "" }));
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${tgToken.trim()}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: tgChannel.trim(),
+            text: "✅ ShiftOS Telegram connected! Auto-posting is active.",
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.ok) {
+        setTgTestResult("ok");
+      } else {
+        setTgTestResult("fail");
+        setErrors((p) => ({ ...p, telegram: data.description || "Test failed. Check token and channel ID." }));
+      }
+    } catch {
+      setTgTestResult("fail");
+      setErrors((p) => ({ ...p, telegram: "Network error. Check your token." }));
+    }
+    setTgTesting(false);
+    setTimeout(() => setTgTestResult(null), 4000);
+  };
   const saveFrontPage = () =>
     saveSection("frontpage", {
       hero_title: heroTitle.trim(),
@@ -703,6 +752,100 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <ErrMsg k="password" />
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="password" onClick={savePassword} />
+        </div>
+      </SettingsSection>
+
+      {/* ── 4. Telegram Auto-Post ── */}
+      <SettingsSection
+        title="Telegram Auto-Post"
+        subtitle="Automatically post new listings to your Telegram channel"
+        icon={Send}
+        iconColor="text-sky-400"
+        iconBg="rgba(56,189,248,0.08)"
+        iconBorder="rgba(56,189,248,0.18)"
+      >
+        <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(56,189,248,0.04)", border: "1px solid rgba(56,189,248,0.1)" }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-sky-400" />
+              <p className="text-white text-sm font-semibold">Auto-Post New Listings</p>
+            </div>
+            <button
+              onClick={() => setTgAutoPost((v) => !v)}
+              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-red-600" : "bg-white/10"}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${tgAutoPost ? "left-5" : "left-0.5"}`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-600">
+            Every new car you add will be auto-posted to your Telegram channel with full details and photos.
+          </p>
+        </div>
+
+        <SettingsField label="Bot Token" hint="From @BotFather">
+          <input
+            value={tgToken}
+            onChange={(e) => setTgToken(e.target.value)}
+            placeholder="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+            className={iCls}
+            type="password"
+            autoComplete="off"
+          />
+          <p className="text-xs text-gray-700 mt-1">
+            Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.
+          </p>
+        </SettingsField>
+
+        <SettingsField label="Channel ID" hint="e.g. @yourchannel or -1001234567890">
+          <input
+            value={tgChannel}
+            onChange={(e) => setTgChannel(e.target.value)}
+            placeholder="@autocitypenang"
+            className={iCls}
+          />
+          <p className="text-xs text-gray-700 mt-1">
+            Add your bot as <span className="text-white">Admin</span> to the channel first, then paste the username or numeric ID.
+          </p>
+        </SettingsField>
+
+        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Setup</p>
+          {[
+            "Open Telegram → search @BotFather → /newbot",
+            "Copy the bot token and paste above",
+            "Create or open your channel → Add Members → search your bot → make it Admin",
+            "Paste your channel username (e.g. @mydealer) above",
+            "Click Test Connection to verify, then Save",
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <span className="w-4 h-4 rounded-full bg-white/5 border border-white/10 text-[10px] text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">{i + 1}</span>
+              <p className="text-xs text-gray-500 leading-relaxed">{step}</p>
+            </div>
+          ))}
+        </div>
+
+        <ErrMsg k="telegram" />
+
+        {tgTestResult === "ok" && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-emerald-400" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)" }}>
+            <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+            Test message sent! Check your Telegram channel.
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 pt-1 justify-end">
+          <button
+            onClick={testTelegram}
+            disabled={tgTesting || !tgToken.trim() || !tgChannel.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-sky-400 disabled:onpacity-40 transition-all"
+            style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.18)" }}
+          >
+            {tgTesting
+              ? <><div className="w-3.5 h-3.5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />Testing…</>
+              : <><Send className="w-3.5 h-3.5" />Test Connection</>
+            }
+          </button>
+          <SaveBtn sectionKey="telegram" onClick={saveTelegram} />
         </div>
       </SettingsSection>
 
@@ -2383,7 +2526,7 @@ export default function DashboardPage() {
         .from("profiles")
         .select("*")
         .eq("id", uid)   // always scoped to the live session user
-        .single();
+        .maybeSingle();
       if (!active) return;
 
       if (p) {
