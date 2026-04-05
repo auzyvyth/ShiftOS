@@ -99,7 +99,7 @@ export default function SalesmanPanel() {
         .from("profiles")
         .select("*")
         .eq("id", uid)
-        .single();
+        .maybeSingle();
 
       if (!profileData) {
         navigate("/login");

@@ -308,14 +308,14 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
     setPdfLoading(true);
     try {
       const [{ data: dealer }, { data: { user } }] = await Promise.all([
-        supabase.from('profiles').select('site_name,dealership,whatsapp_number,avatar_url').eq('role', 'dealer').limit(1).single(),
+        supabase.from('profiles').select('site_name,dealership,whatsapp_number,avatar_url').eq('role', 'dealer').limit(1).maybeSingle(),
         supabase.auth.getUser(),
       ]);
 
       let salesmanProfile = null;
       if (user) {
-        const { data: sp } = await supabase.from('profiles').select('full_name,phone,role').eq('id', user.id).single();
-        salesmanProfile = sp;
+        const { data: sp } = await supabase.from('profiles').select('full_name,phone,role').eq('id', user.id).maybeSingle();
+        salesmanProfile = sp ?? null;
       }
 
       await generateQuotationPDF({

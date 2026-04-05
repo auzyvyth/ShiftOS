@@ -190,7 +190,7 @@ export default function CarDetailPage() {
         const { data: d } = await supabase
           .from('profiles')
           .select('full_name,dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug')
-          .eq('id', carData.dealer_id).single();
+          .eq('id', carData.dealer_id).maybeSingle();
         setDealer(d);
       }
       trackEvent(carData, 'car_view');
@@ -472,7 +472,7 @@ export default function CarDetailPage() {
           flex: 1; min-width: 0;
           display: flex; flex-direction: column; justify-content: center;
           gap: 0; overflow-y: auto; scrollbar-width: none;
-          padding-left: 16px;
+          padding-left: 0;
         }
         .cdp-info-col::-webkit-scrollbar { display: none; }
 
@@ -741,7 +741,7 @@ export default function CarDetailPage() {
             )}
 
             {/* CTA card */}
-            <div style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '20px', marginTop: 20 }}>
+            <div style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '20px', marginTop: 20, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
               <p style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
                 Interested in this car?
               </p>

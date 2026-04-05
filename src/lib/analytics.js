@@ -39,7 +39,7 @@ export async function trackEvent(eventType, { carId = null, carName = null, deal
       .from('profiles')
       .select('dealership')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
 
     if (salesman?.dealership) {
       const { data: dealer } = await supabase
@@ -48,7 +48,7 @@ export async function trackEvent(eventType, { carId = null, carName = null, deal
         .eq('dealership', salesman.dealership)
         .eq('role', 'dealer')
         .limit(1)
-        .single();
+        .maybeSingle();
       resolvedDealerId = dealer?.id || null;
     }
   }
