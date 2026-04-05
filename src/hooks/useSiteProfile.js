@@ -28,7 +28,7 @@ function fetchProfile() {
     )
     .eq('role', 'dealer')
     .limit(1)
-    .single()
+    .maybeSingle()
     .then(({ data }) => {
       _cache = data || {};
       return _cache;
