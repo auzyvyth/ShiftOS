@@ -1,350 +1,893 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Tag, Gauge, Calendar, Zap, Star } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  Fuel,
+  Gauge,
+  Sparkles,
+  ArrowRight,
+  CheckCircle,
+} from "lucide-react";
+import { supabase } from "../supabaseClient";
 
-const ICON_MAP = {
-  price: Tag, mileage: Gauge, year: Calendar,
-  engine: Zap, engine_cc: Zap, horsepower: Zap, grade: Star,
-};
+const HC_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-const BADGE = {
-  'HOT DEAL':    { bg: 'rgba(220,38,38,0.9)',  color: '#fff' },
-  'RARE FIND':   { bg: 'rgba(124,58,237,0.9)', color: '#fff' },
-  'NEW ARRIVAL': { bg: 'rgba(16,185,129,0.9)', color: '#fff' },
-};
+  /* System font fallbacks if Google Fonts unavailable (offline/slow) */
+  .hc-wrap, .hc-wrap * {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  .hc-syne {
+    font-family: 'Syne', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
 
-
-const HC2_CSS = `
-  .hc2-section {
+  .hc-wrap {
     position: relative;
-    background: #060910;
+    background: #0f172a;
     overflow: hidden;
-    min-height: 520px;
-    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
   }
-  .hc2-glow {
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 70% 50%, rgba(220,38,38,0.08) 0%, transparent 70%);
+
+  /* ── Background: ALL slide images stacked, only active one visible ── */
+  .hc-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .hc-bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 30%;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+    /* Force browser to keep image in memory */
+    will-change: opacity;
+  }
+
+  .hc-bg-img.active {
+    opacity: 1;
+    transform: scale(1);
+    animation: hcZoom 8s ease-out forwards;
+  }
+
+  @keyframes hcZoom {
+    from { transform: scale(1); }
+    to   { transform: scale(1.04); }
+  }
+
+  .hc-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0.88) 0%,
+      rgba(15, 23, 42, 0.52) 35%,
+      rgba(15, 23, 42, 0.94) 100%
+    );
+    z-index: 1;
+  }
+
+  .hc-overlay-side {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      rgba(15, 23, 42, 0.92) 0%,
+      rgba(15, 23, 42, 0.45) 50%,
+      transparent 78%
+    );
+    z-index: 1;
+  }
+
+  /* ── DESKTOP content ── */
+  .hc-content {
+    position: absolute;
+    bottom: 200px;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    padding-top: 72px;
+  }
+
+  .hc-content-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 60px;
+  }
+
+  .hc-text {
+    flex: 1;
+    max-width: 48%;
+  }
+
+  /* Right image card */
+  .hc-glass-card {
+    flex: 1;
+    max-width: 44%;
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 32px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+    align-self: flex-end;
+    max-height: 360px;
+  }
+
+  /* Card images: all stacked, active one shown */
+  .hc-card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+
+  .hc-card-img.active { opacity: 1; }
+
+  /* Spacer to maintain card height */
+  .hc-card-spacer {
+    width: 100%;
+    min-height: 290px;
+    max-height: 360px;
+    display: block;
+    visibility: hidden;
+  }
+
+  .hc-glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 16px; right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    z-index: 2;
     pointer-events: none;
   }
-  .hc2-inner {
-    position: relative; z-index: 1;
-    max-width: 1280px; margin: 0 auto;
-    padding: 80px 24px 0;
+
+  /* Mobile-only below-image block — hidden on desktop */
+  .hc-below-image { display: none; }
+
+  /* ── Eyebrow ── */
+  .hc-eyebrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .hc-eyebrow-dot {
+    width:6px; height:6px; border-radius:50%;
+    background:#3b82f6; flex-shrink:0;
+    box-shadow:0 0 8px rgba(59,130,246,0.55);
   }
-  .hc2-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    align-items: center;
-    min-height: 340px;
+  .hc-eyebrow-label {
+    font-size:10px; font-weight:600;
+    letter-spacing:0.22em; text-transform:uppercase;
+    color:rgba(147,197,253,0.85);
   }
-  .hc2-image-col {
-    display: flex; align-items: center; justify-content: center;
+
+  /* ── Car name ── */
+  .hc-car-name {
+    font-size:clamp(1.8rem,4vw,3.2rem);
+    font-weight:800; letter-spacing:-0.02em; line-height:1.08;
+    color:white; margin:0 0 18px;
+    text-shadow:0 2px 24px rgba(0,0,0,0.4);
   }
-  @keyframes hc2-slide-in {
-    from { opacity: 0; transform: translateX(-20px); }
-    to   { opacity: 1; transform: translateX(0); }
+  .hc-year-accent { color:#93c5fd; }
+
+  /* ── Meta pills ── */
+  .hc-meta { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  .hc-meta-item {
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,0.07);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    padding:5px 12px; border-radius:40px;
+    border:1px solid rgba(255,255,255,0.1);
+    font-size:11px; font-weight:500; color:rgba(255,255,255,0.8);
   }
-  @keyframes hc2-img-in {
-    from { opacity: 0; transform: scale(0.95); }
-    to   { opacity: 1; transform: scale(1); }
+  .hc-meta-item svg { width:11px; height:11px; color:#60a5fa; }
+
+  /* ── Price ── */
+  .hc-price-section { margin:0 0 24px; }
+  .hc-price-label {
+    font-size:9px; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.18em;
+    color:rgba(255,255,255,0.35); margin-bottom:4px;
   }
-  .hc2-slide-in { animation: hc2-slide-in 0.5s ease forwards; }
-  .hc2-img-in   { animation: hc2-img-in   0.5s ease forwards; }
-  .hc2-enquire-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: linear-gradient(135deg,#dc2626,#b91c1c);
-    color: white; font-weight: 700; font-size: 13px;
-    padding: 11px 22px; border-radius: 50px; text-decoration: none;
-    box-shadow: 0 4px 16px rgba(220,38,38,0.35);
-    transition: all 0.2s;
+  .hc-price-value {
+    font-size:clamp(1.1rem,2.5vw,1.6rem);
+    font-weight:700; color:white; letter-spacing:-0.01em;
   }
-  .hc2-enquire-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(220,38,38,0.45); }
-  .hc2-details-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
-    color: white; font-weight: 600; font-size: 13px;
-    padding: 11px 22px; border-radius: 50px; text-decoration: none;
-    transition: all 0.2s;
+
+  /* ── CTAs ── */
+  .hc-ctas { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+  .hc-enquire {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(220,38,38,0.18);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(220,38,38,0.45);
+    color:white; font-weight:600; font-size:13px;
+    padding:11px 24px; border-radius:40px; text-decoration:none;
+    transition:all 0.25s ease;
+    box-shadow:0 6px 20px rgba(220,38,38,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  .hc2-details-btn:hover { background: rgba(255,255,255,0.1); }
-  .hc2-stats-wrap { margin-top: 28px; padding-bottom: 0; }
-  .hc2-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
-  .hc2-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 1px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px; overflow: hidden;
-    backdrop-filter: blur(12px);
+  .hc-enquire:hover {
+    background:rgba(220,38,38,0.3); border-color:rgba(220,38,38,0.65);
+    transform:translateY(-2px); gap:12px;
   }
-  .hc2-stat-cell {
-    padding: 14px 20px;
-    background: rgba(8,12,20,0.8);
-    border-right: 1px solid rgba(255,255,255,0.05);
+
+  .hc-view {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,0.07);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.14);
+    color:rgba(255,255,255,0.85); font-weight:500; font-size:13px;
+    padding:11px 22px; border-radius:40px; text-decoration:none;
+    transition:all 0.25s ease;
   }
-  .hc2-stat-cell:last-child { border-right: none; }
-  .hc2-nav-btn {
-    position: absolute; top: 46%; transform: translateY(-50%);
-    width: 38px; height: 38px; border-radius: 50%;
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-    color: white; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    z-index: 5; transition: all 0.2s;
+  .hc-view:hover {
+    background:rgba(255,255,255,0.13); border-color:rgba(255,255,255,0.24);
+    color:white; transform:translateY(-2px); gap:10px;
   }
-  .hc2-nav-btn:hover { background: rgba(220,38,38,0.2); border-color: rgba(220,38,38,0.4); }
-  .hc2-prev { left: 16px; }
-  .hc2-next { right: 16px; }
-  .hc2-spinner {
-    width: 28px; height: 28px;
-    border: 2px solid rgba(255,255,255,0.07); border-top-color: #dc2626;
-    border-radius: 50%; animation: hc2-spin 0.8s linear infinite;
+
+  /* ── Counter ── */
+  .hc-counter {
+    position:absolute; bottom:120px; left:48px; z-index:4;
+    font-size:10px; font-weight:600;
+    letter-spacing:0.12em; color:rgba(255,255,255,0.35);
+    background:rgba(255,255,255,0.05); backdrop-filter:blur(10px);
+    padding:5px 13px; border-radius:40px;
+    border:1px solid rgba(255,255,255,0.08);
   }
-  @keyframes hc2-spin { to { transform: rotate(360deg); } }
-  @keyframes spin     { to { transform: rotate(360deg); } }
-  .hc2-fade {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 48px;
-    background: linear-gradient(to bottom,transparent,#080C14);
-    pointer-events: none;
+
+  /* ── Dots ── */
+  .hc-dots {
+    position:absolute; bottom:120px; left:50%; transform:translateX(-50%);
+    display:flex; gap:8px; z-index:4;
   }
-  @media (max-width: 768px) {
-    .hc2-grid { grid-template-columns: 1fr; gap: 16px; min-height: auto; }
-    .hc2-image-col { justify-content: center; max-height: 200px; overflow: hidden; }
-    .hc2-image-col img { max-height: 190px; width: auto; max-width: 100%; }
-    .hc2-nav-btn { display: none; }
-    .hc2-stats-grid { grid-template-columns: repeat(2,1fr); }
-    .hc2-inner { padding: 64px 16px 0; }
+  .hc-dot {
+    width:7px; height:7px; border-radius:4px; border:none; padding:0;
+    cursor:pointer; background:rgba(255,255,255,0.22);
+    transition:all 0.35s cubic-bezier(0.2,0.9,0.4,1);
   }
-  @media (max-width: 480px) {
-    .hc2-image-col img { max-height: 160px; }
-    .hc2-stat-cell { padding: 12px 14px; }
+  .hc-dot.active { width:26px; background:white; box-shadow:0 0 8px rgba(255,255,255,0.4); }
+  .hc-dot:hover  { background:rgba(255,255,255,0.5); }
+
+  /* ── Nav arrows ── */
+  .hc-nav {
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(255,255,255,0.07); backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,0.14);
+    color:white; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; z-index:5;
+    transition:all 0.25s ease; opacity:0; visibility:hidden;
+  }
+  .hc-wrap:hover .hc-nav { opacity:1; visibility:visible; }
+  .hc-nav:hover { background:rgba(255,255,255,0.14); transform:translateY(-50%) scale(1.08); }
+  .hc-prev { left:20px; }
+  .hc-next { right:20px; }
+
+  /* ── Trust badge ── */
+  .hc-trust-badge {
+    position:absolute; bottom:14px; left:14px; right:14px;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(15,23,42,0.78); backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+    padding:8px 12px; z-index:2;
+  }
+  .hc-trust-dot {
+    width:6px; height:6px; border-radius:50%; background:#22c55e;
+    flex-shrink:0; box-shadow:0 0 6px rgba(34,197,94,0.6);
+  }
+  .hc-trust-text { font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); letter-spacing:0.04em; }
+
+  /* ── Progress bar ── */
+  .hc-progress {
+    position:absolute; bottom:0; left:0; height:2px;
+    background:rgba(220,38,38,0.65); z-index:5; transition:width 0.1s linear;
+  }
+
+  /* ── Content animation ── */
+  .hc-anim { animation:slideUp 0.65s cubic-bezier(0.2,0.9,0.4,1) forwards; }
+
+  @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin    { to{transform:rotate(360deg)} }
+
+  .hc-spacer { height:0; width:100%; position:relative; z-index:2; }
+
+  /* ════════════════
+     TABLET
+  ════════════════ */
+  @media (max-width:1024px) {
+    .hc-content { bottom:180px; }
+    .hc-content-wrap { padding:0 32px; gap:36px; }
+    .hc-text { max-width:50%; }
+    .hc-glass-card { max-width:46%; max-height:320px; }
+    .hc-card-spacer { min-height:260px; max-height:320px; }
+    .hc-counter { left:32px; bottom:100px; }
+    .hc-dots    { bottom:100px; }
+    .hc-spacer  { height:0; }
+  }
+
+  /* ════════════════════════════════════════
+     MOBILE ≤768px
+     Order: title → image → meta → price → CTAs
+  ════════════════════════════════════════ */
+  @media (max-width:768px) {
+    .hc-wrap { min-height: 92svh; }
+
+    .hc-overlay {
+      background:linear-gradient(
+        to bottom,
+        rgba(15,23,42,0.93) 0%,
+        rgba(15,23,42,0.65) 25%,
+        rgba(15,23,42,0.98) 100%
+      );
+    }
+    .hc-overlay-side { display:none; }
+
+    .hc-content {
+      position:absolute; inset:0; bottom:auto;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .hc-content-wrap {
+      padding:100px 20px 120px;
+      flex-direction:column; align-items:center; gap:0; width:100%;
+    }
+
+    /* 1. Title block */
+    .hc-text {
+      max-width:100%; width:100%;
+      text-align:center; order:1; margin-bottom:16px;
+    }
+
+    /* Hide meta/price/ctas from text block on mobile */
+    .hc-text .hc-meta,
+    .hc-text .hc-price-section,
+    .hc-text .hc-ctas { display:none; }
+
+    /* 2. Image card */
+    .hc-glass-card {
+      max-width:100%; width:100%;
+      max-height:230px; border-radius:16px;
+      order:2; margin:0 0 16px; align-self:center;
+    }
+    .hc-card-spacer { min-height:195px; max-height:230px; }
+
+    /* 3. Below-image: meta + price + CTAs */
+    .hc-below-image {
+      display:flex !important;
+      flex-direction:column; align-items:center;
+      width:100%; order:3; gap:0;
+    }
+    .hc-below-image .hc-meta    { justify-content:center; margin-bottom:14px; }
+    .hc-below-image .hc-price-section { text-align:center; margin-bottom:18px; }
+    .hc-below-image .hc-ctas   { justify-content:center; }
+
+    .hc-eyebrow    { justify-content:center; }
+    .hc-car-name   { font-size:clamp(1.35rem,5.5vw,1.9rem); text-align:center; margin-bottom:0; }
+    .hc-nav        { display:none; }
+    .hc-counter    { left:16px; bottom:16px; font-size:9px; padding:3px 10px; }
+    .hc-dots       { bottom:16px; }
+    .hc-spacer     { height:0; }
+  }
+
+  @media (max-width:640px) {
+    .hc-content-wrap { padding:88px 16px 110px; }
+    .hc-glass-card   { max-height:200px; }
+    .hc-card-spacer  { min-height:170px; max-height:200px; }
+    .hc-car-name     { font-size:clamp(1.2rem,5vw,1.65rem); }
+    .hc-meta-item    { font-size:10px; padding:4px 10px; }
+    .hc-enquire, .hc-view { padding:10px 20px; font-size:12px; }
+    .hc-spacer       { height:0; }
+  }
+
+  @media (max-width:480px) {
+    .hc-content-wrap { padding:80px 14px 105px; }
+    .hc-glass-card   { max-height:185px; border-radius:14px; }
+    .hc-card-spacer  { min-height:155px; max-height:185px; }
+    .hc-eyebrow-label { font-size:9px; letter-spacing:0.18em; }
+    .hc-car-name     { font-size:clamp(1.05rem,4.5vw,1.4rem); }
+    .hc-meta-item    { font-size:9px; padding:3px 8px; }
+    .hc-meta-item svg { width:9px; height:9px; }
+    .hc-price-value  { font-size:clamp(0.9rem,3vw,1.1rem); }
+    .hc-enquire, .hc-view { padding:9px 16px; font-size:11px; }
+    .hc-counter      { left:14px; bottom:13px; font-size:8px; padding:2px 8px; }
+    .hc-dots         { bottom:13px; gap:6px; }
+    .hc-dot          { width:5px; height:5px; }
+    .hc-dot.active   { width:18px; }
+    .hc-trust-badge  { padding:6px 10px; }
+    .hc-trust-text   { font-size:9px; }
+    .hc-spacer       { height:0; }
+  }
+
+  @media (max-width:375px) {
+    .hc-content-wrap { padding:76px 12px 100px; }
+    .hc-glass-card   { max-height:165px; }
+    .hc-card-spacer  { min-height:140px; max-height:165px; }
+    .hc-car-name     { font-size:1rem; }
+    .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 `;
+
+const INTERVAL_MS = 4000;
+const TOUCH_PAUSE = 10000;
+
+// Format price as RM 265,000
+function formatPrice(val) {
+  if (!val) return null;
+  const str = String(val).replace(/[^0-9.]/g, "");
+  const num = parseFloat(str);
+  if (isNaN(num)) return val; // already formatted string like "RM 265,000"
+  return `RM ${num.toLocaleString("en-MY")}`;
+}
 
 export default function HeroCarousel({ siteName, waNumber }) {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [imgLoaded, setImgLoaded] = useState({}); // track which images loaded
+
+  const hoverPaused = useRef(false);
+  const manualPaused = useRef(false);
+  const manualTimer = useRef(null);
+  const touchStartX = useRef(null);
+  const progressStart = useRef(null);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 4000);
-
+    const to = setTimeout(() => setLoading(false), 4000);
     const fetchSlides = async () => {
       try {
         const { data, error } = await supabase
-          .from('hero_carousel_slides')
-          .select('*, car_listings(slug)')
-          .eq('active', true)
-          .order('sort_order', { ascending: true });
-
+          .from("hero_carousel_slides")
+          .select("*, car_listings(slug)")
+          .eq("active", true)
+          .order("sort_order", { ascending: true });
         setSlides(!error && data ? data : []);
-      } catch (e) {
+      } catch {
         setSlides([]);
       } finally {
-        clearTimeout(timeout);
+        clearTimeout(to);
         setLoading(false);
       }
     };
-
     fetchSlides();
-    return () => clearTimeout(timeout);
+    return () => clearTimeout(to);
   }, []);
 
-  const touchStartX = useRef(null);
+  // Preload ALL slide images on mount so they're cached
+  useEffect(() => {
+    if (!slides.length) return;
+    slides.forEach((s, i) => {
+      if (!s.image_url) return;
+      const img = new Image();
+      img.src = s.image_url;
+      img.onload = () => setImgLoaded((prev) => ({ ...prev, [i]: true }));
+    });
+  }, [slides]);
 
-  const go   = useCallback((n) => { setIdx(n); setAnimKey(k => k + 1); }, []);
-  const prev = useCallback(() => { setIdx(i => (i - 1 + slides.length) % slides.length); setAnimKey(k => k + 1); }, [slides.length]);
-  const next = useCallback(() => { setIdx(i => (i + 1) % slides.length); setAnimKey(k => k + 1); }, [slides.length]);
+  const triggerManualPause = useCallback(() => {
+    manualPaused.current = true;
+    clearTimeout(manualTimer.current);
+    manualTimer.current = setTimeout(() => {
+      manualPaused.current = false;
+    }, TOUCH_PAUSE);
+  }, []);
 
-  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-  const onTouchEnd   = (e) => {
+  const isPaused = () => hoverPaused.current || manualPaused.current;
+
+  const advance = useCallback((n) => {
+    setIdx(n);
+    setAnimKey((k) => k + 1);
+    setProgress(0);
+    progressStart.current = Date.now();
+  }, []);
+
+  // Auto-slide every 4s
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    progressStart.current = Date.now();
+    const tick = setInterval(() => {
+      if (!isPaused()) {
+        const elapsed = Date.now() - progressStart.current;
+        const pct = Math.min((elapsed / INTERVAL_MS) * 100, 100);
+        setProgress(pct);
+        if (pct >= 100) {
+          setIdx((i) => {
+            const n = (i + 1) % slides.length;
+            setAnimKey((k) => k + 1);
+            setProgress(0);
+            progressStart.current = Date.now();
+            return n;
+          });
+        }
+      }
+    }, 50);
+    return () => clearInterval(tick);
+  }, [slides.length]);
+
+  const onTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) diff > 0 ? next() : prev();
+    if (Math.abs(diff) > 40) {
+      triggerManualPause();
+      setIdx((i) => {
+        const n =
+          diff > 0
+            ? (i + 1) % slides.length
+            : (i - 1 + slides.length) % slides.length;
+        setAnimKey((k) => k + 1);
+        setProgress(0);
+        progressStart.current = Date.now();
+        return n;
+      });
+    }
     touchStartX.current = null;
   };
 
-  useEffect(() => {
-    if (slides.length <= 1 || paused) return;
-    const t = setInterval(next, 5000);
-    return () => clearInterval(t);
-  }, [slides.length, paused, next]);
+  const handleDot = (i) => {
+    triggerManualPause();
+    advance(i);
+  };
+  const handlePrev = () => {
+    triggerManualPause();
+    setIdx((i) => {
+      const n = (i - 1 + slides.length) % slides.length;
+      advance(n);
+      return n;
+    });
+  };
+  const handleNext = () => {
+    triggerManualPause();
+    setIdx((i) => {
+      const n = (i + 1) % slides.length;
+      advance(n);
+      return n;
+    });
+  };
 
-  if (loading) return (
-    <div style={{ width:'100%', height:'88vh', background:'#080C14', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <style>{HC2_CSS}</style>
-      <div style={{ width:'32px', height:'32px', border:'2px solid rgba(220,38,38,0.2)', borderTop:'2px solid #dc2626', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+  const getMetaIcon = (type) => {
+    const m = {
+      transmission: <Gauge />,
+      fuel: <Fuel />,
+      mileage: <Gauge />,
+      engine: <Fuel />,
+    };
+    return m[type?.toLowerCase()] || <Shield />;
+  };
+
+  if (loading)
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100vh",
+          background: "#0f172a",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <style>{HC_CSS}</style>
+        <div
+          style={{
+            width: "34px",
+            height: "34px",
+            border: "2px solid rgba(255,255,255,0.07)",
+            borderTop: "2px solid rgba(220,38,38,0.6)",
+            borderRadius: "50%",
+            animation: "spin 0.7s linear infinite",
+          }}
+        />
+      </div>
+    );
+
+  if (!slides.length)
+    return (
+      <section
+        style={{
+          minHeight: "70vh",
+          background: "linear-gradient(160deg,#0f172a 0%,#1e293b 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "60px 20px",
+        }}
+      >
+        <style>{HC_CSS}</style>
+        <div
+          style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "14px",
+            background: "rgba(220,38,38,0.1)",
+            border: "1px solid rgba(220,38,38,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "22px",
+          }}
+        >
+          <Sparkles
+            style={{ color: "#f87171", width: "22px", height: "22px" }}
+          />
+        </div>
+        <h1
+          className="hc-syne"
+          style={{
+            fontSize: "clamp(1.8rem,5vw,3rem)",
+            fontWeight: "800",
+            color: "white",
+            margin: "0 0 12px",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Find Your Perfect <span style={{ color: "#93c5fd" }}>Drive</span>
+        </h1>
+        <p
+          style={{
+            color: "#94a3b8",
+            fontSize: "clamp(0.875rem,3vw,1rem)",
+            maxWidth: "460px",
+            lineHeight: 1.7,
+            margin: "0 0 28px",
+          }}
+        >
+          Browse verified vehicles with transparent pricing and no hidden fees.
+        </p>
+        <Link
+          to="/cars"
+          style={{
+            background: "rgba(220,38,38,0.15)",
+            backdropFilter: "blur(16px)",
+            border: "1px solid rgba(220,38,38,0.4)",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "14px",
+            padding: "12px 26px",
+            borderRadius: "40px",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          Browse Our Cars <ArrowRight size={14} />
+        </Link>
+      </section>
+    );
+
+  const s = slides[idx];
+  const badge = s.badge && s.badge !== "None" ? s.badge : null;
+  const stats = Array.isArray(s.stats) ? s.stats.filter((x) => x.value) : [];
+  const priceRaw = stats.find(
+    (x) => (x.key || x.type)?.toLowerCase() === "price",
+  )?.value;
+  const priceVal = formatPrice(priceRaw);
+  const metaStats = stats
+    .filter((x) => (x.key || x.type)?.toLowerCase() !== "price")
+    .slice(0, 3);
+  const phone = (s.whatsapp_number || waNumber || "").replace(/\D/g, "");
+  const waMsg = encodeURIComponent(
+    `Hi, I'm interested in the ${s.year || ""} ${s.car_name || "car"}. Can you share more details?`,
+  );
+  const waHref = phone ? `https://wa.me/${phone}?text=${waMsg}` : null;
+
+  const metaItems = [
+    s.transmission && { icon: <Gauge />, label: s.transmission },
+    s.fuel_type && { icon: <Fuel />, label: s.fuel_type },
+    ...metaStats.map((st) => ({
+      icon: getMetaIcon(st.type),
+      label: `${st.value}${st.unit ? " " + st.unit : ""}`,
+    })),
+  ].filter(Boolean);
+
+  // Reusable meta+price+ctas block
+  const MetaBlock = ({ extraClass = "" }) => (
+    <div className={extraClass}>
+      {metaItems.length > 0 && (
+        <div className="hc-meta">
+          {metaItems.map((item, i) => (
+            <div key={i} className="hc-meta-item">
+              {item.icon}
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {priceVal && (
+        <div className="hc-price-section">
+          <div className="hc-price-label">Starting from</div>
+          <div className="hc-price-value hc-syne">{priceVal}</div>
+        </div>
+      )}
+      <div className="hc-ctas">
+        {waHref && (
+          <a
+            href={waHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hc-enquire"
+          >
+            Enquire Now <ArrowRight size={12} />
+          </a>
+        )}
+        {s.car_listing_id && (
+          <Link
+            to={`/cars/${s.car_listings?.slug || s.car_listing_id}`}
+            className="hc-view"
+          >
+            View Details
+          </Link>
+        )}
+      </div>
     </div>
   );
 
-  if (!slides.length) return (
-    <section style={{ minHeight:'70vh', background:'#080C14', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:'40px 16px' }}>
-      <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.5rem,8vw,5rem)', color:'white', letterSpacing:'0.04em', margin:'0 0 8px', lineHeight:1 }}>
-        FIND YOUR PERFECT <span style={{ color:'#dc2626' }}>DRIVE</span>
-      </p>
-      <p style={{ color:'#6b7280', fontSize:'15px', maxWidth:'400px', lineHeight:1.7, margin:'0 0 28px' }}>
-        Browse our verified used car collection. Transparent pricing, no hidden fees.
-      </p>
-      <a href="/cars" style={{ background:'#dc2626', color:'white', fontWeight:'700', fontSize:'14px', padding:'13px 28px', borderRadius:'50px', textDecoration:'none' }}>
-        Browse Our Cars
-      </a>
-    </section>
-  );
-
-  const s      = slides[idx];
-  const badge  = s.badge && s.badge !== 'None' ? s.badge : null;
-  const stats  = Array.isArray(s.stats) ? s.stats.filter(x => x.value) : [];
-  const priceVal = stats.find(x => (x.key || x.type)?.toLowerCase() === 'price')?.value;
-  const phone  = (s.whatsapp_number || waNumber || '').replace(/\D/g, '');
-  const waMsg  = encodeURIComponent(`Hi, I'm interested in the ${s.year || ''} ${s.car_name || 'car'}. Can you share more details?`);
-  const waHref = phone ? `https://wa.me/${phone}?text=${waMsg}` : null;
-
   return (
-    <section
-      className="hc2-section"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      <style>{HC2_CSS}</style>
+    <>
+      <section
+        className="hc-wrap"
+        onMouseEnter={() => {
+          hoverPaused.current = true;
+        }}
+        onMouseLeave={() => {
+          hoverPaused.current = false;
+          progressStart.current = Date.now();
+          setProgress(0);
+        }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <style>{HC_CSS}</style>
 
-      {/* Full-bleed blurred background image */}
-      {s.image_url && (
-        <div style={{ position:'absolute', inset:0, zIndex:0, overflow:'hidden' }}>
-          <img
-            src={s.image_url}
-            alt=""
-            style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', filter:'blur(6px) brightness(0.55) saturate(1.1)', transform:'scale(1.04)', transition:'opacity 0.7s ease' }}
-          />
-          {/* Gradient overlays for readability */}
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(105deg,rgba(6,9,16,0.72) 0%,rgba(6,9,16,0.25) 55%,rgba(6,9,16,0.05) 100%)' }} />
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(6,9,16,0.82) 0%,transparent 55%)' }} />
-        </div>
-      )}
-      {!s.image_url && <div className="hc2-glow" />}
+        {/* Progress bar */}
+        <div className="hc-progress" style={{ width: `${progress}%` }} />
 
-      <div className="hc2-inner">
-        <div className="hc2-grid">
-
-          {/* ── Left: content ── */}
-          <div key={`c-${animKey}`} className="hc2-slide-in">
-            {/* Badge row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-              <div style={{ width:24, height:2, background:'#dc2626', flexShrink:0 }} />
-              {badge && BADGE[badge] ? (
-                <span style={{ background:BADGE[badge].bg, color:BADGE[badge].color, fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:20, letterSpacing:'0.07em' }}>{badge}</span>
-              ) : (
-                <span style={{ color:'#dc2626', fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase' }}>Featured</span>
-              )}
-            </div>
-
-            {/* Car name */}
-            <h1 style={{ margin:'0 0 6px', lineHeight:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,5.5vw,4.5rem)', letterSpacing:'0.02em', color:'white' }}>
-              {s.year && (
-                <span style={{ background:'linear-gradient(135deg,#dc2626,#f87171)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{s.year} </span>
-              )}
-              {s.car_name}
-            </h1>
-
-            {/* Subtitle */}
-            {(s.transmission || s.fuel_type) && (
-              <p style={{ color:'#9ca3af', fontSize:13, margin:'0 0 18px' }}>
-                {[s.transmission, s.fuel_type].filter(Boolean).join(' · ')}
-              </p>
-            )}
-
-            {/* Price */}
-            {priceVal && (
-              <div style={{ marginBottom:22 }}>
-                <p style={{ color:'#6b7280', fontSize:10, textTransform:'uppercase', letterSpacing:'0.1em', margin:'0 0 4px' }}>Starting from</p>
-                <p style={{ color:'#f87171', fontSize:'clamp(1.3rem,3vw,1.8rem)', fontWeight:800, margin:0 }}>{priceVal}</p>
-              </div>
-            )}
-
-            {/* CTAs */}
-            <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-              {waHref && (
-                <a href={waHref} target="_blank" rel="noopener noreferrer" className="hc2-enquire-btn">
-                  Enquire Now →
-                </a>
-              )}
-              {s.car_listing_id && (
-                <Link to={`/cars/${s.car_listings?.slug || s.car_listing_id}`} className="hc2-details-btn">
-                  View Details
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* ── Right: image ── */}
-          <div key={`i-${animKey}`} className="hc2-image-col hc2-img-in">
-            {s.image_url ? (
+        {/* ── Background: ALL images in DOM, only active one visible ── */}
+        <div className="hc-bg">
+          {slides.map((slide, i) =>
+            slide.image_url ? (
               <img
-                src={s.image_url}
-                alt={s.car_name}
-                style={{ width:'100%', maxHeight:320, objectFit:'contain', borderRadius:4, filter:'drop-shadow(0 0 40px rgba(220,38,38,0.15)) drop-shadow(0 20px 40px rgba(0,0,0,0.5))' }}
+                key={`bg-${i}`}
+                src={slide.image_url}
+                alt=""
+                className={`hc-bg-img${i === idx ? " active" : ""}`}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchpriority={i === 0 ? "high" : "auto"}
               />
-            ) : (
-              <div style={{ width:'100%', height:280, background:'rgba(255,255,255,0.02)', borderRadius:16, border:'1px solid rgba(255,255,255,0.05)' }} />
-            )}
+            ) : null,
+          )}
+          <div className="hc-overlay" />
+          <div className="hc-overlay-side" />
+        </div>
+
+        {/* Slide counter */}
+        {slides.length > 1 && (
+          <div className="hc-counter">
+            <span style={{ color: "white", fontWeight: 700 }}>
+              {String(idx + 1).padStart(2, "0")}
+            </span>
+            <span> / {String(slides.length).padStart(2, "0")}</span>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="hc-content">
+          <div className="hc-content-wrap">
+            {/* 1. Title */}
+            <div className="hc-text">
+              <div key={`c-${animKey}`} className="hc-anim">
+                <div className="hc-eyebrow">
+                  <div className="hc-eyebrow-dot" />
+                  <span className="hc-eyebrow-label">
+                    {badge || "Verified Listing"}
+                  </span>
+                </div>
+                <h1 className="hc-car-name hc-syne">
+                  {s.year && <span className="hc-year-accent">{s.year} </span>}
+                  {s.car_name}
+                </h1>
+                {/* Desktop: meta/price/ctas inline */}
+                <MetaBlock />
+              </div>
+            </div>
+
+            {/* 2. Right image glass card — ALL images stacked ── */}
+            <div className="hc-glass-card">
+              {/* spacer maintains card height */}
+              <img
+                className="hc-card-spacer"
+                src={slides[0]?.image_url}
+                alt=""
+                style={{ visibility: "hidden", display: "block" }}
+              />
+              {slides.map((slide, i) =>
+                slide.image_url ? (
+                  <img
+                    key={`card-${i}`}
+                    src={slide.image_url}
+                    alt={i === idx ? `${slide.car_name} preview` : ""}
+                    className={`hc-card-img${i === idx ? " active" : ""}`}
+                    loading={i === 0 ? "eager" : "lazy"}
+                  />
+                ) : null,
+              )}
+              <div className="hc-trust-badge">
+                <div className="hc-trust-dot" />
+                <span className="hc-trust-text">Verified · No Hidden Fees</span>
+                <CheckCircle
+                  size={11}
+                  style={{
+                    color: "#22c55e",
+                    marginLeft: "auto",
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 3. Mobile only: meta + price + CTAs below image */}
+            <MetaBlock extraClass="hc-below-image" />
           </div>
         </div>
 
-        {/* ── Dots + stats strip ── */}
-        <div className="hc2-stats-wrap">
-          {slides.length > 1 && (
-            <div className="hc2-dots">
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => go(i)}
-                  style={{ width:i === idx ? 22 : 6, height:6, borderRadius:3, border:'none', padding:0, cursor:'pointer', background:i === idx ? '#dc2626' : 'rgba(255,255,255,0.2)', transition:'all 0.3s' }}
-                />
-              ))}
-            </div>
-          )}
+        {/* Dots */}
+        {slides.length > 1 && (
+          <div className="hc-dots">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => handleDot(i)}
+                className={`hc-dot${i === idx ? " active" : ""}`}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
 
-          {stats.length > 0 && (
-            <div className="hc2-stats-grid">
-              {stats.slice(0, 4).map((st, i) => {
-                const Icon = ICON_MAP[(st.key || st.type)?.toLowerCase()];
-                return (
-                  <div key={i} className="hc2-stat-cell">
-                    <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
-                      {Icon && <Icon size={11} style={{ color:'#f87171', flexShrink:0 }} />}
-                      <p style={{ color:'#6b7280', fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', margin:0 }}>{st.type || st.key}</p>
-                    </div>
-                    <p style={{ color:'white', fontSize:15, fontWeight:700, margin:0 }}>
-                      {st.value}
-                      {st.unit && <span style={{ color:'#9ca3af', fontSize:11, fontWeight:500, marginLeft:3 }}>{st.unit}</span>}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+        {/* Nav arrows */}
+        {slides.length > 1 && (
+          <>
+            <button
+              onClick={handlePrev}
+              aria-label="Previous"
+              className="hc-nav hc-prev"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={handleNext}
+              aria-label="Next"
+              className="hc-nav hc-next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </>
+        )}
+      </section>
 
-      {/* ── Nav arrows (desktop only) ── */}
-      {slides.length > 1 && (
-        <>
-          <button onClick={prev} aria-label="Previous" className="hc2-nav-btn hc2-prev">
-            <ChevronLeft size={16} />
-          </button>
-          <button onClick={next} aria-label="Next" className="hc2-nav-btn hc2-next">
-            <ChevronRight size={16} />
-          </button>
-        </>
-      )}
-
-      <div className="hc2-fade" />
-    </section>
+      <div className="hc-spacer" />
+    </>
   );
 }

@@ -3,7 +3,7 @@
     "home": "Laman Utama",
     "browseCars": "Semak Kereta",
     "calculator": "Kalkulator",
-    "howItWorks": "Cara Ia Berfungsi",
+    "howItWorks": "Cara Berfungsi",
     "contact": "Hubungi",
     "dashboard": "Papan Pemuka",
     "login": "Log Masuk"
@@ -12,13 +12,13 @@
     "viewDetails": "Lihat Butiran",
     "whatsappAboutCar": "WhatsApp Tentang Kereta Ini",
     "whatsappUs": "WhatsApp Kami",
-    "needHelp": "Perlukan Bantuan? WhatsApp Saya",
+    "needHelp": "Perlukan Bantuan? WhatsApp Kami",
     "callNow": "Hubungi Sekarang",
     "loadMore": "Muatkan Lebih Banyak Kereta",
     "resetAll": "Tetapkan Semula",
     "applyFilters": "Guna Penapis",
     "badges": {
-      "HOT DEAL": "TAWARAN PANAS",
+      "HOT DEAL": "HOT DEAL",
       "NEW": "BARU",
       "PRICE DROP": "HARGA TURUN"
     },
@@ -87,7 +87,7 @@
     },
     "filters": {
       "show": "Tunjuk Penapis",
-      "hide": "Sembunyikan Penapis",
+      "hide": "Tutup Penapis",
       "title": "Penapis",
       "priceRange": "Julat Harga",
       "brand": "Jenama",
