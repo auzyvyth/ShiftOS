@@ -456,47 +456,56 @@ const HomePage = () => {
     return q ? `/cars?${q}` : "/cars";
   };
 
-  const defaultBenefits = [
-    { icon: TrendingDown, title: t("home.whyChoose.benefit1Title"), desc: t("home.whyChoose.benefit1Desc") },
-    { icon: UserCheck,   title: t("home.whyChoose.benefit2Title"), desc: t("home.whyChoose.benefit2Desc") },
-    { icon: ShieldCheck, title: t("home.whyChoose.benefit3Title"), desc: t("home.whyChoose.benefit3Desc") },
-    { icon: DollarSign,  title: t("home.whyChoose.benefit4Title"), desc: t("home.whyChoose.benefit4Desc") },
+  // ── Hardcoded storefront defaults ──────────────────────────────────────────
+  const HARDCODED_DEFAULT_WHY = {
+    title: t("home.whyChoose.title"),
+    items: [
+      { title: t("home.whyChoose.benefit1Title"), desc: t("home.whyChoose.benefit1Desc") },
+      { title: t("home.whyChoose.benefit2Title"), desc: t("home.whyChoose.benefit2Desc") },
+      { title: t("home.whyChoose.benefit3Title"), desc: t("home.whyChoose.benefit3Desc") },
+      { title: t("home.whyChoose.benefit4Title"), desc: t("home.whyChoose.benefit4Desc") },
+    ],
+  };
+  const HARDCODED_DEFAULT_HOW = {
+    title: t("home.howItWorks.title"),
+    steps: [
+      { title: "Tell Us What You Need",    desc: "WhatsApp us your budget and must-haves." },
+      { title: "We Find the Best Options", desc: "We shortlist verified cars that match." },
+      { title: "Inspect & Test Drive",     desc: "Visit, inspect, and take it for a spin." },
+      { title: "Drive Away Happy",         desc: "Best deal negotiated, paperwork handled." },
+    ],
+  };
+  const HARDCODED_DEFAULT_TESTIMONIALS = [
+    { name: "Ahmad Faris",    location: "Kuala Lumpur", text: "Saved RM 8,000 on my Honda Civic. Best deal I could never have gotten myself." },
+    { name: "Siti Norzahira", location: "Selangor",     text: "Zero pressure, honest advice, best price in town. Will definitely come back." },
+    { name: "Rajendran K.",   location: "Penang",       text: "Found my perfect car in 3 days and saved thousands. Highly recommended." },
   ];
-  const tenantWhyItems = tenant?.storefront_why?.items;
-  const benefits = defaultBenefits.map((b, i) => ({
-    ...b,
-    title: tenantWhyItems?.[i]?.title || b.title,
-    desc:  tenantWhyItems?.[i]?.desc  || b.desc,
-  }));
-  const whyTitle = tenant?.storefront_why?.title || t("home.whyChoose.title");
+  const HARDCODED_DEFAULT_CTA = {
+    title: t("home.cta.title"),
+    subtitle: t("home.cta.subtitle"),
+    primary_label: t("home.cta.browseBtn"),
+    secondary_label: t("home.cta.whatsappBtn"),
+  };
 
-  const defaultSteps = [
-    { n: "01", icon: MessageCircle, t: "Tell Us What You Need",    d: "WhatsApp us your budget and must-haves." },
-    { n: "02", icon: Search,        t: "We Find the Best Options", d: "We shortlist verified cars that match." },
-    { n: "03", icon: Shield,        t: "Inspect & Test Drive",     d: "Visit, inspect, and take it for a spin." },
-    { n: "04", icon: CheckCircle,   t: "Drive Away Happy",         d: "Best deal negotiated, paperwork handled." },
-  ];
-  const tenantHowSteps = tenant?.storefront_how?.steps;
-  const steps = defaultSteps.map((s, i) => ({
-    ...s,
-    t: tenantHowSteps?.[i]?.title || s.t,
-    d: tenantHowSteps?.[i]?.desc  || s.d,
-  }));
-  const howTitle = tenant?.storefront_how?.title || t("home.howItWorks.title");
+  const whyData          = tenant?.storefront_why          || HARDCODED_DEFAULT_WHY;
+  const howData          = tenant?.storefront_how          || HARDCODED_DEFAULT_HOW;
+  const testimonialsData = tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
+  const ctaData          = tenant?.storefront_cta          || HARDCODED_DEFAULT_CTA;
 
-  const defaultTestimonials = [
-    { name: "Ahmad Faris",    loc: "Kuala Lumpur", text: "Saved RM 8,000 on my Honda Civic. Best deal I could never have gotten myself.", r: 5 },
-    { name: "Siti Norzahira", loc: "Selangor",     text: "Zero pressure, honest advice, best price in town. Will definitely come back.", r: 5 },
-    { name: "Rajendran K.",   loc: "Penang",       text: "Found my perfect car in 3 days and saved thousands. Highly recommended.", r: 5 },
-  ];
-  const testimonials = tenant?.storefront_testimonials?.length
-    ? tenant.storefront_testimonials.map((t) => ({ name: t.name, loc: t.location, text: t.text, r: 5 }))
-    : defaultTestimonials;
+  // Icons are always hardcoded — they can't be stored in the DB
+  const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
+  const howIcons = [MessageCircle, Search, Shield, CheckCircle];
+  const howNums  = ["01", "02", "03", "04"];
 
-  const ctaTitle         = tenant?.storefront_cta?.title          || t("home.cta.title");
-  const ctaSubtitle      = tenant?.storefront_cta?.subtitle        || t("home.cta.subtitle");
-  const ctaPrimaryLabel  = tenant?.storefront_cta?.primary_label   || t("home.cta.browseBtn");
-  const ctaSecondaryLabel= tenant?.storefront_cta?.secondary_label || t("home.cta.whatsappBtn");
+  const benefits     = (whyData.items || []).map((item, i) => ({ icon: whyIcons[i], title: item.title, desc: item.desc }));
+  const whyTitle     = whyData.title;
+  const steps        = (howData.steps || []).map((step, i) => ({ n: howNums[i], icon: howIcons[i], t: step.title, d: step.desc }));
+  const howTitle     = howData.title;
+  const testimonials = testimonialsData.map((item) => ({ name: item.name, loc: item.location, text: item.text, r: 5 }));
+  const ctaTitle          = ctaData.title;
+  const ctaSubtitle       = ctaData.subtitle;
+  const ctaPrimaryLabel   = ctaData.primary_label;
+  const ctaSecondaryLabel = ctaData.secondary_label;
 
   if (isSubdomain() && tenant === null && !tenantLoading) {
     return (
