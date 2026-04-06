@@ -110,17 +110,14 @@ export default function LoginPage() {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, onboarding_complete')
+      .select('role')
       .eq('id', user.id)
       .maybeSingle();
 
-    // Salespeople skip onboarding entirely — go straight to their panel
-    if (profile?.role === 'salesman') { navigate('/salesman'); return; }
-
-    // All other roles: gate on onboarding_complete
-    if (!profile || !profile.onboarding_complete) { navigate('/onboarding'); return; }
-
-    navigate('/dashboard');
+    const profileRole = profile?.role;
+    if (profileRole === 'superadmin') navigate('/dashboard');
+    else if (profileRole === 'salesman') navigate('/salesman');
+    else navigate('/dashboard');
   };
 
   const handlePhotoChange = (e) => {

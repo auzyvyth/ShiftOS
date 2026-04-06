@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
 import TikTokGenerator from "../components/TikTokGenerator";
+import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
@@ -59,6 +60,12 @@ import {
   ChevronUp,
   Palette,
   Inbox,
+  Gauge,
+  Droplets,
+  MapPin,
+  ChevronLeft,
+  ZoomIn,
+  Calculator,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -162,18 +169,25 @@ function getListingAge(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
 }
 
-function AgeBadge({ createdAt }) {
+const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
-  if (d < 14)
+  if (d < 15)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 badge-glow-cyan">
         <Clock className="w-3 h-3" />
         {d === 0 ? "Today" : `${d}d`}
       </span>
     );
-  if (d < 30)
+  if (d < 25)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20 badge-glow-gold">
+        <Clock className="w-3 h-3" />
+        {d}d
+      </span>
+    );
+  if (d < 30)
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-400/10 text-orange-400 border border-orange-400/20">
         <Clock className="w-3 h-3" />
         {d}d
       </span>
@@ -184,7 +198,7 @@ function AgeBadge({ createdAt }) {
       {d}d
     </span>
   );
-}
+});
 
 // ─── Settings Section wrapper ─────────────────────────────────────────────────
 function SettingsSection({
@@ -2469,6 +2483,482 @@ function TeamTab({ managerDealership, dealerId }) {
   );
 }
 
+// ─── Helpers shared by ListingDetailDrawer ────────────────────────────────────
+function parseTags(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
+}
+
+const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
+const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#f87171', crack:'#f43f5e', replaced:'#a78bfa' };
+
+function DrawerDamageMap({ damageMap }) {
+  const zones = Array.isArray(damageMap) ? damageMap : [];
+  const byZone = {};
+  zones.forEach(z => { byZone[z.zone] = z.type; });
+  const fill   = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]] + '44' : 'rgba(255,255,255,0.035)';
+  const stroke = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]]       : 'rgba(255,255,255,0.09)';
+  return (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 16 }}>
+      <svg viewBox="0 0 170 220" width={150} height={220} style={{ flexShrink: 0 }}>
+        <rect x="42" y="6"   width="86" height="44" rx="6" fill={fill('hood')}        stroke={stroke('hood')}        strokeWidth="1.3"/>
+        <text x="85" y="33"  textAnchor="middle" fontSize="10" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Hood</text>
+        <rect x="6"  y="6"   width="34" height="44" rx="5" fill={fill('front-left')}  stroke={stroke('front-left')}  strokeWidth="1.3"/>
+        <text x="23" y="23"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">FL</text>
+        <text x="23" y="34"  textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Fender</text>
+        <rect x="130" y="6"  width="34" height="44" rx="5" fill={fill('front-right')} stroke={stroke('front-right')} strokeWidth="1.3"/>
+        <text x="147" y="23" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">FR</text>
+        <text x="147" y="34" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Fender</text>
+        <rect x="6"  y="54"  width="32" height="80" rx="4" fill={fill('left')}        stroke={stroke('left')}        strokeWidth="1.3"/>
+        <text x="22" y="97"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif" transform="rotate(-90,22,97)">Left</text>
+        <rect x="132" y="54" width="32" height="80" rx="4" fill={fill('right')}       stroke={stroke('right')}       strokeWidth="1.3"/>
+        <text x="148" y="97" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif" transform="rotate(90,148,97)">Right</text>
+        <rect x="40" y="54"  width="90" height="80" rx="4" fill={fill('roof')}        stroke={stroke('roof')}        strokeWidth="1.3"/>
+        <text x="85" y="98"  textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Roof</text>
+        <rect x="6"  y="138" width="32" height="36" rx="4" fill={fill('rear-left')}   stroke={stroke('rear-left')}   strokeWidth="1.3"/>
+        <text x="22" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">RL</text>
+        <text x="22" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Qtr</text>
+        <rect x="132" y="138" width="32" height="36" rx="4" fill={fill('rear-right')} stroke={stroke('rear-right')} strokeWidth="1.3"/>
+        <text x="148" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="DM Sans,sans-serif">RR</text>
+        <text x="148" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="DM Sans,sans-serif">Qtr</text>
+        <rect x="40" y="138" width="90" height="36" rx="4" fill={fill('trunk')}       stroke={stroke('trunk')}       strokeWidth="1.3"/>
+        <text x="85" y="161" textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="DM Sans,sans-serif">Trunk</text>
+        <text x="85" y="192" textAnchor="middle" fontSize="8" fill="#374151" fontFamily="DM Sans,sans-serif">▲ FRONT · REAR ▼</text>
+      </svg>
+      <div style={{ flex: 1, minWidth: 140 }}>
+        <p style={{ fontSize: 10, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Legend</p>
+        {Object.entries(DRAWER_DMG_COLORS).map(([type, color]) => (
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+            <div style={{ width: 11, height: 11, borderRadius: 3, background: color + '44', border: `1.5px solid ${color}`, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{type}</span>
+          </div>
+        ))}
+        <p style={{ fontSize: 10, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '16px 0 10px' }}>Reported</p>
+        {zones.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
+            <span style={{ fontSize: 12, color: '#34d399' }}>No damage reported</span>
+          </div>
+        ) : zones.map((z, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: (DRAWER_DMG_COLORS[z.type] || '#9ca3af') + '44', border: `1.5px solid ${DRAWER_DMG_COLORS[z.type] || '#9ca3af'}`, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#6b7280' }}><span style={{ color: '#e5e5e5' }}>{z.zone}</span> — {z.type}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ListingDetailDrawer({
+  listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
+  setEditListing, setTiktokListing, setPriceEditListing, setMarkSoldListing,
+  setDeleteId, copyListing, copiedListingId, handleAssign, handleUnassign,
+  handleStatus, updatingStatus, getListingAge,
+}) {
+  const [imgIdx, setImgIdx]       = useState(0);
+  const [lbOpen, setLbOpen]       = useState(false);
+  const [drawerTab, setDrawerTab] = useState('specs');
+  const [showAssign, setShowAssign] = useState(false);
+  const [calcOpen,  setCalcOpen]  = useState(false);
+  const [isMobile, setIsMobile]   = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  const images = Array.isArray(listing.images) && listing.images.length > 0 ? listing.images : ['/placeholder-car.jpg'];
+  const sp = listing.selling_price || listing.price || 0;
+  const op = listing.original_price || listing.previous_price || null;
+  const saving = op && op > sp ? op - sp : 0;
+  const monthly = sp > 0 ? Math.round((sp * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12)) : null;
+  const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
+  const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
+  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#f87171' }[listing.interior_grade] || '#9ca3af';
+  let damageMap = [];
+  try { if (listing.damage_map) damageMap = typeof listing.damage_map === 'string' ? JSON.parse(listing.damage_map) : listing.damage_map; } catch {}
+  const features = parseTags(listing.features);
+  const options  = parseTags(listing.options);
+  const isSold   = listing.status === 'sold';
+  const age      = getListingAge(listing.created_at);
+  const sCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
+
+  // ESC to close
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') { if (lbOpen) setLbOpen(false); else onClose(); } };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lbOpen, onClose]);
+
+  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
+  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
+
+  const btnBase = { width: '100%', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid rgba(255,255,255,0.08)', fontFamily: "'DM Sans', sans-serif", color: '#9ca3af' };
+
+  const specRows = [
+    { k: 'Year',              v: listing.year || '—' },
+    { k: 'Registration Date', v: listing.registration_date || '—' },
+    { k: 'VIN',               v: listing.vin_number || '—' },
+    { k: 'Condition',         v: listing.condition || '—' },
+    { k: 'Chassis Status',    v: listing.chassis_status || '—', dot: true },
+    { k: 'Location',          v: [listing.city, listing.state].filter(Boolean).join(', ') || '—' },
+  ];
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto' }}
+        onClick={onClose}
+      >
+        {/* Panel */}
+        <div
+          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: 'rgba(11,11,15,0.99)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Close */}
+          <button
+            onClick={onClose}
+            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <X style={{ width: 16, height: 16 }} />
+          </button>
+
+          {/* Body */}
+          <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowY: 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
+            {/* LEFT */}
+            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)', overflowY: isMobile ? 'visible' : 'auto' }}>
+
+              {/* Gallery */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* Thumb strip */}
+                <div style={{ width: 64, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: isMobile ? 200 : 320, overflowY: 'auto' }}>
+                  {images.map((img, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setImgIdx(i)}
+                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(220,38,38,0.6)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                    </div>
+                  ))}
+                </div>
+                {/* Main image */}
+                <div style={{ flex: 1, position: 'relative', background: '#0d0d0d', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img
+                    src={images[imgIdx]}
+                    alt=""
+                    onClick={() => setLbOpen(true)}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in', display: 'block' }}
+                  />
+                  {images.length > 1 && (
+                    <>
+                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ChevronLeft style={{ width: 14, height: 14 }} />
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ChevronRight style={{ width: 14, height: 14 }} />
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => setLbOpen(true)} style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ZoomIn style={{ width: 13, height: 13 }} />
+                  </button>
+                  {images.length > 1 && (
+                    <span style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, color: '#9ca3af', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 7px' }}>{imgIdx + 1} / {images.length}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Car header */}
+              <div style={{ marginTop: 20 }}>
+                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.15em', margin: 0 }}>{listing.brand}</p>
+                <p style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', margin: '4px 0 0', lineHeight: 1.2 }}>{listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '6px 0 0' }}>
+                  {[listing.year, listing.body_type, listing.transmission, listing.fuel_type].filter(Boolean).join(' · ')}
+                </p>
+                {(listing.city || listing.state) && (
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <MapPin style={{ width: 11, height: 11 }} />
+                    {[listing.city, listing.state].filter(Boolean).join(', ')}
+                  </p>
+                )}
+              </div>
+
+              {/* Price row */}
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#f3f4f6', margin: 0, lineHeight: 1 }}>RM {sp.toLocaleString()}</p>
+                {saving > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
+                    <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
+                  </div>
+                )}
+                {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>}
+              </div>
+
+              {/* Specs strip */}
+              <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: '16px 0', padding: '12px 0', gap: 0, overflowX: 'auto' }}>
+                {[
+                  { Icon: Gauge,    label: 'Mileage',       value: listing.mileage ? `${Number(listing.mileage).toLocaleString()} km` : '—' },
+                  { Icon: Settings, label: 'Engine',        value: listing.engine_cc ? `${Number(listing.engine_cc).toLocaleString()} cc` : '—' },
+                  { Icon: ChevronRight, label: 'Transmission', value: listing.transmission || '—' },
+                  { Icon: Droplets, label: 'Fuel',          value: listing.fuel_type || '—' },
+                  { Icon: Palette,  label: 'Colour',        value: listing.colour || '—' },
+                ].map(({ Icon, label, value }, i, arr) => (
+                  <div key={label} style={{ flex: '1 0 80px', textAlign: 'center', padding: '0 12px', borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                    <Icon style={{ width: 13, height: 13, color: '#6b7280', marginBottom: 4 }} />
+                    <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', marginBottom: 3 }}>{label}</p>
+                    <p style={{ fontSize: 13, color: '#f3f4f6' }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
+                {tabs.map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setDrawerTab(tab)}
+                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#f3f4f6' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
+                  >
+                    {tabLabel[tab]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab: Specifications */}
+              {drawerTab === 'specs' && (
+                <div>
+                  {specRows.map(({ k, v, dot }) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
+                      <span style={{ fontSize: 13, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {dot && v !== '—' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />}
+                        {v}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tab: Features */}
+              {drawerTab === 'features' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {features.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No features listed.</p> : features.map((f, i) => (
+                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '4px 10px' }}>{f}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Tab: Options */}
+              {drawerTab === 'options' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {options.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No options listed.</p> : options.map((o, i) => (
+                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '4px 10px' }}>{o}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Tab: Recon */}
+              {drawerTab === 'recon' && listing.is_recon && (
+                <div>
+                  {gradeMeta && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.04)', border: `1px solid ${gradeMeta}25`, borderRadius: 6, padding: '10px 16px', marginBottom: 20 }}>
+                      <div>
+                        <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Ext. Grade</p>
+                        <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: gradeMeta, lineHeight: 1 }}>{listing.auction_grade}</p>
+                      </div>
+                      {listing.interior_grade && (
+                        <>
+                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.07)' }} />
+                          <div>
+                            <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
+                            <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {[
+                    { k: 'Import Country', v: listing.import_country },
+                    { k: 'Auction House',  v: listing.auction_house },
+                    { k: 'Exterior Grade', v: listing.auction_grade },
+                    { k: 'Interior Grade', v: listing.interior_grade },
+                  ].filter(r => r.v).map(({ k, v }) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
+                      <span style={{ fontSize: 13, color: '#9ca3af' }}>{v}</span>
+                    </div>
+                  ))}
+                  <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 20, marginBottom: 0 }}>Condition Map</p>
+                  <DrawerDamageMap damageMap={damageMap} />
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT */}
+            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
+                <p style={{ fontSize: 10, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
+
+                {/* Edit */}
+                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
+                </button>
+
+                {/* TikTok */}
+                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />TikTok Studio
+                </button>
+
+                {/* Price */}
+                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
+                </button>
+
+                {/* Copy */}
+                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
+                  {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
+                </button>
+
+                {/* Financing Calculator */}
+                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
+                </button>
+
+                {/* Assign */}
+                <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
+                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                    <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
+                  </button>
+                  {showAssign && (
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, boxShadow: '0 -8px 32px rgba(0,0,0,0.7)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+                      {listing.assigned_to && (
+                        <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
+                          <X style={{ width: 12, height: 12 }} />Unassign
+                        </button>
+                      )}
+                      {salesmen.map(s => (
+                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(168,85,247,0.1)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#c084fc' : '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
+                          {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mark Sold */}
+                {!isSold && (
+                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                    <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
+                  </button>
+                )}
+
+                {/* Delete */}
+                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#f87171' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
+                </button>
+
+                {/* Metadata */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                  <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: sCfg.tx, textTransform: 'capitalize' }}>{listing.status || 'active'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lbOpen && (
+        <div
+          onClick={() => setLbOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {/* Close */}
+          <button
+            onClick={() => setLbOpen(false)}
+            style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+          >
+            <X style={{ width: 18, height: 18 }} />
+          </button>
+          {/* Counter */}
+          {images.length > 1 && (
+            <span style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', fontSize: 12, color: '#9ca3af', background: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: '4px 12px' }}>
+              {imgIdx + 1} / {images.length}
+            </span>
+          )}
+          {/* Prev */}
+          {images.length > 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }}
+              style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronLeft style={{ width: 22, height: 22 }} />
+            </button>
+          )}
+          {/* Image */}
+          <img
+            src={images[imgIdx]}
+            alt=""
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 'calc(100vw - 120px)', maxHeight: '90vh', objectFit: 'contain', borderRadius: 4, display: 'block' }}
+          />
+          {/* Next */}
+          {images.length > 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }}
+              style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronRight style={{ width: 22, height: 22 }} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Financing Calculator modal */}
+      {calcOpen && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
+        >
+          <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <p style={{ color: 'white', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
+                <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
+              </div>
+              <button onClick={() => setCalcOpen(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <FinancingCalculator
+                initialPrice={listing.selling_price || listing.price}
+                engineCc={listing.engine_cc}
+                bodyType={listing.body_type}
+                carName={`${listing.brand} ${listing.model}${listing.variant ? ` ${listing.variant}` : ''}`}
+                carYear={listing.year ? String(listing.year) : ''}
+                carColor={listing.colour || ''}
+                flat
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -2492,13 +2982,7 @@ export default function DashboardPage() {
   const [salesmen,         setSalesmen]         = useState([]);
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
-
-  useEffect(() => {
-    const s = document.createElement("style");
-    s.textContent = STYLES;
-    document.head.appendChild(s);
-    return () => document.head.removeChild(s);
-  }, []);
+  const [detailListing,    setDetailListing]    = useState(null);
 
   useEffect(() => {
     const name = profile?.site_name || profile?.dealership || "XDrive";
@@ -2685,17 +3169,16 @@ export default function DashboardPage() {
     setMarkSoldLoading(false);
   };
 
-  const filteredListings = searchQuery.trim()
-    ? listings.filter((l) => {
-        const q = searchQuery.toLowerCase();
-        return (
-          (l.brand || "").toLowerCase().includes(q) ||
-          (l.model || "").toLowerCase().includes(q) ||
-          (l.variant || "").toLowerCase().includes(q) ||
-          (l.vin_number || "").toLowerCase().includes(q)
-        );
-      })
-    : listings;
+  const filteredListings = useMemo(() => {
+    if (!searchQuery.trim()) return listings;
+    const q = searchQuery.toLowerCase();
+    return listings.filter((l) =>
+      (l.brand || "").toLowerCase().includes(q) ||
+      (l.model || "").toLowerCase().includes(q) ||
+      (l.variant || "").toLowerCase().includes(q) ||
+      (l.vin_number || "").toLowerCase().includes(q)
+    );
+  }, [listings, searchQuery]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -2779,7 +3262,7 @@ export default function DashboardPage() {
     },
   };
 
-  const StatusBadge = ({ listing }) => {
+  const StatusBadge = React.memo(({ listing }) => {
     const s = listing.status || "active",
       cfg = STATUS[s] || STATUS.active,
       busy = updatingStatus === listing.id;
@@ -2795,7 +3278,7 @@ export default function DashboardPage() {
         {busy ? "…" : cfg.label}
       </button>
     );
-  };
+  });
 
   const Avatar = ({ size = "md" }) => {
     const sz = size === "lg" ? "w-9 h-9 text-sm" : "w-7 h-7 text-xs";
@@ -2817,7 +3300,7 @@ export default function DashboardPage() {
     );
   };
 
-  const DiscountCell = ({ listing }) => {
+  const DiscountCell = React.memo(({ listing }) => {
     const op = listing.original_price || listing.previous_price || null,
       sp = listing.selling_price || listing.price || null;
     if (!op || !sp || op <= sp)
@@ -2845,7 +3328,7 @@ export default function DashboardPage() {
         </p>
       </div>
     );
-  };
+  });
 
   const condCls = (c) =>
     ({
@@ -2854,6 +3337,10 @@ export default function DashboardPage() {
         "bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 badge-glow-cyan",
       used: "bg-white/[0.06] text-gray-400 border border-white/10",
     })[c] || "bg-white/[0.06] text-gray-400 border border-white/10";
+
+  const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
+  const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
+  const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
   const TITLES = {
     listings: { title: "Listings", sub: "Manage your inventory" },
@@ -2921,6 +3408,8 @@ export default function DashboardPage() {
   ];
 
   return (
+    <>
+    <style>{STYLES}</style>
     <div
       className="min-h-screen text-white flex"
       style={{
@@ -2985,6 +3474,15 @@ export default function DashboardPage() {
               )}
             </button>
           ))}
+          {profile?.role === 'superadmin' && (
+            <a
+              href="/admin"
+              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
+            >
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              Admin Panel
+            </a>
+          )}
           <a
             href="/"
             target="_blank"
@@ -3150,480 +3648,198 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div
-                className={`card-top rounded-xl ${assignDropdownId ? 'overflow-visible' : 'overflow-hidden'}`}
-                style={T.cardDark}
-              >
-                <div
-                  className="flex items-center justify-between p-4"
-                  style={T.divider}
-                >
-                  <h2 className="font-semibold text-white text-sm">
-                    All Vehicles{" "}
-                    <span className="text-gray-600 font-normal">
-                      ({filteredListings.length}
-                      {searchQuery.trim() &&
-                      listings.length !== filteredListings.length
-                        ? ` of ${listings.length}`
-                        : ""}
-                      )
-                    </span>
-                  </h2>
-                  <button
-                    onClick={() => setActiveTab("add")}
-                    className="btn-shimmer flex items-center gap-1.5 text-white px-3 py-1.5 rounded-lg text-sm font-semibold"
-                    style={T.btnRed}
-                  >
-                    <PlusCircle className="w-3.5 h-3.5" />
-                    Add
-                  </button>
-                </div>
-                <div className="px-4 pb-3 pt-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none" />
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search by brand, model, variant, VIN…"
-                      className="w-full pl-9 pr-8 py-2 text-sm text-white placeholder-gray-600 rounded-lg focus:outline-none focus:border-red-500/40 transition-colors"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                      }}
-                    />
-                    {searchQuery && (
+              {/* ── Listings panel ── */}
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#991b1b', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
+                <div style={{ position: 'relative', zIndex: 1, background: '#080C14', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
+                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
+                        {filteredListings.length}{searchQuery.trim() && listings.length !== filteredListings.length ? ` of ${listings.length}` : ''}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative', flex: '1 1 160px' }}>
+                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280', pointerEvents: 'none' }} />
+                        <input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search brand, model, VIN…"
+                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '7px 32px', fontSize: 13, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '100%', minWidth: 0 }}
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                            <X style={{ width: 14, height: 14 }} />
+                          </button>
+                        )}
+                      </div>
                       <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors"
+                        onClick={() => setActiveTab("add")}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <PlusCircle style={{ width: 14, height: 14 }} />
+                        Add Listing
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
 
                 {loading ? (
-                  <div className="p-12 text-center text-gray-600 text-sm">
-                    Loading…
-                  </div>
+                  <div style={{ padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</div>
                 ) : listings.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <div
-                      className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                      style={{
-                        background: "rgba(220,38,38,0.07)",
-                        border: "1px solid rgba(220,38,38,0.12)",
-                      }}
-                    >
-                      <Car className="w-6 h-6 text-red-500/40" />
+                  <div style={{ padding: 48, textAlign: 'center' }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <Car style={{ width: 24, height: 24, color: 'rgba(220,38,38,0.4)' }} />
                     </div>
-                    <p className="text-gray-600 text-sm mb-4">
-                      No listings yet
-                    </p>
-                    <button
-                      onClick={() => setActiveTab("add")}
-                      className="btn-shimmer text-white px-5 py-2 rounded-lg text-sm font-semibold"
-                      style={T.btnRed}
-                    >
+                    <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>No listings yet</p>
+                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
                       Add your first car
                     </button>
                   </div>
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block overflow-x-auto overflow-y-visible">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr
-                            style={{
-                              background: "rgba(255,255,255,0.02)",
-                              boxShadow: "inset 0 -1px 0 rgba(220,38,38,0.18)",
-                            }}
-                          >
-                            {[
-                              "Vehicle",
-                              "Condition",
-                              "Mileage",
-                              "Location",
-                              "Price",
-                              "Listed",
-                              "Status",
-                              "",
-                            ].map((h, i) => (
-                              <th
-                                key={i}
-                                className={`px-4 py-3 text-gray-600 font-semibold text-xs uppercase tracking-widest ${i === 7 ? "text-right" : "text-left"}`}
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.04]">
-                          {filteredListings.map((l) => {
-                            const age = getListingAge(l.created_at),
-                              bt = l.body_type || l.bodyType || null;
-                            const isSold = l.status === "sold";
-                            return (
-                              <tr
-                                key={l.id}
-                                className={`data-row ${age >= 30 && !isSold ? "bg-amber-950/[0.07]" : ""} ${isSold ? "opacity-60" : ""}`}
-                              >
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-3">
-                                    {l.images?.[0] ? (
-                                      <img
-                                        src={l.images[0]}
-                                        alt=""
-                                        className={`w-9 h-9 rounded-lg object-cover bg-gray-800 flex-shrink-0 ${isSold ? "grayscale" : ""}`}
-                                      />
-                                    ) : (
-                                      <div className="w-9 h-9 rounded-lg bg-white/5 flex-shrink-0" />
-                                    )}
-                                    <div className="min-w-0">
-                                      <p className="font-semibold text-white text-sm truncate">
-                                        {l.brand} {l.model}
-                                      </p>
-                                      <div className="flex items-center gap-1.5 mt-0.5">
-                                        <p className="text-gray-600 text-xs truncate">
-                                          {l.variant || "—"}
-                                        </p>
-                                        {bt && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/5 text-gray-600">
-                                            {bt}
-                                          </span>
-                                        )}
+                    <div className="hidden md:block" style={{ overflowX: 'auto' }}>
+                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              {['', 'Vehicle', 'Price', 'Mileage', 'Grade', 'VIN', 'Location', 'Date Added', 'Status'].map((h, i) => (
+                                <th key={i} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredListings.map((l) => {
+                              const isSold = l.status === 'sold';
+                              const bt = l.body_type || l.bodyType || null;
+                              const extGC = gradeColor(String(l.auction_grade));
+                              const intGC = gradeColor(String(l.interior_grade));
+                              const sp = l.selling_price || l.price || 0;
+                              const op = l.original_price || l.previous_price || null;
+                              const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
+                              const sCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af' } })[l.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' };
+                              return (
+                                <tr
+                                  key={l.id}
+                                  onClick={() => setDetailListing(l)}
+                                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s', opacity: isSold ? 0.6 : 1 }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  {/* Thumbnail */}
+                                  <td style={{ padding: '12px 6px 12px 14px', width: 60 }}>
+                                    {l.images?.[0]
+                                      ? <img src={l.images[0]} alt="" style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(1)' : 'none' }} />
+                                      : <div style={{ width: 48, height: 48, borderRadius: 4, background: 'rgba(255,255,255,0.04)' }} />
+                                    }
+                                  </td>
+                                  {/* Brand / Model / Variant / Body Type */}
+                                  <td style={{ padding: '12px 14px', minWidth: 160 }}>
+                                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
+                                    <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0' }}>{l.model}</p>
+                                    {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{l.variant}</p>}
+                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
+                                  </td>
+                                  {/* Price */}
+                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                    <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>RM {sp.toLocaleString()}</p>
+                                    {pct > 0 && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                        <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
+                                        <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
                                       </div>
-                                      {l.assigned_to && salesmenById[l.assigned_to] && (
-                                        <p className="text-[10px] text-purple-400/80 mt-0.5 flex items-center gap-1">
-                                          <UserPlus className="w-2.5 h-2.5 flex-shrink-0" />
-                                          {salesmenById[l.assigned_to].full_name}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${condCls(l.condition)}`}
-                                  >
-                                    {l.condition}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-gray-400 text-sm">
-                                  {l.mileage
-                                    ? Number(l.mileage).toLocaleString() + " km"
-                                    : "—"}
-                                </td>
-                                <td className="px-4 py-3 text-gray-400 text-sm">
-                                  {l.state || "—"}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <DiscountCell listing={l} />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <AgeBadge createdAt={l.created_at} />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <StatusBadge listing={l} />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-0.5 justify-end">
-                                    {!isSold && (
-                                      <button
-                                        onClick={() => setMarkSoldListing(l)}
-                                        title="Mark as Sold"
-                                        className="sold-btn p-1.5 rounded-lg transition-all text-gray-600"
-                                        style={{
-                                          border: "1px solid transparent",
-                                        }}
-                                      >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                      </button>
                                     )}
-                                    <button
-                                      onClick={() => setEditListing(l)}
-                                      title="Edit"
-                                      className="p-1.5 text-gray-600 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => copyListing(l)}
-                                      title="Copy"
-                                      className={`p-1.5 rounded-lg transition-all ${copiedListingId === l.id ? "text-emerald-400 bg-emerald-500/10" : "text-gray-600 hover:text-amber-400 hover:bg-amber-500/10"}`}
-                                    >
-                                      {copiedListingId === l.id ? (
-                                        <Check className="w-4 h-4" />
-                                      ) : (
-                                        <Clipboard className="w-4 h-4" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => setPriceEditListing(l)}
-                                      className="p-1.5 text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
-                                    >
-                                      <Tag className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => setTiktokListing(l)}
-                                      className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                    >
-                                      <Video className="w-4 h-4" />
-                                    </button>
-                                    {/* Assign to salesman */}
-                                    <div className="relative">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setAssignDropdownId(assignDropdownId === l.id ? null : l.id);
-                                        }}
-                                        title={l.assigned_to && salesmenById[l.assigned_to] ? `Assigned: ${salesmenById[l.assigned_to].full_name}` : "Assign to salesman"}
-                                        className={`p-1.5 rounded-lg transition-all ${l.assigned_to ? "text-purple-400 bg-purple-500/10" : "text-gray-600 hover:text-purple-400 hover:bg-purple-500/10"}`}
-                                      >
-                                        <UserPlus className="w-4 h-4" />
-                                      </button>
-                                      {assignDropdownId === l.id && (
-                                        <div
-                                          className="absolute right-0 bottom-full mb-1 w-44 rounded-xl overflow-hidden z-50 py-1"
-                                          style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 -8px 32px rgba(0,0,0,0.7)" }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {l.assigned_to && (
-                                            <button
-                                              onClick={() => handleUnassign(l.id)}
-                                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                                            >
-                                              <X className="w-3 h-3" />
-                                              Unassign
-                                            </button>
-                                          )}
-                                          {l.assigned_to && salesmen.length > 0 && (
-                                            <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
-                                          )}
-                                          {salesmen.length === 0 ? (
-                                            <p className="px-3 py-2 text-xs text-gray-600">No salesmen found</p>
-                                          ) : (
-                                            salesmen.map((s) => (
-                                              <button
-                                                key={s.id}
-                                                onClick={() => handleAssign(l.id, s.id, s.full_name)}
-                                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${l.assigned_to === s.id ? "text-purple-400 bg-purple-500/10" : "text-gray-300 hover:text-white hover:bg-white/5"}`}
-                                              >
-                                                <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-                                                  {(s.full_name || "S")[0].toUpperCase()}
-                                                </div>
-                                                <span className="truncate">{s.full_name || "Unknown"}</span>
-                                                {l.assigned_to === s.id && <Check className="w-3 h-3 ml-auto flex-shrink-0" />}
-                                              </button>
-                                            ))
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <button
-                                      onClick={() => setDeleteId(l.id)}
-                                      className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                  </td>
+                                  {/* Mileage */}
+                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                    {l.mileage
+                                      ? <><span style={{ fontSize: 13, color: '#f3f4f6' }}>{Number(l.mileage).toLocaleString()}</span><span style={{ fontSize: 12, color: '#6b7280' }}> km</span></>
+                                      : <span style={{ fontSize: 13, color: '#6b7280' }}>—</span>
+                                    }
+                                  </td>
+                                  {/* Grade */}
+                                  <td style={{ padding: '12px 14px' }}>
+                                    {l.auction_grade || l.interior_grade ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                        {l.auction_grade && <span style={{ fontSize: 11, color: extGC, background: `${extGC}18`, border: `1px solid ${extGC}30`, borderRadius: 4, padding: '1px 7px', display: 'inline-block', fontWeight: 600 }}>{l.auction_grade}</span>}
+                                        {l.interior_grade && <span style={{ fontSize: 10, color: intGC }}>Int: {l.interior_grade}</span>}
+                                      </div>
+                                    ) : <span style={{ fontSize: 12, color: '#6b7280' }}>—</span>}
+                                  </td>
+                                  {/* VIN */}
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#6b7280' }}>{l.vin_number ? l.vin_number.slice(0, 12) : '—'}</span>
+                                  </td>
+                                  {/* Location */}
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ fontSize: 13, color: '#9ca3af' }}>{l.state || '—'}</span>
+                                  </td>
+                                  {/* Date Added */}
+                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block' }}>{fmtDate(l.created_at)}</span>
+                                    <span style={{ display: 'block', marginTop: 3 }}><AgeBadge createdAt={l.created_at} /></span>
+                                  </td>
+                                  {/* Status */}
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ background: sCfg.bg, border: `1px solid ${sCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: sCfg.tx, whiteSpace: 'nowrap', textTransform: 'capitalize', display: 'inline-block' }}>
+                                      {l.status || 'active'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {/* Mobile cards */}
-                    <div className="md:hidden divide-y divide-white/[0.04]">
+                    <div className="md:hidden" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                       {filteredListings.map((l) => {
                         const bt = l.body_type || l.bodyType || null;
-                        const isSold = l.status === "sold";
-                        const copied = copiedListingId === l.id;
+                        const isSold = l.status === 'sold';
+                        const sp = l.selling_price || l.price || 0;
+                        const op = l.original_price || l.previous_price || null;
+                        const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
+                        const msCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af' } })[l.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' };
                         return (
                           <div
                             key={l.id}
-                            className={`p-4 ${getListingAge(l.created_at) >= 30 && !isSold ? "bg-amber-950/[0.07]" : ""} ${isSold ? "opacity-60" : ""}`}
+                            onClick={() => setDetailListing(l)}
+                            style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: isSold ? 0.6 : 1, cursor: 'pointer', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
-                            <div className="flex gap-3 mb-3">
-                              {l.images?.[0] ? (
-                                <img
-                                  src={l.images[0]}
-                                  alt=""
-                                  className={`w-14 h-14 rounded-xl object-cover bg-gray-800 flex-shrink-0 ${isSold ? "grayscale" : ""}`}
-                                />
-                              ) : (
-                                <div className="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-1">
-                                  <div className="min-w-0">
-                                    <p className="font-semibold text-white text-sm leading-tight truncate">
-                                      {l.brand} {l.model}
-                                    </p>
-                                    <p className="text-gray-600 text-xs mt-0.5 truncate">
-                                      {l.variant || "—"}
-                                      {bt ? ` · ${bt}` : ""}
-                                    </p>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                              {l.images?.[0]
+                                ? <img src={l.images[0]} alt="" style={{ width: 52, height: 52, borderRadius: 4, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(1)' : 'none' }} />
+                                : <div style={{ width: 52, height: 52, borderRadius: 4, background: 'rgba(255,255,255,0.04)', flexShrink: 0 }} />
+                              }
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
+                                    <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
+                                    {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}{bt ? ` · ${bt}` : ''}</p>}
                                   </div>
-                                  <StatusBadge listing={l} />
+                                  <span style={{ background: msCfg.bg, border: `1px solid ${msCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: msCfg.tx, flexShrink: 0, textTransform: 'capitalize' }}>
+                                    {l.status || 'active'}
+                                  </span>
                                 </div>
-                                <div className="mt-1.5">
-                                  <DiscountCell listing={l} />
+                                <div style={{ marginTop: 6 }}>
+                                  <span style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500 }}>RM {sp.toLocaleString()}</span>
+                                  {pct > 0 && <span style={{ fontSize: 11, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${condCls(l.condition)}`}
-                              >
-                                {l.condition}
-                              </span>
-                              {l.mileage && (
-                                <span className="text-xs text-gray-500">
-                                  {Number(l.mileage).toLocaleString()} km
-                                </span>
-                              )}
-                              {l.state && (
-                                <span className="text-xs text-gray-500">
-                                  {l.state}
-                                </span>
-                              )}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                              {l.mileage && <span style={{ fontSize: 11, color: '#9ca3af' }}>{Number(l.mileage).toLocaleString()} km</span>}
+                              {l.state && <span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span>}
+                              <span style={{ fontSize: 11, color: '#6b7280' }}>{fmtDate(l.created_at)}</span>
                               <AgeBadge createdAt={l.created_at} />
-                              {l.assigned_to && salesmenById[l.assigned_to] && (
-                                <span className="flex items-center gap-1 text-[10px] text-purple-400/80">
-                                  <UserPlus className="w-2.5 h-2.5" />
-                                  {salesmenById[l.assigned_to].full_name}
-                                </span>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <button
-                                onClick={() => setEditListing(l)}
-                                className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-sky-400 transition-all"
-                                style={{
-                                  background: "rgba(56,189,248,0.07)",
-                                  border: "1px solid rgba(56,189,248,0.15)",
-                                }}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => copyListing(l)}
-                                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${copied ? "text-emerald-400" : "text-amber-400"}`}
-                                style={{
-                                  background: copied
-                                    ? "rgba(52,211,153,0.07)"
-                                    : "rgba(251,191,36,0.07)",
-                                  border: `1px solid ${copied ? "rgba(52,211,153,0.2)" : "rgba(251,191,36,0.15)"}`,
-                                }}
-                              >
-                                {copied ? (
-                                  <Check className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Clipboard className="w-3.5 h-3.5" />
-                                )}
-                                {copied ? "Copied!" : "Copy"}
-                              </button>
-                              <button
-                                onClick={() => setPriceEditListing(l)}
-                                className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-emerald-400 transition-all"
-                                style={{
-                                  background: "rgba(52,211,153,0.07)",
-                                  border: "1px solid rgba(52,211,153,0.15)",
-                                }}
-                              >
-                                <Tag className="w-3.5 h-3.5" />
-                                Price
-                              </button>
-                              <button
-                                onClick={() => setTiktokListing(l)}
-                                className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-400 transition-all"
-                                style={{
-                                  background: "rgba(220,38,38,0.07)",
-                                  border: "1px solid rgba(220,38,38,0.15)",
-                                }}
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                                TikTok
-                              </button>
-                              {!isSold && (
-                                <button
-                                  onClick={() => setMarkSoldListing(l)}
-                                  className="sold-btn flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-500 transition-all"
-                                  style={{
-                                    background: "rgba(255,255,255,0.04)",
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                  }}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  Sold
-                                </button>
-                              )}
-                              {/* Assign — mobile */}
-                              <div className="relative col-span-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAssignDropdownId(assignDropdownId === l.id ? null : l.id);
-                                  }}
-                                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all"
-                                  style={{
-                                    background: l.assigned_to ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)",
-                                    border: l.assigned_to ? "1px solid rgba(168,85,247,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                                    color: l.assigned_to ? "#c084fc" : "#9ca3af",
-                                  }}
-                                >
-                                  <UserPlus className="w-3.5 h-3.5" />
-                                  {l.assigned_to && salesmenById[l.assigned_to]
-                                    ? salesmenById[l.assigned_to].full_name
-                                    : "Assign"}
-                                </button>
-                                {assignDropdownId === l.id && (
-                                  <div
-                                    className="absolute left-0 bottom-full mb-1 w-full rounded-xl overflow-hidden z-50 py-1"
-                                    style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 -8px 32px rgba(0,0,0,0.7)" }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {l.assigned_to && (
-                                      <button
-                                        onClick={() => handleUnassign(l.id)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                                      >
-                                        <X className="w-3 h-3" />
-                                        Unassign
-                                      </button>
-                                    )}
-                                    {salesmen.map((s) => (
-                                      <button
-                                        key={s.id}
-                                        onClick={() => handleAssign(l.id, s.id, s.full_name)}
-                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${l.assigned_to === s.id ? "text-purple-400 bg-purple-500/10" : "text-gray-300 hover:text-white hover:bg-white/5"}`}
-                                      >
-                                        <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-                                          {(s.full_name || "S")[0].toUpperCase()}
-                                        </div>
-                                        <span className="truncate">{s.full_name || "Unknown"}</span>
-                                        {l.assigned_to === s.id && <Check className="w-3 h-3 ml-auto flex-shrink-0" />}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => setDeleteId(l.id)}
-                                className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-500 transition-all"
-                                style={{
-                                  background: "rgba(220,38,38,0.06)",
-                                  border: "1px solid rgba(220,38,38,0.14)",
-                                }}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete
-                              </button>
                             </div>
                           </div>
                         );
@@ -3631,6 +3847,7 @@ export default function DashboardPage() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             </>
           )}
@@ -3665,6 +3882,35 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {detailListing && (
+        <ListingDetailDrawer
+          listing={detailListing}
+          salesmen={salesmen}
+          salesmenById={salesmenById}
+          onClose={() => setDetailListing(null)}
+          onUpdate={(updated) => {
+            setListings(p => p.map(l => l.id === updated.id ? updated : l));
+            setDetailListing(updated);
+          }}
+          onDelete={(id) => {
+            setListings(p => p.filter(l => l.id !== id));
+            setDetailListing(null);
+          }}
+          setEditListing={setEditListing}
+          setTiktokListing={setTiktokListing}
+          setPriceEditListing={setPriceEditListing}
+          setMarkSoldListing={setMarkSoldListing}
+          setDeleteId={setDeleteId}
+          copyListing={copyListing}
+          copiedListingId={copiedListingId}
+          handleAssign={handleAssign}
+          handleUnassign={handleUnassign}
+          handleStatus={handleStatus}
+          updatingStatus={updatingStatus}
+          getListingAge={getListingAge}
+        />
+      )}
 
       {/* ── Delete modal ── */}
       {deleteId && (
@@ -3798,6 +4044,8 @@ export default function DashboardPage() {
           loading={markSoldLoading}
         />
       )}
+
     </div>
+    </>
   );
 }
