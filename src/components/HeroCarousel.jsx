@@ -11,7 +11,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import useTenant from "../hooks/useTenant";
+import useTenant, { isSubdomain } from "../hooks/useTenant";
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
@@ -461,7 +461,11 @@ export default function HeroCarousel({ siteName, waNumber }) {
           .select("*, car_listings(slug)")
           .eq("active", true);
 
-        if (tenant) query = query.eq("dealer_id", tenant.id);
+        if (tenant) {
+          query = query.eq("dealer_id", tenant.id);
+        } else if (isSubdomain()) {
+          query = query.eq("dealer_id", "no-match");
+        }
 
         const { data, error } = await query.order("sort_order", { ascending: true });
         setSlides(!error && data ? data : []);
