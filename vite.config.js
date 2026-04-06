@@ -31,6 +31,8 @@ export default defineConfig({
 					'vendor-supabase': ['@supabase/supabase-js'],
 					// UI utilities
 					'vendor-ui': ['lucide-react', 'react-helmet', 'react-i18next'],
+					// DnD
+					'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable'],
 				},
 			},
 		},
