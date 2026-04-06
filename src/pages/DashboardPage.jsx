@@ -3050,13 +3050,6 @@ export default function DashboardPage() {
   const redirectByRole = useRoleRedirect("dealer");
   const { status, loading: subLoading } = useSubscription();
 
-  if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
-      <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
-      <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#dc2626', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
-    </div>
-  );
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listings");
@@ -3499,6 +3492,14 @@ export default function DashboardPage() {
       glow: hotCount > 0 ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.03)",
     },
   ];
+
+  if (!subLoading && status === 'expired') return (
+    <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
+      <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
+      <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
+      <a href="https://wa.me/60174155191" style={{ background: '#dc2626', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+    </div>
+  );
 
   return (
     <>
