@@ -295,7 +295,7 @@ export default function Header() {
     { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
     {
       name: "For Dealers",
-      path: "/for-dealers",
+      path: "/shiftos",
       key: "dealers",
       isSpecial: true,
     },

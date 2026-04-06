@@ -13,6 +13,7 @@ import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
+import useTenant from '../hooks/useTenant';
 
 /* ─────────────────────────────────────────
    PRICE BRACKETS
@@ -132,6 +133,7 @@ const SkeletonCard = () => (
 const CarsPage = () => {
   const { t } = useTranslation();
   const { siteName } = useSiteProfile();
+  const { tenant, loading: tenantLoading } = useTenant();
   const location = useLocation();
   const drawerRef    = useRef(null);
   const searchRef    = useRef(null);
@@ -163,17 +165,22 @@ const CarsPage = () => {
 
   /* ── data ── */
   const load = async () => {
+    if (tenantLoading) return;
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('car_listings')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+
+    if (tenant) query = query.eq('dealer_id', tenant.id);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) { setFetchError(error.message); setAllCars([]); }
     else        { setAllCars(data || []); }
     setLoading(false);
   };
 
   useEffect(() => {
+    if (tenantLoading) return;
     load();
     const ch = supabase.channel('cars_page')
       .on('postgres_changes', { event:'*', schema:'public', table:'car_listings' }, payload => {
@@ -186,7 +193,7 @@ const CarsPage = () => {
       })
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [tenant, tenantLoading]);
 
   useEffect(() => {
     const onFocus = () => load();

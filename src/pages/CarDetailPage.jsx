@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
+import CarCard from '../components/CarCard';
 
 /* ─── helpers ─── */
 const fmt      = (n) => Number(n).toLocaleString('en-MY');
@@ -94,10 +95,11 @@ export default function CarDetailPage() {
   const { slug }  = useParams();
   const navigate  = useNavigate();
 
-  const [car, setCar]         = useState(null);
-  const [dealer, setDealer]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [car, setCar]             = useState(null);
+  const [dealer, setDealer]       = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [notFound, setNotFound]   = useState(false);
+  const [similarCars, setSimilarCars] = useState([]);
 
   /* gallery */
   const [activeIdx,  setActiveIdx]  = useState(0);
@@ -194,6 +196,35 @@ export default function CarDetailPage() {
         setDealer(d);
       }
       trackEvent(carData, 'car_view');
+
+      if (carData.dealer_id) {
+        const selectFields = '*';
+        const { data: sameBrand } = await supabase
+          .from('car_listings')
+          .select(selectFields)
+          .eq('dealer_id', carData.dealer_id)
+          .eq('brand', carData.brand)
+          .neq('status', 'sold')
+          .neq('id', carData.id)
+          .order('created_at', { ascending: false })
+          .limit(6);
+        if (sameBrand && sameBrand.length >= 2) {
+          setSimilarCars(sameBrand);
+          console.log('similarCars set (brand):', sameBrand.length);
+        } else {
+          const { data: anyDealer } = await supabase
+            .from('car_listings')
+            .select(selectFields)
+            .eq('dealer_id', carData.dealer_id)
+            .neq('status', 'sold')
+            .neq('id', carData.id)
+            .order('created_at', { ascending: false })
+            .limit(6);
+          setSimilarCars(anyDealer || []);
+          console.log('similarCars set:', (anyDealer || []).length);
+        }
+      }
+
       setLoading(false);
     }
     load();
@@ -364,6 +395,41 @@ export default function CarDetailPage() {
           color: #f5f5f5;
         }
 
+        /* similar grid / scroll */
+        .cdp-similar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+        .cdp-similar-scroll { display: none; }
+
+        /* mobile sticky bar */
+        .cdp-mobile-bar { display: none; }
+
+        @media (max-width: 768px) {
+          .cdp-root { padding-bottom: 70px; }
+          .cdp-similar-grid { display: none; }
+          .cdp-similar-scroll {
+            display: flex; overflow-x: auto; gap: 16px;
+            scroll-snap-type: x mandatory; scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+          }
+          .cdp-similar-scroll::-webkit-scrollbar { display: none; }
+          .cdp-mobile-bar {
+            display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+            background: rgba(13,13,13,0.96); backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding: 12px 16px; gap: 10px;
+          }
+          .cdp-mobile-bar-wa {
+            flex: 1; border-radius: 8px; font-size: 13px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif; border: none; cursor: pointer;
+            background: #25D366; color: white; padding: 13px 0;
+          }
+          .cdp-mobile-bar-book {
+            flex: 1; border-radius: 8px; font-size: 13px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            background: transparent; color: white; padding: 13px 0;
+            border: 1px solid rgba(255,255,255,0.18);
+          }
+        }
+
         /* sticky header */
         .cdp-header {
           position: sticky; top: 0; z-index: 100;
@@ -418,6 +484,7 @@ export default function CarDetailPage() {
         .cdp-main-wrap {
           flex: 1; position: relative;
           overflow: clip;
+          height: 100%; min-width: 0;
           border-radius: 6px; background: #111111;
         }
         .cdp-main-img {
@@ -486,7 +553,7 @@ export default function CarDetailPage() {
         .cdp-specs::-webkit-scrollbar { display: none; }
         .cdp-spec {
           flex: 1; min-width: 110px; text-align: center;
-          padding: 20px 12px;
+          padding: 24px 16px;
           border-right: 1px solid rgba(255,255,255,0.05);
         }
         .cdp-spec:last-child { border-right: none; }
@@ -612,6 +679,8 @@ export default function CarDetailPage() {
                 className={`cdp-main-img cdp-slide-${slideDir}`}
                 src={images[activeIdx]}
                 alt={carTitle}
+                fetchpriority={activeIdx === 0 ? 'high' : 'auto'}
+                loading={activeIdx === 0 ? 'eager' : 'lazy'}
                 onClick={() => setLbOpen(true)}
                 onLoad={() => setImgLoaded(true)}
                 onError={e => { e.target.src = '/placeholder-car.jpg'; setImgLoaded(true); }}
@@ -670,6 +739,8 @@ export default function CarDetailPage() {
                     src={src}
                     className={`cdp-thumb-v${i === activeIdx ? ' active' : ''}`}
                     alt={`View ${i + 1}`}
+                    loading="lazy"
+                    style={{ aspectRatio: '16/9' }}
                     onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
                     onError={e => { e.target.src = '/placeholder-car.jpg'; }}
                   />
@@ -723,8 +794,8 @@ export default function CarDetailPage() {
                 {fmtPrice(car.selling_price)}
               </p>
               {calcMonthly(car.selling_price) && (
-                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-                  / mo: <span style={{ color: '#9ca3af', fontWeight: 500 }}>RM {fmt(calcMonthly(car.selling_price))}</span>
+                <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+                  / mo: <span style={{ color: '#e5e7eb', fontWeight: 500, fontSize: '14px' }}>RM {fmt(calcMonthly(car.selling_price))}</span>
                 </span>
               )}
             </div>
@@ -801,7 +872,7 @@ export default function CarDetailPage() {
             <div key={label} className="cdp-spec">
               <Icon size={15} style={{ color: '#a0a0a0', marginBottom: 6 }} />
               <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a0a0a0', marginBottom: 3 }}>{label}</p>
-              <p style={{ fontSize: '15px', fontWeight: 500, color: 'white' }}>{value}</p>
+              <p style={{ fontSize: '16px', fontWeight: 500, color: 'white' }}>{value}</p>
             </div>
           ))}
         </div>
@@ -1066,6 +1137,41 @@ export default function CarDetailPage() {
             </div>
           </div>
         )}
+
+        {/* ── similar listings ── */}
+        {similarCars.length >= 0 && (
+          <section style={{ borderTop: '1px solid rgba(255,255,255,0.06)', maxWidth: 1200, margin: '0 auto', padding: '52px 24px 80px', fontFamily: "'DM Sans', sans-serif" }}>
+            <p style={{color:'red',fontSize:12}}>similar count: {similarCars.length}</p>
+            <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', margin: '0 0 6px' }}>
+              You might also like
+            </p>
+            <h2 style={{ fontSize: '28px', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.05em', color: 'white', margin: '0 0 28px' }}>
+              More {car.brand}
+            </h2>
+            {/* desktop grid */}
+            <div className="cdp-similar-grid">
+              {similarCars.map(s => <CarCard key={s.id} car={s} />)}
+            </div>
+            {/* mobile horizontal scroll */}
+            <div className="cdp-similar-scroll">
+              {similarCars.map(s => (
+                <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
+                  <CarCard car={s} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ── mobile sticky CTA bar ── */}
+      <div className="cdp-mobile-bar">
+        <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
+          WhatsApp
+        </button>
+        <button className="cdp-mobile-bar-book" onClick={() => bookingRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+          Book Viewing
+        </button>
       </div>
     </>
   );
