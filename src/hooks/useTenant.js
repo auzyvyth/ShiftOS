@@ -14,6 +14,13 @@ export function getSubdomain() {
   return parts[0]; // rasniaga.xdrive.my → 'rasniaga'
 }
 
+export function isSubdomain() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('tenant')) return true;
+  const parts = window.location.hostname.split('.');
+  return parts.length > 2;
+}
+
 export default function useTenant() {
   const [tenant, setTenant] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);

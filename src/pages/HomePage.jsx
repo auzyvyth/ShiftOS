@@ -28,7 +28,7 @@ import CarCard from "@/components/CarCard";
 import HeroCarousel from "@/components/HeroCarousel";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
-import useTenant from "../hooks/useTenant";
+import useTenant, { isSubdomain } from "../hooks/useTenant";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
@@ -383,7 +383,11 @@ const HomePage = () => {
         .select(CAR_FIELDS, { count: "exact" })
         .eq("status", "active");
 
-      if (tenant) query = query.eq("dealer_id", tenant.id);
+      if (tenant) {
+        query = query.eq("dealer_id", tenant.id);
+      } else if (isSubdomain()) {
+        query = query.eq("dealer_id", "no-match");
+      }
 
       const { data, error, count } = await query
         .order("created_at", { ascending: false })
@@ -410,7 +414,11 @@ const HomePage = () => {
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
 
-      if (tenant) query = query.eq("dealer_id", tenant.id);
+      if (tenant) {
+        query = query.eq("dealer_id", tenant.id);
+      } else if (isSubdomain()) {
+        query = query.eq("dealer_id", "no-match");
+      }
 
       const { count } = await query;
       setSoldCount(count || 0);
@@ -516,6 +524,15 @@ const HomePage = () => {
       r: 5,
     },
   ];
+
+  if (isSubdomain() && tenant === null && !tenantLoading) {
+    return (
+      <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
+        <p style={{ color: '#6b7280', fontSize: 15 }}>This dealer page doesn't exist.</p>
+        <a href="https://xdrive.my" style={{ color: '#dc2626', fontSize: 13, marginTop: 12 }}>← Browse all cars</a>
+      </div>
+    );
+  }
 
   const soldDisplay =
     soldCount !== null && soldCount > 0
