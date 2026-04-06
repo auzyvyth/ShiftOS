@@ -11,6 +11,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import useTenant from "../hooks/useTenant";
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
@@ -436,6 +437,7 @@ function formatPrice(val) {
 }
 
 export default function HeroCarousel({ siteName, waNumber }) {
+  const { tenant, loading: tenantLoading } = useTenant();
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
@@ -450,14 +452,18 @@ export default function HeroCarousel({ siteName, waNumber }) {
   const progressStart = useRef(null);
 
   useEffect(() => {
+    if (tenantLoading) return;
     const to = setTimeout(() => setLoading(false), 4000);
     const fetchSlides = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("hero_carousel_slides")
           .select("*, car_listings(slug)")
-          .eq("active", true)
-          .order("sort_order", { ascending: true });
+          .eq("active", true);
+
+        if (tenant) query = query.eq("dealer_id", tenant.id);
+
+        const { data, error } = await query.order("sort_order", { ascending: true });
         setSlides(!error && data ? data : []);
       } catch {
         setSlides([]);
@@ -468,7 +474,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
     };
     fetchSlides();
     return () => clearTimeout(to);
-  }, []);
+  }, [tenant, tenantLoading]);
 
   // Preload ALL slide images on mount so they're cached
   useEffect(() => {
