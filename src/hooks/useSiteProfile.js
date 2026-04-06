@@ -7,7 +7,7 @@ export function useSiteProfile() {
 
   const waUrl = tenant?.whatsapp_number
     ? (msg) => `https://wa.me/${tenant.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`
-    : null;
+    : (msg) => `https://wa.me/?text=${encodeURIComponent(msg)}`;
 
   const siteInitial = siteName.charAt(0).toUpperCase();
 
