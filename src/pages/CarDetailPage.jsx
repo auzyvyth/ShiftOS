@@ -197,31 +197,31 @@ export default function CarDetailPage() {
       }
       trackEvent(carData, 'car_view');
 
+      // fetch similar listings — same brand first, fallback to any dealer listing
       if (carData.dealer_id) {
-        const selectFields = '*';
-        const { data: sameBrand } = await supabase
+        const simFields = 'id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, image_url, is_recon, auction_grade, interior_grade, import_country';
+        const { data: simBrand } = await supabase
           .from('car_listings')
-          .select(selectFields)
+          .select(simFields)
           .eq('dealer_id', carData.dealer_id)
           .eq('brand', carData.brand)
           .neq('status', 'sold')
           .neq('id', carData.id)
           .order('created_at', { ascending: false })
           .limit(6);
-        if (sameBrand && sameBrand.length >= 2) {
-          setSimilarCars(sameBrand);
-          console.log('similarCars set (brand):', sameBrand.length);
+        if ((simBrand || []).length >= 3) {
+          setSimilarCars(simBrand);
         } else {
-          const { data: anyDealer } = await supabase
+          const { data: simAny } = await supabase
             .from('car_listings')
-            .select(selectFields)
+            .select(simFields)
             .eq('dealer_id', carData.dealer_id)
             .neq('status', 'sold')
             .neq('id', carData.id)
             .order('created_at', { ascending: false })
             .limit(6);
-          setSimilarCars(anyDealer || []);
-          console.log('similarCars set:', (anyDealer || []).length);
+          const a = simBrand || [], b = simAny || [];
+          setSimilarCars(b.length > a.length ? b : a);
         }
       }
 
@@ -794,8 +794,8 @@ export default function CarDetailPage() {
                 {fmtPrice(car.selling_price)}
               </p>
               {calcMonthly(car.selling_price) && (
-                <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-                  / mo: <span style={{ color: '#e5e7eb', fontWeight: 500, fontSize: '14px' }}>RM {fmt(calcMonthly(car.selling_price))}</span>
+                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+                  / mo: <span style={{ color: '#9ca3af', fontWeight: 500 }}>RM {fmt(calcMonthly(car.selling_price))}</span>
                 </span>
               )}
             </div>
@@ -1139,9 +1139,8 @@ export default function CarDetailPage() {
         )}
 
         {/* ── similar listings ── */}
-        {similarCars.length >= 0 && (
+        {similarCars.length > 0 && (
           <section style={{ borderTop: '1px solid rgba(255,255,255,0.06)', maxWidth: 1200, margin: '0 auto', padding: '52px 24px 80px', fontFamily: "'DM Sans', sans-serif" }}>
-            <p style={{color:'red',fontSize:12}}>similar count: {similarCars.length}</p>
             <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', margin: '0 0 6px' }}>
               You might also like
             </p>
