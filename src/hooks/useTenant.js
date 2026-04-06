@@ -21,6 +21,8 @@ export default function useTenant() {
   useEffect(() => {
     async function resolve() {
       const subdomain = getSubdomain();
+      console.log('hostname:', window.location.hostname);
+      console.log('subdomain detected:', subdomain);
       if (!subdomain) {
         setTenant(null); // main domain, show all
         setLoading(false);
@@ -31,6 +33,7 @@ export default function useTenant() {
         .select('id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, whatsapp_number')
         .eq('subdomain', subdomain)
         .maybeSingle();
+      console.log('tenant resolved:', data);
       setTenant(data || null);
       setLoading(false);
     }
