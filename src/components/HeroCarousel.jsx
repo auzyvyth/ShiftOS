@@ -464,7 +464,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
         if (tenant) {
           query = query.eq("dealer_id", tenant.id);
         } else if (isSubdomain()) {
-          query = query.eq("dealer_id", "no-match");
+          query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
         }
 
         const { data, error } = await query.order("sort_order", { ascending: true });

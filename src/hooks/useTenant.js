@@ -5,20 +5,24 @@ export const MARKETPLACE_DOMAIN = 'xdrive.my';
 export const DASHBOARD_DOMAIN = 'shiftos.com';
 
 export function getSubdomain() {
-  const hostname = window.location.hostname;
-  // localhost testing: ?tenant=demo in URL
   const params = new URLSearchParams(window.location.search);
   if (params.get('tenant')) return params.get('tenant');
+  const hostname = window.location.hostname;
   const parts = hostname.split('.');
-  if (parts.length <= 2) return null; // xdrive.my or localhost = no subdomain
-  return parts[0]; // rasniaga.xdrive.my → 'rasniaga'
+  if (parts.length < 3) return null;
+  if (parts[0] === 'www') return null;
+  return parts[0];
 }
 
 export function isSubdomain() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('tenant')) return true;
-  const parts = window.location.hostname.split('.');
-  return parts.length > 2;
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+  const parts = hostname.split('.');
+  if (parts.length < 3) return false;
+  if (parts[0] === 'www') return false;
+  return true;
 }
 
 export default function useTenant() {
