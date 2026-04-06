@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -95,6 +95,8 @@ export default function OnboardingPage() {
   const [dealerType, setDealerType] = useState('');
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
+  const [subdomain, setSubdomain] = useState('');
+  const subdomainTouched = useRef(false);
 
   // Step 3 — Operations
   const [fleetSize, setFleetSize] = useState('');
@@ -111,6 +113,12 @@ export default function OnboardingPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (subdomainTouched.current) return;
+    const auto = dealerName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+    setSubdomain(auto);
+  }, [dealerName]);
+
   const goTo = (next) => {
     const dir = next > step ? 'forward' : 'back';
     setAnimDir(dir);
@@ -120,7 +128,7 @@ export default function OnboardingPage() {
 
   const canProceed = () => {
     if (step === 1) return fullName.trim().length >= 2 && phone.length >= 10;
-    if (step === 2) return dealerName.trim() && dealerType && state;
+    if (step === 2) return dealerName.trim() && dealerType && state && /^[a-z0-9]{3,20}$/.test(subdomain);
     if (step === 3) return fleetSize;
     return true;
   };
@@ -140,6 +148,7 @@ export default function OnboardingPage() {
         role:                'dealer',
         is_active:           true,
         onboarding_complete: true,
+        subdomain:           subdomain,
       });
       if (err) throw err;
       setDone(true);
@@ -804,6 +813,43 @@ export default function OnboardingPage() {
                 <p className="ob-subtitle">This creates your ShiftOS workspace. You can always update these details later.</p>
                 <div className="ob-fields">
                   <Input label="Dealership Name" value={dealerName} onChange={setDealerName} placeholder="Fast Track Auto Sdn Bhd" />
+
+                  {/* Subdomain */}
+                  <div className={`inp-wrap ${subdomain ? 'inp-filled' : ''}`} style={{ paddingTop: 20 }}>
+                    <label className="inp-label">Your XDrive URL</label>
+                    <input
+                      className="inp-field"
+                      value={subdomain}
+                      maxLength={20}
+                      placeholder="yourbrand"
+                      onChange={e => {
+                        subdomainTouched.current = true;
+                        setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20));
+                      }}
+                      autoComplete="off"
+                    />
+                    <div className="inp-line" />
+                    {subdomain ? (
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)',
+                          borderRadius: 6, padding: '4px 10px',
+                          fontFamily: "'Syne Mono', monospace", fontSize: 12, color: '#f87171',
+                          letterSpacing: 0.5,
+                        }}>
+                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>{subdomain}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.2)' }}>.xdrive.my</span>
+                        </span>
+                        {!/^[a-z0-9]{3,20}$/.test(subdomain) && (
+                          <span style={{ fontSize: 11, color: '#f87171' }}>Min 3 chars, letters & numbers only</span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="inp-hint">Auto-filled from dealership name — you can edit it</p>
+                    )}
+                  </div>
+
                   <div style={{height:8}}/>
                   <p className="pill-label">Dealership Type</p>
                   <div className="pills">
@@ -864,6 +910,7 @@ export default function OnboardingPage() {
                   <div className="review-row"><span className="review-key">Name</span><span className="review-val">{dealerName}</span></div>
                   <div className="review-row"><span className="review-key">Type</span><span className="review-val">{dealerType}</span></div>
                   <div className="review-row"><span className="review-key">Location</span><span className="review-val">{city ? `${city}, ${state}` : state}</span></div>
+                  <div className="review-row"><span className="review-key">XDrive URL</span><span className="review-val" style={{ color: '#f87171' }}>{subdomain}.xdrive.my</span></div>
                 </div>
 
                 <div className="review-card">
