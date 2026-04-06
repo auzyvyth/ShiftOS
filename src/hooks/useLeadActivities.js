@@ -10,7 +10,7 @@ export function useLeadActivities(leadId) {
     setLoading(true);
     const { data } = await supabase
       .from('lead_activities')
-      .select('*, creator:created_by ( full_name )')
+      .select('*, creator:created_by ( id, full_name )')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: true });
     setActivities(data || []);
@@ -22,16 +22,25 @@ export function useLeadActivities(leadId) {
   const addActivity = useCallback(async (payload) => {
     if (!leadId) return;
     const { data: { user } } = await supabase.auth.getUser();
-    const row = { ...payload, lead_id: leadId, created_by: user?.id };
-    const { data, error } = await supabase
+
+    // Only the columns that exist in lead_activities
+    const row = {
+      lead_id:       leadId,
+      activity_type: payload.activity_type || 'note_added',
+      note:          payload.note          ?? null,
+      from_stage:    payload.from_stage    ?? null,
+      to_stage:      payload.to_stage      ?? null,
+      created_by:    user?.id              ?? null,
+    };
+
+    console.log('activity payload:', row);
+
+    const { error } = await supabase
       .from('lead_activities')
-      .insert(row)
-      .select('*, creator:created_by ( full_name )');
+      .insert(row);
     if (error) throw error;
-    const inserted = data?.[0];
-    if (inserted) setActivities(prev => [...prev, inserted]);
-    return inserted;
-  }, [leadId]);
+    await fetchActivities();
+  }, [leadId, fetchActivities]);
 
   return { activities, loading, fetchActivities, addActivity };
 }
