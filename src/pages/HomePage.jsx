@@ -386,7 +386,7 @@ const HomePage = () => {
       if (tenant) {
         query = query.eq("dealer_id", tenant.id);
       } else if (isSubdomain()) {
-        query = query.eq("dealer_id", "no-match");
+        query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
       }
 
       const { data, error, count } = await query
@@ -417,7 +417,7 @@ const HomePage = () => {
       if (tenant) {
         query = query.eq("dealer_id", tenant.id);
       } else if (isSubdomain()) {
-        query = query.eq("dealer_id", "no-match");
+        query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
       }
 
       const { count } = await query;
