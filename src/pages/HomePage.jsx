@@ -447,6 +447,23 @@ const HomePage = () => {
     };
   }, [tenant, tenantLoading]);
 
+  useEffect(() => {
+    async function checkDealerRedirect() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subdomain, role')
+        .eq('id', user.id)
+        .maybeSingle();
+      const isOnMainDomain = !isSubdomain();
+      if (isOnMainDomain && profile?.subdomain && profile?.role === 'dealer') {
+        window.location.href = `https://${profile.subdomain}.xdrive.my`;
+      }
+    }
+    checkDealerRedirect();
+  }, []);
+
   const searchUrl = () => {
     const p = new URLSearchParams();
     if (brand) p.set("brand", brand);
