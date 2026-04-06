@@ -9,6 +9,7 @@ import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
+import useSubscription from "../hooks/useSubscription";
 import {
   Car,
   PlusCircle,
@@ -283,6 +284,16 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [tgTesting, setTgTesting] = useState(false);
   const [tgTestResult, setTgTestResult] = useState(null);
 
+  const defaultSfWhy = { title: "", items: [{title:"",desc:""},{title:"",desc:""},{title:"",desc:""},{title:"",desc:""}] };
+  const defaultSfHow = { title: "", steps: [{title:"",desc:""},{title:"",desc:""},{title:"",desc:""},{title:"",desc:""}] };
+  const defaultSfTestimonials = [{name:"",location:"",text:""},{name:"",location:"",text:""},{name:"",location:"",text:""}];
+  const defaultSfCta = { title: "", subtitle: "", primary_label: "", secondary_label: "" };
+
+  const [sfWhy, setSfWhy] = useState(() => ({ ...defaultSfWhy, ...(profile?.storefront_why || {}), items: (profile?.storefront_why?.items || defaultSfWhy.items).map(i => ({...i})) }));
+  const [sfHow, setSfHow] = useState(() => ({ ...defaultSfHow, ...(profile?.storefront_how || {}), steps: (profile?.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) }));
+  const [sfTestimonials, setSfTestimonials] = useState(() => (profile?.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
+  const [sfCta, setSfCta] = useState(() => ({ ...defaultSfCta, ...(profile?.storefront_cta || {}) }));
+
   // Sync all form fields whenever the profile prop changes.
   // useState initial values are only read on mount, so without this effect
   // the form would show stale data after a save (onProfileUpdate) or an
@@ -305,6 +316,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setTgToken(profile.telegram_bot_token || "");
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
+    setSfWhy({ ...defaultSfWhy, ...(profile.storefront_why || {}), items: (profile.storefront_why?.items || defaultSfWhy.items).map(i => ({...i})) });
+    setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
+    setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
+    setSfCta({ ...defaultSfCta, ...(profile.storefront_cta || {}) });
   }, [profile]);
 
   const changeCount = profile?.dealership_change_count || 0;
@@ -444,6 +459,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
     }
     setSaving((p) => ({ ...p, password: false }));
   };
+
+  const saveStorefront = () =>
+    saveSection("storefront", {
+      storefront_why: sfWhy,
+      storefront_how: sfHow,
+      storefront_testimonials: sfTestimonials,
+      storefront_cta: sfCta,
+    });
 
   const SaveBtn = ({ sectionKey, onClick, disabled }) => (
     <button
@@ -863,7 +886,68 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
       </SettingsSection>
 
-      {/* ── 5. Danger Zone ── */}
+      {/* ── 5. Storefront Content ── */}
+      <SettingsSection
+        title="Storefront Content"
+        subtitle="Customise the Why, How It Works, Testimonials, and CTA sections on your public page"
+        icon={Globe}
+      >
+        {/* Why section */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Why Choose Us</p>
+        <input className={iCls} placeholder="Section title" value={sfWhy.title} onChange={e => setSfWhy(p => ({ ...p, title: e.target.value }))} />
+        <div className="mt-3 space-y-3">
+          {sfWhy.items.map((item, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2">
+              <input className={iCls} placeholder={`Item ${i+1} title`} value={item.title} onChange={e => setSfWhy(p => { const items = p.items.map((x,j) => j===i ? {...x, title: e.target.value} : x); return {...p, items}; })} />
+              <input className={iCls} placeholder="Description" value={item.desc} onChange={e => setSfWhy(p => { const items = p.items.map((x,j) => j===i ? {...x, desc: e.target.value} : x); return {...p, items}; })} />
+            </div>
+          ))}
+        </div>
+
+        {/* How It Works */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">How It Works</p>
+        <input className={iCls} placeholder="Section title" value={sfHow.title} onChange={e => setSfHow(p => ({ ...p, title: e.target.value }))} />
+        <div className="mt-3 space-y-3">
+          {sfHow.steps.map((step, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2">
+              <input className={iCls} placeholder={`Step ${i+1} title`} value={step.title} onChange={e => setSfHow(p => { const steps = p.steps.map((x,j) => j===i ? {...x, title: e.target.value} : x); return {...p, steps}; })} />
+              <input className={iCls} placeholder="Description" value={step.desc} onChange={e => setSfHow(p => { const steps = p.steps.map((x,j) => j===i ? {...x, desc: e.target.value} : x); return {...p, steps}; })} />
+            </div>
+          ))}
+        </div>
+
+        {/* Testimonials */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Testimonials</p>
+        <div className="space-y-4">
+          {sfTestimonials.map((t, i) => (
+            <div key={i} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input className={iCls} placeholder="Name" value={t.name} onChange={e => setSfTestimonials(p => p.map((x,j) => j===i ? {...x, name: e.target.value} : x))} />
+                <input className={iCls} placeholder="Location" value={t.location} onChange={e => setSfTestimonials(p => p.map((x,j) => j===i ? {...x, location: e.target.value} : x))} />
+              </div>
+              <textarea className={iCls} rows={2} placeholder="Testimonial text" value={t.text} onChange={e => setSfTestimonials(p => p.map((x,j) => j===i ? {...x, text: e.target.value} : x))} style={{ resize: "vertical" }} />
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Call to Action</p>
+        <div className="space-y-2">
+          <input className={iCls} placeholder="CTA title" value={sfCta.title} onChange={e => setSfCta(p => ({ ...p, title: e.target.value }))} />
+          <input className={iCls} placeholder="Subtitle" value={sfCta.subtitle} onChange={e => setSfCta(p => ({ ...p, subtitle: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <input className={iCls} placeholder="Primary button label" value={sfCta.primary_label} onChange={e => setSfCta(p => ({ ...p, primary_label: e.target.value }))} />
+            <input className={iCls} placeholder="Secondary button label" value={sfCta.secondary_label} onChange={e => setSfCta(p => ({ ...p, secondary_label: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <SaveBtn sectionKey="storefront" onClick={saveStorefront} />
+          <ErrMsg k="storefront" />
+        </div>
+      </SettingsSection>
+
+      {/* ── 6. Danger Zone ── */}
       <div
         className="rounded-xl overflow-hidden"
         style={{
@@ -2964,6 +3048,15 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const redirectByRole = useRoleRedirect("dealer");
+  const { status, loading: subLoading } = useSubscription();
+
+  if (!subLoading && status === 'expired') return (
+    <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
+      <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
+      <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
+      <a href="https://wa.me/60174155191" style={{ background: '#dc2626', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+    </div>
+  );
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listings");
