@@ -13,7 +13,7 @@ import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
-import useTenant from '../hooks/useTenant';
+import useTenant, { isSubdomain } from '../hooks/useTenant';
 
 /* ─────────────────────────────────────────
    PRICE BRACKETS
@@ -171,7 +171,11 @@ const CarsPage = () => {
       .from('car_listings')
       .select('*');
 
-    if (tenant) query = query.eq('dealer_id', tenant.id);
+    if (tenant) {
+      query = query.eq('dealer_id', tenant.id);
+    } else if (isSubdomain()) {
+      query = query.eq('dealer_id', 'no-match');
+    }
 
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) { setFetchError(error.message); setAllCars([]); }
@@ -381,6 +385,15 @@ const CarsPage = () => {
   );
 
   /* ─────────── loading state ─────────── */
+  if (isSubdomain() && tenant === null && !tenantLoading) {
+    return (
+      <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
+        <p style={{ color: '#6b7280', fontSize: 15 }}>This dealer page doesn't exist.</p>
+        <a href="https://xdrive.my" style={{ color: '#dc2626', fontSize: 13, marginTop: 12 }}>← Browse all cars</a>
+      </div>
+    );
+  }
+
   if (loading && allCars.length === 0) return (
     <>
       <Header />
