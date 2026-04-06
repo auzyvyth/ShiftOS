@@ -28,6 +28,7 @@ import CarCard from "@/components/CarCard";
 import HeroCarousel from "@/components/HeroCarousel";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
+import useTenant from "../hooks/useTenant";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
@@ -363,6 +364,7 @@ const glassCard = {
 const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl } = useSiteProfile();
+  const { tenant, loading: tenantLoading } = useTenant();
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -373,12 +375,17 @@ const HomePage = () => {
   const [maxPrice, setMaxPrice] = useState("");
 
   useEffect(() => {
+    if (tenantLoading) return;
     let ch, soldCh;
     const load = async () => {
-      const { data, error, count } = await supabase
+      let query = supabase
         .from("car_listings")
         .select(CAR_FIELDS, { count: "exact" })
-        .eq("status", "active")
+        .eq("status", "active");
+
+      if (tenant) query = query.eq("dealer_id", tenant.id);
+
+      const { data, error, count } = await query
         .order("created_at", { ascending: false })
         .limit(60);
       if (!error && data) {
@@ -398,10 +405,14 @@ const HomePage = () => {
       setLoading(false);
     };
     const fetchSoldCount = async () => {
-      const { count } = await supabase
+      let query = supabase
         .from("car_listings")
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
+
+      if (tenant) query = query.eq("dealer_id", tenant.id);
+
+      const { count } = await query;
       setSoldCount(count || 0);
     };
     load();
@@ -426,7 +437,7 @@ const HomePage = () => {
       if (ch) supabase.removeChannel(ch);
       if (soldCh) supabase.removeChannel(soldCh);
     };
-  }, []);
+  }, [tenant, tenantLoading]);
 
   const searchUrl = () => {
     const p = new URLSearchParams();
