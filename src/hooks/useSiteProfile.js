@@ -5,14 +5,12 @@ export function useSiteProfile() {
 
   const siteName = tenant?.site_name || tenant?.dealership || 'XDrive';
 
-  const waUrl = tenant?.whatsapp_number
-    ? (msg) => `https://wa.me/${tenant.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`
-    : (msg) => `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  const waUrl = (msg) => {
+    const phone = tenant?.whatsapp_number
+      ? tenant.whatsapp_number.replace(/\D/g, '')
+      : '';
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  };
 
-  const siteInitial = siteName.charAt(0).toUpperCase();
-
-  return { siteName, siteInitial, waUrl };
+  return { siteName, waUrl };
 }
-
-/** No-op kept for import compatibility */
-export function clearSiteProfileCache() {}
