@@ -86,9 +86,9 @@ export default async function handler(req) {
     const slug = decodeURIComponent(carMatch[1]);
 
     const supabase = createClient(
-      process.env.VITE_SUPABASE_URL 'https://lemdkdizdlcirhbzqlos.supabase.com',
-      process.env.VITE_SUPABASE_ANON_KEY 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4',
-    );
+      process.env.VITE_SUPABASE_URL,
+      process.env.VITE_SUPABASE_ANON_KEY,
+
 
     const { data: car } = await supabase
       .from("car_listings")
