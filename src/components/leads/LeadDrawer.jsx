@@ -93,7 +93,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [focusedInp, setFocusedInp]   = useState(null);
 
   const notesDebounce = useRef(null);
-  const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id);
+  const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
 
   // Sync when parent updates
   useEffect(() => {

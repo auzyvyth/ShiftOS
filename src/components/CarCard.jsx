@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock } from 'lucide-react';
 import GradeBadge from './GradeBadge';
+import { buildWaUrl } from '../hooks/useCTAContext';
+import { trackEvent } from '../lib/analytics';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -13,7 +15,9 @@ const getAgeDays = (createdAt) => {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
 };
 
-const CarCard = ({ car, showDiscountBadge = true }) => {
+const XDRIVE_PHONE = '60174155191';
+
+const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const navigate = useNavigate();
   const [imgError,  setImgError]  = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -55,9 +59,13 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
     ['Auto','Automatic','AT'].includes(transmission) ? 'Auto' :
     ['Manual','MT'].includes(transmission)           ? 'Manual' : transmission || null;
 
-  const whatsappUrl = `https://wa.me/60174155191?text=${encodeURIComponent(
-    `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`
-  )}`;
+  const waText = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
+  const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
+  const whatsappUrl = buildWaUrl(
+    ctxResolved || { type: 'listing', profile: null, ref: null },
+    XDRIVE_PHONE,
+    waText
+  );
 
   const specs = [
     formattedMileage && { icon: Gauge,     label: formattedMileage },
@@ -226,7 +234,12 @@ const CarCard = ({ car, showDiscountBadge = true }) => {
           {/* WhatsApp CTA */}
           <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
             className="wa-cta car-card-wa"
-            onClick={e => e.stopPropagation()}
+            onClick={e => {
+              e.stopPropagation();
+              if (ctxResolved?.type === 'salesman') {
+                trackEvent('whatsapp_click', { carId: car.id, carName: `${year} ${brand} ${model}`, dealerId: car.dealer_id });
+              }
+            }}
             style={{
               marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
               background: isSold ? 'rgba(255,255,255,0.04)' : 'rgba(37,211,102,0.1)',
