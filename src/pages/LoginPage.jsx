@@ -119,7 +119,10 @@ export default function LoginPage() {
 
     if (role === 'superadmin' || role === 'dealer') {
       if (subdomain) {
-        window.location.href = `https://${subdomain}.xdrive.my`;
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session.access_token;
+        const refreshToken = session.refresh_token;
+        window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
       } else {
         window.location.href = 'https://xdrive.my/dashboard';
       }

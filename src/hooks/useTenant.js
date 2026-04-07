@@ -34,6 +34,17 @@ export default function useTenant() {
 
   useEffect(() => {
     async function resolve() {
+      const params = new URLSearchParams(window.location.search);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        // Clean the URL
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+
       const subdomain = getSubdomain();
       console.log("hostname:", window.location.hostname);
       console.log("subdomain detected:", subdomain);
