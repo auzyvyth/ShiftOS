@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "edge" };
 
-const SITE_URL = "https://xdrive.my";
+const SITE_URL = "https://www.xdrive.my";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.jpg`;
 const SITE_TITLE = "Drevo · XDrive Malaysia";
 const SITE_DESCRIPTION =
