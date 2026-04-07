@@ -28,6 +28,8 @@ export function isSubdomain() {
   return !!getSubdomain();
 }
 
+let authListenerActive = false;
+
 const DASHBOARD_PATHS = [
   "/dashboard",
   "/salesman",
@@ -43,6 +45,9 @@ export default function useTenant() {
 
   // Redirect authenticated users to their correct subdomain on auth state change
   useEffect(() => {
+    if (authListenerActive) return;
+    authListenerActive = true;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -63,9 +68,11 @@ export default function useTenant() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("subdomain, role")
+        .select("subdomain, role, id, full_name")
         .eq("id", session.user.id)
         .maybeSingle();
+
+      console.log("raw profile data:", profile);
 
       const userSubdomain = profile?.subdomain;
       const expectedHostname = userSubdomain
@@ -86,7 +93,10 @@ export default function useTenant() {
         : "https://xdrive.my";
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      authListenerActive = false;
+    };
   }, []);
 
   useEffect(() => {
