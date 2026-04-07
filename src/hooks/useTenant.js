@@ -8,21 +8,18 @@ export function getSubdomain() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('tenant')) return params.get('tenant');
   const hostname = window.location.hostname;
-  const parts = hostname.split('.');
-  if (parts.length < 3) return null;
-  if (parts[0] === 'www') return null;
-  return parts[0];
+  const stripped = hostname.replace('.xdrive.my', '');
+  const parts = stripped.split('.');
+  const subdomain = hostname.includes('.xdrive.my') && parts[0] !== hostname
+    ? parts[0]
+    : null;
+  return subdomain;
 }
 
 export function isSubdomain() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('tenant')) return true;
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
-  const parts = hostname.split('.');
-  if (parts.length < 3) return false;
-  if (parts[0] === 'www') return false;
-  return true;
+  return !!getSubdomain();
 }
 
 export default function useTenant() {
@@ -35,6 +32,7 @@ export default function useTenant() {
       console.log('hostname:', window.location.hostname);
       console.log('subdomain detected:', subdomain);
       if (!subdomain) {
+        localStorage.removeItem('tenantSubdomain');
         setTenant(null); // main domain, show all
         setLoading(false);
         return;
