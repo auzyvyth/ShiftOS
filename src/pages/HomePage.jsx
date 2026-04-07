@@ -454,8 +454,12 @@ const HomePage = () => {
         .select('subdomain, role')
         .eq('id', user.id)
         .maybeSingle();
-      const isOnMainDomain = !isSubdomain();
-      if (isOnMainDomain && profile?.subdomain && profile?.role === 'dealer') {
+      // Only redirect dealers with a subdomain, never superadmin or salesman
+      if (
+        profile?.role === 'dealer' &&
+        profile?.subdomain &&
+        !isSubdomain()
+      ) {
         window.location.href = `https://${profile.subdomain}.xdrive.my`;
       }
     }
