@@ -1,5 +1,8 @@
 import useTenant from './useTenant';
 
+// No-op: useTenant fetches fresh on every mount, no cache to clear.
+export function clearSiteProfileCache() {}
+
 export function useSiteProfile() {
   const { tenant } = useTenant();
 

@@ -4,6 +4,7 @@ import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, Arr
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
 import CarCard from '../components/CarCard';
+import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 
 /* ─── helpers ─── */
 const fmt      = (n) => Number(n).toLocaleString('en-MY');
@@ -97,6 +98,7 @@ export default function CarDetailPage() {
 
   const [car, setCar]             = useState(null);
   const [dealer, setDealer]       = useState(null);
+  const ctaCtx = useCTAContext();
   const [loading, setLoading]     = useState(true);
   const [notFound, setNotFound]   = useState(false);
   const [similarCars, setSimilarCars] = useState([]);
@@ -281,10 +283,9 @@ export default function CarDetailPage() {
 
   /* ── WhatsApp ── */
   async function handleWhatsApp() {
-    const phone = dealer?.whatsapp_number?.replace(/\D/g, '');
-    const text  = `Hi, I'm interested in the ${car.year} ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''}. Is it still available?`;
+    const text = `Hi, I'm interested in the ${car.year} ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''}. Is it still available?`;
     trackEvent(car, 'whatsapp_click');
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, text), '_blank');
   }
 
   /* ── booking ── */
@@ -1149,13 +1150,13 @@ export default function CarDetailPage() {
             </h2>
             {/* desktop grid */}
             <div className="cdp-similar-grid">
-              {similarCars.map(s => <CarCard key={s.id} car={s} />)}
+              {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
             </div>
             {/* mobile horizontal scroll */}
             <div className="cdp-similar-scroll">
               {similarCars.map(s => (
                 <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                  <CarCard car={s} />
+                  <CarCard car={s} ctaContext={ctaCtx} />
                 </div>
               ))}
             </div>
