@@ -365,7 +365,7 @@ const glassCard = {
 const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl } = useSiteProfile();
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { tenant } = useTenant();
   const ctaCtx = useCTAContext();
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
@@ -377,7 +377,7 @@ const HomePage = () => {
   const [maxPrice, setMaxPrice] = useState("");
 
   useEffect(() => {
-    if (tenantLoading) return;
+    if (tenant === undefined) return; // still loading
     let ch, soldCh;
     const load = async () => {
       const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
@@ -441,7 +441,7 @@ const HomePage = () => {
       if (ch) supabase.removeChannel(ch);
       if (soldCh) supabase.removeChannel(soldCh);
     };
-  }, [tenant, tenantLoading]);
+  }, [tenant]);
 
   useEffect(() => {
     async function checkDealerRedirect() {
@@ -524,7 +524,7 @@ const HomePage = () => {
   const ctaPrimaryLabel   = ctaData.primary_label;
   const ctaSecondaryLabel = ctaData.secondary_label;
 
-  if (isSubdomain() && tenant === null && !tenantLoading) {
+  if (isSubdomain() && tenant === null && tenant !== undefined) {
     return (
       <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
         <p style={{ color: '#6b7280', fontSize: 15 }}>This dealer page doesn't exist.</p>

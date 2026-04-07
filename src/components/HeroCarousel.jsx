@@ -437,7 +437,7 @@ function formatPrice(val) {
 }
 
 export default function HeroCarousel({ siteName, waNumber }) {
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { tenant } = useTenant();
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
@@ -452,31 +452,25 @@ export default function HeroCarousel({ siteName, waNumber }) {
   const progressStart = useRef(null);
 
   useEffect(() => {
-    if (tenantLoading) return;
-    const to = setTimeout(() => setLoading(false), 4000);
+    if (tenant === undefined) return; // still loading
     const fetchSlides = async () => {
       try {
         const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
-
-        const heroQuery = supabase
+        const { data, error } = await supabase
           .from("hero_carousel_slides")
           .select("*")
           .eq("active", true)
           .eq("dealer_id", tenant?.id ?? SUPERADMIN_ID)
           .order("sort_order", { ascending: true });
-
-        const { data, error } = await heroQuery;
         setSlides(!error && data ? data : []);
       } catch {
         setSlides([]);
       } finally {
-        clearTimeout(to);
         setLoading(false);
       }
     };
     fetchSlides();
-    return () => clearTimeout(to);
-  }, [tenant, tenantLoading]);
+  }, [tenant]);
 
   // Preload ALL slide images on mount so they're cached
   useEffect(() => {
