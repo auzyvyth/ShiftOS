@@ -380,6 +380,8 @@ const HomePage = () => {
     if (tenantLoading) return;
     let ch, soldCh;
     const load = async () => {
+      const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
+
       let query = supabase
         .from("car_listings")
         .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)', { count: "exact" })
@@ -387,9 +389,7 @@ const HomePage = () => {
         .order("created_at", { ascending: false })
         .limit(60);
 
-      if (tenant?.id) {
-        query = query.eq("dealer_id", tenant.id);
-      }
+      query = query.eq("dealer_id", tenant?.id ?? SUPERADMIN_ID);
 
       const { data, error, count } = await query;
       if (!error && data) {
@@ -414,9 +414,7 @@ const HomePage = () => {
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
 
-      if (tenant?.id) {
-        query = query.eq("dealer_id", tenant.id);
-      }
+      query = query.eq("dealer_id", tenant?.id ?? SUPERADMIN_ID);
 
       const { count } = await query;
       setSoldCount(count || 0);

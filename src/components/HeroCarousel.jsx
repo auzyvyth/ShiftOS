@@ -456,16 +456,16 @@ export default function HeroCarousel({ siteName, waNumber }) {
     const to = setTimeout(() => setLoading(false), 4000);
     const fetchSlides = async () => {
       try {
-        let heroQuery = supabase
+        const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
+
+        const heroQuery = supabase
           .from("hero_carousel_slides")
-          .select("*, car_listings(slug)")
-          .eq("active", true);
+          .select("*")
+          .eq("active", true)
+          .eq("dealer_id", tenant?.id ?? SUPERADMIN_ID)
+          .order("sort_order", { ascending: true });
 
-        if (tenant?.id) {
-          heroQuery = heroQuery.eq("dealer_id", tenant.id);
-        }
-
-        const { data, error } = await heroQuery.order("sort_order", { ascending: true });
+        const { data, error } = await heroQuery;
         setSlides(!error && data ? data : []);
       } catch {
         setSlides([]);
