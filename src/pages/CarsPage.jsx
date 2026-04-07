@@ -192,7 +192,7 @@ const CarsPage = () => {
     setLoading(true);
     let query = supabase
       .from('car_listings')
-      .select('*, profiles(dealership, site_name, subdomain, whatsapp_number)')
+      .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, logo_url, brand_color)')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
