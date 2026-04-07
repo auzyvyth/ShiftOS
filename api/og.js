@@ -72,7 +72,6 @@ export default async function handler(req) {
   const userAgent = req.headers.get("user-agent") ?? "";
   const canonicalUrl = `${SITE_URL}${pathname}${search}`;
 
-  // Non-bots: redirect straight to the real domain (avoids loops)
   if (!isBot(userAgent)) {
     return new Response(null, {
       status: 302,
@@ -80,7 +79,6 @@ export default async function handler(req) {
     });
   }
 
-  // Bot on /cars/[slug]
   const carMatch = pathname.match(/^\/cars\/([^/]+)\/?$/);
   if (carMatch) {
     const slug = decodeURIComponent(carMatch[1]);
@@ -88,7 +86,7 @@ export default async function handler(req) {
     const supabase = createClient(
       process.env.VITE_SUPABASE_URL,
       process.env.VITE_SUPABASE_ANON_KEY,
-
+    );
 
     const { data: car } = await supabase
       .from("car_listings")
@@ -127,7 +125,6 @@ export default async function handler(req) {
     }
   }
 
-  // Bot on any other path — generic Drevo OG
   return new Response(
     buildHtml({
       title: SITE_TITLE,
