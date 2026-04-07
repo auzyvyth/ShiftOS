@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
-export function useLeadActivities(leadId) {
+export function useLeadActivities(leadId, dealerId) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -23,9 +23,9 @@ export function useLeadActivities(leadId) {
     if (!leadId) return;
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Only the columns that exist in lead_activities
     const row = {
       lead_id:       leadId,
+      dealer_id:     dealerId             ?? null,
       activity_type: payload.activity_type || 'note_added',
       note:          payload.note          ?? null,
       from_stage:    payload.from_stage    ?? null,
@@ -33,11 +33,10 @@ export function useLeadActivities(leadId) {
       created_by:    user?.id              ?? null,
     };
 
-    console.log('activity payload:', row);
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('lead_activities')
       .insert(row);
+    console.log('activity error:', JSON.stringify(error));
     if (error) throw error;
     await fetchActivities();
   }, [leadId, fetchActivities]);

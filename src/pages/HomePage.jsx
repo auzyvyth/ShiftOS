@@ -29,6 +29,7 @@ import HeroCarousel from "@/components/HeroCarousel";
 import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
+import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
@@ -365,6 +366,7 @@ const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl } = useSiteProfile();
   const { tenant, loading: tenantLoading } = useTenant();
+  const ctaCtx = useCTAContext();
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -738,7 +740,7 @@ const HomePage = () => {
             <div className="car-grid-hp">
               {loading
                 ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-                : hotDeals.map((c) => <CarCard key={c.id} car={c} />)}
+                : hotDeals.map((c) => <CarCard key={c.id} car={c} ctaContext={ctaCtx} />)}
             </div>
           </div>
         </section>
@@ -801,7 +803,7 @@ const HomePage = () => {
           <div className="car-grid-hp" style={{ marginBottom: "32px" }}>
             {loading
               ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-              : featured.map((c) => <CarCard key={c.id} car={c} />)}
+              : featured.map((c) => <CarCard key={c.id} car={c} ctaContext={ctaCtx} />)}
           </div>
           <div style={{ textAlign: "center" }}>
             <Link
@@ -1472,11 +1474,13 @@ const HomePage = () => {
                 {ctaPrimaryLabel} <ArrowRight size={15} />
               </Link>
               <a
-                href={
-                  waUrl
-                    ? waUrl(`Hi ${siteName}, I need help finding a car`)
-                    : "#"
-                }
+                href={buildWaUrl(
+                  ctaCtx.type !== 'loading' ? ctaCtx : { type: 'listing', profile: null, ref: null },
+                  tenant?.whatsapp_number,
+                  ctaCtx.type === 'salesman'
+                    ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
+                    : `Hi ${siteName}, I need help finding a car`
+                ) || (waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="wa-btn-hp"

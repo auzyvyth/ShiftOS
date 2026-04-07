@@ -41,27 +41,31 @@ export function useLeads() {
   }, []);
 
   const updateLeadStage = useCallback(async (id, stage) => {
-    const { data, error: err } = await supabase
+    const stagePayload = { stage, updated_at: new Date().toISOString() };
+    const { error: err } = await supabase
       .from('leads')
-      .update({ stage, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select(SELECT_QUERY);
+      .update(stagePayload)
+      .eq('id', id);
+    console.log('leads update error:', JSON.stringify(err));
+    console.log('leads update payload:', JSON.stringify(stagePayload));
     if (err) throw err;
-    const updated = data?.[0];
-    if (updated) setLeads(prev => prev.map(l => l.id === id ? updated : l));
-    return updated;
+    const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
+    if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));
+    return data;
   }, []);
 
   const updateLead = useCallback(async (id, patch) => {
-    const { data, error: err } = await supabase
+    const updatePayload = { ...patch, updated_at: new Date().toISOString() };
+    const { error: err } = await supabase
       .from('leads')
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select(SELECT_QUERY);
+      .update(updatePayload)
+      .eq('id', id);
+    console.log('leads update error:', JSON.stringify(err));
+    console.log('leads update payload:', JSON.stringify(updatePayload));
     if (err) throw err;
-    const updated = data?.[0];
-    if (updated) setLeads(prev => prev.map(l => l.id === id ? updated : l));
-    return updated;
+    const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
+    if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));
+    return data;
   }, []);
 
   const deleteLead = useCallback(async (id) => {
