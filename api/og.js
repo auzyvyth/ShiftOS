@@ -1,5 +1,4 @@
 // Vercel Edge Function — OG meta tag handler for Drevo / XDrive
-// REMINDER: Add public/og-default.jpg (1200×630) as the default OG image asset.
 
 export const config = { runtime: "edge" };
 
@@ -8,6 +7,10 @@ const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.jpg`;
 const SITE_TITLE = "Drevo · XDrive Malaysia";
 const SITE_DESCRIPTION =
   "Browse quality used cars on XDrive — Malaysia's trusted car marketplace.";
+
+const SUPABASE_URL = "https://lemdkdizdlcirhbzqlos.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4";
 
 const BOT_PATTERNS = [
   "googlebot",
@@ -59,7 +62,7 @@ function buildHtml({ title, description, image, canonicalUrl }) {
   <meta name="twitter:image" content="${esc(image)}" />
 </head>
 <body>
-  <script>window.location.href = ${JSON.stringify("canonicalUrl")};</script>
+  <script>window.location.href = ${JSON.stringify(canonicalUrl)};</script>
 </body>
 </html>`;
 }
@@ -81,17 +84,12 @@ export default async function handler(req) {
   if (carMatch) {
     const slug = decodeURIComponent(carMatch[1]);
 
-    const supabaseUrl =
-      process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey =
-      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/car_listings?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=brand,model,variant,year,selling_price,mileage,colour,images,city,state,transmission,fuel_type&limit=1`,
+      `${SUPABASE_URL}/rest/v1/car_listings?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=brand,model,variant,year,selling_price,mileage,colour,images,city,state,transmission,fuel_type&limit=1`,
       {
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       },
     );
