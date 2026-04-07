@@ -285,6 +285,16 @@ export default function CarDetailPage() {
   async function handleWhatsApp() {
     const text = `Hi, I'm interested in the ${car.year} ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''}. Is it still available?`;
     trackEvent(car, 'whatsapp_click');
+    // Log enquiry (fire-and-forget, no await to avoid delaying WA open)
+    if (car?.dealer_id) {
+      supabase.from('whatsapp_enquiries').insert({
+        dealer_id: car.dealer_id,
+        listing_id: car.id,
+        buyer_message: text,
+        source: 'storefront',
+        ref_slug: sessionStorage.getItem('ref_slug') || null,
+      }).then(() => {});
+    }
     window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, text), '_blank');
   }
 
@@ -1168,11 +1178,4 @@ export default function CarDetailPage() {
       <div className="cdp-mobile-bar">
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
           WhatsApp
-        </button>
-        <button className="cdp-mobile-bar-book" onClick={() => bookingRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-          Book Viewing
-        </button>
-      </div>
-    </>
-  );
-}
+ 
