@@ -3577,15 +3577,14 @@ export default function DashboardPage() {
               Admin Panel
             </a>
           )}
-          <a
-            href="/"
-            target="_blank"
+          <button
+            onClick={() => window.open(`https://${profile?.subdomain}.xdrive.my`, '_blank')}
             className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
           >
             <Home className="w-4 h-4 flex-shrink-0" />
             View Site
             <Eye className="w-3 h-3 ml-auto opacity-40" />
-          </a>
+          </button>
         </nav>
 
         {/* ── Sidebar bottom: profile + settings + logout ── */}
