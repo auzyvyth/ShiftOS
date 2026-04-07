@@ -41,7 +41,7 @@ export default function useTenant() {
       }
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, whatsapp_number, storefront_why, storefront_how, storefront_testimonials, storefront_cta')
+        .select('id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, whatsapp_number, email, phone, social_facebook, social_instagram, social_tiktok, location, about_text, storefront_why, storefront_how, storefront_testimonials, storefront_cta')
         .eq('subdomain', subdomain)
         .maybeSingle();
       console.log('tenant resolved:', data);
