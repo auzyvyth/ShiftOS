@@ -14,6 +14,7 @@ import AdminPanel from './pages/AdminPanel';
 import AdminPage from './pages/AdminPage';
 import AccountsPanel from './pages/AccountsPanel';
 import ShiftOSPage from './pages/ShiftOSPage';
+import DealerSlugRedirect from './pages/DealerSlugRedirect';
 import './i18n/config';
 
 function App() {
@@ -45,6 +46,9 @@ function App() {
 
         {/* Public — ShiftOS marketing */}
         <Route path="/shiftos"    element={<ShiftOSPage />} />
+
+        {/* Dealer slug catch-all — redirects to subdomain */}
+        <Route path="/:dealerSlug" element={<DealerSlugRedirect />} />
       </Routes>
     </Router>
   );
