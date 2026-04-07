@@ -1,8 +1,6 @@
 // Vercel Edge Function — OG meta tag handler for Drevo / XDrive
 // REMINDER: Add public/og-default.jpg (1200×630) as the default OG image asset.
 
-import { createClient } from "@supabase/supabase-js";
-
 export const config = { runtime: "edge" };
 
 const SITE_URL = "https://xdrive.my";
@@ -61,7 +59,7 @@ function buildHtml({ title, description, image, canonicalUrl }) {
   <meta name="twitter:image" content="${esc(image)}" />
 </head>
 <body>
-  <script>window.location.href = ${JSON.stringify(canonicalUrl)};</script>
+  <script>window.location.href = ${JSON.stringify("canonicalUrl")};</script>
 </body>
 </html>`;
 }
@@ -83,19 +81,23 @@ export default async function handler(req) {
   if (carMatch) {
     const slug = decodeURIComponent(carMatch[1]);
 
-    const supabase = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.VITE_SUPABASE_ANON_KEY,
+    const supabaseUrl =
+      process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey =
+      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/car_listings?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=brand,model,variant,year,selling_price,mileage,colour,images,city,state,transmission,fuel_type&limit=1`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      },
     );
 
-    const { data: car } = await supabase
-      .from("car_listings")
-      .select(
-        "brand, model, variant, year, selling_price, mileage, colour, images, city, state, transmission, fuel_type",
-      )
-      .eq("slug", slug)
-      .eq("status", "active")
-      .maybeSingle();
+    const rows = await res.json();
+    const car = rows?.[0];
 
     if (car) {
       const title = `${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} – RM ${formatPrice(car.selling_price)}`;
