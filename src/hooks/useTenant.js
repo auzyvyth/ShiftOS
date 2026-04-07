@@ -8,6 +8,8 @@ export function getSubdomain() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('tenant')) return params.get('tenant');
   const hostname = window.location.hostname;
+  // Never parse subdomains on local dev
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168')) return null;
   const stripped = hostname.replace('.xdrive.my', '');
   const parts = stripped.split('.');
   const subdomain = hostname.includes('.xdrive.my') && parts[0] !== hostname
