@@ -52,6 +52,12 @@ export default function useTenant() {
       const userSubdomain = profile?.subdomain;
       const expectedHostname = userSubdomain ? `${userSubdomain}.xdrive.my` : 'xdrive.my';
 
+      console.log('auth event:', event);
+      console.log('current hostname:', hostname);
+      console.log('user subdomain from profile:', userSubdomain);
+      console.log('expected hostname:', expectedHostname);
+      console.log('redirecting?', hostname !== expectedHostname);
+
       // Already on the correct domain — do nothing
       if (hostname === expectedHostname) return;
 
