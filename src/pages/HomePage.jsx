@@ -378,9 +378,9 @@ const HomePage = () => {
 
   useEffect(() => {
     if (tenant === undefined) return; // still loading
+    const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
     let ch, soldCh;
     const load = async () => {
-      const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
 
       let query = supabase
         .from("car_listings")
