@@ -169,6 +169,7 @@ export default function LeadsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('lead_activities').insert({
         lead_id: lead.id,
+        dealer_id: lead.dealer_id,
         activity_type: 'stage_changed',
         from_stage: originalStage,
         to_stage: newStage,
@@ -203,6 +204,7 @@ export default function LeadsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('lead_activities').insert({
         lead_id: lead.id,
+        dealer_id: lead.dealer_id,
         activity_type: 'created',
         created_by: user?.id,
       });

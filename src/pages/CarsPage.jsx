@@ -14,6 +14,7 @@ import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 import useTenant, { isSubdomain } from '../hooks/useTenant';
+import { useCTAContext } from '../hooks/useCTAContext';
 
 /* ─────────────────────────────────────────
    PRICE BRACKETS
@@ -134,6 +135,7 @@ const CarsPage = () => {
   const { t } = useTranslation();
   const { siteName } = useSiteProfile();
   const { tenant, loading: tenantLoading } = useTenant();
+  const ctaCtx = useCTAContext();
   const location = useLocation();
   const drawerRef    = useRef(null);
   const searchRef    = useRef(null);
@@ -696,7 +698,7 @@ const CarsPage = () => {
                     className="cars-grid"
                     style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'18px' }}
                   >
-                    {displayed.map(car => <CarCard key={car.id} car={car}/>)}
+                    {displayed.map(car => <CarCard key={car.id} car={car} ctaContext={ctaCtx}/>)}
                     {loading && [...Array(3)].map((_,i) => <SkeletonCard key={`sk-${i}`}/>)}
                   </div>
 

@@ -2,15 +2,24 @@ import { MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useSiteProfile } from '../hooks/useSiteProfile';
+import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 
 export default function StickyWhatsAppButton({ phoneNumber, message }) {
   const { t } = useTranslation();
   const { waUrl } = useSiteProfile();
+  const ctaCtx = useCTAContext();
 
-  // If phoneNumber prop is passed explicitly, use it; otherwise fall back to profile
-  const url = phoneNumber
-    ? `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message || t('common.needHelp'))}`
-    : waUrl(message || t('common.needHelp'));
+  const msg = message || t('common.needHelp');
+
+  let url;
+  if (phoneNumber) {
+    // Explicit override — respect it
+    url = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+  } else if (ctaCtx.type === 'salesman') {
+    url = buildWaUrl(ctaCtx, null, msg);
+  } else {
+    url = waUrl(msg);
+  }
 
   return (
     <motion.a
