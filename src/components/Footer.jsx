@@ -1,224 +1,142 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import {
-  Facebook,
-  Instagram,
-  MessageCircle,
-  Mail,
-  Clock,
-  ArrowRight,
-} from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-  const { t } = useTranslation();
-  const { siteName, siteInitial, waUrl, profile } = useSiteProfile();
-  const fbUrl = profile?.social_facebook
-    ? `https://facebook.com/${profile.social_facebook.replace(/^@/, "")}`
-    : "https://facebook.com";
-  const igUrl = profile?.social_instagram
-    ? `https://instagram.com/${profile.social_instagram.replace(/^@/, "")}`
-    : "https://instagram.com";
-  const waPhone = profile?.whatsapp_number
-    ? profile.whatsapp_number.replace(/\D/g, "").startsWith("60")
-      ? profile.whatsapp_number.replace(/\D/g, "")
-      : `60${profile.whatsapp_number.replace(/\D/g, "")}`
-    : "60174155191";
-  const waDisplay = waPhone
-    .replace(/^60/, "+60 ")
-    .replace(/(\d{2})(\d{3,4})(\d{4})$/, "$1-$2 $3");
+  const { siteName, siteInitial, profile } = useSiteProfile();
+
+  const dealershipName = profile?.dealership || siteName;
+  const location       = profile?.location || "";
+  const aboutRaw       = profile?.about_text || "";
+  const aboutSnippet   = aboutRaw.length > 100 ? aboutRaw.slice(0, 100).trimEnd() + "…" : aboutRaw;
+  const logoUrl        = profile?.site_logo_url || "";
+
+  const email    = profile?.email || "";
+  const phone    = profile?.phone || "";
+  const whatsapp = profile?.whatsapp_number || "";
+  const facebook = profile?.social_facebook || "";
+  const instagram= profile?.social_instagram || "";
+  const tiktok   = profile?.social_tiktok || "";
+
+  const waHref = whatsapp
+    ? `https://wa.me/${whatsapp.replace(/\D/g, "").replace(/^(?!60)/, "60")}`
+    : "";
+
+  const fbHref = facebook
+    ? facebook.startsWith("http") ? facebook : `https://facebook.com/${facebook.replace(/^@/, "")}`
+    : "";
+  const igHref = instagram
+    ? instagram.startsWith("http") ? instagram : `https://instagram.com/${instagram.replace(/^@/, "")}`
+    : "";
+  const ttHref = tiktok
+    ? tiktok.startsWith("http") ? tiktok : `https://tiktok.com/@${tiktok.replace(/^@/, "")}`
+    : "";
+
+  const hasContact = email || phone || whatsapp;
+  const hasSocials = facebook || instagram || tiktok;
+  const colCount   = [true, hasContact, hasSocials].filter(Boolean).length;
+
+  const linkCls = "text-gray-400 hover:text-red-500 text-sm transition-colors";
+  const headCls = "text-white text-sm font-semibold uppercase tracking-wider mb-4";
 
   return (
-    <footer
-      style={{
-        background: "#080C14",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-          {/* Col 1: Brand */}
-          <div className="md:col-span-1">
-            <Link to="/" className="flex items-center gap-2.5 mb-4 group w-fit">
-              <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
-                <div className="absolute inset-0 bg-red-600 rounded-lg rotate-6 group-hover:rotate-12 transition-transform duration-300" />
-                <span
-                  className="relative text-white font-black text-lg"
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                >
+    <footer className="bg-gray-950 border-t border-gray-800" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className={`max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-${colCount} gap-8`}>
+
+        {/* Left col — brand */}
+        <div>
+          {logoUrl ? (
+            <img src={logoUrl} alt={dealershipName} className="h-10 mb-3 object-contain" />
+          ) : (
+            <div className="flex items-center gap-2 mb-3">
+              <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0">
+                <div className="absolute inset-0 bg-red-600 rounded-lg rotate-6" />
+                <span className="relative text-white font-black text-sm" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
                   {siteInitial}
                 </span>
               </div>
-              <span className="text-white font-bold text-xl tracking-tight">
-                {siteName}
-                <span className="text-red-500">.</span>
-              </span>
-            </Link>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
-              {t("footer.tagline")}
-            </p>
-            <div className="flex gap-3">
-              <a
-                href={fbUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
-              </a>
-              <a
-                href={igUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
-              </a>
-              <a
-                href={waUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-lg flex items-center justify-center"
-                style={{
-                  background: "rgba(37,211,102,0.15)",
-                  border: "1px solid rgba(37,211,102,0.25)",
-                }}
-                aria-label="WhatsApp"
-              >
-                <MessageCircle className="w-4 h-4 text-[#25D366]" />
-              </a>
+              <span className="text-white font-bold text-lg tracking-tight">{dealershipName}</span>
             </div>
-          </div>
+          )}
+          {location && <p className="text-gray-500 text-sm mb-1">{location}</p>}
+          {aboutSnippet && <p className="text-gray-500 text-sm leading-relaxed">{aboutSnippet}</p>}
+        </div>
 
-          {/* Col 2: Quick Links */}
+        {/* Middle col — Contact */}
+        {hasContact && (
           <div>
-            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">
-              {t("footer.quickLinks")}
-            </p>
-            <ul className="space-y-3">
-              {[
-                { label: t("nav.browseCars"), path: "/cars" },
-                { label: t("nav.howItWorks"), path: "/#how-it-works" },
-                { label: t("nav.calculator"), path: "/calculator" },
-                { label: "For Dealers", path: "/shiftos" },
-              ].map((link) => (
-                <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="text-gray-500 hover:text-white text-sm transition-colors flex items-center gap-1.5 group"
-                  >
-                    <ArrowRight className="w-3 h-3 text-red-600 opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all" />
-                    {link.label}
-                  </Link>
+            <p className={headCls}>Contact Us</p>
+            <ul className="space-y-2">
+              {email && (
+                <li>
+                  <a href={`mailto:${email}`} className={linkCls}>
+                    <span className="mr-2">✉</span>{email}
+                  </a>
                 </li>
-              ))}
+              )}
+              {phone && (
+                <li>
+                  <a href={`tel:${phone}`} className={linkCls}>
+                    <span className="mr-2">📞</span>{phone}
+                  </a>
+                </li>
+              )}
+              {whatsapp && (
+                <li>
+                  <a href={waHref} target="_blank" rel="noopener noreferrer" className={linkCls}>
+                    <span className="mr-2">💬</span>WhatsApp
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
+        )}
 
-          {/* Col 3: Contact */}
+        {/* Right col — Socials */}
+        {hasSocials && (
           <div>
-            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">
-              {t("footer.contactUs")}
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3">
-                <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#25D366]" />
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {t("footer.whatsapp")}
-                  </p>
-                  <a
-                    href={waUrl()}
-                    className="text-gray-500 hover:text-white text-sm transition-colors"
-                  >
-                    {waDisplay}
+            <p className={headCls}>Follow Us</p>
+            <ul className="space-y-2">
+              {facebook && (
+                <li>
+                  <a href={fbHref} target="_blank" rel="noopener noreferrer" className={linkCls}>
+                    <span className="mr-2">
+                      <svg className="inline w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.56 9.87v-6.99H8.08V12h2.36v-2.05c0-2.33 1.39-3.62 3.51-3.62.7 0 1.43.06 2.13.18v2.34h-1.2c-1.18 0-1.55.73-1.55 1.49V12h2.63l-.42 2.88h-2.21v6.99A10 10 0 0 0 22 12Z"/></svg>
+                    </span>
+                    Facebook
                   </a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {t("footer.email")}
-                  </p>
-                  <a
-                    href="mailto:Auzyvyth@gmail.com"
-                    className="text-gray-500 hover:text-white text-sm transition-colors"
-                  >
-                    Auzyvyth@gmail.com
+                </li>
+              )}
+              {instagram && (
+                <li>
+                  <a href={igHref} target="_blank" rel="noopener noreferrer" className={linkCls}>
+                    <span className="mr-2">
+                      <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                    </span>
+                    Instagram
                   </a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <Clock className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {t("footer.hours")}
-                  </p>
-                  <p className="text-gray-500 text-sm">
-                    {t("footer.hoursText")}
-                  </p>
-                </div>
-              </li>
+                </li>
+              )}
+              {tiktok && (
+                <li>
+                  <a href={ttHref} target="_blank" rel="noopener noreferrer" className={linkCls}>
+                    <span className="mr-2">
+                      <svg className="inline w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07Z"/></svg>
+                    </span>
+                    TikTok
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
+        )}
+      </div>
 
-          {/* Col 4: ShiftOS CTA */}
-          <div>
-            <p className="text-white text-sm font-semibold uppercase tracking-wider mb-5">
-              For Dealers
-            </p>
-            <div
-              className="rounded-xl p-4"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.03) 100%)",
-                border: "1px solid rgba(220,38,38,0.15)",
-              }}
-            >
-              <p className="text-white text-sm font-semibold mb-1">
-                Manage with ShiftOS
-              </p>
-              <p className="text-gray-500 text-xs leading-relaxed mb-3">
-                The all-in-one SaaS platform for Malaysian used car dealers.
-              </p>
-              <Link
-                to="/shiftos"
-                className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-semibold transition-colors group"
-              >
-                Learn more
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div
-          className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-        >
-          <p>
-            &copy; {currentYear} {siteName}. {t("footer.rights")}
-          </p>
-          <p>
-            Powered by{" "}
-            <span className="text-red-600 font-semibold">ShiftOS</span>
-          </p>
-        </div>
+      {/* Bottom bar */}
+      <div className="border-t border-gray-800 px-6 py-4 text-center text-xs text-gray-600">
+        <span>Powered by <span className="text-red-600 font-semibold">ShiftOS</span></span>
+        <span className="mx-2">·</span>
+        <span>© {currentYear} {dealershipName}</span>
       </div>
     </footer>
   );
