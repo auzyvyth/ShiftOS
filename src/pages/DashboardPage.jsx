@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
@@ -284,6 +285,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [tgTesting, setTgTesting] = useState(false);
   const [tgTestResult, setTgTestResult] = useState(null);
 
+  const [subdomain, setSubdomain] = useState(profile?.subdomain || '');
+  const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
+
+  const sanitizeSubdomain = (val) =>
+    val.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+  const checkSubdomain = useDebouncedCallback(async (value) => {
+    if (!value || value === profile?.subdomain) {
+      setSubdomainStatus('unchanged');
+      return;
+    }
+    setSubdomainStatus('checking');
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('subdomain', value)
+      .neq('id', profile?.id)
+      .maybeSingle();
+    setSubdomainStatus(!error && data ? 'taken' : 'available');
+  }, 500);
+
   const defaultSfWhy = { title: "", items: [{title:"",desc:""},{title:"",desc:""},{title:"",desc:""},{title:"",desc:""}] };
   const defaultSfHow = { title: "", steps: [{title:"",desc:""},{title:"",desc:""},{title:"",desc:""},{title:"",desc:""}] };
   const defaultSfTestimonials = [{name:"",location:"",text:""},{name:"",location:"",text:""},{name:"",location:"",text:""}];
@@ -316,6 +338,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setTgToken(profile.telegram_bot_token || "");
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
+    setSubdomain(profile.subdomain || "");
+    setSubdomainStatus(null);
     setSfWhy({ ...defaultSfWhy, ...(profile.storefront_why || {}), items: (profile.storefront_why?.items || defaultSfWhy.items).map(i => ({...i})) });
     setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
@@ -368,6 +392,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
       dealership: dealership.trim(),
       site_name: siteName.trim() || dealership.trim(),
       brand_color: brandColor,
+      subdomain,
+      ...(subdomain !== profile?.subdomain && {
+        subdomain_changed_at: new Date().toISOString(),
+        previous_subdomain: profile?.subdomain,
+      }),
     };
     // Only count toward the change limit if the dealership name itself changed
     if (dealershipChanged) {
@@ -561,6 +590,36 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </div>
         </SettingsField>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Subdomain <span className="text-gray-500 text-xs">(your Drevo storefront URL)</span>
+          </label>
+          <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center bg-gray-800 border border-gray-700 rounded-lg overflow-hidden flex-1">
+              <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-700 py-2">xdrive.my/</span>
+              <input
+                type="text"
+                value={subdomain}
+                onChange={(e) => {
+                  const clean = sanitizeSubdomain(e.target.value);
+                  setSubdomain(clean);
+                  checkSubdomain(clean);
+                }}
+                placeholder="your-dealership"
+                className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
+              />
+            </div>
+            {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
+            {subdomainStatus === 'taken' && <span className="text-xs text-red-400 whitespace-nowrap">⚠ Already taken</span>}
+            {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
+          </div>
+          {subdomain !== profile?.subdomain && profile?.subdomain && (
+            <p className="text-xs text-yellow-400 mt-1">
+              ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">xdrive.my/{profile.subdomain}</code>
+            </p>
+          )}
+        </div>
+
         <SettingsField label="Site / Tab Name" hint="Shows in browser tab">
           <input
             value={siteName}
@@ -601,7 +660,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <SaveBtn
             sectionKey="identity"
             onClick={saveDealership}
-            disabled={dealershipLocked}
+            disabled={dealershipLocked || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
           />
         </div>
       </SettingsSection>
