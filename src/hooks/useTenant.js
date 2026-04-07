@@ -58,10 +58,15 @@ export default function useTenant() {
       } = await supabase.auth.getSession();
       if (!session?.user) return;
 
+      // Force refresh token to ensure we have the correct active session
+      const { data: { session: freshSession } } = await supabase.auth.refreshSession();
+      const activeSession = freshSession ?? session;
+      if (!activeSession?.user) return;
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("subdomain, role, id, full_name")
-        .eq("id", session.user.id)
+        .eq("id", activeSession.user.id)
         .maybeSingle();
 
       console.log("redirect check — profile:", profile);

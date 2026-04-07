@@ -390,7 +390,7 @@ export default function Header() {
                 className="hdr-logout"
                 onClick={async () => {
                   await supabase.auth.signOut();
-                  window.location.href = "/";
+                  window.location.href = 'https://xdrive.my';
                 }}
               >
                 Logout

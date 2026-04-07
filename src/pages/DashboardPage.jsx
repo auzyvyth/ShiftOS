@@ -3276,7 +3276,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
-    navigate("/login");
+    window.location.href = 'https://xdrive.my';
   };
   const handleNew = (l) => {
     setListings((p) => [l, ...p]);

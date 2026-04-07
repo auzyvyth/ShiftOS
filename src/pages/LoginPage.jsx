@@ -110,14 +110,23 @@ export default function LoginPage() {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('subdomain, role')
       .eq('id', user.id)
       .maybeSingle();
 
-    const profileRole = profile?.role;
-    if (profileRole === 'superadmin') navigate('/dashboard');
-    else if (profileRole === 'salesman') navigate('/salesman');
-    else navigate('/dashboard');
+    const subdomain = profile?.subdomain;
+    const role = profile?.role;
+
+    if (role === 'superadmin' || role === 'dealer') {
+      if (subdomain) {
+        window.location.href = `https://${subdomain}.xdrive.my`;
+      } else {
+        window.location.href = 'https://xdrive.my/dashboard';
+      }
+    } else {
+      // salesman
+      window.location.href = 'https://xdrive.my/salesman';
+    }
   };
 
   const handlePhotoChange = (e) => {
