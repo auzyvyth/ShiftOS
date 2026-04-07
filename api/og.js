@@ -73,13 +73,6 @@ export default async function handler(req) {
   const userAgent = req.headers.get("user-agent") ?? "";
   const canonicalUrl = `${SITE_URL}${pathname}${search}`;
 
-  if (!isBot(userAgent)) {
-    return new Response(null, {
-      status: 302,
-      headers: { Location: canonicalUrl },
-    });
-  }
-
   const carMatch = pathname.match(/^\/cars\/([^/]+)\/?$/);
   if (carMatch) {
     const slug = decodeURIComponent(carMatch[1]);
