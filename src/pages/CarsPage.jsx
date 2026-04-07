@@ -190,15 +190,15 @@ const CarsPage = () => {
   const load = async () => {
     if (tenantLoading) return;
     setLoading(true);
+    const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
+
     let query = supabase
       .from('car_listings')
       .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
-    if (tenant?.id) {
-      query = query.eq('dealer_id', tenant.id);
-    }
+    query = query.eq('dealer_id', tenant?.id ?? SUPERADMIN_ID);
 
     const { data, error } = await query;
     if (error) { setFetchError(error.message); setAllCars([]); }
