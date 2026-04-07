@@ -28,43 +28,35 @@ export function isSubdomain() {
   return !!getSubdomain();
 }
 
-let authListenerActive = false;
-
-const DASHBOARD_PATHS = [
-  "/dashboard",
-  "/salesman",
-  "/admin",
-  "/accounts",
-  "/onboarding",
-  "/login",
-];
-
 export default function useTenant() {
   const [tenant, setTenant] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);
 
-  // Redirect authenticated users to their correct subdomain on auth state change
+  // Redirect authenticated users to their correct subdomain (once on mount)
   useEffect(() => {
-    if (authListenerActive) return;
-    authListenerActive = true;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION") return;
-      if (!session?.user) return;
-
+    async function handleRedirect() {
       const hostname = window.location.hostname;
-      // Skip local dev
       if (
         hostname === "localhost" ||
         hostname === "127.0.0.1" ||
         hostname.startsWith("192.168")
       )
         return;
-      // Skip dashboard/protected routes — they manage their own auth
       const path = window.location.pathname;
+      const DASHBOARD_PATHS = [
+        "/dashboard",
+        "/salesman",
+        "/admin",
+        "/accounts",
+        "/onboarding",
+        "/login",
+      ];
       if (DASHBOARD_PATHS.some((p) => path.startsWith(p))) return;
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -72,31 +64,21 @@ export default function useTenant() {
         .eq("id", session.user.id)
         .maybeSingle();
 
-      console.log("raw profile data:", profile);
+      console.log("redirect check — profile:", profile);
 
       const userSubdomain = profile?.subdomain;
       const expectedHostname = userSubdomain
         ? `${userSubdomain}.xdrive.my`
         : "xdrive.my";
 
-      console.log("auth event:", event);
-      console.log("current hostname:", hostname);
-      console.log("user subdomain from profile:", userSubdomain);
-      console.log("expected hostname:", expectedHostname);
-      console.log("redirecting?", hostname !== expectedHostname);
-
-      // Already on the correct domain — do nothing
       if (hostname === expectedHostname) return;
 
       window.location.href = userSubdomain
         ? `https://${userSubdomain}.xdrive.my`
         : "https://xdrive.my";
-    });
+    }
 
-    return () => {
-      subscription.unsubscribe();
-      authListenerActive = false;
-    };
+    handleRedirect();
   }, []);
 
   useEffect(() => {
