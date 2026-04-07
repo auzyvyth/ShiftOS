@@ -200,7 +200,7 @@ export default function SalesmanPanel() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/login");
+    window.location.href = 'https://xdrive.my';
   };
 
   const uniqueLink = profile?.slug

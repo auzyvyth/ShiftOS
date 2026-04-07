@@ -35,7 +35,7 @@ export default function AdminPage() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    navigate('/login');
+    window.location.href = 'https://xdrive.my';
   }
 
   async function saveField(id, field, value) {
