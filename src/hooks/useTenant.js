@@ -32,60 +32,6 @@ export default function useTenant() {
   const [tenant, setTenant] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);
 
-  // Redirect authenticated users to their correct subdomain (once on mount)
-  useEffect(() => {
-    async function handleRedirect() {
-      const hostname = window.location.hostname;
-      if (
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname.startsWith("192.168")
-      )
-        return;
-      const path = window.location.pathname;
-      const DASHBOARD_PATHS = [
-        "/dashboard",
-        "/salesman",
-        "/admin",
-        "/accounts",
-        "/onboarding",
-        "/login",
-      ];
-      if (DASHBOARD_PATHS.some((p) => path.startsWith(p))) return;
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      // Force refresh token to ensure we have the correct active session
-      const { data: { session: freshSession } } = await supabase.auth.refreshSession();
-      const activeSession = freshSession ?? session;
-      if (!activeSession?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("subdomain, role, id, full_name")
-        .eq("id", activeSession.user.id)
-        .maybeSingle();
-
-      console.log("redirect check — profile:", profile);
-
-      const userSubdomain = profile?.subdomain;
-      const expectedHostname = userSubdomain
-        ? `${userSubdomain}.xdrive.my`
-        : "xdrive.my";
-
-      if (hostname === expectedHostname) return;
-
-      window.location.href = userSubdomain
-        ? `https://${userSubdomain}.xdrive.my`
-        : "https://xdrive.my";
-    }
-
-    handleRedirect();
-  }, []);
-
   useEffect(() => {
     async function resolve() {
       const subdomain = getSubdomain();
