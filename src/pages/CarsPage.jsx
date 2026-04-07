@@ -192,15 +192,15 @@ const CarsPage = () => {
     setLoading(true);
     let query = supabase
       .from('car_listings')
-      .select('*');
+      .select('*, profiles(dealership, site_name, subdomain, whatsapp_number)')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
 
-    if (tenant) {
+    if (tenant?.id) {
       query = query.eq('dealer_id', tenant.id);
-    } else if (isSubdomain()) {
-      query = query.eq('dealer_id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) { setFetchError(error.message); setAllCars([]); }
     else        { setAllCars(data || []); }
     setLoading(false);

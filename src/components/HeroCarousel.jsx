@@ -456,18 +456,16 @@ export default function HeroCarousel({ siteName, waNumber }) {
     const to = setTimeout(() => setLoading(false), 4000);
     const fetchSlides = async () => {
       try {
-        let query = supabase
+        let heroQuery = supabase
           .from("hero_carousel_slides")
           .select("*, car_listings(slug)")
           .eq("active", true);
 
-        if (tenant) {
-          query = query.eq("dealer_id", tenant.id);
-        } else if (isSubdomain()) {
-          query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
+        if (tenant?.id) {
+          heroQuery = heroQuery.eq("dealer_id", tenant.id);
         }
 
-        const { data, error } = await query.order("sort_order", { ascending: true });
+        const { data, error } = await heroQuery.order("sort_order", { ascending: true });
         setSlides(!error && data ? data : []);
       } catch {
         setSlides([]);

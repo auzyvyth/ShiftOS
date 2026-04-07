@@ -1,43 +1,74 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 // ─── Malaysian data ────────────────────────────────────────────────────────
 const STATES = [
-  'Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka',
-  'Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya',
-  'Sabah','Sarawak','Selangor','Terengganu',
+  "Johor",
+  "Kedah",
+  "Kelantan",
+  "Kuala Lumpur",
+  "Labuan",
+  "Melaka",
+  "Negeri Sembilan",
+  "Pahang",
+  "Penang",
+  "Perak",
+  "Perlis",
+  "Putrajaya",
+  "Sabah",
+  "Sarawak",
+  "Selangor",
+  "Terengganu",
 ];
-const DEALERSHIP_TYPES = ['Independent Dealer','Franchise Dealer','Used Car Lot','Car Rental','Multi-Brand Showroom'];
-const FLEET_SIZES = ['1–5 cars','6–15 cars','16–30 cars','31–50 cars','50+ cars'];
+const DEALERSHIP_TYPES = [
+  "Independent Dealer",
+  "Franchise Dealer",
+  "Used Car Lot",
+  "Car Rental",
+  "Multi-Brand Showroom",
+];
+const FLEET_SIZES = [
+  "1–5 cars",
+  "6–15 cars",
+  "16–30 cars",
+  "31–50 cars",
+  "50+ cars",
+];
 
 // ─── Steps config ──────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 1, code: '01', label: 'IDENTITY',    hint: 'Who are you?' },
-  { id: 2, code: '02', label: 'DEALERSHIP',  hint: 'Your business' },
-  { id: 3, code: '03', label: 'OPERATIONS',  hint: 'How you work' },
-  { id: 4, code: '04', label: 'ACTIVATE',    hint: 'Go live' },
+  { id: 1, code: "01", label: "IDENTITY", hint: "Who are you?" },
+  { id: 2, code: "02", label: "DEALERSHIP", hint: "Your business" },
+  { id: 3, code: "03", label: "OPERATIONS", hint: "How you work" },
+  { id: 4, code: "04", label: "ACTIVATE", hint: "Go live" },
 ];
 
 // ─── Pill selector ─────────────────────────────────────────────────────────
 function Pill({ label, active, onClick }) {
   return (
-    <button type="button" onClick={onClick} className={`pill ${active ? 'pill-active' : ''}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`pill ${active ? "pill-active" : ""}`}
+    >
       {label}
     </button>
   );
 }
 
 // ─── Input field ───────────────────────────────────────────────────────────
-function Input({ label, value, onChange, placeholder, type = 'text', hint }) {
+function Input({ label, value, onChange, placeholder, type = "text", hint }) {
   const [focused, setFocused] = useState(false);
   return (
-    <div className={`inp-wrap ${focused ? 'inp-focused' : ''} ${value ? 'inp-filled' : ''}`}>
+    <div
+      className={`inp-wrap ${focused ? "inp-focused" : ""} ${value ? "inp-filled" : ""}`}
+    >
       <label className="inp-label">{label}</label>
       <input
         type={type}
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -54,20 +85,36 @@ function Input({ label, value, onChange, placeholder, type = 'text', hint }) {
 function Select({ label, value, onChange, options }) {
   const [focused, setFocused] = useState(false);
   return (
-    <div className={`inp-wrap ${focused ? 'inp-focused' : ''} ${value ? 'inp-filled' : ''}`}>
+    <div
+      className={`inp-wrap ${focused ? "inp-focused" : ""} ${value ? "inp-filled" : ""}`}
+    >
       <label className="inp-label">{label}</label>
       <div className="sel-wrap">
         <select
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           className="inp-field inp-select"
         >
           <option value="">— Select —</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
         </select>
-        <svg className="sel-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg
+          className="sel-arrow"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </div>
       <div className="inp-line" />
     </div>
@@ -78,36 +125,39 @@ function Select({ label, value, onChange, options }) {
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [animDir, setAnimDir] = useState('forward');
+  const [animDir, setAnimDir] = useState("forward");
   const [visible, setVisible] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [userEmail, setUserEmail] = useState('');
+  const [userEmail, setUserEmail] = useState("");
 
   // Step 1 — Identity
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('+60');
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("+60");
 
   // Step 2 — Dealership
-  const [dealerName, setDealerName] = useState('');
-  const [dealerType, setDealerType] = useState('');
-  const [state, setState] = useState('');
-  const [city, setCity] = useState('');
-  const [subdomain, setSubdomain] = useState('');
+  const [dealerName, setDealerName] = useState("");
+  const [dealerType, setDealerType] = useState("");
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
+  const [subdomain, setSubdomain] = useState("");
   const subdomainTouched = useRef(false);
 
   // Step 3 — Operations
-  const [fleetSize, setFleetSize] = useState('');
-  const [whatsapp, setWhatsapp] = useState('+60');
-  const [website, setWebsite] = useState('');
+  const [fleetSize, setFleetSize] = useState("");
+  const [whatsapp, setWhatsapp] = useState("+60");
+  const [website, setWebsite] = useState("");
 
   // Step 4 — Review (read-only)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { navigate('/login'); return; }
+      if (!data.session) {
+        navigate("/login");
+        return;
+      }
       setUserId(data.session.user.id);
       setUserEmail(data.session.user.email);
     });
@@ -115,20 +165,33 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (subdomainTouched.current) return;
-    const auto = dealerName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+    const auto = dealerName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 20);
     setSubdomain(auto);
   }, [dealerName]);
 
   const goTo = (next) => {
-    const dir = next > step ? 'forward' : 'back';
+    const dir = next > step ? "forward" : "back";
     setAnimDir(dir);
     setVisible(false);
-    setTimeout(() => { setStep(next); setVisible(true); setError(''); }, 320);
+    setTimeout(() => {
+      setStep(next);
+      setVisible(true);
+      setError("");
+    }, 320);
   };
 
   const canProceed = () => {
     if (step === 1) return fullName.trim().length >= 2 && phone.length >= 10;
-    if (step === 2) return dealerName.trim() && dealerType && state && /^[a-z0-9]{3,20}$/.test(subdomain);
+    if (step === 2)
+      return (
+        dealerName.trim() &&
+        dealerType &&
+        state &&
+        /^[a-z0-9]{3,20}$/.test(subdomain)
+      );
     if (step === 3) return fleetSize;
     return true;
   };
@@ -136,23 +199,23 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     if (!userId) return;
     setSubmitting(true);
-    setError('');
+    setError("");
     try {
-      const { error: err } = await supabase.from('profiles').upsert({
-        id:                  userId,
-        email:               userEmail,
-        full_name:           fullName.trim(),
-        phone:               phone,
-        dealership:          dealerName.trim(),
-        location:            city ? `${city}, ${state}` : state,
-        role:                'dealer',
-        is_active:           true,
+      const { error: err } = await supabase.from("profiles").upsert({
+        id: userId,
+        email: userEmail,
+        full_name: fullName.trim(),
+        phone: phone,
+        dealership: dealerName.trim(),
+        location: city ? `${city}, ${state}` : state,
+        role: "dealer",
+        is_active: true,
         onboarding_complete: true,
-        subdomain:           subdomain,
+        subdomain: subdomain,
       });
       if (err) throw err;
       setDone(true);
-      setTimeout(() => navigate('/dashboard'), 2800);
+      setTimeout(() => navigate("/dashboard"), 2800);
     } catch (e) {
       setError(e.message);
       setSubmitting(false);
@@ -718,20 +781,26 @@ export default function OnboardingPage() {
           <div>
             <h2 className="done-title">You're in.</h2>
           </div>
-          <p className="done-sub">Your dealership is now live on ShiftOS. Taking you to your dashboard…</p>
+          <p className="done-sub">
+            Your dealership is now live on ShiftOS. Taking you to your
+            dashboard…
+          </p>
           <div className="done-loader">
-            <span /><span /><span />
+            <span />
+            <span />
+            <span />
           </div>
         </div>
       )}
 
       <div className="ob-root">
-
         {/* ── Sidebar ── */}
         <aside className="ob-sidebar">
           <div className="ob-logo">
             <div className="ob-logo-dot">
-              <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <svg viewBox="0 0 24 24">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
             </div>
             <span className="ob-logo-name">ShiftOS</span>
           </div>
@@ -743,8 +812,8 @@ export default function OnboardingPage() {
               return (
                 <React.Fragment key={s.id}>
                   <div
-                    className={`ob-step ${isActive ? 'active' : ''} ${isDone ? 'done clickable' : ''}`}
-                    onClick={() => isDone ? goTo(s.id) : undefined}
+                    className={`ob-step ${isActive ? "active" : ""} ${isDone ? "done clickable" : ""}`}
+                    onClick={() => (isDone ? goTo(s.id) : undefined)}
                   >
                     <span className="ob-step-num">{s.code}</span>
                     <div className="ob-step-info">
@@ -753,17 +822,33 @@ export default function OnboardingPage() {
                     </div>
                     <div className="ob-step-tick">
                       {isDone && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12"/>
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#22c55e"
+                          strokeWidth="3"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
                       {isActive && (
-                        <div style={{width:6,height:6,borderRadius:'50%',background:'var(--red)'}}/>
+                        <div
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: "var(--red)",
+                          }}
+                        />
                       )}
                     </div>
                   </div>
                   {i < STEPS.length - 1 && (
-                    <div className={`ob-step-connector ${isDone ? 'done-line' : ''}`} />
+                    <div
+                      className={`ob-step-connector ${isDone ? "done-line" : ""}`}
+                    />
                   )}
                 </React.Fragment>
               );
@@ -772,8 +857,10 @@ export default function OnboardingPage() {
 
           <div className="ob-sidebar-footer">
             <p>
-              <strong>14-day free trial</strong><br />
-              No credit card required.<br />
+              <strong>14-day free trial</strong>
+              <br />
+              No credit card required.
+              <br />
               RM 500/month after trial.
             </p>
           </div>
@@ -782,23 +869,54 @@ export default function OnboardingPage() {
         {/* ── Main ── */}
         <main className="ob-main">
           <div className="ob-progress">
-            <div className="ob-progress-fill" style={{ width: `${progress}%` }} />
+            <div
+              className="ob-progress-fill"
+              style={{ width: `${progress}%` }}
+            />
           </div>
 
-          <div className={`ob-content ${visible ? 'visible' : animDir === 'forward' ? 'hidden-forward' : 'hidden-back'}`}>
-
+          <div
+            className={`ob-content ${visible ? "visible" : animDir === "forward" ? "hidden-forward" : "hidden-back"}`}
+          >
             {/* ── STEP 1: Identity ── */}
             {step === 1 && (
               <>
                 <p className="ob-eyebrow">Step 01 / 04</p>
-                <h1 className="ob-title">Let's start<br />with you.</h1>
-                <p className="ob-subtitle">Tell us who you are. This is the name your team and clients will see.</p>
+                <h1 className="ob-title">
+                  Let's start
+                  <br />
+                  with you.
+                </h1>
+                <p className="ob-subtitle">
+                  Tell us who you are. This is the name your team and clients
+                  will see.
+                </p>
                 <div className="ob-fields">
-                  <Input label="Full Name" value={fullName} onChange={setFullName} placeholder="Ahmad bin Abdullah" />
-                  <Input label="Phone Number" value={phone} onChange={setPhone} placeholder="+60123456789" hint="WhatsApp-enabled number preferred" />
-                  <div style={{padding:'8px 0 4px'}}>
-                    <p style={{fontSize:12,color:'rgba(255,255,255,0.2)',letterSpacing:'0.5px'}}>
-                      Signing in as <strong style={{color:'rgba(255,255,255,0.4)'}}>{userEmail}</strong>
+                  <Input
+                    label="Full Name"
+                    value={fullName}
+                    onChange={setFullName}
+                    placeholder="Ahmad bin Abdullah"
+                  />
+                  <Input
+                    label="Phone Number"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="+60123456789"
+                    hint="WhatsApp-enabled number preferred"
+                  />
+                  <div style={{ padding: "8px 0 4px" }}>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.2)",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      Signing in as{" "}
+                      <strong style={{ color: "rgba(255,255,255,0.4)" }}>
+                        {userEmail}
+                      </strong>
                     </p>
                   </div>
                 </div>
@@ -809,58 +927,116 @@ export default function OnboardingPage() {
             {step === 2 && (
               <>
                 <p className="ob-eyebrow">Step 02 / 04</p>
-                <h1 className="ob-title">Your<br />dealership.</h1>
-                <p className="ob-subtitle">This creates your ShiftOS workspace. You can always update these details later.</p>
+                <h1 className="ob-title">
+                  Your
+                  <br />
+                  dealership.
+                </h1>
+                <p className="ob-subtitle">
+                  This creates your ShiftOS workspace. You can always update
+                  these details later.
+                </p>
                 <div className="ob-fields">
-                  <Input label="Dealership Name" value={dealerName} onChange={setDealerName} placeholder="Fast Track Auto Sdn Bhd" />
+                  <Input
+                    label="Dealership Name"
+                    value={dealerName}
+                    onChange={setDealerName}
+                    placeholder="Fast Track Auto Sdn Bhd"
+                  />
 
                   {/* Subdomain */}
-                  <div className={`inp-wrap ${subdomain ? 'inp-filled' : ''}`} style={{ paddingTop: 20 }}>
+                  <div
+                    className={`inp-wrap ${subdomain ? "inp-filled" : ""}`}
+                    style={{ paddingTop: 20 }}
+                  >
                     <label className="inp-label">Your XDrive URL</label>
                     <input
                       className="inp-field"
                       value={subdomain}
                       maxLength={20}
                       placeholder="yourbrand"
-                      onChange={e => {
+                      onChange={(e) => {
                         subdomainTouched.current = true;
-                        setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20));
+                        setSubdomain(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "")
+                            .slice(0, 20),
+                        );
                       }}
                       autoComplete="off"
                     />
                     <div className="inp-line" />
                     {subdomain ? (
-                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)',
-                          borderRadius: 6, padding: '4px 10px',
-                          fontFamily: "'Syne Mono', monospace", fontSize: 12, color: '#f87171',
-                          letterSpacing: 0.5,
-                        }}>
-                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>{subdomain}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.2)' }}>.xdrive.my</span>
+                      <div
+                        style={{
+                          marginTop: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            background: "rgba(220,38,38,0.08)",
+                            border: "1px solid rgba(220,38,38,0.2)",
+                            borderRadius: 6,
+                            padding: "4px 10px",
+                            fontFamily: "'Syne Mono', monospace",
+                            fontSize: 12,
+                            color: "#f87171",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          <span style={{ color: "rgba(255,255,255,0.3)" }}>
+                            {subdomain}
+                          </span>
+                          <span style={{ color: "rgba(255,255,255,0.2)" }}>
+                            .xdrive.my
+                          </span>
                         </span>
                         {!/^[a-z0-9]{3,20}$/.test(subdomain) && (
-                          <span style={{ fontSize: 11, color: '#f87171' }}>Min 3 chars, letters & numbers only</span>
+                          <span style={{ fontSize: 11, color: "#f87171" }}>
+                            Min 3 chars, letters & numbers only
+                          </span>
                         )}
                       </div>
                     ) : (
-                      <p className="inp-hint">Auto-filled from dealership name — you can edit it</p>
+                      <p className="inp-hint">
+                        Auto-filled from dealership name — you can edit it
+                      </p>
                     )}
                   </div>
 
-                  <div style={{height:8}}/>
+                  <div style={{ height: 8 }} />
                   <p className="pill-label">Dealership Type</p>
                   <div className="pills">
-                    {DEALERSHIP_TYPES.map(t => (
-                      <Pill key={t} label={t} active={dealerType === t} onClick={() => setDealerType(t)} />
+                    {DEALERSHIP_TYPES.map((t) => (
+                      <Pill
+                        key={t}
+                        label={t}
+                        active={dealerType === t}
+                        onClick={() => setDealerType(t)}
+                      />
                     ))}
                   </div>
-                  <div className="ob-divider"/>
+                  <div className="ob-divider" />
                   <div className="ob-fields-row">
-                    <Select label="State" value={state} onChange={setState} options={STATES} />
-                    <Input label="City / Area" value={city} onChange={setCity} placeholder="e.g. Butterworth" />
+                    <Select
+                      label="State"
+                      value={state}
+                      onChange={setState}
+                      options={STATES}
+                    />
+                    <Input
+                      label="City / Area"
+                      value={city}
+                      onChange={setCity}
+                      placeholder="e.g. Butterworth"
+                    />
                   </div>
                 </div>
               </>
@@ -870,18 +1046,42 @@ export default function OnboardingPage() {
             {step === 3 && (
               <>
                 <p className="ob-eyebrow">Step 03 / 04</p>
-                <h1 className="ob-title">How do you<br />operate?</h1>
-                <p className="ob-subtitle">Help us personalise ShiftOS for your scale. No judgment — we work for everyone.</p>
+                <h1 className="ob-title">
+                  How do you
+                  <br />
+                  operate?
+                </h1>
+                <p className="ob-subtitle">
+                  Help us personalise ShiftOS for your scale. No judgment — we
+                  work for everyone.
+                </p>
                 <div className="ob-fields">
                   <p className="pill-label">Current Fleet Size</p>
                   <div className="pills">
-                    {FLEET_SIZES.map(f => (
-                      <Pill key={f} label={f} active={fleetSize === f} onClick={() => setFleetSize(f)} />
+                    {FLEET_SIZES.map((f) => (
+                      <Pill
+                        key={f}
+                        label={f}
+                        active={fleetSize === f}
+                        onClick={() => setFleetSize(f)}
+                      />
                     ))}
                   </div>
-                  <div className="ob-divider"/>
-                  <Input label="WhatsApp Business Number" value={whatsapp} onChange={setWhatsapp} placeholder="+60123456789" hint="Used for customer enquiry routing (optional)" />
-                  <Input label="Website / Social Link" value={website} onChange={setWebsite} placeholder="https://facebook.com/yourdealer" hint="Optional — helps complete your XDrive profile" />
+                  <div className="ob-divider" />
+                  <Input
+                    label="WhatsApp Business Number"
+                    value={whatsapp}
+                    onChange={setWhatsapp}
+                    placeholder="+60123456789"
+                    hint="Used for customer enquiry routing (optional)"
+                  />
+                  <Input
+                    label="Website / Social Link"
+                    value={website}
+                    onChange={setWebsite}
+                    placeholder="https://facebook.com/yourdealer"
+                    hint="Optional — helps complete your XDrive profile"
+                  />
                 </div>
               </>
             )}
@@ -890,39 +1090,111 @@ export default function OnboardingPage() {
             {step === 4 && (
               <>
                 <p className="ob-eyebrow">Step 04 / 04</p>
-                <h1 className="ob-title">Ready to<br />activate.</h1>
-                <p className="ob-subtitle">Review your details, then hit activate to go live.</p>
+                <h1 className="ob-title">
+                  Ready to
+                  <br />
+                  activate.
+                </h1>
+                <p className="ob-subtitle">
+                  Review your details, then hit activate to go live.
+                </p>
 
                 <div className="plan-badge">
-                  <span style={{width:6,height:6,borderRadius:'50%',background:'var(--red)',display:'inline-block'}}/>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "var(--red)",
+                      display: "inline-block",
+                    }}
+                  />
                   14-Day Free Trial
                 </div>
 
                 <div className="review-card">
-                  <div className="review-card-header"><span/>Identity</div>
-                  <div className="review-row"><span className="review-key">Name</span><span className="review-val">{fullName}</span></div>
-                  <div className="review-row"><span className="review-key">Phone</span><span className="review-val">{phone}</span></div>
-                  <div className="review-row"><span className="review-key">Email</span><span className="review-val">{userEmail}</span></div>
+                  <div className="review-card-header">
+                    <span />
+                    Identity
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Name</span>
+                    <span className="review-val">{fullName}</span>
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Phone</span>
+                    <span className="review-val">{phone}</span>
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Email</span>
+                    <span className="review-val">{userEmail}</span>
+                  </div>
                 </div>
 
                 <div className="review-card">
-                  <div className="review-card-header"><span/>Dealership</div>
-                  <div className="review-row"><span className="review-key">Name</span><span className="review-val">{dealerName}</span></div>
-                  <div className="review-row"><span className="review-key">Type</span><span className="review-val">{dealerType}</span></div>
-                  <div className="review-row"><span className="review-key">Location</span><span className="review-val">{city ? `${city}, ${state}` : state}</span></div>
-                  <div className="review-row"><span className="review-key">XDrive URL</span><span className="review-val" style={{ color: '#f87171' }}>{subdomain}.xdrive.my</span></div>
+                  <div className="review-card-header">
+                    <span />
+                    Dealership
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Name</span>
+                    <span className="review-val">{dealerName}</span>
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Type</span>
+                    <span className="review-val">{dealerType}</span>
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Location</span>
+                    <span className="review-val">
+                      {city ? `${city}, ${state}` : state}
+                    </span>
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">XDrive URL</span>
+                    <span className="review-val" style={{ color: "#f87171" }}>
+                      {subdomain}.xdrive.my
+                    </span>
+                  </div>
                 </div>
 
                 <div className="review-card">
-                  <div className="review-card-header"><span/>Operations</div>
-                  <div className="review-row"><span className="review-key">Fleet Size</span><span className="review-val">{fleetSize}</span></div>
-                  {whatsapp !== '+60' && <div className="review-row"><span className="review-key">WhatsApp</span><span className="review-val">{whatsapp}</span></div>}
-                  {website && <div className="review-row"><span className="review-key">Website</span><span className="review-val">{website}</span></div>}
+                  <div className="review-card-header">
+                    <span />
+                    Operations
+                  </div>
+                  <div className="review-row">
+                    <span className="review-key">Fleet Size</span>
+                    <span className="review-val">{fleetSize}</span>
+                  </div>
+                  {whatsapp !== "+60" && (
+                    <div className="review-row">
+                      <span className="review-key">WhatsApp</span>
+                      <span className="review-val">{whatsapp}</span>
+                    </div>
+                  )}
+                  {website && (
+                    <div className="review-row">
+                      <span className="review-key">Website</span>
+                      <span className="review-val">{website}</span>
+                    </div>
+                  )}
                 </div>
 
                 {error && (
                   <div className="ob-error">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
                     {error}
                   </div>
                 )}
@@ -943,23 +1215,48 @@ export default function OnboardingPage() {
                   onClick={() => goTo(step + 1)}
                 >
                   Continue
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
                 </button>
               ) : (
                 <button
                   className="ob-btn-primary"
                   disabled={submitting}
                   onClick={handleSubmit}
-                  style={submitting ? {} : {background: 'var(--red)', boxShadow: '0 0 40px rgba(220,38,38,0.35)'}}
+                  style={
+                    submitting
+                      ? {}
+                      : {
+                          background: "var(--red)",
+                          boxShadow: "0 0 40px rgba(220,38,38,0.35)",
+                        }
+                  }
                 >
-                  {submitting ? 'Activating…' : 'Activate ShiftOS'}
+                  {submitting ? "Activating…" : "Activate ShiftOS"}
                   {!submitting && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
                   )}
                 </button>
               )}
             </div>
-
           </div>
         </main>
       </div>
