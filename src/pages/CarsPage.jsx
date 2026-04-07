@@ -139,6 +139,9 @@ const CarsPage = () => {
   const location = useLocation();
   const drawerRef    = useRef(null);
   const searchRef    = useRef(null);
+  const headerBarRef = useRef(null);
+  const lastScrollY  = useRef(0);
+  const [searchBarVisible, setSearchBarVisible] = useState(true);
 
   const [allCars,      setAllCars]      = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -164,6 +167,24 @@ const CarsPage = () => {
     const ref = params.get('ref');
     if (ref) { setRef(ref); trackEvent('link_visit'); }
   }, [location.search]);
+
+  /* ── hide/show search bar on scroll ── */
+  useEffect(() => {
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+      if (currentY < 80) {
+        setSearchBarVisible(true);
+      } else if (delta > 4) {
+        setSearchBarVisible(false);
+      } else if (delta < -4) {
+        setSearchBarVisible(true);
+      }
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   /* ── data ── */
   const load = async () => {
@@ -457,8 +478,9 @@ const CarsPage = () => {
           .cars-toolbar { flex-wrap: wrap !important; }
           .cars-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
           .cars-page-body { padding-top: 60px !important; }
-          .cars-header-bar { top: 60px !important; padding: 10px 16px !important; }
-          .cars-main-layout { padding: 16px 12px 60px !important; }
+          .cars-header-bar { top: 60px !important; padding: 6px 12px !important; }
+          .cars-main-layout { padding: 70px 12px 60px !important; }
+          .cars-search { font-size: 12px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
         }
         @media(min-width:641px) and (max-width:900px){
           .cars-grid { grid-template-columns: repeat(2,1fr) !important; }
@@ -540,8 +562,8 @@ const CarsPage = () => {
       <div className="cars-page-body" style={{ background:'#080C14', minHeight:'100vh', paddingTop:'72px', fontFamily:"'DM Sans',sans-serif" }}>
 
         {/* ── Page header bar ── */}
-        <div className="cars-header-bar" style={{ background:'rgba(13,17,23,0.8)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'sticky', top:'72px', zIndex:20 }}>
-          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'14px 24px' }}>
+        <div ref={headerBarRef} className="cars-header-bar" style={{ background:'rgba(13,17,23,0.8)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'fixed', top:'72px', left:0, right:0, zIndex:20, transform: searchBarVisible ? 'translateY(0)' : 'translateY(-100%)', transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'8px 24px' }}>
 
             {/* Toolbar */}
             <div className="cars-toolbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
@@ -642,7 +664,7 @@ const CarsPage = () => {
         </div>
 
         {/* ── Main layout ── */}
-        <div className="cars-main-layout" style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px' }}>
+        <div className="cars-main-layout" style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px', paddingTop:'85px' }}>
 
           {/* Results count + hot deals quick filter */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'10px' }}>

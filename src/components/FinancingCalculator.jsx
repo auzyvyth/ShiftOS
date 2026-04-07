@@ -373,7 +373,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
         select.calc-select option { background:#0d1117; color:white; }
         @media(max-width:768px) {
           .calc-layout { flex-direction: column !important; }
-          .calc-results { position: static !important; }
+          .calc-results { position: static !important; width: 100% !important; margin: 0 auto !important; }
         }
       `}</style>
 
