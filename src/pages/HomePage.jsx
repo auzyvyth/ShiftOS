@@ -382,18 +382,16 @@ const HomePage = () => {
     const load = async () => {
       let query = supabase
         .from("car_listings")
-        .select(CAR_FIELDS, { count: "exact" })
-        .eq("status", "active");
-
-      if (tenant) {
-        query = query.eq("dealer_id", tenant.id);
-      } else if (isSubdomain()) {
-        query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
-      }
-
-      const { data, error, count } = await query
+        .select('*, profiles(dealership, site_name, subdomain, whatsapp_number)', { count: "exact" })
+        .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);
+
+      if (tenant?.id) {
+        query = query.eq("dealer_id", tenant.id);
+      }
+
+      const { data, error, count } = await query;
       if (!error && data) {
         setFeatured(data.slice(0, 6));
         setStock(count || data.length);
@@ -416,10 +414,8 @@ const HomePage = () => {
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
 
-      if (tenant) {
+      if (tenant?.id) {
         query = query.eq("dealer_id", tenant.id);
-      } else if (isSubdomain()) {
-        query = query.eq("dealer_id", "00000000-0000-0000-0000-000000000000");
       }
 
       const { count } = await query;
