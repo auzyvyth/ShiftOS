@@ -86,7 +86,7 @@ export default async function handler(req) {
     const slug = decodeURIComponent(carMatch[1]);
 
     const supabase = createClient(
-      process.env.VITE_SUPABASE_URL 'https://lemdkdizdlcirhbzqlos.supabase.co',
+      process.env.VITE_SUPABASE_URL 'https://lemdkdizdlcirhbzqlos.supabase.com',
       process.env.VITE_SUPABASE_ANON_KEY 'REDACTED_ANON_KEY',
     );
 
