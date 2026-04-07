@@ -1,30 +1,41 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 
-export const MARKETPLACE_DOMAIN = 'xdrive.my';
-export const DASHBOARD_DOMAIN = 'shiftos.com';
+export const MARKETPLACE_DOMAIN = "xdrive.my";
+export const DASHBOARD_DOMAIN = "shiftos.com";
 
 export function getSubdomain() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('tenant')) return params.get('tenant');
+  if (params.get("tenant")) return params.get("tenant");
   const hostname = window.location.hostname;
   // Never parse subdomains on local dev
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168')) return null;
-  const stripped = hostname.replace('.xdrive.my', '');
-  const parts = stripped.split('.');
-  const subdomain = hostname.includes('.xdrive.my') && parts[0] !== hostname
-    ? parts[0]
-    : null;
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.startsWith("192.168")
+  )
+    return null;
+  const stripped = hostname.replace(".xdrive.my", "");
+  const parts = stripped.split(".");
+  const subdomain =
+    hostname.includes(".xdrive.my") && parts[0] !== hostname ? parts[0] : null;
   return subdomain;
 }
 
 export function isSubdomain() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('tenant')) return true;
+  if (params.get("tenant")) return true;
   return !!getSubdomain();
 }
 
-const DASHBOARD_PATHS = ['/dashboard', '/salesman', '/admin', '/accounts', '/onboarding', '/login'];
+const DASHBOARD_PATHS = [
+  "/dashboard",
+  "/salesman",
+  "/admin",
+  "/accounts",
+  "/onboarding",
+  "/login",
+];
 
 export default function useTenant() {
   const [tenant, setTenant] = useState(undefined); // undefined = loading
@@ -32,38 +43,47 @@ export default function useTenant() {
 
   // Redirect authenticated users to their correct subdomain on auth state change
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION") return;
       if (!session?.user) return;
 
       const hostname = window.location.hostname;
       // Skip local dev
-      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168')) return;
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname.startsWith("192.168")
+      )
+        return;
       // Skip dashboard/protected routes — they manage their own auth
       const path = window.location.pathname;
-      if (DASHBOARD_PATHS.some(p => path.startsWith(p))) return;
+      if (DASHBOARD_PATHS.some((p) => path.startsWith(p))) return;
 
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('subdomain, role')
-        .eq('id', session.user.id)
+        .from("profiles")
+        .select("subdomain, role")
+        .eq("id", session.user.id)
         .maybeSingle();
 
       const userSubdomain = profile?.subdomain;
-      const expectedHostname = userSubdomain ? `${userSubdomain}.xdrive.my` : 'xdrive.my';
+      const expectedHostname = userSubdomain
+        ? `${userSubdomain}.xdrive.my`
+        : "xdrive.my";
 
-      console.log('auth event:', event);
-      console.log('current hostname:', hostname);
-      console.log('user subdomain from profile:', userSubdomain);
-      console.log('expected hostname:', expectedHostname);
-      console.log('redirecting?', hostname !== expectedHostname);
+      console.log("auth event:", event);
+      console.log("current hostname:", hostname);
+      console.log("user subdomain from profile:", userSubdomain);
+      console.log("expected hostname:", expectedHostname);
+      console.log("redirecting?", hostname !== expectedHostname);
 
       // Already on the correct domain — do nothing
       if (hostname === expectedHostname) return;
 
       window.location.href = userSubdomain
         ? `https://${userSubdomain}.xdrive.my`
-        : 'https://xdrive.my';
+        : "https://xdrive.my";
     });
 
     return () => subscription.unsubscribe();
@@ -72,20 +92,22 @@ export default function useTenant() {
   useEffect(() => {
     async function resolve() {
       const subdomain = getSubdomain();
-      console.log('hostname:', window.location.hostname);
-      console.log('subdomain detected:', subdomain);
+      console.log("hostname:", window.location.hostname);
+      console.log("subdomain detected:", subdomain);
       if (!subdomain) {
-        localStorage.removeItem('tenantSubdomain');
+        localStorage.removeItem("tenantSubdomain");
         setTenant(null); // main domain, show all
         setLoading(false);
         return;
       }
       const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, whatsapp_number, email, phone, social_facebook, social_instagram, social_tiktok, location, about_text, storefront_why, storefront_how, storefront_testimonials, storefront_cta')
-        .eq('subdomain', subdomain)
+        .from("profiles")
+        .select(
+          "id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, whatsapp_number, email, phone, social_facebook, social_instagram, social_tiktok, location, about_text, storefront_why, storefront_how, storefront_testimonials, storefront_cta",
+        )
+        .eq("subdomain", subdomain)
         .maybeSingle();
-      console.log('tenant resolved:', data);
+      console.log("tenant resolved:", data);
       setTenant(data || null);
       setLoading(false);
     }
