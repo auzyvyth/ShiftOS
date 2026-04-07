@@ -382,7 +382,7 @@ const HomePage = () => {
     const load = async () => {
       let query = supabase
         .from("car_listings")
-        .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, logo_url, brand_color)', { count: "exact" })
+        .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)', { count: "exact" })
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);
