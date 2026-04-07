@@ -3163,10 +3163,10 @@ export default function DashboardPage() {
   const [detailListing,    setDetailListing]    = useState(null);
 
   const getStorefrontUrl = () => {
-    if (profile?.role === 'superadmin' || !profile?.subdomain) {
+    if (!profile?.subdomain || profile?.role === 'superadmin') {
       return 'https://xdrive.my';
     }
-    return `https://xdrive.my/${profile.subdomain}`;
+    return `https://${profile.subdomain}.xdrive.my`;
   };
 
   useEffect(() => {
