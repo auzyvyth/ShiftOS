@@ -7,6 +7,7 @@ export function useSiteProfile() {
   const { tenant } = useTenant();
 
   const siteName = tenant?.site_name || tenant?.dealership || 'XDrive';
+  const siteInitial = siteName.charAt(0).toUpperCase();
 
   const waUrl = (msg) => {
     const phone = tenant?.whatsapp_number
@@ -15,5 +16,5 @@ export function useSiteProfile() {
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   };
 
-  return { siteName, waUrl };
+  return { siteName, siteInitial, waUrl, profile: tenant };
 }

@@ -260,6 +260,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     profile?.brand_color || "#c9a84c",
   );
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
+  const [contactEmail, setContactEmail] = useState(profile?.email || "");
+  const [contactPhone, setContactPhone] = useState(profile?.phone || "");
   const [tiktok, setTiktok] = useState(profile?.social_tiktok || "");
   const [instagram, setInstagram] = useState(profile?.social_instagram || "");
   const [facebook, setFacebook] = useState(profile?.social_facebook || "");
@@ -326,6 +328,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSiteName(profile.site_name || "");
     setBrandColor(profile.brand_color || "#c9a84c");
     setWhatsapp(profile.whatsapp_number || "");
+    setContactEmail(profile.email || "");
+    setContactPhone(profile.phone || "");
     setTiktok(profile.social_tiktok || "");
     setInstagram(profile.social_instagram || "");
     setFacebook(profile.social_facebook || "");
@@ -345,6 +349,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
     setSfCta({ ...defaultSfCta, ...(profile.storefront_cta || {}) });
   }, [profile]);
+
+  useEffect(() => {
+    setSubdomain(profile?.subdomain || '');
+  }, [profile?.subdomain]);
 
   const changeCount = profile?.dealership_change_count || 0;
   const changesLeft = MAX_DEALERSHIP_CHANGES - changeCount;
@@ -409,6 +417,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const saveContact = () =>
     saveSection("contact", {
       whatsapp_number: whatsapp.trim(),
+      email: contactEmail.trim(),
+      phone: contactPhone.trim(),
       social_tiktok: tiktok.trim(),
       social_instagram: instagram.trim(),
       social_facebook: facebook.trim(),
@@ -590,35 +600,37 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </div>
         </SettingsField>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Subdomain <span className="text-gray-500 text-xs">(your Drevo storefront URL)</span>
-          </label>
-          <div className="flex items-center gap-2 flex-1">
-            <div className="flex items-center bg-gray-800 border border-gray-700 rounded-lg overflow-hidden flex-1">
-              <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-700 py-2">xdrive.my/</span>
-              <input
-                type="text"
-                value={subdomain}
-                onChange={(e) => {
-                  const clean = sanitizeSubdomain(e.target.value);
-                  setSubdomain(clean);
-                  checkSubdomain(clean);
-                }}
-                placeholder="your-dealership"
-                className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
-              />
+        {profile?.role !== 'superadmin' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Subdomain <span className="text-gray-500 text-xs">(your Drevo storefront URL)</span>
+            </label>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center bg-gray-800 border border-gray-700 rounded-lg overflow-hidden flex-1">
+                <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-700 py-2">xdrive.my/</span>
+                <input
+                  type="text"
+                  value={subdomain}
+                  onChange={(e) => {
+                    const clean = sanitizeSubdomain(e.target.value);
+                    setSubdomain(clean);
+                    checkSubdomain(clean);
+                  }}
+                  placeholder="your-dealership"
+                  className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
+                />
+              </div>
+              {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
+              {subdomainStatus === 'taken' && <span className="text-xs text-red-400 whitespace-nowrap">⚠ Already taken</span>}
+              {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
-            {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
-            {subdomainStatus === 'taken' && <span className="text-xs text-red-400 whitespace-nowrap">⚠ Already taken</span>}
-            {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
+            {subdomain !== profile?.subdomain && profile?.subdomain && (
+              <p className="text-xs text-yellow-400 mt-1">
+                ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">xdrive.my/{profile.subdomain}</code>
+              </p>
+            )}
           </div>
-          {subdomain !== profile?.subdomain && profile?.subdomain && (
-            <p className="text-xs text-yellow-400 mt-1">
-              ⚠ Changing your subdomain will break existing links shared as <code className="text-yellow-300">xdrive.my/{profile.subdomain}</code>
-            </p>
-          )}
-        </div>
+        )}
 
         <SettingsField label="Site / Tab Name" hint="Shows in browser tab">
           <input
@@ -690,6 +702,27 @@ function SettingsTab({ profile, onProfileUpdate }) {
             This powers the WhatsApp enquiry button on every listing card.
           </p>
         </SettingsField>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SettingsField label="Email Address">
+            <input
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              type="email"
+              placeholder="info@yourshowroom.com"
+              className={iCls}
+            />
+          </SettingsField>
+          <SettingsField label="Phone Number">
+            <input
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              type="text"
+              placeholder="+60 12-345 6789"
+              className={iCls}
+            />
+          </SettingsField>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SettingsField label="TikTok">
@@ -3129,6 +3162,13 @@ export default function DashboardPage() {
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
 
+  const getStorefrontUrl = () => {
+    if (profile?.role === 'superadmin' || !profile?.subdomain) {
+      return 'https://xdrive.my';
+    }
+    return `https://xdrive.my/${profile.subdomain}`;
+  };
+
   useEffect(() => {
     const name = profile?.site_name || profile?.dealership || "XDrive";
     document.title = `${name} — Admin`;
@@ -3637,7 +3677,7 @@ export default function DashboardPage() {
             </a>
           )}
           <button
-            onClick={() => window.open(`https://${profile?.subdomain}.xdrive.my`, '_blank')}
+            onClick={() => window.open(getStorefrontUrl(), '_blank')}
             className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
           >
             <Home className="w-4 h-4 flex-shrink-0" />
