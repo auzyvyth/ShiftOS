@@ -68,6 +68,7 @@ import {
   ChevronLeft,
   ZoomIn,
   Calculator,
+  Bell,
   Package,
   Calendar,
   FileText,
@@ -3181,6 +3182,7 @@ function StockTab({ userId, listings }) {
   const activeUnits = units.filter(u => u.status !== 'sold');
   const totalValue = activeUnits.reduce((s, u) => s + (u.purchase_price || 0), 0);
   const avgDays = activeUnits.length ? Math.round(activeUnits.reduce((s, u) => s + (typeof daysInStock(u.purchase_date) === 'number' ? daysInStock(u.purchase_date) : 0), 0) / activeUnits.length) : 0;
+  const agingUnits = activeUnits.filter(u => u.purchase_date && daysInStock(u.purchase_date) > 60);
 
   const handleAdd = async () => {
     setAddSaving(true);
@@ -3210,11 +3212,12 @@ function StockTab({ userId, listings }) {
     { label: 'Stock Value', val: `RM ${totalValue.toLocaleString()}`, Icon: Banknote, glow: 'rgba(251,191,36,0.13)', grad: 'grad-red' },
     { label: 'Avg Days in Stock', val: avgDays, Icon: Clock, glow: 'rgba(167,139,250,0.13)', grad: 'grad-purple' },
     { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`, Icon: TrendingUp, glow: 'rgba(110,231,183,0.13)', grad: 'grad-green' },
+    { label: 'Aging Stock (60d+)', val: agingUnits.length, Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.04)', grad: agingUnits.length > 0 ? 'grad-red' : '' },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {summaryCards.map(({ label, val, Icon: Ic, glow, grad }) => (
           <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
             <div className="flex items-center justify-between mb-3">
@@ -3249,8 +3252,10 @@ function StockTab({ userId, listings }) {
                 {units.map(u => {
                   const car = u.car_listings;
                   const gp = grossProfit(u);
+                  const days = typeof daysInStock(u.purchase_date) === 'number' ? daysInStock(u.purchase_date) : 0;
+                  const isAging = u.status === 'in_stock' && days > 60;
                   return (
-                    <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.07)' : 'transparent'}>
                       <td style={{ padding: '12px 14px', minWidth: 140 }}>
                         {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
                       </td>
@@ -3258,7 +3263,11 @@ function StockTab({ userId, listings }) {
                       <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(u.recon_cost||0).toLocaleString()}</td>
                       <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(u.asking_price||0).toLocaleString()}</td>
                       <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>{u.sold_price ? `RM ${u.sold_price.toLocaleString()}` : '—'}</td>
-                      <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{daysInStock(u.purchase_date)}</td>
+                      <td style={{ padding: '12px 14px', fontSize: 13 }}>
+                        {isAging
+                          ? <span style={{ color: '#f87171', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
+                          : <span style={{ color: '#9ca3af' }}>{daysInStock(u.purchase_date)}</span>}
+                      </td>
                       <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
                         {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
                       </td>
@@ -3334,7 +3343,7 @@ function StockTab({ userId, listings }) {
 }
 
 // ─── EnquiriesTab ─────────────────────────────────────────────────────────────
-function EnquiriesTab({ userId }) {
+function EnquiriesTab({ userId, onOpenDoc }) {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -3444,6 +3453,22 @@ function EnquiriesTab({ userId }) {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Add notes about this enquiry..." className={taCls} />
                 <button onClick={saveNotes} disabled={savingNotes} className="mt-2 w-full px-4 py-2 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{savingNotes ? 'Saving...' : 'Save Notes'}</button>
               </div>
+              {/* Document shortcuts */}
+              {onOpenDoc && (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Generate Document</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button onClick={() => onOpenDoc({ doc_type: 'Deposit Receipt', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, cursor: 'pointer', color: '#fbbf24', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} />
+                      Generate Deposit Receipt
+                    </button>
+                    <button onClick={() => onOpenDoc({ doc_type: 'Sales Agreement', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, cursor: 'pointer', color: '#60a5fa', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} />
+                      Generate Sales Agreement
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -3563,10 +3588,19 @@ function BookingsTab({ userId, listings, salesmen }) {
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>{b.deposit_amount ? `RM ${Number(b.deposit_amount).toLocaleString()}` : '—'}</td>
                         <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                             {[['confirm','confirmed'],['done','completed'],['cancel','cancelled'],['no-show','no_show']].filter(([,s]) => s !== b.status).slice(0,2).map(([label, s]) => (
                               <button key={s} onClick={() => updateStatus(b.id, s)} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
                             ))}
+                            {b.status === 'confirmed' && b.buyer_phone && (() => {
+                              const carLabel = car ? `${car.brand} ${car.model} ${car.year}` : 'the vehicle';
+                              const dateStr = b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+                              const typeLabel = (b.booking_type || 'appointment').replace('_', ' ');
+                              const msg = `Hi ${b.buyer_name || 'there'}, your ${typeLabel} for ${carLabel} is confirmed on ${dateStr}. Reply to reschedule.`;
+                              return (
+                                <a href={`https://wa.me/${b.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>WA reminder</a>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>
@@ -3655,7 +3689,7 @@ function BookingsTab({ userId, listings, salesmen }) {
 }
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
-function DocumentsTab({ userId, listings }) {
+function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showGen, setShowGen] = useState(false);
@@ -3664,6 +3698,20 @@ function DocumentsTab({ userId, listings }) {
   const [printDoc, setPrintDoc] = useState(null);
 
   const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+
+  // Pre-fill from Enquiries shortcut
+  useEffect(() => {
+    if (!prefillDocData) return;
+    setGenForm(p => ({
+      ...p,
+      doc_type: prefillDocData.doc_type || 'Sales Agreement',
+      buyer_name: prefillDocData.buyer_name || '',
+      buyer_phone: prefillDocData.buyer_phone || '',
+      listing_id: prefillDocData.listing_id || '',
+    }));
+    setShowGen(true);
+    onClearPrefill?.();
+  }, [prefillDocData]);
 
   const fetchDocs = async () => {
     setLoading(true);
@@ -3865,6 +3913,12 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  const [notifications,    setNotifications]    = useState([]);
+  const [notifOpen,        setNotifOpen]        = useState(false);
+  const [pendingStockListing, setPendingStockListing] = useState(null);
+  const [pendingStockForm, setPendingStockForm] = useState({ purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '' });
+  const [pendingStockSaving, setPendingStockSaving] = useState(false);
+  const [prefillDocData,   setPrefillDocData]   = useState(null);
 
   const getStorefrontUrl = () => {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
@@ -3977,6 +4031,20 @@ export default function DashboardPage() {
     return () => supabase.removeChannel(ch);
   }, [userId]);
 
+  // ── Notifications realtime ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const reload = () =>
+      supabase.from('dealer_notifications').select('*').eq('dealer_id', userId)
+        .order('created_at', { ascending: false }).limit(20)
+        .then(({ data }) => setNotifications(data || []));
+    reload();
+    const ch = supabase.channel(`notifs_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dealer_notifications', filter: `dealer_id=eq.${userId}` }, reload)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
@@ -3985,6 +4053,9 @@ export default function DashboardPage() {
   const handleNew = (l) => {
     setListings((p) => [l, ...p]);
     setActiveTab("listings");
+    // Prompt to add stock purchase details
+    setPendingStockListing(l);
+    setPendingStockForm({ purchase_price: '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: '' });
   };
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -4304,6 +4375,27 @@ export default function DashboardPage() {
     },
   ];
 
+  const notifCount = notifications.filter(n => !n.is_read).length;
+  const timeAgo = (iso) => {
+    if (!iso) return '';
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  };
+  const markNotifRead = async (n) => {
+    if (n.is_read) return;
+    await supabase.from('dealer_notifications').update({ is_read: true }).eq('id', n.id);
+    setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+  };
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (!unread.length) return;
+    await supabase.from('dealer_notifications').update({ is_read: true }).in('id', unread);
+    setNotifications(p => p.map(n => ({ ...n, is_read: true })));
+  };
+
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
       <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
@@ -4340,7 +4432,7 @@ export default function DashboardPage() {
             "4px 0 28px rgba(0,0,0,0.65), inset -1px 0 0 rgba(220,38,38,0.07)",
         }}
       >
-        <div className="px-5 py-5 flex items-center gap-3" style={T.divider}>
+        <div className="px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{
@@ -4351,11 +4443,18 @@ export default function DashboardPage() {
           >
             S
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-black tracking-wider text-sm grad-red">
               ShiftOS
             </p>
             <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
+          </div>
+          {/* Bell in sidebar header */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setNotifOpen(p => !p)} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#f87171' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell className="w-4 h-4" />
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#dc2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+            </button>
           </div>
         </div>
 
@@ -4487,7 +4586,42 @@ export default function DashboardPage() {
           <span className="ml-1 text-gray-600 text-sm">
             {TITLES[activeTab]?.title}
           </span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notification Bell */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setNotifOpen(p => !p)}
+                style={{ position: 'relative', background: notifCount > 0 ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${notifCount > 0 ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 8, padding: '6px', cursor: 'pointer', color: notifCount > 0 ? '#f87171' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Bell className="w-4 h-4" />
+                {notifCount > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 800, borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #09090b' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              </button>
+              {notifOpen && (
+                <>
+                  <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+                      {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+                    ) : notifications.slice(0, 10).map(n => (
+                      <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(220,38,38,0.04)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(220,38,38,0.04)'}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
+                            {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
+                            <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <Avatar />
           </div>
         </div>
@@ -4788,13 +4922,13 @@ export default function DashboardPage() {
             <StockTab userId={userId} listings={listings} />
           )}
           {activeTab === "enquiries" && (
-            <EnquiriesTab userId={userId} />
+            <EnquiriesTab userId={userId} onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }} />
           )}
           {activeTab === "bookings" && (
             <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />
           )}
           {activeTab === "documents" && (
-            <DocumentsTab userId={userId} listings={listings} />
+            <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} />
           )}
         </div>
       </main>
@@ -4959,6 +5093,69 @@ export default function DashboardPage() {
           onConfirm={handleMarkSold}
           loading={markSoldLoading}
         />
+      )}
+
+      {/* ── Post-listing stock purchase prompt ── */}
+      {pendingStockListing && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={T.modal}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white">Add Purchase Details?</h3>
+                <p className="text-gray-500 text-xs mt-0.5">{pendingStockListing.brand} {pendingStockListing.model} {pendingStockListing.year}</p>
+              </div>
+              <button onClick={() => setPendingStockListing(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM) *</label>
+                  <input type="number" value={pendingStockForm.purchase_price} onChange={e => setPendingStockForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label>
+                  <input type="date" value={pendingStockForm.purchase_date} onChange={e => setPendingStockForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Source</label>
+                  <select value={pendingStockForm.purchase_source} onChange={e => setPendingStockForm(p => ({ ...p, purchase_source: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    {['Auction','Direct Buy','Trade-in','Other'].map(s => <option key={s} value={s} style={{ background: '#111118' }}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Cost (RM)</label>
+                  <input type="number" value={pendingStockForm.recon_cost} onChange={e => setPendingStockForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} />
+                </div>
+              </div>
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Skip</button>
+              <button
+                disabled={pendingStockSaving || !pendingStockForm.purchase_price}
+                onClick={async () => {
+                  setPendingStockSaving(true);
+                  await supabase.from('stock_units').insert({
+                    dealer_id: userId,
+                    listing_id: pendingStockListing.id,
+                    purchase_price: Number(pendingStockForm.purchase_price) || 0,
+                    purchase_date: pendingStockForm.purchase_date || null,
+                    purchase_source: pendingStockForm.purchase_source || null,
+                    recon_cost: Number(pendingStockForm.recon_cost) || 0,
+                    status: 'in_stock',
+                  });
+                  setPendingStockSaving(false);
+                  setPendingStockListing(null);
+                }}
+                className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+                style={T.btnRed}
+              >
+                {pendingStockSaving ? 'Saving...' : 'Add to Stock'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
