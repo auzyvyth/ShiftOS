@@ -272,7 +272,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   );
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
-  const [contactPhone, setContactPhone] = useState(profile?.phone || "");
+  const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
   const [tiktok, setTiktok] = useState(profile?.social_tiktok || "");
   const [instagram, setInstagram] = useState(profile?.social_instagram || "");
   const [facebook, setFacebook] = useState(profile?.social_facebook || "");
@@ -2010,7 +2010,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+60");
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
   const [teamSoldCount, setTeamSoldCount] = useState(0);
@@ -3495,7 +3495,7 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ buyer_name: '', buyer_phone: '', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
+  const [addForm, setAddForm] = useState({ buyer_name: '', buyer_phone: '+60', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
   const [addSaving, setAddSaving] = useState(false);
 
   const statusMeta = {
@@ -3535,7 +3535,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       });
       if (error) throw error;
       setShowAdd(false);
-      setAddForm({ buyer_name: '', buyer_phone: '', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
+      setAddForm({ buyer_name: '', buyer_phone: '+60', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
       fetchBookings();
     } catch (err) {
       console.error('[BookingsTab] handleAdd error:', err.message, err);
@@ -3710,7 +3710,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showGen, setShowGen] = useState(false);
-  const [genForm, setGenForm] = useState({ doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '', buyer_phone: '', buyer_address: '', sale_price: '', deposit_amount: '' });
+  const [genForm, setGenForm] = useState({ doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '', buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '' });
   const [genSaving, setGenSaving] = useState(false);
   const [printDoc, setPrintDoc] = useState(null);
 
@@ -3723,7 +3723,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
       ...p,
       doc_type: prefillDocData.doc_type || 'Sales Agreement',
       buyer_name: prefillDocData.buyer_name || '',
-      buyer_phone: prefillDocData.buyer_phone || '',
+      buyer_phone: prefillDocData.buyer_phone || '+60',
       listing_id: prefillDocData.listing_id || '',
     }));
     setShowGen(true);
