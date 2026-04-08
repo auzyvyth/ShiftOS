@@ -125,6 +125,8 @@ const STYLES = `
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:rgba(220,38,38,0.22); border-radius:4px; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(220,38,38,0.42); }
+
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 `;
 
 const T = {
@@ -3919,6 +3921,9 @@ export default function DashboardPage() {
   const [pendingStockForm, setPendingStockForm] = useState({ purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '' });
   const [pendingStockSaving, setPendingStockSaving] = useState(false);
   const [prefillDocData,   setPrefillDocData]   = useState(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const [onboardingToast,  setOnboardingToast]  = useState(false);
 
   const getStorefrontUrl = () => {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
@@ -4396,6 +4401,32 @@ export default function DashboardPage() {
     setNotifications(p => p.map(n => ({ ...n, is_read: true })));
   };
 
+  // ── Onboarding completion check ─────────────────────────────────────────
+  const onboardingItems = profile ? [
+    { label: 'Account created',          done: true },
+    { label: 'Add your first listing',   done: listings.length > 0,         action: () => handleTabChange('listings') },
+    { label: 'Connect Telegram',         done: !!profile.telegram_bot_token, action: () => handleTabChange('settings') },
+    { label: 'Share your storefront',    done: onboardingCopied,             isCopy: true },
+  ] : [];
+  const onboardingDoneCount = onboardingItems.filter(i => i.done).length;
+  const allOnboardingDone   = onboardingDoneCount === onboardingItems.length;
+
+  useEffect(() => {
+    if (!allOnboardingDone || !userId || profile?.onboarding_completed) return;
+    supabase.from('profiles').update({ onboarding_completed: true }).eq('id', userId);
+    setOnboardingDismissed(true);
+    setOnboardingToast(true);
+    setTimeout(() => setOnboardingToast(false), 5000);
+  }, [allOnboardingDone]);
+
+  const copyStorefrontOnboarding = () => {
+    const url = profile?.subdomain ? `https://${profile.subdomain}.xdrive.my` : 'https://xdrive.my';
+    navigator.clipboard.writeText(url).catch(() => {});
+    setOnboardingCopied(true);
+  };
+
+  const showOnboardingBanner = profile && profile.onboarding_completed === false && !onboardingDismissed;
+
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
       <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
@@ -4625,6 +4656,83 @@ export default function DashboardPage() {
             <Avatar />
           </div>
         </div>
+
+        {/* ── Onboarding Banner ── */}
+        {showOnboardingBanner && (
+          <div style={{ background: 'linear-gradient(135deg,rgba(220,38,38,0.09),rgba(124,58,237,0.07))', borderBottom: '1px solid rgba(220,38,38,0.18)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+            <div style={{ maxWidth: 900, margin: '0 auto' }}>
+              {/* Header row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 28, height: 28, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5 text-red-400" />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
+                    <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOnboardingDismissed(true)}
+                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#f87171)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              </div>
+
+              {/* Checklist */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {onboardingItems.map((item, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      if (item.isCopy) copyStorefrontOnboarding();
+                      else if (item.action && !item.done) item.action();
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '6px 12px',
+                      background: item.done ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 8,
+                      cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(220,38,38,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
+                  >
+                    {item.done
+                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                    }
+                    <span style={{ fontSize: 12, color: item.done ? '#6ee7b7' : '#9ca3af', fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
+                      {item.label}
+                      {item.isCopy && item.done && ' ✓'}
+                      {item.isCopy && !item.done && ' (click to copy)'}
+                    </span>
+                    {!item.done && item.action && <ChevronRight className="w-3 h-3 text-gray-600 flex-shrink-0" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Congrats toast ── */}
+        {onboardingToast && (
+          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#111118', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Setup complete!</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Your storefront is fully configured.</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <div className="mb-6">
