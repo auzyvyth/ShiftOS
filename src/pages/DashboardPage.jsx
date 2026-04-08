@@ -12,6 +12,7 @@ import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
+import { normalizeMYPhone } from "../utils/phone";
 import {
   Car,
   PlusCircle,
@@ -426,9 +427,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const saveContact = () =>
     saveSection("contact", {
-      whatsapp_number: whatsapp.trim(),
+      whatsapp_number: whatsapp.trim() ? normalizeMYPhone(whatsapp.trim()) : '',
       email: contactEmail.trim(),
-      phone: contactPhone.trim(),
+      phone: contactPhone.trim() ? normalizeMYPhone(contactPhone.trim()) : '',
       social_tiktok: tiktok.trim(),
       social_instagram: instagram.trim(),
       social_facebook: facebook.trim(),
@@ -1416,6 +1417,7 @@ function AnalyticsTab({ listings, profile }) {
     (e) => e.event_type === "whatsapp_click",
   ).length;
   const totalCalls = events.filter((e) => e.event_type === "call_click").length;
+  const storeVisits = events.filter((e) => e.event_type === "store_visit").length;
   const bySlug = events.reduce((acc, e) => {
     if (!acc[e.salesman_slug])
       acc[e.salesman_slug] = { clicks: 0, enquiries: 0 };
@@ -1603,6 +1605,13 @@ function AnalyticsTab({ listings, profile }) {
             grad: "grad-purple",
             glow: "rgba(216,180,254,0.14)",
             icon: <Phone className="w-4 h-4" />,
+          },
+          {
+            label: "Store Visits",
+            val: storeVisits,
+            grad: "grad-white",
+            glow: "rgba(148,163,184,0.1)",
+            icon: <Eye className="w-4 h-4" />,
           },
         ].map(({ label, val, grad, glow, icon }) => (
           <div
@@ -3409,7 +3418,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['Buyer', 'Phone', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
+                  {['Buyer', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -3418,8 +3427,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
                 {enquiries.map(e => (
                   <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(220,38,38,0.04)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.phone || '—'}</td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.car || '—'}</td>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.car_info || e.car || '—'}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
                     <td style={{ padding: '12px 14px' }}>
                       <select value={e.status || 'new'} onChange={ev => { ev.stopPropagation(); updateStatus(e.id, ev.target.value); }} style={{ fontSize: 11, fontWeight: 700, background: statusMeta[e.status || 'new']?.bg, color: statusMeta[e.status || 'new']?.color, border: `1px solid ${statusMeta[e.status || 'new']?.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}>
@@ -3446,7 +3454,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              {[['Buyer', selected.buyer_name], ['Phone', selected.phone], ['Car', selected.car], ['Source', selected.source || selected.ref_slug], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
+              {[['Buyer', selected.buyer_name], ['Car', selected.car_info || selected.car], ['Source', selected.source || selected.ref_slug], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 12 }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{k}</p>
                   <p style={{ fontSize: 13, color: '#f3f4f6', margin: 0 }}>{v || '—'}</p>
@@ -3939,6 +3947,7 @@ export default function DashboardPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingCopied, setOnboardingCopied] = useState(false);
   const [onboardingToast,  setOnboardingToast]  = useState(false);
+  const loadedUidRef = useRef(null);
 
   const getStorefrontUrl = () => {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
@@ -3988,6 +3997,7 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
+        loadedUidRef.current = uid;
       } else {
         navigate("/login");
         return;
@@ -4013,10 +4023,15 @@ export default function DashboardPage() {
     // Fast initial load from cached session
     supabase.auth.getSession().then(({ data }) => loadSession(data.session));
 
-    // Re-run the full loader on every auth event so account-switching is safe
+    // Re-run the full loader on every auth event so account-switching is safe.
+    // Guard: skip SIGNED_IN for the same user (fires on tab return / token refresh)
+    // to prevent the app from wiping state and showing the loading/banner again.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "SIGNED_IN") loadSession(session);
+        if (event === "SIGNED_IN") {
+          if (session?.user?.id && session.user.id === loadedUidRef.current) return;
+          loadSession(session);
+        }
         else if (event === "SIGNED_OUT") navigate("/login");
       }
     );
@@ -5267,6 +5282,25 @@ export default function DashboardPage() {
                   await supabase.from('stock_units').insert({
                     dealer_id: userId,
                     listing_id: pendingStockListing.id,
+                    // Mirror car identity fields from the listing
+                    brand:          pendingStockListing.brand,
+                    model:          pendingStockListing.model,
+                    year:           pendingStockListing.year,
+                    variant:        pendingStockListing.variant,
+                    colour:         pendingStockListing.colour,
+                    mileage:        pendingStockListing.mileage,
+                    transmission:   pendingStockListing.transmission,
+                    fuel_type:      pendingStockListing.fuel_type,
+                    body_type:      pendingStockListing.body_type,
+                    engine_cc:      pendingStockListing.engine_cc,
+                    is_recon:       pendingStockListing.is_recon,
+                    import_country: pendingStockListing.import_country,
+                    auction_grade:  pendingStockListing.auction_grade,
+                    interior_grade: pendingStockListing.interior_grade,
+                    auction_house:  pendingStockListing.auction_house,
+                    vin_number:     pendingStockListing.vin_number,
+                    asking_price:   pendingStockListing.selling_price,
+                    // Purchase-specific fields from the modal form
                     purchase_price: Number(pendingStockForm.purchase_price) || 0,
                     purchase_date: pendingStockForm.purchase_date || null,
                     purchase_source: pendingStockForm.purchase_source || null,
