@@ -9,7 +9,7 @@ const initialListing = {
   brand: '', model: '', variant: '', year: '',
   bodyType: '', fuelType: '', transmission: 'Auto', condition: 'used',
   engineCc: '',
-  mileage: '', colour: '', registrationDate: '', vin_number: '',
+  mileage: '', colour: '', registrationDate: '', plate_number: '', vin_number: '',
   state: '', city: '',
   basePrice: '', sellingPrice: '', originalPrice: '',
   specs: '', options: '', features: '',
@@ -275,6 +275,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         mileage: listing.mileage ? String(listing.mileage) : '',
         colour: listing.colour || '',
         registrationDate: listing.registration_date || '',
+        plate_number: listing.plate_number || '',
         vin_number: listing.vin_number || '',
         state: listing.state || '',
         city: listing.city || '',
@@ -431,6 +432,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         engine_cc: engineCc,
         images: imageUrls, year,
         transmission: form.transmission, body_type: form.bodyType, fuel_type: form.fuelType,
+        plate_number: form.plate_number || null,
         vin_number: form.vin_number || null,
         // Recon / grading
         is_recon: form.isRecon,
@@ -588,6 +590,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </div>
           <Field label="Registration Date">
             <input type="date" name="registrationDate" value={form.registrationDate} onChange={handleChange} className={inputCls} />
+          </Field>
+          <Field label="Plate Number" hint="Optional — vehicle registration plate">
+            <input name="plate_number" value={form.plate_number} onChange={handleChange} placeholder="e.g. WXY 1234" className={inputCls} />
           </Field>
           <Field label="VIN Number" hint="Vehicle Identification Number">
             <input name="vin_number" value={form.vin_number} onChange={handleChange} placeholder="e.g. JN1CA31D1XT000001" className={inputCls} />
