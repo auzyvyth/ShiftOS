@@ -61,14 +61,7 @@ const isHotDeal = (c) => {
 };
 
 // ── Custom Select ─────────────────────────────────────────────────────────────
-function CustomSelect({
-  label,
-  icon: Icon,
-  value,
-  onChange,
-  options,
-  placeholder,
-}) {
+function CustomSelect({ label, icon: Icon, value, onChange, options, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -93,98 +86,46 @@ function CustomSelect({
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          background: open
-            ? "rgba(255,255,255,0.09)"
-            : "rgba(255,255,255,0.05)",
-          border: `1px solid ${open ? "rgba(220,38,38,0.45)" : "rgba(255,255,255,0.1)"}`,
-          borderRadius: "10px",
-          padding: "12px 14px",
+          background: open ? "rgba(196,162,101,0.06)" : "rgba(255,255,255,0.03)",
+          border: `1px solid ${open ? "rgba(196,162,101,0.35)" : "rgba(255,255,255,0.08)"}`,
+          borderRadius: "4px",
+          padding: "13px 14px",
           cursor: "pointer",
           transition: "all 0.2s",
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "'Outfit', sans-serif",
           outline: "none",
         }}
       >
-        <Icon
-          size={14}
-          style={{
-            color: open ? "#f87171" : "#64748b",
-            flexShrink: 0,
-            transition: "color 0.2s",
-          }}
-        />
+        <Icon size={14} style={{ color: open ? "#C4A265" : "#52525A", flexShrink: 0, transition: "color 0.2s" }} />
         <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-          <p
-            style={{
-              color: "#64748b",
-              fontSize: "10px",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              margin: "0 0 3px 0",
-            }}
-          >
+          <p style={{ color: "#52525A", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 3px 0", fontWeight: 600 }}>
             {label}
           </p>
-          <p
-            style={{
-              color: value ? "white" : "#94a3b8",
-              fontSize: "13px",
-              fontWeight: value ? "600" : "400",
-              margin: 0,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
+          <p style={{ color: value ? "#F0F0F0" : "#6B6B72", fontSize: "13px", fontWeight: value ? "600" : "400", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {displayLabel}
           </p>
         </div>
-        <ChevronDown
-          size={12}
-          style={{
-            color: "#475569",
-            flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        />
+        <ChevronDown size={12} style={{ color: "#3A3A42", flexShrink: 0, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
       </button>
 
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            background: "rgba(15,23,42,0.97)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "12px",
-            overflow: "hidden",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
-            animation: "dropIn 0.15s ease",
-          }}
-        >
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 9999,
+          background: "#141416", backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.09)", borderRadius: "6px",
+          overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.7)",
+          animation: "dropIn 0.15s ease",
+        }}>
           <button
             type="button"
-            onClick={() => {
-              onChange("");
-              setOpen(false);
-            }}
+            onClick={() => { onChange(""); setOpen(false); }}
             style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "10px 16px",
-              background: !value ? "rgba(220,38,38,0.08)" : "transparent",
-              border: "none",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              color: !value ? "#f87171" : "#94a3b8",
-              fontSize: "13px",
-              fontWeight: !value ? "600" : "400",
-              cursor: "pointer",
-              fontFamily: "'DM Sans',sans-serif",
+              width: "100%", textAlign: "left", padding: "10px 16px",
+              background: !value ? "rgba(196,162,101,0.06)" : "transparent",
+              border: "none", borderBottom: "1px solid rgba(255,255,255,0.05)",
+              color: !value ? "#C4A265" : "#6B6B72", fontSize: "13px",
+              fontWeight: !value ? "600" : "400", cursor: "pointer",
+              fontFamily: "'Outfit', sans-serif",
             }}
           >
             {placeholder}
@@ -195,45 +136,20 @@ function CustomSelect({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
                 style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 16px",
-                  background: isSelected
-                    ? "rgba(220,38,38,0.1)"
-                    : "transparent",
+                  width: "100%", textAlign: "left", padding: "10px 16px",
+                  background: isSelected ? "rgba(196,162,101,0.06)" : "transparent",
                   border: "none",
-                  borderBottom:
-                    i === options.length - 1
-                      ? "none"
-                      : "1px solid rgba(255,255,255,0.04)",
-                  color: isSelected ? "#f87171" : "#cbd5e1",
-                  fontSize: "13px",
-                  fontWeight: isSelected ? "600" : "400",
-                  cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  borderBottom: i === options.length - 1 ? "none" : "1px solid rgba(255,255,255,0.04)",
+                  color: isSelected ? "#C4A265" : "#C0C0C6", fontSize: "13px",
+                  fontWeight: isSelected ? "600" : "400", cursor: "pointer",
+                  fontFamily: "'Outfit', sans-serif",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}
               >
                 {opt.label}
-                {isSelected && (
-                  <span
-                    style={{
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      background: "#dc2626",
-                      display: "inline-block",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
+                {isSelected && <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#C4A265", display: "inline-block", flexShrink: 0 }} />}
               </button>
             );
           })}
@@ -251,27 +167,14 @@ function FadeIn({ children, delay = 0, style = {} }) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setV(true);
-          obs.disconnect();
-        }
-      },
+      ([e]) => { if (e.isIntersecting) { setV(true); obs.disconnect(); } },
       { threshold: 0.08 },
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
   return (
-    <div
-      ref={ref}
-      style={{
-        opacity: v ? 1 : 0,
-        transform: v ? "translateY(0)" : "translateY(24px)",
-        transition: `opacity 0.6s ease ${delay}s, transform 0.6s ease ${delay}s`,
-        ...style,
-      }}
-    >
+    <div ref={ref} style={{ opacity: v ? 1 : 0, transform: v ? "translateY(0)" : "translateY(20px)", transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`, ...style }}>
       {children}
     </div>
   );
@@ -280,85 +183,39 @@ function FadeIn({ children, delay = 0, style = {} }) {
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div
-      style={{
-        background: "rgba(30,41,59,0.6)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "16px",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          height: "200px",
-          background:
-            "linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%)",
-          backgroundSize: "200% 100%",
-          animation: "shimmer 1.5s infinite",
-        }}
-      />
-      <div style={{ padding: "16px" }}>
+    <div style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", overflow: "hidden" }}>
+      <div style={{ height: "200px", background: "linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
+      <div style={{ padding: "18px" }}>
         {[70, 50, 90, 100].map((w, i) => (
-          <div
-            key={i}
-            style={{
-              height: "11px",
-              width: `${w}%`,
-              background: "#334155",
-              borderRadius: "6px",
-              marginBottom: "10px",
-              animation: "shimmer 1.5s infinite",
-            }}
-          />
+          <div key={i} style={{ height: "10px", width: `${w}%`, background: "#1C1C1E", borderRadius: "4px", marginBottom: "10px", animation: "shimmer 1.5s infinite" }} />
         ))}
       </div>
     </div>
   );
 }
 
-// ── Button styles ─────────────────────────────────────────────────────────────
-const redGlassBtn = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "8px",
-  background: "rgba(220,38,38,0.16)",
-  backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  border: "1px solid rgba(220,38,38,0.42)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  padding: "13px 28px",
-  borderRadius: "50px",
-  textDecoration: "none",
-  boxShadow:
-    "0 4px 20px rgba(220,38,38,0.18), inset 0 1px 0 rgba(255,255,255,0.1)",
-  transition: "all 0.25s ease",
-  position: "relative",
-  overflow: "hidden",
+// ── Style constants ───────────────────────────────────────────────────────────
+const primaryBtn = {
+  display: "inline-flex", alignItems: "center", gap: "8px",
+  background: "#DC2626", border: "1px solid #DC2626",
+  color: "white", fontWeight: "600", fontSize: "14px",
+  padding: "13px 28px", borderRadius: "4px", textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif", letterSpacing: "0.02em",
+  transition: "all 0.2s ease", position: "relative", overflow: "hidden",
 };
 const waBtn = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "8px",
-  background: "rgba(37,211,102,0.08)",
-  backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  border: "1px solid rgba(37,211,102,0.25)",
-  color: "#4ade80",
-  fontWeight: "600",
-  fontSize: "14px",
-  padding: "13px 28px",
-  borderRadius: "50px",
-  textDecoration: "none",
+  display: "inline-flex", alignItems: "center", gap: "8px",
+  background: "transparent",
+  border: "1px solid rgba(37,211,102,0.3)",
+  color: "#4ade80", fontWeight: "600", fontSize: "14px",
+  padding: "13px 28px", borderRadius: "4px", textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif", letterSpacing: "0.02em",
   transition: "all 0.25s ease",
 };
 const glassCard = {
-  background: "rgba(30,41,59,0.5)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: "16px",
+  background: "#111113",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: "6px",
 };
 
 // ── HomePage ──────────────────────────────────────────────────────────────────
@@ -392,11 +249,10 @@ const HomePage = () => {
   }, [tenant?.id]);
 
   useEffect(() => {
-    if (tenant === undefined) return; // still loading
+    if (tenant === undefined) return;
     const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
     let ch, soldCh;
     const load = async () => {
-
       let query = supabase
         .from("car_listings")
         .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)', { count: "exact" })
@@ -413,11 +269,7 @@ const HomePage = () => {
         setHotDeals(
           data
             .filter(isHotDeal)
-            .sort(
-              (a, b) =>
-                (b.original_price - b.selling_price) / b.original_price -
-                (a.original_price - a.selling_price) / a.original_price,
-            )
+            .sort((a, b) => (b.original_price - b.selling_price) / b.original_price - (a.original_price - a.selling_price) / a.original_price)
             .slice(0, 6),
         );
       }
@@ -428,9 +280,7 @@ const HomePage = () => {
         .from("car_listings")
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
-
       query = query.eq("dealer_id", tenant?.id ?? SUPERADMIN_ID);
-
       const { count } = await query;
       setSoldCount(count || 0);
     };
@@ -438,19 +288,11 @@ const HomePage = () => {
     fetchSoldCount();
     ch = supabase
       .channel("home")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "car_listings" },
-        load,
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "car_listings" }, load)
       .subscribe();
     soldCh = supabase
       .channel("home_sold")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "car_listings" },
-        fetchSoldCount,
-      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings" }, fetchSoldCount)
       .subscribe();
     return () => {
       if (ch) supabase.removeChannel(ch);
@@ -467,12 +309,7 @@ const HomePage = () => {
         .select('subdomain, role')
         .eq('id', user.id)
         .maybeSingle();
-      // Only redirect dealers with a subdomain, never superadmin or salesman
-      if (
-        profile?.role === 'dealer' &&
-        profile?.subdomain &&
-        !isSubdomain()
-      ) {
+      if (profile?.role === 'dealer' && profile?.subdomain && !isSubdomain()) {
         window.location.href = `https://${profile.subdomain}.xdrive.my`;
       }
     }
@@ -488,7 +325,6 @@ const HomePage = () => {
     return q ? `/cars?${q}` : "/cars";
   };
 
-  // ── Hardcoded storefront defaults ──────────────────────────────────────────
   const HARDCODED_DEFAULT_WHY = {
     title: t("home.whyChoose.title"),
     items: [
@@ -524,7 +360,6 @@ const HomePage = () => {
   const testimonialsData = tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
   const ctaData          = tenant?.storefront_cta          || HARDCODED_DEFAULT_CTA;
 
-  // Icons are always hardcoded — they can't be stored in the DB
   const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
   const howIcons = [MessageCircle, Search, Shield, CheckCircle];
   const howNums  = ["01", "02", "03", "04"];
@@ -541,26 +376,21 @@ const HomePage = () => {
 
   if (isSubdomain() && tenant === null && tenant !== undefined) {
     return (
-      <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
-        <p style={{ color: '#6b7280', fontSize: 15 }}>This dealer page doesn't exist.</p>
-        <a href="https://xdrive.my" style={{ color: '#dc2626', fontSize: 13, marginTop: 12 }}>← Browse all cars</a>
+      <div style={{ background: '#0C0C0E', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Outfit', sans-serif" }}>
+        <p style={{ color: '#52525A', fontSize: 15 }}>This dealer page doesn't exist.</p>
+        <a href="https://xdrive.my" style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>← Browse all cars</a>
       </div>
     );
   }
 
   const soldDisplay =
-    soldCount !== null && soldCount > 0
-      ? `${soldCount}+`
-      : soldCount === 0
-        ? "0"
-        : "500+";
-  const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 16px" };
+    soldCount !== null && soldCount > 0 ? `${soldCount}+` : soldCount === 0 ? "0" : "500+";
 
-  // Section backgrounds — navy/slate alternating, feels lighter and trustworthy
-  const secA = { background: "#0f172a" }; // deep navy
-  const secB = { background: "#111827" }; // slightly warm dark
+  const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
+  const secA = { background: "#0C0C0E" };
+  const secB = { background: "#0F0F11" };
   const secLight = {
-    background: "#0f172a",
+    background: "#0F0F11",
     borderTop: "1px solid rgba(255,255,255,0.05)",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
@@ -568,76 +398,94 @@ const HomePage = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         html, body { overflow-x: hidden; width: 100%; }
-        body { background: #0f172a !important; margin: 0 !important; }
-        * { font-family: 'DM Sans', sans-serif; }
+        body { background: #0C0C0E !important; margin: 0 !important; }
+        * { font-family: 'Outfit', sans-serif; }
 
         @keyframes shimmer  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes pulse-red{ 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.4)} 50%{box-shadow:0 0 0 10px rgba(220,38,38,0)} }
-        @keyframes dropIn   { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse-red{ 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.35)} 50%{box-shadow:0 0 0 8px rgba(220,38,38,0)} }
+        @keyframes dropIn   { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 
-        .red-glass-btn:hover {
-          background: rgba(220,38,38,0.28) !important;
-          border-color: rgba(220,38,38,0.6) !important;
+        .primary-btn:hover {
+          background: #B91C1C !important;
+          border-color: #B91C1C !important;
           transform: translateY(-1px);
-          box-shadow: 0 8px 28px rgba(220,38,38,0.25), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+          box-shadow: 0 8px 24px rgba(220,38,38,0.3) !important;
         }
         .wa-btn-hp:hover {
-          background: rgba(37,211,102,0.16) !important;
-          border-color: rgba(37,211,102,0.4) !important;
+          background: rgba(37,211,102,0.08) !important;
+          border-color: rgba(37,211,102,0.5) !important;
         }
-        .ghost-glass:hover {
-          background: rgba(255,255,255,0.1) !important;
-          border-color: rgba(255,255,255,0.2) !important;
+        .ghost-outline:hover {
+          background: rgba(255,255,255,0.06) !important;
+          border-color: rgba(255,255,255,0.18) !important;
         }
         .card-hover {
-          transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
         }
         .card-hover:hover {
-          transform: translateY(-3px) !important;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.4) !important;
-          border-color: rgba(220,38,38,0.2) !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.5) !important;
+          border-color: rgba(196,162,101,0.15) !important;
         }
-
-        /* Section label dots */
-        .sec-label {
-          display: flex;
+        .view-all-link {
+          color: #3A3A42;
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 10px;
+          gap: 4px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          transition: color 0.2s;
         }
-        .sec-label-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: #dc2626;
-          flex-shrink: 0;
-        }
-        .sec-label-text {
+        .view-all-link:hover { color: #C4A265; }
+
+        /* Section label */
+        .sec-eyebrow {
           font-size: 10px;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.18em;
-          color: #f87171;
+          color: #C4A265;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .sec-eyebrow::before {
+          content: '';
+          display: inline-block;
+          width: 20px;
+          height: 1px;
+          background: #C4A265;
+          opacity: 0.6;
+          flex-shrink: 0;
+        }
+        .sec-eyebrow.red {
+          color: #DC2626;
+        }
+        .sec-eyebrow.red::before {
+          background: #DC2626;
+        }
+        .sec-eyebrow.green {
+          color: #4ade80;
+        }
+        .sec-eyebrow.green::before {
+          background: #4ade80;
         }
 
         .sec-title {
-          font-family: 'Syne', sans-serif;
-          color: white;
-          font-size: clamp(1.4rem, 5vw, 2.2rem);
-          font-weight: 800;
-          letter-spacing: -0.02em;
+          font-family: 'Outfit', sans-serif;
+          color: #F0F0F0;
+          font-size: clamp(1.5rem, 4vw, 2.4rem);
+          font-weight: 700;
+          letter-spacing: -0.025em;
           margin: 0;
-        }
-
-        .sec-divider {
-          width: 36px;
-          height: 2px;
-          background: rgba(220,38,38,0.6);
-          border-radius: 2px;
-          margin-top: 12px;
+          line-height: 1.1;
         }
 
         /* Car grid */
@@ -653,7 +501,6 @@ const HomePage = () => {
           gap: 8px;
           align-items: stretch;
         }
-        .search-hide-mobile { display: contents; }
 
         /* Hero buttons */
         .hero-btns-hp { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
@@ -662,7 +509,7 @@ const HomePage = () => {
         .stats-flex { display:flex; }
 
         /* Section padding */
-        .sec-pad { padding: 64px 0; }
+        .sec-pad { padding: 72px 0; }
 
         /* Tablet */
         @media(max-width: 768px) {
@@ -673,22 +520,18 @@ const HomePage = () => {
         /* Mobile */
         @media(max-width: 480px) {
           .search-grid-hp     { grid-template-columns: 1fr !important; gap: 6px !important; }
-          .search-hide-mobile { display: contents !important; }
           .search-btn-hp      { width: 100% !important; justify-content: center !important; }
           .hero-btns-hp       { flex-direction: column !important; }
           .hero-btns-hp a, .hero-btns-hp button { justify-content: center !important; width: 100% !important; }
           .stats-flex > div   { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
           .for-dealers-inner  { flex-direction: column !important; align-items: flex-start !important; }
-          .sec-pad { padding: 44px 0 !important; }
+          .sec-pad { padding: 48px 0 !important; }
         }
       `}</style>
 
       <Helmet>
         <title>{siteName} — Buy Trusted Used Cars in Malaysia</title>
-        <meta
-          name="description"
-          content="Browse 200+ verified used cars from trusted Malaysian dealers. Transparent pricing, no hidden fees, free consultation."
-        />
+        <meta name="description" content="Browse 200+ verified used cars from trusted Malaysian dealers. Transparent pricing, no hidden fees, free consultation." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Helmet>
 
@@ -702,51 +545,15 @@ const HomePage = () => {
         <section className="sec-pad" style={secA}>
           <div style={wrap}>
             <FadeIn>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  justifyContent: "space-between",
-                  marginBottom: "32px",
-                  flexWrap: "wrap",
-                  gap: "12px",
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "40px", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                  <div className="sec-label">
-                    <div className="sec-label-dot" />
-                    <span
-                      className="sec-label-text"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <Flame size={10} /> Limited Time
-                    </span>
-                  </div>
+                  <p className="sec-eyebrow red">
+                    <Flame size={10} style={{ marginRight: -4 }} /> Limited Time
+                  </p>
                   <h2 className="sec-title">Hot Deals</h2>
-                  <div className="sec-divider" />
                 </div>
-                <Link
-                  to="/cars?hot_deals=true"
-                  style={{
-                    color: "#475569",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    textDecoration: "none",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    transition: "color 0.2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#475569")
-                  }
-                >
-                  View All <ArrowRight size={13} />
+                <Link to="/cars?hot_deals=true" className="view-all-link">
+                  View All <ArrowRight size={12} />
                 </Link>
               </div>
             </FadeIn>
@@ -763,57 +570,17 @@ const HomePage = () => {
       <section className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "space-between",
-                marginBottom: "32px",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "40px", flexWrap: "wrap", gap: "12px" }}>
               <div>
-                <div className="sec-label">
-                  <div
-                    className="sec-label-dot"
-                    style={{ background: "#f59e0b" }}
-                  />
-                  <span
-                    className="sec-label-text"
-                    style={{
-                      color: "#fbbf24",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <Star size={10} /> Just Listed
-                  </span>
-                </div>
+                <p className="sec-eyebrow">Just Listed</p>
                 <h2 className="sec-title">{t("home.hotDeals.title")}</h2>
-                <div className="sec-divider" />
               </div>
-              <Link
-                to="/cars"
-                style={{
-                  color: "#475569",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  textDecoration: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  transition: "color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#475569")}
-              >
-                All Cars <ArrowRight size={13} />
+              <Link to="/cars" className="view-all-link">
+                All Cars <ArrowRight size={12} />
               </Link>
             </div>
           </FadeIn>
-          <div className="car-grid-hp" style={{ marginBottom: "32px" }}>
+          <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
             {loading
               ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
               : featured.map((c) => <CarCard key={c.id} car={c} ctaContext={ctaCtx} />)}
@@ -821,21 +588,13 @@ const HomePage = () => {
           <div style={{ textAlign: "center" }}>
             <Link
               to="/cars"
-              className="ghost-glass"
+              className="ghost-outline"
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "rgba(255,255,255,0.05)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "white",
-                fontWeight: "600",
-                fontSize: "14px",
-                padding: "13px 28px",
-                borderRadius: "50px",
-                textDecoration: "none",
-                transition: "all 0.25s ease",
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+                color: "#C0C0C6", fontWeight: "600", fontSize: "13px",
+                padding: "12px 28px", borderRadius: "4px", textDecoration: "none",
+                transition: "all 0.2s ease", letterSpacing: "0.02em",
               }}
             >
               {t("home.hotDeals.viewAllBtn")} <ArrowRight size={14} />
@@ -849,51 +608,24 @@ const HomePage = () => {
         <div style={wrap}>
           <div className="stats-flex">
             {[
-              { Icon: Users, v: soldDisplay, l: "Cars Sold" },
-              { Icon: Star, v: "4.9★", l: "Customer Rating" },
-              { Icon: Shield, v: "RM 0", l: "Consultation Fee" },
+              { v: soldDisplay, l: "Cars Sold" },
+              { v: "4.9★", l: "Customer Rating" },
+              { v: "RM 0", l: "Consultation Fee" },
             ].map((s, i, arr) => (
-              <FadeIn key={i} delay={i * 0.1} style={{ flex: 1 }}>
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "36px 16px",
-                    borderRight:
-                      i < arr.length - 1
-                        ? "1px solid rgba(255,255,255,0.05)"
-                        : "none",
-                  }}
-                >
-                  <s.Icon
-                    size={16}
-                    style={{
-                      color: "#dc2626",
-                      margin: "0 auto 10px",
-                      display: "block",
-                    }}
-                  />
-                  <p
-                    style={{
-                      fontFamily: "'Syne',sans-serif",
-                      color: "white",
-                      fontSize: "clamp(1.5rem,5vw,2.2rem)",
-                      fontWeight: "800",
-                      letterSpacing: "-0.02em",
-                      lineHeight: 1,
-                      margin: "0 0 5px 0",
-                    }}
-                  >
+              <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
+                <div style={{
+                  textAlign: "center", padding: "40px 16px",
+                  borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                }}>
+                  <p style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    color: "#F0F0F0", fontSize: "clamp(1.8rem,5vw,2.6rem)",
+                    fontWeight: "700", letterSpacing: "-0.03em",
+                    lineHeight: 1, margin: "0 0 6px 0",
+                  }}>
                     {s.v}
                   </p>
-                  <p
-                    style={{
-                      color: "#475569",
-                      fontSize: "10px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.12em",
-                      margin: 0,
-                    }}
-                  >
+                  <p style={{ color: "#3A3A42", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
                     {s.l}
                   </p>
                 </div>
@@ -903,66 +635,34 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ══════════ WHY XDRIVE ══════════ */}
+      {/* ══════════ WHY ══════════ */}
       <section className="sec-pad" style={secA}>
         <div style={wrap}>
           <FadeIn>
-            <div style={{ marginBottom: "32px" }}>
-              <div className="sec-label">
-                <div className="sec-label-dot" />
-                <span className="sec-label-text">Why {siteName}</span>
-              </div>
+            <div style={{ marginBottom: "48px" }}>
+              <p className="sec-eyebrow">Why {siteName}</p>
               <h2 className="sec-title">{whyTitle}</h2>
-              <div className="sec-divider" />
             </div>
           </FadeIn>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))",
-              gap: "14px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "1px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", overflow: "hidden" }}>
             {benefits.map((b, i) => (
-              <FadeIn key={i} delay={i * 0.08}>
+              <FadeIn key={i} delay={i * 0.07}>
                 <div
                   className="card-hover"
-                  style={{ ...glassCard, padding: "22px", height: "100%" }}
+                  style={{ background: "#0C0C0E", padding: "32px 28px", height: "100%", borderRight: "none" }}
                 >
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "10px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(220,38,38,0.1)",
-                      border: "1px solid rgba(220,38,38,0.18)",
-                      marginBottom: "14px",
-                    }}
-                  >
-                    <b.icon size={17} style={{ color: "#f87171" }} />
+                  <div style={{
+                    width: "36px", height: "36px", borderRadius: "3px",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.15)",
+                    marginBottom: "18px",
+                  }}>
+                    <b.icon size={16} style={{ color: "#DC2626" }} />
                   </div>
-                  <h3
-                    style={{
-                      color: "white",
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      margin: "0 0 7px 0",
-                      fontFamily: "'Syne',sans-serif",
-                    }}
-                  >
+                  <h3 style={{ color: "#F0F0F0", fontSize: "14px", fontWeight: "600", margin: "0 0 8px 0", letterSpacing: "-0.01em" }}>
                     {b.title}
                   </h3>
-                  <p
-                    style={{
-                      color: "#64748b",
-                      fontSize: "12px",
-                      lineHeight: "1.65",
-                      margin: 0,
-                    }}
-                  >
+                  <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
                     {b.desc}
                   </p>
                 </div>
@@ -976,84 +676,30 @@ const HomePage = () => {
       <section id="how-it-works" className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
-            <div style={{ marginBottom: "32px" }}>
-              <div className="sec-label">
-                <div className="sec-label-dot" />
-                <span className="sec-label-text">Simple Process</span>
-              </div>
+            <div style={{ marginBottom: "48px" }}>
+              <p className="sec-eyebrow">Simple Process</p>
               <h2 className="sec-title">{howTitle}</h2>
-              <div className="sec-divider" />
             </div>
           </FadeIn>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))",
-              gap: "14px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "16px" }}>
             {steps.map((s, i) => (
-              <FadeIn key={i} delay={i * 0.1}>
-                <div
-                  className="card-hover"
-                  style={{
-                    ...glassCard,
-                    padding: "22px",
-                    position: "relative",
-                    overflow: "hidden",
-                    height: "100%",
-                  }}
-                >
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "6px",
-                      right: "12px",
-                      fontFamily: "'Syne',sans-serif",
-                      fontSize: "4rem",
-                      lineHeight: 1,
-                      color: "rgba(220,38,38,0.05)",
-                      userSelect: "none",
-                      pointerEvents: "none",
-                      fontWeight: "800",
-                    }}
-                  >
+              <FadeIn key={i} delay={i * 0.09}>
+                <div className="card-hover" style={{ ...glassCard, padding: "28px", position: "relative", overflow: "hidden", height: "100%" }}>
+                  <span style={{
+                    position: "absolute", top: "12px", right: "16px",
+                    fontFamily: "'Outfit', sans-serif", fontSize: "3.5rem",
+                    lineHeight: 1, color: "rgba(196,162,101,0.07)",
+                    userSelect: "none", pointerEvents: "none", fontWeight: "800",
+                  }}>
                     {s.n}
                   </span>
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "10px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(220,38,38,0.1)",
-                      border: "1px solid rgba(220,38,38,0.18)",
-                      marginBottom: "14px",
-                    }}
-                  >
-                    <s.icon size={17} style={{ color: "#f87171" }} />
-                  </div>
-                  <h3
-                    style={{
-                      color: "white",
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      margin: "0 0 7px 0",
-                      fontFamily: "'Syne',sans-serif",
-                    }}
-                  >
+                  <p style={{ color: "#C4A265", fontSize: "11px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 14px 0" }}>
+                    {s.n}
+                  </p>
+                  <h3 style={{ color: "#F0F0F0", fontSize: "14px", fontWeight: "600", margin: "0 0 8px 0", letterSpacing: "-0.01em" }}>
                     {s.t}
                   </h3>
-                  <p
-                    style={{
-                      color: "#64748b",
-                      fontSize: "12px",
-                      lineHeight: "1.65",
-                      margin: 0,
-                    }}
-                  >
+                  <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
                     {s.d}
                   </p>
                 </div>
@@ -1067,109 +713,35 @@ const HomePage = () => {
       <section className="sec-pad" style={secA}>
         <div style={wrap}>
           <FadeIn>
-            <div style={{ marginBottom: "32px" }}>
-              <div className="sec-label">
-                <div
-                  className="sec-label-dot"
-                  style={{ background: "#22c55e" }}
-                />
-                <span className="sec-label-text" style={{ color: "#4ade80" }}>
-                  Real Buyers
-                </span>
-              </div>
+            <div style={{ marginBottom: "48px" }}>
+              <p className="sec-eyebrow green">Real Buyers</p>
               <h2 className="sec-title">{t("home.testimonials.title")}</h2>
-              <div className="sec-divider" />
             </div>
           </FadeIn>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
-              gap: "14px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: "16px" }}>
             {testimonials.map((item, i) => (
               <FadeIn key={i} delay={i * 0.1}>
-                <div style={{ ...glassCard, padding: "22px", height: "100%" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "3px",
-                      marginBottom: "12px",
-                    }}
-                  >
+                <div style={{ ...glassCard, padding: "28px", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", gap: "2px", marginBottom: "16px" }}>
                     {[...Array(item.r)].map((_, j) => (
-                      <Star
-                        key={j}
-                        size={12}
-                        style={{ fill: "#f59e0b", color: "#f59e0b" }}
-                      />
+                      <Star key={j} size={11} style={{ fill: "#C4A265", color: "#C4A265" }} />
                     ))}
                   </div>
-                  <p
-                    style={{
-                      color: "#cbd5e1",
-                      fontSize: "13px",
-                      lineHeight: "1.75",
-                      marginBottom: "18px",
-                      fontStyle: "italic",
-                    }}
-                  >
+                  <p style={{ color: "#9090A0", fontSize: "13px", lineHeight: "1.8", marginBottom: "20px", fontStyle: "italic", flex: 1 }}>
                     "{item.text}"
                   </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "34px",
-                        height: "34px",
-                        borderRadius: "50%",
-                        background: "rgba(220,38,38,0.12)",
-                        border: "1px solid rgba(220,38,38,0.22)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#f87171",
-                          fontWeight: "800",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {item.name[0]}
-                      </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{
+                      width: "32px", height: "32px", borderRadius: "50%",
+                      background: "rgba(196,162,101,0.08)", border: "1px solid rgba(196,162,101,0.2)",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      <span style={{ color: "#C4A265", fontWeight: "700", fontSize: "13px" }}>{item.name[0]}</span>
                     </div>
                     <div>
-                      <p
-                        style={{
-                          color: "white",
-                          fontWeight: "700",
-                          fontSize: "13px",
-                          margin: "0 0 2px 0",
-                        }}
-                      >
-                        {item.name}
-                      </p>
-                      <p
-                        style={{
-                          color: "#475569",
-                          fontSize: "11px",
-                          margin: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "3px",
-                        }}
-                      >
-                        <MapPin size={10} />
-                        {item.loc}
+                      <p style={{ color: "#F0F0F0", fontWeight: "600", fontSize: "13px", margin: "0 0 2px 0" }}>{item.name}</p>
+                      <p style={{ color: "#3A3A42", fontSize: "11px", margin: 0, display: "flex", alignItems: "center", gap: "3px" }}>
+                        <MapPin size={9} /> {item.loc}
                       </p>
                     </div>
                   </div>
@@ -1184,103 +756,38 @@ const HomePage = () => {
       <section className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
-            <div
-              style={{
-                borderRadius: "18px",
-                overflow: "hidden",
-                position: "relative",
-                background: "rgba(30,41,59,0.6)",
-                backdropFilter: "blur(16px)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                display: "flex",
-                flexWrap: "wrap",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07)",
-              }}
-            >
-              <div
-                style={{
-                  padding: "36px",
-                  flex: "1",
-                  minWidth: "240px",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    borderRadius: "12px",
-                    background: "rgba(220,38,38,0.1)",
-                    border: "1px solid rgba(220,38,38,0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: "18px",
-                  }}
-                >
-                  <Calculator size={20} style={{ color: "#f87171" }} />
+            <div style={{
+              borderRadius: "6px", overflow: "hidden", position: "relative",
+              background: "#111113", border: "1px solid rgba(255,255,255,0.07)",
+              display: "flex", flexWrap: "wrap",
+            }}>
+              <div style={{ padding: "40px", flex: "1", minWidth: "240px", position: "relative", zIndex: 1 }}>
+                <div style={{
+                  width: "40px", height: "40px", borderRadius: "3px",
+                  background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px",
+                }}>
+                  <Calculator size={18} style={{ color: "#DC2626" }} />
                 </div>
-                <h2
-                  style={{
-                    fontFamily: "'Syne',sans-serif",
-                    color: "white",
-                    fontSize: "clamp(1.2rem,4vw,1.8rem)",
-                    fontWeight: "800",
-                    letterSpacing: "-0.02em",
-                    margin: "0 0 10px 0",
-                    lineHeight: 1.2,
-                  }}
-                >
+                <h2 style={{ fontFamily: "'Outfit', sans-serif", color: "#F0F0F0", fontSize: "clamp(1.2rem,4vw,1.8rem)", fontWeight: "700", letterSpacing: "-0.025em", margin: "0 0 10px 0", lineHeight: 1.15 }}>
                   {t("home.budget.title")}
                 </h2>
-                <p
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    lineHeight: "1.7",
-                    margin: "0 0 24px 0",
-                  }}
-                >
+                <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: "0 0 24px 0" }}>
                   {t("home.budget.subtitle")}
                 </p>
-                <Link
-                  to="/calculator"
-                  className="red-glass-btn"
-                  style={redGlassBtn}
-                >
-                  <Calculator size={15} />
+                <Link to="/calculator" className="primary-btn" style={primaryBtn}>
+                  <Calculator size={14} />
                   {t("home.budget.calcBtn")}
                 </Link>
               </div>
-              <div
-                style={{
-                  flex: "1",
-                  minWidth: "200px",
-                  minHeight: "180px",
-                  position: "relative",
-                }}
-              >
+              <div style={{ flex: "1", minWidth: "200px", minHeight: "180px", position: "relative" }}>
                 <img
                   src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=60"
                   alt=""
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    opacity: 0.25,
-                    minHeight: "180px",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.15, minHeight: "180px" }}
                   loading="lazy"
                 />
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(to right,rgba(30,41,59,0.6) 0%,transparent 55%)",
-                  }}
-                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right,#111113 0%,transparent 55%)" }} />
               </div>
             </div>
           </FadeIn>
@@ -1288,107 +795,37 @@ const HomePage = () => {
       </section>
 
       {/* ══════════ FOR DEALERS ══════════ */}
-      <section
-        className="sec-pad"
-        style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}
-      >
+      <section className="sec-pad" style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div style={wrap}>
           <FadeIn>
             <div
               className="for-dealers-inner"
               style={{
-                ...glassCard,
-                padding: "36px",
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "24px",
-                position: "relative",
-                overflow: "hidden",
+                ...glassCard, padding: "40px",
+                display: "flex", flexWrap: "wrap", alignItems: "center",
+                justifyContent: "space-between", gap: "28px",
+                position: "relative", overflow: "hidden",
               }}
             >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "radial-gradient(ellipse at 80% 50%,rgba(220,38,38,0.04) 0%,transparent 65%)",
-                  pointerEvents: "none",
-                }}
-              />
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: "200px",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      background: "#dc2626",
-                      display: "inline-block",
-                      animation: "pulse-red 2.5s infinite",
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: "#f87171",
-                      fontSize: "10px",
-                      fontWeight: "700",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.18em",
-                    }}
-                  >
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 85% 50%,rgba(196,162,101,0.03) 0%,transparent 60%)", pointerEvents: "none" }} />
+              <div style={{ flex: 1, minWidth: "220px", position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#DC2626", display: "inline-block", animation: "pulse-red 2.5s infinite" }} />
+                  <span style={{ color: "#DC2626", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.18em" }}>
                     For Car Dealers
                   </span>
                 </div>
-                <h2
-                  style={{
-                    fontFamily: "'Syne',sans-serif",
-                    color: "white",
-                    fontSize: "clamp(1.2rem,4vw,1.8rem)",
-                    fontWeight: "800",
-                    letterSpacing: "-0.02em",
-                    margin: "0 0 10px 0",
-                    lineHeight: 1.2,
-                  }}
-                >
+                <h2 style={{ fontFamily: "'Outfit', sans-serif", color: "#F0F0F0", fontSize: "clamp(1.2rem,4vw,1.8rem)", fontWeight: "700", letterSpacing: "-0.025em", margin: "0 0 10px 0", lineHeight: 1.15 }}>
                   Run your dealership smarter with{" "}
-                  <span style={{ color: "#f87171" }}>ShiftOS.</span>
+                  <span style={{ color: "#DC2626" }}>ShiftOS.</span>
                 </h2>
-                <p
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    lineHeight: "1.7",
-                    margin: 0,
-                  }}
-                >
-                  Manage listings, track your team, generate TikTok content, and
-                  grow sales — all from one dashboard built for Malaysian
-                  dealers.
+                <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
+                  Manage listings, track your team, generate TikTok content, and grow sales — all from one dashboard built for Malaysian dealers.
                 </p>
               </div>
               <div style={{ flexShrink: 0, position: "relative", zIndex: 1 }}>
-                <Link
-                  to="/for-dealers"
-                  className="red-glass-btn"
-                  style={redGlassBtn}
-                >
-                  Learn About ShiftOS <ArrowRight size={15} />
+                <Link to="/for-dealers" className="primary-btn" style={primaryBtn}>
+                  Learn About ShiftOS <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
@@ -1397,94 +834,26 @@ const HomePage = () => {
       </section>
 
       {/* ══════════ FINAL CTA ══════════ */}
-      <section
-        id="contact"
-        className="sec-pad"
-        style={{ ...secB, position: "relative", overflow: "hidden" }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "500px",
-            height: "500px",
-            background:
-              "radial-gradient(circle,rgba(220,38,38,0.04) 0%,transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            ...wrap,
-            maxWidth: "600px",
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
+      <section id="contact" className="sec-pad" style={{ ...secB, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "600px", height: "600px", background: "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)", pointerEvents: "none" }} />
+        <div style={{ ...wrap, maxWidth: "580px", textAlign: "center", position: "relative", zIndex: 1 }}>
           <FadeIn>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: "16px",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "rgba(220,38,38,0.1)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(220,38,38,0.2)",
-                  borderRadius: "40px",
-                  padding: "5px 14px",
-                  fontSize: "10px",
-                  fontWeight: "700",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.18em",
-                  color: "#f87171",
-                }}
-              >
-                Ready to Drive?
-              </span>
-            </div>
-            <h2
-              style={{
-                fontFamily: "'Syne',sans-serif",
-                color: "white",
-                fontSize: "clamp(2rem,7vw,3.8rem)",
-                fontWeight: "800",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.05,
-                margin: "0 0 16px 0",
-              }}
-            >
+            <p className="sec-eyebrow" style={{ justifyContent: "center", marginBottom: "16px" }}>
+              Ready to Drive?
+            </p>
+            <h2 style={{
+              fontFamily: "'Outfit', sans-serif", color: "#F0F0F0",
+              fontSize: "clamp(2rem,7vw,3.6rem)", fontWeight: "800",
+              letterSpacing: "-0.035em", lineHeight: 1.05, margin: "0 0 16px 0",
+            }}>
               {ctaTitle}
             </h2>
-            <p
-              style={{
-                color: "#64748b",
-                fontSize: "clamp(13px,3.5vw,15px)",
-                lineHeight: "1.75",
-                margin: "0 0 36px 0",
-              }}
-            >
+            <p style={{ color: "#52525A", fontSize: "clamp(13px,3.5vw,15px)", lineHeight: "1.8", margin: "0 0 36px 0" }}>
               {ctaSubtitle}
             </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <Link to="/cars" className="red-glass-btn" style={redGlassBtn}>
-                {ctaPrimaryLabel} <ArrowRight size={15} />
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              <Link to="/cars" className="primary-btn" style={primaryBtn}>
+                {ctaPrimaryLabel} <ArrowRight size={14} />
               </Link>
               <a
                 href={buildWaUrl(
@@ -1499,7 +868,7 @@ const HomePage = () => {
                 className="wa-btn-hp"
                 style={waBtn}
               >
-                <MessageCircle size={15} />
+                <MessageCircle size={14} />
                 {ctaSecondaryLabel}
               </a>
             </div>
