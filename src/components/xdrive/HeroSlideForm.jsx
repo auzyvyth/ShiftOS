@@ -144,7 +144,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
     transmission:    slide?.transmission    || 'Auto',
     fuel_type:       slide?.fuel_type       || 'Petrol',
     badge:           slide?.badge           || null,
-    whatsapp_number: slide?.whatsapp_number || profile?.whatsapp_number || '',
+    whatsapp_number: slide?.whatsapp_number || profile?.whatsapp_number || '+60',
     image_url:       slide?.image_url       || '',
     listing_url:     slide?.listing_url     || '',
     active:          slide?.active          ?? true,

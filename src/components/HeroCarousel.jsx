@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +9,7 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle,
+  Search,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
@@ -345,7 +346,7 @@ const HC_CSS = `
     }
 
     .hc-content-wrap {
-      padding:100px 20px 120px;
+      padding:148px 20px 120px;
       flex-direction:column; align-items:center; gap:0; width:100%;
     }
 
@@ -387,7 +388,7 @@ const HC_CSS = `
   }
 
   @media (max-width:640px) {
-    .hc-content-wrap { padding:88px 16px 110px; }
+    .hc-content-wrap { padding:144px 16px 110px; }
     .hc-glass-card   { max-height:200px; }
     .hc-card-spacer  { min-height:170px; max-height:200px; }
     .hc-car-name     { font-size:clamp(1.2rem,5vw,1.65rem); }
@@ -397,7 +398,7 @@ const HC_CSS = `
   }
 
   @media (max-width:480px) {
-    .hc-content-wrap { padding:80px 14px 105px; }
+    .hc-content-wrap { padding:140px 14px 105px; }
     .hc-glass-card   { max-height:185px; border-radius:14px; }
     .hc-card-spacer  { min-height:155px; max-height:185px; }
     .hc-eyebrow-label { font-size:9px; letter-spacing:0.18em; }
@@ -416,11 +417,101 @@ const HC_CSS = `
   }
 
   @media (max-width:375px) {
-    .hc-content-wrap { padding:76px 12px 100px; }
+    .hc-content-wrap { padding:136px 12px 100px; }
     .hc-glass-card   { max-height:165px; }
     .hc-card-spacer  { min-height:140px; max-height:165px; }
     .hc-car-name     { font-size:1rem; }
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
+  }
+
+  /* ── Hero search bar — anchored to top, below the floating header ── */
+  .hc-search-bar {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    width: 100%;
+    max-width: 600px;
+    padding: 0 32px;
+  }
+  .hc-search-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .hc-search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.4);
+    pointer-events: none;
+    width: 16px; height: 16px;
+    flex-shrink: 0;
+  }
+  .hc-search-input {
+    width: 100%;
+    background: rgba(9,9,14,0.45);
+    backdrop-filter: blur(32px) saturate(180%) brightness(1.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.08);
+    border: 1px solid rgba(255,255,255,0.11);
+    border-radius: 14px;
+    color: white;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 15px 56px 15px 46px;
+    outline: none;
+    font-family: 'Outfit', sans-serif;
+    transition: border-color 0.22s, background 0.22s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .hc-search-input::placeholder { color: rgba(255,255,255,0.28); }
+  .hc-search-input:focus {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(9,9,14,0.62);
+  }
+  .hc-search-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: #dc2626;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(220,38,38,0.4);
+  }
+  .hc-search-btn:hover { background: #b91c1c; transform: translateY(-50%) scale(1.06); }
+  .hc-search-btn svg { color: white; width: 15px; height: 15px; }
+
+  /* Tablet ≤1024px */
+  @media (max-width:1024px) {
+    .hc-search-bar { top: 88px; max-width: 480px; padding: 0 24px; }
+    .hc-search-input { font-size: 14px; padding: 13px 50px 13px 42px; }
+    .hc-search-btn { width: 34px; height: 34px; border-radius: 8px; }
+    .hc-search-btn svg { width: 13px; height: 13px; }
+  }
+
+  /* Mobile ≤768px — compact bar, push content-wrap down to clear it */
+  @media (max-width:768px) {
+    .hc-search-bar {
+      top: 84px;
+      padding: 0 20px;
+      max-width: 100%;
+    }
+    .hc-search-input {
+      font-size: 13px;
+      padding: 11px 44px 11px 36px;
+      border-radius: 12px;
+    }
+    .hc-search-icon { left: 12px; width: 14px; height: 14px; }
+    .hc-search-btn { width: 30px; height: 30px; right: 6px; border-radius: 8px; }
+    .hc-search-btn svg { width: 12px; height: 12px; }
   }
 `;
 
@@ -438,12 +529,14 @@ function formatPrice(val) {
 
 export default function HeroCarousel({ siteName, waNumber }) {
   const { tenant } = useTenant();
+  const navigate = useNavigate();
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [imgLoaded, setImgLoaded] = useState({}); // track which images loaded
+  const [imgLoaded, setImgLoaded] = useState({});
+  const [heroSearch, setHeroSearch] = useState(''); // track which images loaded
 
   const hoverPaused = useRef(false);
   const manualPaused = useRef(false);
@@ -867,6 +960,30 @@ export default function HeroCarousel({ siteName, waNumber }) {
             ))}
           </div>
         )}
+
+        {/* Search bar */}
+        <div className="hc-search-bar">
+          <form
+            className="hc-search-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = heroSearch.trim();
+              if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
+            }}
+          >
+            <Search className="hc-search-icon" />
+            <input
+              className="hc-search-input"
+              type="text"
+              placeholder="Search brand or model…"
+              value={heroSearch}
+              onChange={(e) => setHeroSearch(e.target.value)}
+            />
+            <button type="submit" className="hc-search-btn" aria-label="Search">
+              <ArrowRight />
+            </button>
+          </form>
+        </div>
 
         {/* Nav arrows */}
         {slides.length > 1 && (

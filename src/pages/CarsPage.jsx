@@ -161,11 +161,13 @@ const CarsPage = () => {
   const [hotDealsOnly,          setHotDealsOnly]          = useState(false);
   const [sortBy,                setSortBy]                = useState('newest');
 
-  /* ── ref tracking ── */
+  /* ── ref tracking + URL search param ── */
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const ref = params.get('ref');
     if (ref) { setRef(ref); trackEvent('link_visit'); }
+    const q = params.get('q');
+    if (q) setSearchQuery(q);
   }, [location.search]);
 
   /* ── hide/show search bar on scroll ── */
