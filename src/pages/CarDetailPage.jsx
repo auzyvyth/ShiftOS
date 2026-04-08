@@ -1178,4 +1178,8 @@ export default function CarDetailPage() {
       <div className="cdp-mobile-bar">
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
           WhatsApp
- 
+        </button>
+      </div>
+    </>
+  );
+}
