@@ -103,7 +103,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
 
       <div
         className={`car-card-root${isHot ? ' hot' : ''}`}
-        onClick={() => !isSold && navigate('/cars/' + car.slug)}
+        onClick={() => !isSold && (car.slug || car.id) && navigate('/cars/' + (car.slug || car.id))}
         style={{
           background: 'linear-gradient(145deg,#0d1117 0%,#111827 100%)',
           border: isHot ? '1px solid rgba(220,38,38,0.28)' : '1px solid rgba(255,255,255,0.07)',

@@ -376,6 +376,21 @@ const HomePage = () => {
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
+  // Fire store_visit event once per session when viewing a dealer's subdomain storefront
+  useEffect(() => {
+    if (!tenant?.id) return;
+    const sessionKey = `sv_fired_${tenant.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    supabase.from('analytics_events').insert({
+      dealer_id: tenant.id,
+      event_type: 'store_visit',
+      salesman_slug: ref || null,
+      metadata: { source: ref ? 'salesman_link' : 'organic' },
+    }).then(() => {});
+  }, [tenant?.id]);
+
   useEffect(() => {
     if (tenant === undefined) return; // still loading
     const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';

@@ -186,8 +186,15 @@ export default function CarDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data: carData, error } = await supabase
+      // Try by slug first; fall back to id for carousel links that use the listing UUID
+      let { data: carData, error } = await supabase
         .from('car_listings').select('*').eq('slug', slug).maybeSingle();
+      if (!carData && !error) {
+        const res = await supabase
+          .from('car_listings').select('*').eq('id', slug).maybeSingle();
+        carData = res.data;
+        error = res.error;
+      }
       if (error || !carData) { setNotFound(true); setLoading(false); return; }
       setCar(carData);
       if (carData.dealer_id) {
@@ -290,6 +297,7 @@ export default function CarDetailPage() {
       supabase.from('whatsapp_enquiries').insert({
         dealer_id: car.dealer_id,
         listing_id: car.id,
+        car_info: `${car.year} ${car.brand} ${car.model}`,
         buyer_message: text,
         source: 'storefront',
         ref_slug: sessionStorage.getItem('ref_slug') || null,
