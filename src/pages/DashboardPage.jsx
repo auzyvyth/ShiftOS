@@ -3263,7 +3263,7 @@ function StockTab({ userId, listings }) {
               </thead>
               <tbody>
                 {units.map(u => {
-                  const car = u.car_listings;
+                  const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                   const gp = grossProfit(u);
                   const days = typeof daysInStock(u.purchase_date) === 'number' ? daysInStock(u.purchase_date) : 0;
                   const isAging = u.status === 'in_stock' && days > 60;
