@@ -4432,8 +4432,8 @@ export default function DashboardPage() {
   const allOnboardingDone   = onboardingDoneCount === onboardingItems.length;
 
   useEffect(() => {
-    if (!allOnboardingDone || !userId || profile?.onboarding_completed) return;
-    supabase.from('profiles').update({ onboarding_completed: true }).eq('id', userId);
+    if (!allOnboardingDone || !userId || profile?.onboarding_complete) return;
+    supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
     setOnboardingDismissed(true);
     setOnboardingToast(true);
     setTimeout(() => setOnboardingToast(false), 5000);
@@ -4445,7 +4445,7 @@ export default function DashboardPage() {
     setOnboardingCopied(true);
   };
 
-  const showOnboardingBanner = profile && profile.onboarding_completed === false && !onboardingDismissed;
+  const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>

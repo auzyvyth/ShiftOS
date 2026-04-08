@@ -257,7 +257,7 @@ export default function RegisterPage() {
     await supabase.from('profiles').upsert({
       id: uid, email: email.trim(), role: 'dealer',
       trial_ends_at: trialEnds.toISOString(),
-      onboarding_completed: false,
+      onboarding_complete: false,
     });
 
     setLoading(false);
