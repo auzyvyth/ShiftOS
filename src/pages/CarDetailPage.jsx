@@ -118,7 +118,7 @@ export default function CarDetailPage() {
   const autoRef   = useRef(null);   // stores interval id
 
   /* booking */
-  const [form, setForm]           = useState({ name: '', phone: '', date: '', time: '09:00', notes: '' });
+  const [form, setForm]           = useState({ name: '', phone: '+60', date: '', time: '09:00', notes: '' });
   const [focusedField, setFocused] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked]         = useState(false);

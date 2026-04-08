@@ -8,7 +8,7 @@ const sel = inp + " appearance-none";
 
 const EMPTY = {
   buyer_name:     '',
-  phone:          '',
+  phone:          '+60',
   lead_source:    '',
   car_listing_id: '',
   employment_type:'',
@@ -138,7 +138,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               value={form.phone}
               onChange={e => set('phone', e.target.value)}
               className={`${inp} ${errors.phone ? 'border-red-500/50' : ''}`}
-              placeholder="01X-XXXXXXX"
+              placeholder="+601X-XXXXXXX"
               type="tel"
             />
             {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
