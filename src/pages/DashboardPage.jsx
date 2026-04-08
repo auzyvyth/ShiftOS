@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -3157,11 +3158,12 @@ function StockTab({ userId, listings }) {
 
   const fetchUnits = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('stock_units')
       .select('*, car_listings(brand, model, year, plate_number)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
+    if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
     setUnits(data || []);
     setLoading(false);
   };
@@ -3498,11 +3500,12 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   const fetchBookings = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('appointments')
       .select('*, car_listings(brand, model, year), profiles!salesman_id(full_name)')
       .eq('dealer_id', userId)
       .order('appointment_date', { ascending: true });
+    if (error) console.error('[BookingsTab] fetchBookings error:', error.message, error);
     setBookings(data || []);
     setLoading(false);
   };
@@ -3511,23 +3514,27 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   const handleAdd = async () => {
     setAddSaving(true);
-    await supabase.from('appointments').insert({
-      dealer_id: userId,
-      salesman_id: addForm.salesman_id || null,
-      car_listing_id: addForm.listing_id || null,
-      appointment_date: addForm.scheduled_at,
-      buyer_name: addForm.buyer_name,
-      buyer_phone: addForm.buyer_phone,
-      booking_type: addForm.booking_type,
-      duration_minutes: Number(addForm.duration_minutes) || 60,
-      deposit_amount: Number(addForm.deposit_amount) || 0,
-      notes: addForm.notes,
-      status: 'pending',
-    });
-    setShowAdd(false);
-    setAddForm({ buyer_name: '', buyer_phone: '', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
-    setAddSaving(false);
-    fetchBookings();
+    try {
+      const { error } = await supabase.from('appointments').insert({
+        dealer_id: userId,
+        salesman_id: addForm.salesman_id || null,
+        car_listing_id: addForm.listing_id || null,
+        appointment_date: addForm.scheduled_at,
+        buyer_name: addForm.buyer_name,
+        buyer_phone: addForm.buyer_phone,
+        notes: addForm.notes,
+        status: 'pending',
+      });
+      if (error) throw error;
+      setShowAdd(false);
+      setAddForm({ buyer_name: '', buyer_phone: '', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
+      fetchBookings();
+    } catch (err) {
+      console.error('[BookingsTab] handleAdd error:', err.message, err);
+      toast.error(`Failed to save appointment: ${err.message}`);
+    } finally {
+      setAddSaving(false);
+    }
   };
 
   const updateStatus = async (id, status) => {
@@ -3731,28 +3738,36 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
   const handleGenerate = async () => {
     setGenSaving(true);
     const car = listings.find(l => l.id === genForm.listing_id);
-    const { data } = await supabase.from('dealer_documents').insert({
-      dealer_id: userId,
-      doc_type: genForm.doc_type,
-      listing_id: genForm.listing_id || null,
-      buyer_name: genForm.buyer_name,
-      buyer_ic: genForm.buyer_ic,
-      buyer_phone: genForm.buyer_phone,
-      buyer_address: genForm.buyer_address,
-      sale_price: Number(genForm.sale_price) || 0,
-      deposit_amount: Number(genForm.deposit_amount) || 0,
-      issued_at: new Date().toISOString(),
-      car_label: car ? `${car.brand} ${car.model} ${car.year}` : '',
-    }).select().single();
-    setGenSaving(false);
-    setShowGen(false);
-    if (data) setPrintDoc({ ...data, car_listings: car });
-    fetchDocs();
+    try {
+      const { data, error } = await supabase.from('dealer_documents').insert({
+        dealer_id: userId,
+        listing_id: genForm.listing_id || null,
+        buyer_name: genForm.buyer_name,
+        buyer_ic: genForm.buyer_ic,
+        buyer_phone: genForm.buyer_phone,
+        buyer_address: genForm.buyer_address,
+        doc_type: genForm.doc_type,
+        sale_price: Number(genForm.sale_price) || 0,
+        deposit_amount: Number(genForm.deposit_amount) || 0,
+        balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
+        issued_at: new Date().toISOString(),
+        metadata: { car_label: car ? `${car.brand} ${car.model} ${car.year}` : '' },
+      }).select().single();
+      if (error) throw error;
+      setShowGen(false);
+      if (data) setPrintDoc({ ...data, car_listings: car });
+      fetchDocs();
+    } catch (err) {
+      console.error('[DocumentsTab] handleGenerate error:', err.message, err);
+      toast.error(`Failed to save document: ${err.message}`);
+    } finally {
+      setGenSaving(false);
+    }
   };
 
   const renderDocHTML = (doc) => {
     const car = doc.car_listings || {};
-    const carLabel = doc.car_label || (car.brand ? `${car.brand} ${car.model} ${car.year}` : '—');
+    const carLabel = doc.metadata?.car_label || doc.car_label || (car.brand ? `${car.brand} ${car.model} ${car.year}` : '—');
     const issued = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
     const isHandover = doc.doc_type === 'Handover Checklist';
     const isDeposit = doc.doc_type === 'Deposit Receipt';
