@@ -444,9 +444,24 @@ export default function LoginPage() {
                   : isRegister ? 'CREATE ACCOUNT' : 'ACCESS DASHBOARD'
                 }
               </button>
+              {!isRegister && (
+                <a
+                  href="/register"
+                  style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 4, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 4, color: '#f87171', fontSize: 13, fontWeight: 500, textDecoration: 'none', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                >
+                  Create free account →
+                </a>
+              )}
               <button type="button" className="btn-toggle" onClick={switchMode}>
                 {isRegister ? <>Already registered? <span>Sign in instead</span></> : <>Need an account? <span>Register here</span></>}
               </button>
+              {!isRegister && (
+                <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.2)', marginBottom: 6, letterSpacing: '0.04em' }}>
+                  14-day free trial · No credit card required
+                </p>
+              )}
               <p className="footer-note">ShiftOS · Secure Admin Access</p>
             </div>
           </form>

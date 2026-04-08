@@ -7,6 +7,7 @@ import CarsPage from './pages/CarsPage';
 import CarDetailPage from './pages/CarDetailPage';
 import CalculatorPage from './pages/CalculatorPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SalesmanPanel from './pages/Salesmanpanel';
 import OnboardingPage from './pages/OnboardingPage';
@@ -36,6 +37,7 @@ function App() {
 
         {/* Auth */}
         <Route path="/login"      element={<LoginPage />} />
+        <Route path="/register"   element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
 
         {/* Protected — XDrive */}
