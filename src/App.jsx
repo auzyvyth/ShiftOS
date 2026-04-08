@@ -16,6 +16,7 @@ import AdminPage from './pages/AdminPage';
 import AccountsPanel from './pages/AccountsPanel';
 import ShiftOSPage from './pages/ShiftOSPage';
 import DealerSlugRedirect from './pages/DealerSlugRedirect';
+import AuthConfirmPage from './pages/AuthConfirmPage';
 import './i18n/config';
 
 function App() {
@@ -36,9 +37,10 @@ function App() {
         <Route path="/calculator" element={<CalculatorPage />} />
 
         {/* Auth */}
-        <Route path="/login"      element={<LoginPage />} />
-        <Route path="/register"   element={<RegisterPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/login"        element={<LoginPage />} />
+        <Route path="/register"     element={<RegisterPage />} />
+        <Route path="/onboarding"   element={<OnboardingPage />} />
+        <Route path="/auth/confirm" element={<AuthConfirmPage />} />
 
         {/* Protected — XDrive */}
         <Route path="/dashboard"  element={<DashboardPage />} />

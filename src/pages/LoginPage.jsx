@@ -3,7 +3,7 @@
 // 2. handleRegister uses upsert + onboarding_complete: true
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 
@@ -55,8 +55,10 @@ const TextInput = ({ id, type = 'text', placeholder, value, onChange, onFocusCha
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const [isRegister, setIsRegister] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(searchParams.get('unconfirmed') === '1');
   const [focused, setFocused] = useState('');
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState('');
@@ -79,6 +81,9 @@ export default function LoginPage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
 
   const passwordChecks = {
     minLength: regPassword.length >= 8,
@@ -199,8 +204,8 @@ export default function LoginPage() {
       }
     }
 
-    if (data.session?.user) {
-      // ← FIX 2: upsert (not insert) + onboarding_complete: true
+    // Pre-populate profile so it exists even before email confirmation
+    if (userId) {
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -215,20 +220,86 @@ export default function LoginPage() {
           job_title:           cleanedRole,
           avatar_url:          avatarUrl,
           is_active:           true,
-          onboarding_complete: true,
+          onboarding_complete: false,
         });
-
       if (profileError) console.error('Profile upsert error:', profileError.message);
-      setSuccess('Registration successful! Redirecting...');
-      await redirectByRole(data.session.user);
-    } else {
-      setSuccess('Check your email to confirm your account, then sign in.');
     }
 
     setLoading(false);
+    setConfirmEmail(cleanedRegEmail);
+  };
+
+  const handleResend = async () => {
+    if (!confirmEmail || resendLoading) return;
+    setResendLoading(true);
+    setResendSent(false);
+    await supabase.auth.resend({ type: 'signup', email: confirmEmail });
+    setResendLoading(false);
+    setResendSent(true);
   };
 
   const switchMode = () => { setIsRegister(!isRegister); setError(''); setSuccess(''); };
+
+  if (unconfirmed) {
+    const unconfirmedEmail = searchParams.get('email') || '';
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
+          <span style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
+          <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>
+        </div>
+        <div style={{ width: 'min(420px, 100%)', background: '#111114', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}>
+          <div style={{ width: 56, height: 56, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.5"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: '#fff', letterSpacing: 2, marginBottom: 12 }}>CONFIRM YOUR EMAIL</h2>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 24 }}>Your account isn't confirmed yet. Check your inbox for the confirmation link before signing in.</p>
+          {resendSent && <p style={{ fontSize: 12, color: '#4ade80', marginBottom: 16 }}>Confirmation email resent!</p>}
+          {unconfirmedEmail && (
+            <button onClick={async () => {
+              setResendLoading(true); setResendSent(false);
+              await supabase.auth.resend({ type: 'signup', email: unconfirmedEmail });
+              setResendLoading(false); setResendSent(true);
+            }} disabled={resendLoading} style={{ width: '100%', padding: '13px', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 600, cursor: resendLoading ? 'not-allowed' : 'pointer', marginBottom: 16 }}>
+              {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+            </button>
+          )}
+          <button onClick={() => setUnconfirmed(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 12, cursor: 'pointer' }}>
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (confirmEmail) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
+          <span style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
+          <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>
+        </div>
+        <div style={{ width: 'min(480px, 100%)', background: '#111114', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}>
+          <div style={{ width: 64, height: 64, background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#fff', letterSpacing: 2, marginBottom: 12 }}>CHECK YOUR INBOX</h2>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 8 }}>We sent a confirmation link to</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#f3f4f6', marginBottom: 28, wordBreak: 'break-all' }}>{confirmEmail}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.6, marginBottom: 28 }}>Click the link in your email to activate your account. Check your spam folder if you don't see it.</p>
+          {resendSent && (
+            <p style={{ fontSize: 12, color: '#4ade80', marginBottom: 16 }}>Confirmation email resent!</p>
+          )}
+          <button onClick={handleResend} disabled={resendLoading} style={{ width: '100%', padding: '13px', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 600, cursor: resendLoading ? 'not-allowed' : 'pointer', marginBottom: 16 }}>
+            {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+          </button>
+          <button onClick={() => { setConfirmEmail(null); setIsRegister(false); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 12, cursor: 'pointer' }}>
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

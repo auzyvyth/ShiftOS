@@ -3959,6 +3959,11 @@ export default function DashboardPage() {
     // switching accounts always loads the correct owner's data.
     const loadSession = async (session) => {
       if (!session) { navigate("/login"); return; }
+      // Block unconfirmed accounts from accessing the dashboard
+      if (!session.user.email_confirmed_at) {
+        navigate("/login?unconfirmed=1", { replace: true });
+        return;
+      }
       const uid = session.user.id;
 
       // Reset to a clean slate before populating for this session.
