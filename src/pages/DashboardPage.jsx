@@ -5061,7 +5061,7 @@ export default function DashboardPage() {
           {activeTab === "hero" && userId && (
             <HeroSlidesPage userId={userId} profile={profile} />
           )}
-          {activeTab === "stock" && (
+          {activeTab === "stock" && userId && (
             <StockTab userId={userId} listings={listings} />
           )}
           {activeTab === "enquiries" && (

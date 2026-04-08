@@ -14,19 +14,19 @@ import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 
 const HC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
   /* System font fallbacks if Google Fonts unavailable (offline/slow) */
   .hc-wrap, .hc-wrap * {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
   .hc-syne {
-    font-family: 'Syne', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
 
   .hc-wrap {
     position: relative;
-    background: #0f172a;
+    background: #0C0C0E;
     overflow: hidden;
     min-height: 100vh;
   }
@@ -68,9 +68,9 @@ const HC_CSS = `
     inset: 0;
     background: linear-gradient(
       to bottom,
-      rgba(15, 23, 42, 0.88) 0%,
-      rgba(15, 23, 42, 0.52) 35%,
-      rgba(15, 23, 42, 0.94) 100%
+      rgba(9, 9, 11, 0.88) 0%,
+      rgba(9, 9, 11, 0.50) 35%,
+      rgba(9, 9, 11, 0.94) 100%
     );
     z-index: 1;
   }
@@ -80,8 +80,8 @@ const HC_CSS = `
     inset: 0;
     background: linear-gradient(
       100deg,
-      rgba(15, 23, 42, 0.92) 0%,
-      rgba(15, 23, 42, 0.45) 50%,
+      rgba(9, 9, 11, 0.92) 0%,
+      rgba(9, 9, 11, 0.42) 50%,
       transparent 78%
     );
     z-index: 1;
@@ -168,13 +168,13 @@ const HC_CSS = `
   .hc-eyebrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .hc-eyebrow-dot {
     width:6px; height:6px; border-radius:50%;
-    background:#3b82f6; flex-shrink:0;
-    box-shadow:0 0 8px rgba(59,130,246,0.55);
+    background:#C4A265; flex-shrink:0;
+    box-shadow:0 0 8px rgba(196,162,101,0.45);
   }
   .hc-eyebrow-label {
     font-size:10px; font-weight:600;
     letter-spacing:0.22em; text-transform:uppercase;
-    color:rgba(147,197,253,0.85);
+    color:rgba(196,162,101,0.85);
   }
 
   /* ── Car name ── */
@@ -184,7 +184,7 @@ const HC_CSS = `
     color:white; margin:0 0 18px;
     text-shadow:0 2px 24px rgba(0,0,0,0.4);
   }
-  .hc-year-accent { color:#93c5fd; }
+  .hc-year-accent { color:#C4A265; }
 
   /* ── Meta pills ── */
   .hc-meta { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
@@ -196,7 +196,7 @@ const HC_CSS = `
     border:1px solid rgba(255,255,255,0.1);
     font-size:11px; font-weight:500; color:rgba(255,255,255,0.8);
   }
-  .hc-meta-item svg { width:11px; height:11px; color:#60a5fa; }
+  .hc-meta-item svg { width:11px; height:11px; color:#C4A265; }
 
   /* ── Price ── */
   .hc-price-section { margin:0 0 24px; }
@@ -284,8 +284,8 @@ const HC_CSS = `
   .hc-trust-badge {
     position:absolute; bottom:14px; left:14px; right:14px;
     display:flex; align-items:center; gap:8px;
-    background:rgba(15,23,42,0.78); backdrop-filter:blur(16px);
-    border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+    background:rgba(9,9,11,0.78); backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.08); border-radius:12px;
     padding:8px 12px; z-index:2;
   }
   .hc-trust-dot {
@@ -332,9 +332,9 @@ const HC_CSS = `
     .hc-overlay {
       background:linear-gradient(
         to bottom,
-        rgba(15,23,42,0.93) 0%,
-        rgba(15,23,42,0.65) 25%,
-        rgba(15,23,42,0.98) 100%
+        rgba(9,9,11,0.93) 0%,
+        rgba(9,9,11,0.62) 25%,
+        rgba(9,9,11,0.98) 100%
       );
     }
     .hc-overlay-side { display:none; }
@@ -582,7 +582,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
         style={{
           width: "100%",
           height: "100vh",
-          background: "#0f172a",
+          background: "#0C0C0E",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -607,7 +607,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
       <section
         style={{
           minHeight: "70vh",
-          background: "linear-gradient(160deg,#0f172a 0%,#1e293b 100%)",
+          background: "linear-gradient(160deg,#0C0C0E 0%,#111113 100%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -644,11 +644,11 @@ export default function HeroCarousel({ siteName, waNumber }) {
             letterSpacing: "-0.02em",
           }}
         >
-          Find Your Perfect <span style={{ color: "#93c5fd" }}>Drive</span>
+          Find Your Perfect <span style={{ color: "#C4A265" }}>Drive</span>
         </h1>
         <p
           style={{
-            color: "#94a3b8",
+            color: "#52525A",
             fontSize: "clamp(0.875rem,3vw,1rem)",
             maxWidth: "460px",
             lineHeight: 1.7,
