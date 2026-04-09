@@ -1,13 +1,10 @@
 
-export default async function handler(req, res) {
-  // TEMP DEBUG — remove after testing
-  if (req.url?.includes('debug')) {
-    res.status(200).json({
-      SUPABASE_URL: process.env.SUPABASE_URL ? 'set' : 'missing',
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : 'missing',
-    });
-    return;
-  }
+} catch (err) {
+  // Return error details temporarily for debugging
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send(`Error: ${err.message}\nSUPABASE_URL: ${SUPABASE_URL ? 'set' : 'missing'}\nSUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? 'set' : 'missing'}`);
+  return;
+}
   // ... rest of handler
 
 // Vercel Serverless Function — dynamic sitemap per tenant subdomain
@@ -92,7 +89,11 @@ export default async function handler(req, res) {
         );
         carSlugs = cars.map((c) => c.slug).filter(Boolean);
       }
-    } catch (_) {}
+    } catch (err) {
+      res.setHeader("Content-Type", "text/plain");
+      res.status(200).send(`Error: ${err.message}\nSUPABASE_URL: ${SUPABASE_URL ? 'set' : 'missing'}\nSUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? 'set' : 'missing'}`);
+      return;
+    }
   }
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600");
