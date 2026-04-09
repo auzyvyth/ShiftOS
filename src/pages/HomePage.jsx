@@ -221,7 +221,7 @@ const glassCard = {
 // ── HomePage ──────────────────────────────────────────────────────────────────
 const HomePage = () => {
   const { t } = useTranslation();
-  const { siteName, waUrl } = useSiteProfile();
+  const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant } = useTenant();
   const ctaCtx = useCTAContext();
   const [featured, setFeatured] = useState([]);
