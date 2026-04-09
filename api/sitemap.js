@@ -1,10 +1,8 @@
-// Vercel Edge Function — dynamic sitemap per tenant subdomain
-export const config = { runtime: "edge" };
+// Vercel Serverless Function — dynamic sitemap per tenant subdomain
+
 const ROOT_DOMAIN = "xdrive.my";
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
 function getSubdomain(host) {
-  // Strip port if present
   const h = host.split(":")[0];
   if (h === ROOT_DOMAIN || h === `www.${ROOT_DOMAIN}`) return null;
   if (h.endsWith(`.${ROOT_DOMAIN}`)) {
@@ -57,8 +55,8 @@ async function fetchJson(url, key) {
   return Array.isArray(data) ? data : [];
 }
 
-export default async function handler(req) {
-  const host = req.headers.get("host") ?? ROOT_DOMAIN;
+export default async function handler(req, res) {
+  const host = req.headers.host ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
   const baseUrl = `https://${host}`;
 
@@ -100,11 +98,7 @@ export default async function handler(req) {
     }
   }
 
-  return new Response(buildSitemap(baseUrl, staticRoutes, carSlugs), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(buildSitemap(baseUrl, staticRoutes, carSlugs));
 }
