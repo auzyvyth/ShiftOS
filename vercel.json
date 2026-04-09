@@ -11,6 +11,8 @@
       ],
       "destination": "/api/og"
     },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/robots.txt", "destination": "/api/robots" },
     { "source": "(.*)", "destination": "/index.html" }
   ]
 }

@@ -531,7 +531,7 @@ const HomePage = () => {
 
       <Helmet>
         <title>{siteName} — Buy Trusted Used Cars in Malaysia</title>
-        <meta name="description" content="Browse 200+ verified used cars from trusted Malaysian dealers. Transparent pricing, no hidden fees, free consultation." />
+        <meta name="description" content={`Browse verified used cars at ${siteName}. Transparent pricing, no hidden fees${profile?.dealership ? ` — ${profile.dealership}` : ''}.`} />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Helmet>
 

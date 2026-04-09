@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -363,8 +364,40 @@ export default function CarDetailPage() {
   const prevIdx  = (activeIdx - 1 + imgCount) % imgCount;
   const nextIdx  = (activeIdx + 1) % imgCount;
 
+  const siteName = dealer?.site_name || dealer?.dealership || 'XDrive';
+
   return (
     <>
+      <Helmet>
+        <title>{car ? `${car.year} ${car.brand} ${car.model} for sale in Malaysia | ${siteName}` : `Car Listing | ${siteName}`}</title>
+        <meta name="description" content={car ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''} — ${car.mileage ? `${Number(car.mileage).toLocaleString('en-MY')} km, ` : ''}RM ${Number(car.selling_price).toLocaleString('en-MY')}. Available at ${siteName}.` : ''} />
+        {car && (
+          <script type="application/ld+json">{JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Car",
+            "name": `${car.brand} ${car.model}`,
+            "modelDate": String(car.year),
+            "mileageFromOdometer": {
+              "@type": "QuantitativeValue",
+              "value": car.mileage,
+              "unitCode": "KMT"
+            },
+            "description": car.description || `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
+            "image": Array.isArray(car.images) && car.images[0] ? car.images[0] : undefined,
+            "offers": {
+              "@type": "Offer",
+              "price": car.selling_price,
+              "priceCurrency": "MYR",
+              "availability": "https://schema.org/InStock"
+            },
+            "seller": {
+              "@type": "AutoDealer",
+              "name": siteName,
+              "url": typeof window !== 'undefined' ? window.location.origin : undefined
+            }
+          })}</script>
+        )}
+      </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
