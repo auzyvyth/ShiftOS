@@ -8,9 +8,8 @@ const SITE_TITLE = "Drevo · XDrive Malaysia";
 const SITE_DESCRIPTION =
   "Browse quality used cars on XDrive — Malaysia's trusted car marketplace.";
 
-const SUPABASE_URL = "https://lemdkdizdlcirhbzqlos.supabase.co";
-const SUPABASE_ANON_KEY =
-  "REDACTED_ANON_KEY";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const BOT_PATTERNS = [
   "googlebot",
