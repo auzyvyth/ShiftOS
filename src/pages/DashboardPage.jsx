@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
@@ -213,6 +214,58 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
     </span>
   );
 });
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+function Sparkline({ data = [], color = '#dc2626', width = 80, height = 28 }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+  const gradId = `sg-${color.replace('#', '')}`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#${gradId})`} />
+    </svg>
+  );
+}
+
+function bucketByDay(events, eventTypes, days = 14) {
+  const result = Array(days).fill(0);
+  const now = Date.now();
+  events.forEach(e => {
+    if (!eventTypes.includes(e.event_type)) return;
+    const daysAgo = Math.floor((now - new Date(e.created_at)) / 86400000);
+    if (daysAgo < days) result[days - 1 - daysAgo]++;
+  });
+  return result;
+}
+
+function bucketGPByMonth(units, months = 6) {
+  const result = Array(months).fill(0);
+  const now = new Date();
+  units.forEach(u => {
+    if (!u.sold_at || !u.sold_price) return;
+    const d = new Date(u.sold_at);
+    const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    if (monthsAgo >= 0 && monthsAgo < months) {
+      const gp = (u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0);
+      result[months - 1 - monthsAgo] += gp;
+    }
+  });
+  return result;
+}
 
 // ─── Settings Section wrapper ─────────────────────────────────────────────────
 function SettingsSection({
@@ -1419,6 +1472,46 @@ function AnalyticsTab({ listings, profile }) {
   ).length;
   const totalCalls = events.filter((e) => e.event_type === "call_click").length;
   const storeVisits = events.filter((e) => e.event_type === "store_visit").length;
+  const clicksData = bucketByDay(events, ['link_visit', 'car_view']);
+  const waData = bucketByDay(events, ['whatsapp_click']);
+  const enquiriesData = bucketByDay(events, ['whatsapp_click', 'call_click']);
+
+  const buildDailyChart = (evts, days = 30) => {
+    const result = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+      const dayEvents = evts.filter(e => e.created_at?.slice(0, 10) === dateStr);
+      result.push({
+        date: label,
+        clicks:    dayEvents.filter(e => ['link_visit', 'car_view'].includes(e.event_type)).length,
+        whatsapp:  dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
+        calls:     dayEvents.filter(e => e.event_type === 'call_click').length,
+        enquiries: dayEvents.filter(e => ['whatsapp_click', 'call_click'].includes(e.event_type)).length,
+      });
+    }
+    return result;
+  };
+
+  const dailyChart = useMemo(() => buildDailyChart(events), [events]);
+
+  const carStatsMap = useMemo(() => {
+    const map = {};
+    events.forEach(e => {
+      if (!e.car_id) return;
+      if (!map[e.car_id]) map[e.car_id] = { views: 0, leads: 0 };
+      if (['car_view', 'link_visit'].includes(e.event_type)) map[e.car_id].views++;
+      if (['whatsapp_click', 'call_click'].includes(e.event_type)) map[e.car_id].leads++;
+    });
+    Object.values(map).forEach(s => {
+      s.cvr = s.views > 0 ? ((s.leads / s.views) * 100).toFixed(1) + '%' : '—';
+    });
+    return map;
+  }, [events]);
+
   const bySlug = events.reduce((acc, e) => {
     if (!acc[e.salesman_slug])
       acc[e.salesman_slug] = { clicks: 0, enquiries: 0 };
@@ -1521,14 +1614,8 @@ function AnalyticsTab({ listings, profile }) {
       grad: "grad-green",
       icon: <CheckCircle2 className="w-4 h-4" />,
       glow: "rgba(110,231,183,0.14)",
-    },
-    {
-      label: "Hot Deals",
-      val: hot,
-      sub: "≥3% off",
-      grad: hot > 0 ? "grad-red" : "",
-      icon: <Flame className="w-4 h-4" />,
-      glow: hot > 0 ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.03)",
+      spark: Array(14).fill(0),
+      sparkColor: '#34d399',
     },
     {
       label: "Avg. Age",
@@ -1542,11 +1629,11 @@ function AnalyticsTab({ listings, profile }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {kpis.map(({ label, val, sub, grad, icon, glow }) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {kpis.map(({ label, val, sub, grad, icon, glow, spark, sparkColor }) => (
           <div
             key={label}
-            className="stat-card card-top rounded-xl p-4 overflow-hidden"
+            className="stat-card card-top rounded-xl overflow-hidden"
             style={T.card}
           >
             <div
@@ -1555,93 +1642,117 @@ function AnalyticsTab({ listings, profile }) {
                 background: `radial-gradient(circle at 100% 0%, rgba(220,38,38,0.05) 0%, transparent 55%)`,
               }}
             />
-            <div className="flex items-center justify-between mb-3 relative">
-              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                {label}
-              </p>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
-              >
-                {icon}
+            {spark && (
+              <div className="relative px-3.5 pt-3">
+                <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
               </div>
-            </div>
-            <p
-              className={`text-2xl sm:text-3xl font-black leading-none relative tabular-nums ${grad || "text-white"}`}
-            >
-              {val}
-            </p>
-            <p className="text-xs text-gray-700 mt-1.5 hidden sm:block relative">
-              {sub}
-            </p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            label: "Total Clicks",
-            val: totalClicks,
-            grad: "grad-cyan",
-            glow: "rgba(103,232,249,0.14)",
-            icon: <Eye className="w-4 h-4" />,
-          },
-          {
-            label: "Enquiries",
-            val: totalEnquiries,
-            grad: "grad-gold",
-            glow: "rgba(251,191,36,0.14)",
-            icon: <MessageSquare className="w-4 h-4" />,
-          },
-          {
-            label: "WhatsApp",
-            val: totalWa,
-            grad: "grad-green",
-            glow: "rgba(110,231,183,0.14)",
-            icon: <MessageCircle className="w-4 h-4" />,
-          },
-          {
-            label: "Call Clicks",
-            val: totalCalls,
-            grad: "grad-purple",
-            glow: "rgba(216,180,254,0.14)",
-            icon: <Phone className="w-4 h-4" />,
-          },
-          {
-            label: "Store Visits",
-            val: storeVisits,
-            grad: "grad-white",
-            glow: "rgba(148,163,184,0.1)",
-            icon: <Eye className="w-4 h-4" />,
-          },
-        ].map(({ label, val, grad, glow, icon }) => (
-          <div
-            key={label}
-            className="stat-card card-top rounded-xl p-4 overflow-hidden"
-            style={T.card}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                {label}
-              </p>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: glow }}
-              >
-                {icon}
+            )}
+            <div className={spark ? 'p-4 pt-2 relative' : 'p-4 relative'}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                  {label}
+                </p>
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
+                >
+                  {icon}
+                </div>
               </div>
-            </div>
-            {eventsLoading ? (
-              <div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
-            ) : (
               <p
-                className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad}`}
+                className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
               >
                 {val}
               </p>
-            )}
+              <p className="text-xs text-gray-700 mt-1.5 hidden sm:block">
+                {sub}
+              </p>
+            </div>
           </div>
         ))}
+      </div>
+      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+        {/* Header + summary pills */}
+        <div className="flex items-center justify-between p-4 flex-wrap gap-3" style={T.divider}>
+          <div>
+            <h2 className="font-semibold text-white text-sm">Engagement Overview</h2>
+            <p className="text-xs text-gray-600 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Clicks',    val: totalClicks,    color: '#67e8f9' },
+              { label: 'Enquiries', val: totalEnquiries, color: '#fbbf24' },
+              { label: 'WhatsApp',  val: totalWa,        color: '#4ade80' },
+              { label: 'Calls',     val: totalCalls,     color: '#c084fc' },
+              { label: 'Visits',    val: storeVisits,    color: '#94a3b8' },
+            ].map(({ label, val, color }) => (
+              <div key={label}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <span className="text-xs text-gray-400">{label}</span>
+                <span className="text-xs font-bold text-white tabular-nums">
+                  {eventsLoading ? '…' : val}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Chart */}
+        <div className="p-4 pt-2">
+          {eventsLoading ? (
+            <div className="flex items-center justify-center h-52 text-gray-600 text-sm">Loading chart…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#6b7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: '#4b5563' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#0f1117',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 8,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 12,
+                  }}
+                  itemStyle={{ color: '#e5e7eb' }}
+                  labelStyle={{ color: '#9ca3af', marginBottom: 4 }}
+                  cursor={{ stroke: 'rgba(220,38,38,0.2)', strokeWidth: 1 }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={6}
+                  wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }}
+                />
+                <Brush
+                  dataKey="date"
+                  height={20}
+                  stroke="rgba(220,38,38,0.3)"
+                  fill="rgba(220,38,38,0.05)"
+                  travellerWidth={6}
+                  startIndex={Math.max(0, dailyChart.length - 14)}
+                />
+                <Line type="monotone" dataKey="clicks"    stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="enquiries" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="whatsapp"  stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="calls"     stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
       {topSalesmen.length > 0 && (
         <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
@@ -1820,9 +1931,27 @@ function AnalyticsTab({ listings, profile }) {
                     <td className="px-4 py-3">
                       <AgeBadge createdAt={l.created_at} />
                     </td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="text-sky-400 font-semibold tabular-nums">
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.views || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.leads || 0) > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.leads || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {(() => {
+                        const cvr = carStatsMap[l.id]?.cvr;
+                        const num = parseFloat(cvr);
+                        return (
+                          <span className={`font-semibold tabular-nums ${num > 5 ? 'text-emerald-400' : num > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
+                            {eventsLoading ? '…' : (cvr || '—')}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold" : "bg-red-400/10 text-red-400 border-red-400/20 badge-glow-red"}`}
@@ -3165,12 +3294,13 @@ function StockTab({ userId, listings }) {
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
   const [soldSaving, setSoldSaving] = useState(false);
+  const [stockView, setStockView] = useState('available');
 
   const fetchUnits = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('stock_units')
-      .select('*, car_listings(brand, model, year, plate_number)')
+      .select('*, car_listings(brand, model, year, plate_number, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
@@ -3187,16 +3317,31 @@ function StockTab({ userId, listings }) {
 
   const grossProfit = (u) => {
     if (!u.sold_price) return null;
-    return (u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0);
+    return (Number(u.sold_price) || 0) - (Number(u.purchase_price) || 0) - (Number(u.recon_cost) || 0);
   };
 
   const now = new Date();
-  const thisMonth = units.filter(u => u.sold_at && new Date(u.sold_at).getMonth() === now.getMonth() && new Date(u.sold_at).getFullYear() === now.getFullYear());
-  const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
   const activeUnits = units.filter(u => u.status !== 'sold');
-  const totalValue = activeUnits.reduce((s, u) => s + (u.purchase_price || 0), 0);
-  const avgDays = activeUnits.length ? Math.round(activeUnits.reduce((s, u) => s + (typeof daysInStock(u.purchase_date) === 'number' ? daysInStock(u.purchase_date) : 0), 0) / activeUnits.length) : 0;
-  const agingUnits = activeUnits.filter(u => u.purchase_date && daysInStock(u.purchase_date) > 60);
+  const soldUnits = units.filter(u => u.status === 'sold');
+
+  const thisMonth = soldUnits.filter(u => {
+    if (!u.sold_date) return false;
+    const d = new Date(u.sold_date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
+  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.purchase_price) || 0), 0);
+  const avgDays = activeUnits.length
+    ? Math.round(activeUnits.reduce((s, u) => {
+        if (!u.purchase_date) return s;
+        return s + Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000);
+      }, 0) / activeUnits.length)
+    : 0;
+  const agingUnits = activeUnits.filter(u =>
+    u.purchase_date && Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) > 60
+  );
+  const gpSparkData = bucketGPByMonth(units);
 
   const handleAdd = async () => {
     setAddSaving(true);
@@ -3209,10 +3354,26 @@ function StockTab({ userId, listings }) {
 
   const handleMarkSold = async () => {
     setSoldSaving(true);
-    await supabase.from('stock_units').update({ sold_price: Number(soldForm.sold_price) || 0, sold_at: soldForm.sold_date, status: 'sold' }).eq('id', soldTarget.id);
+    const soldPrice = parseFloat(soldForm.sold_price);
+    const payload = {
+      status: 'sold',
+      sold_date: soldForm.sold_date || new Date().toISOString().slice(0, 10),
+      sold_price: isNaN(soldPrice) ? 0 : soldPrice,
+    };
+    const { error } = await supabase
+      .from('stock_units')
+      .update(payload)
+      .eq('id', soldTarget.id)
+      .eq('dealer_id', userId);
+    if (error) {
+      console.error('Mark sold error:', error.message);
+      toast.error('Failed to mark as sold: ' + error.message);
+      setSoldSaving(false);
+      return;
+    }
+    setUnits(p => p.map(u => u.id === soldTarget.id ? { ...u, ...payload } : u));
     setSoldTarget(null);
     setSoldSaving(false);
-    fetchUnits();
   };
 
   const statusBadge = (s) => {
@@ -3222,23 +3383,31 @@ function StockTab({ userId, listings }) {
   };
 
   const summaryCards = [
-    { label: 'Total Units', val: activeUnits.length, Icon: Package, glow: 'rgba(103,232,249,0.13)', grad: 'grad-cyan' },
-    { label: 'Stock Value', val: `RM ${totalValue.toLocaleString()}`, Icon: Banknote, glow: 'rgba(251,191,36,0.13)', grad: 'grad-red' },
-    { label: 'Avg Days in Stock', val: avgDays, Icon: Clock, glow: 'rgba(167,139,250,0.13)', grad: 'grad-purple' },
-    { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`, Icon: TrendingUp, glow: 'rgba(110,231,183,0.13)', grad: 'grad-green' },
-    { label: 'Aging Stock (60d+)', val: agingUnits.length, Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.04)', grad: agingUnits.length > 0 ? 'grad-red' : '' },
+    { label: 'Total Units',          val: activeUnits.length,                  Icon: Package,       glow: 'rgba(103,232,249,0.13)',                                           grad: 'grad-cyan'                                                          },
+    { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      glow: 'rgba(251,191,36,0.13)',                                            grad: 'grad-red'                                                           },
+    { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
+    { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
+    { label: 'Sold This Month',      val: thisMonth.length,                     Icon: CheckCircle2,  glow: 'rgba(110,231,183,0.13)',                                           grad: 'grad-green'                                                         },
+    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.04)', grad: agingUnits.length > 0 ? 'grad-red' : ''              },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {summaryCards.map(({ label, val, Icon: Ic, glow, grad }) => (
-          <div key={label} className="stat-card card-top rounded-xl p-4 overflow-hidden" style={T.card}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
+          <div key={label} className="stat-card card-top rounded-xl overflow-hidden" style={T.card}>
+            {spark && (
+              <div className="px-3.5 pt-3">
+                <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
+              </div>
+            )}
+            <div className={spark ? 'p-4 pt-2' : 'p-4'}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
+              </div>
+              <p className={`text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
             </div>
-            <p className={`text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
           </div>
         ))}
       </div>
@@ -3248,53 +3417,109 @@ function StockTab({ userId, listings }) {
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
         </div>
+        {/* Available / Sold tab toggle */}
+        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          {[
+            { id: 'available', label: 'Available', count: activeUnits.length },
+            { id: 'sold',      label: 'Sold',      count: soldUnits.length   },
+          ].map(({ id, label, count }) => (
+            <button
+              key={id}
+              onClick={() => setStockView(id)}
+              style={{
+                padding: '10px 18px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                background: 'none',
+                color: stockView === id ? '#f3f4f6' : '#6b7280',
+                borderBottom: stockView === id ? '2px solid #dc2626' : '2px solid transparent',
+                fontFamily: "'DM Sans', sans-serif",
+                transition: 'color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+              }}
+            >
+              {label}
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                padding: '1px 7px',
+                borderRadius: 10,
+                background: stockView === id ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.05)',
+                color: stockView === id ? '#f87171' : '#4b5563',
+              }}>{count}</span>
+            </button>
+          ))}
+        </div>
         <div style={{ overflowX: 'auto' }}>
           {loading ? (
             <p className="text-gray-500 text-sm p-6">Loading...</p>
           ) : units.length === 0 ? (
             <p className="text-gray-600 text-sm p-6">No stock units yet.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['Car', 'Purchase Price', 'Recon', 'Asking', 'Sold Price', 'Days', 'Gross Profit', 'Status', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {units.map(u => {
-                  const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
-                  const gp = grossProfit(u);
-                  const days = typeof daysInStock(u.purchase_date) === 'number' ? daysInStock(u.purchase_date) : 0;
-                  const isAging = u.status === 'in_stock' && days > 60;
-                  return (
-                    <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.07)' : 'transparent'}>
-                      <td style={{ padding: '12px 14px', minWidth: 140 }}>
-                        {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
-                      </td>
-                      <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(u.purchase_price||0).toLocaleString()}</td>
-                      <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(u.recon_cost||0).toLocaleString()}</td>
-                      <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(u.asking_price||0).toLocaleString()}</td>
-                      <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>{u.sold_price ? `RM ${u.sold_price.toLocaleString()}` : '—'}</td>
-                      <td style={{ padding: '12px 14px', fontSize: 13 }}>
-                        {isAging
-                          ? <span style={{ color: '#f87171', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
-                          : <span style={{ color: '#9ca3af' }}>{daysInStock(u.purchase_date)}</span>}
-                      </td>
-                      <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
-                        {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        {u.status !== 'sold' && <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0,10) }); }} style={{ fontSize: 11, color: '#f87171', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+          ) : (() => {
+            const displayUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const thStyle = { padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' };
+            return (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    {stockView === 'available'
+                      ? ['Car', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayUnits.length === 0 ? (
+                    <tr><td colSpan={8} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
+                  ) : displayUnits.map(u => {
+                    const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
+                    const gp = grossProfit(u);
+                    const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) : 0;
+                    const isAging = u.status === 'in_stock' && days > 60;
+                    return (
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.07)' : 'transparent'}>
+                        <td style={{ padding: '12px 14px', minWidth: 140 }}>
+                          {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
+                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
+                        {stockView === 'available' && (
+                          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
+                        )}
+                        <td style={{ padding: '12px 14px', fontSize: 13 }}>
+                          {isAging
+                            ? <span style={{ color: '#f87171', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
+                            : <span style={{ color: '#9ca3af' }}>{u.purchase_date ? `${days}d` : '—'}</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
+                        {stockView === 'available' ? (
+                          <td style={{ padding: '12px 14px' }}>
+                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#f87171', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                          </td>
+                        ) : (
+                          <>
+                            <td style={{ padding: '12px 14px', color: '#34d399', fontSize: 13, whiteSpace: 'nowrap', fontWeight: 600 }}>
+                              RM {Number(u.sold_price || 0).toLocaleString()}
+                            </td>
+                            <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12 }}>
+                              {u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY') : '—'}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
 
@@ -4103,8 +4328,18 @@ export default function DashboardPage() {
     setSidebarOpen(false);
   };
   const handleDelete = async (id) => {
-    const { error } = await supabase.from("car_listings").delete().eq("id", id);
-    if (!error) setListings((p) => p.filter((l) => l.id !== id));
+    const { error } = await supabase
+      .from("car_listings")
+      .delete()
+      .eq("id", id)
+      .eq("dealer_id", userId);  // explicit RLS guard
+    if (error) {
+      console.error("Delete failed:", error.message);
+      toast.error("Could not delete listing: " + error.message);
+      return;
+    }
+    setListings((p) => p.filter((l) => l.id !== id));
+    if (detailListing?.id === id) setDetailListing(null);
     setDeleteId(null);
   };
   const handleAssign = async (listingId, salesmanId, name) => {
@@ -4234,13 +4469,16 @@ export default function DashboardPage() {
 
   const soldCount = listings.filter((l) => l.status === "sold").length;
   const totalVal = listings.reduce((s, l) => s + (l.selling_price || 0), 0);
-  const avgPrice = listings.length ? Math.round(totalVal / listings.length) : 0;
   const hotCount = listings.filter(
     (l) =>
       l.original_price &&
       l.selling_price &&
       l.selling_price <= l.original_price * 0.97,
   ).length;
+  const soldSpark = bucketByDay(
+    listings.filter(l => l.status === 'sold' && l.sold_at).map(l => ({ event_type: 'sold', created_at: l.sold_at })),
+    ['sold']
+  );
 
   const STATUS = {
     active: {
@@ -4389,6 +4627,8 @@ export default function DashboardPage() {
       grad: "grad-green",
       Icon: CheckCircle2,
       glow: "rgba(110,231,183,0.13)",
+      spark: soldSpark,
+      sparkColor: '#34d399',
     },
     {
       label: "Total Value",
@@ -4397,14 +4637,6 @@ export default function DashboardPage() {
       grad: "grad-purple",
       Icon: DollarSign,
       glow: "rgba(216,180,254,0.13)",
-    },
-    {
-      label: "Avg. Price",
-      val: `RM ${avgPrice.toLocaleString()}`,
-      sub: "Per vehicle",
-      grad: "grad-white",
-      Icon: TrendingUp,
-      glow: "rgba(255,255,255,0.06)",
     },
     {
       label: "Hot Deals",
@@ -4793,11 +5025,11 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow }) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 mb-6">
+                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow, spark, sparkColor }) => (
                   <div
                     key={label}
-                    className="stat-card card-top rounded-xl p-4 overflow-hidden"
+                    className="stat-card card-top rounded-xl overflow-hidden"
                     style={T.card}
                   >
                     <div
@@ -4807,28 +5039,35 @@ export default function DashboardPage() {
                           "radial-gradient(circle at 95% 5%, rgba(220,38,38,0.05) 0%, transparent 50%)",
                       }}
                     />
-                    <div className="flex items-center justify-between mb-3 relative">
-                      <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                        {label}
-                      </p>
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: glow,
-                          boxShadow: `0 0 14px ${glow}`,
-                        }}
-                      >
-                        <Icon className="w-4 h-4 opacity-80" />
+                    {spark && (
+                      <div className="relative px-3.5 pt-3">
+                        <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
                       </div>
+                    )}
+                    <div className={spark ? 'p-4 pt-2 relative' : 'p-4 relative'}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                          {label}
+                        </p>
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{
+                            background: glow,
+                            boxShadow: `0 0 14px ${glow}`,
+                          }}
+                        >
+                          <Icon className="w-4 h-4 opacity-80" />
+                        </div>
+                      </div>
+                      <p
+                        className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
+                      >
+                        {val}
+                      </p>
+                      <p className="text-xs text-gray-700 mt-2 hidden sm:block">
+                        {sub}
+                      </p>
                     </div>
-                    <p
-                      className={`text-2xl sm:text-3xl font-black leading-none relative tabular-nums ${grad || "text-white"}`}
-                    >
-                      {val}
-                    </p>
-                    <p className="text-xs text-gray-700 mt-2 hidden sm:block relative">
-                      {sub}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -4968,10 +5207,8 @@ export default function DashboardPage() {
                                     <span style={{ display: 'block', marginTop: 3 }}><AgeBadge createdAt={l.created_at} /></span>
                                   </td>
                                   {/* Status */}
-                                  <td style={{ padding: '12px 14px' }}>
-                                    <span style={{ background: sCfg.bg, border: `1px solid ${sCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: sCfg.tx, whiteSpace: 'nowrap', textTransform: 'capitalize', display: 'inline-block' }}>
-                                      {l.status || 'active'}
-                                    </span>
+                                  <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                                    <StatusBadge listing={l} />
                                   </td>
                                 </tr>
                               );
@@ -5010,8 +5247,8 @@ export default function DashboardPage() {
                                     <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
                                     {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}{bt ? ` · ${bt}` : ''}</p>}
                                   </div>
-                                  <span style={{ background: msCfg.bg, border: `1px solid ${msCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: msCfg.tx, flexShrink: 0, textTransform: 'capitalize' }}>
-                                    {l.status || 'active'}
+                                  <span onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                                    <StatusBadge listing={l} />
                                   </span>
                                 </div>
                                 <div style={{ marginTop: 6 }}>
