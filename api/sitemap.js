@@ -1,13 +1,6 @@
+// Vercel Edge Function — dynamic sitemap per tenant subdomain
+export const config = { runtime: "edge" };
 
-} catch (err) {
-  // Return error details temporarily for debugging
-  res.setHeader("Content-Type", "text/plain");
-  res.status(200).send(`Error: ${err.message}\nSUPABASE_URL: ${SUPABASE_URL ? 'set' : 'missing'}\nSUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? 'set' : 'missing'}`);
-  return;
-}
-  // ... rest of handler
-
-// Vercel Serverless Function — dynamic sitemap per tenant subdomain
 const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -30,15 +23,13 @@ function xmlEscape(s) {
 }
 
 function buildSitemap(baseUrl, staticRoutes, carSlugs) {
-  const staticUrls = staticRoutes
-    .map(({ path, changefreq, priority }) => `
+  const staticUrls = staticRoutes.map(({ path, changefreq, priority }) => `
   <url>
     <loc>${xmlEscape(baseUrl + path)}</loc>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`).join("");
-  const carUrls = carSlugs
-    .map((slug) => `
+  const carUrls = carSlugs.map((slug) => `
   <url>
     <loc>${xmlEscape(baseUrl + "/cars/" + slug)}</loc>
     <changefreq>weekly</changefreq>
@@ -57,45 +48,56 @@ async function fetchJson(url, key) {
   return Array.isArray(data) ? data : [];
 }
 
-export default async function handler(req, res) {
-  const host = req.headers.host ?? ROOT_DOMAIN;
+export default async function handler(req) {
+  const host = req.headers.get("host") ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
   const baseUrl = `https://${host}`;
+
   const staticRoutes = [
     { path: "/", changefreq: "daily", priority: "1.0" },
     { path: "/cars", changefreq: "daily", priority: "0.9" },
     { path: "/calculator", changefreq: "monthly", priority: "0.6" },
   ];
+
   let carSlugs = [];
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    try {
-      if (subdomain) {
-        const profiles = await fetchJson(
-          `${SUPABASE_URL}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
-          SUPABASE_ANON_KEY,
-        );
-        const dealerId = profiles[0]?.id;
-        if (dealerId) {
-          const cars = await fetchJson(
-            `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
-            SUPABASE_ANON_KEY,
-          );
-          carSlugs = cars.map((c) => c.slug).filter(Boolean);
-        }
-      } else {
+  let debugInfo = "";
+
+  try {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      debugInfo = "missing env vars";
+    } else if (subdomain) {
+      const profiles = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
+        SUPABASE_ANON_KEY,
+      );
+      const dealerId = profiles[0]?.id;
+      if (dealerId) {
         const cars = await fetchJson(
-          `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
+          `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
           SUPABASE_ANON_KEY,
         );
         carSlugs = cars.map((c) => c.slug).filter(Boolean);
       }
-    } catch (err) {
-      res.setHeader("Content-Type", "text/plain");
-      res.status(200).send(`Error: ${err.message}\nSUPABASE_URL: ${SUPABASE_URL ? 'set' : 'missing'}\nSUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? 'set' : 'missing'}`);
-      return;
+    } else {
+      const cars = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
+        SUPABASE_ANON_KEY,
+      );
+      carSlugs = cars.map((c) => c.slug).filter(Boolean);
     }
+  } catch (err) {
+    debugInfo = err.message;
   }
-  res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  res.status(200).send(buildSitemap(baseUrl, staticRoutes, carSlugs));
+
+  const body = debugInfo
+    ? `<!-- debug: ${debugInfo} -->\n` + buildSitemap(baseUrl, staticRoutes, carSlugs)
+    : buildSitemap(baseUrl, staticRoutes, carSlugs);
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
 }
