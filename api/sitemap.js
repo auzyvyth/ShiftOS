@@ -40,6 +40,14 @@ function buildSitemap(baseUrl, staticRoutes, carSlugs) {
 </urlset>`;
 }
 
+async function fetchJson(url, key) {
+  const res = await fetch(url, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export default async function handler(req) {
   const host = req.headers.get("host") ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
@@ -51,20 +59,35 @@ export default async function handler(req) {
     { path: "/calculator", changefreq: "monthly", priority: "0.6" },
   ];
 
-  // DEBUG — return raw Supabase response
+  let carSlugs = [];
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5`,
-      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
-    );
-    const raw = await res.text();
-    return new Response(
-      `SUPABASE_URL: ${SUPABASE_URL ? "set" : "missing"}\nSUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? "set" : "missing"}\nSTATUS: ${res.status}\nBODY: ${raw.slice(0, 500)}`,
-      { headers: { "Content-Type": "text/plain" } }
-    );
-  } catch (err) {
-    return new Response(`FETCH ERROR: ${err.message}`, {
-      headers: { "Content-Type": "text/plain" }
-    });
-  }
+    if (subdomain) {
+      const profiles = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
+        SUPABASE_ANON_KEY,
+      );
+      const dealerId = profiles[0]?.id;
+      if (dealerId) {
+        const cars = await fetchJson(
+          `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
+          SUPABASE_ANON_KEY,
+        );
+        carSlugs = cars.map((c) => c.slug).filter(Boolean);
+      }
+    } else {
+      const cars = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
+        SUPABASE_ANON_KEY,
+      );
+      carSlugs = cars.map((c) => c.slug).filter(Boolean);
+    }
+  } catch (_) {}
+
+  return new Response(buildSitemap(baseUrl, staticRoutes, carSlugs), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
 }
