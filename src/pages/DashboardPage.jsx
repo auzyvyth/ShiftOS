@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from "react-router-dom";
@@ -4472,6 +4473,9 @@ export default function DashboardPage() {
 
   return (
     <>
+    <Helmet>
+      <meta name="robots" content="noindex, nofollow" />
+    </Helmet>
     <style>{STYLES}</style>
     <div
       className="min-h-screen text-white flex"
