@@ -4,7 +4,7 @@ export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 function getSubdomain(host) {
   // Strip port if present
   const h = host.split(":")[0];
