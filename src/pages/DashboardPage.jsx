@@ -86,35 +86,38 @@ const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
-  .grad-red    { background: linear-gradient(135deg,#f87171,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-red    { background: linear-gradient(135deg,#93c5fd,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-blue   { background: linear-gradient(135deg,#60a5fa,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-cyan   { background: linear-gradient(135deg,#67e8f9,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-green  { background: linear-gradient(135deg,#6ee7b7,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-purple { background: linear-gradient(135deg,#d8b4fe,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.45) 35%,rgba(56,189,248,0.28) 65%,transparent); pointer-events:none; z-index:1; }
-  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(220,38,38,0.55) 38%,rgba(56,189,248,0.38) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
+  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(59,130,246,0.35) 35%,rgba(99,102,241,0.2) 65%,transparent); pointer-events:none; z-index:1; }
+  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(59,130,246,0.45) 38%,rgba(99,102,241,0.3) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
 
   .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
-  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(220,38,38,0.22); }
-  .nav-active { background:linear-gradient(90deg,rgba(220,38,38,0.16),rgba(220,38,38,0.04))!important; border-left:2px solid #dc2626!important; }
+  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(59,130,246,0.22); }
+  .nav-active { background:rgba(59,130,246,0.1)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #3b82f6!important; box-shadow:inset 0 1px 0 rgba(59,130,246,0.15),inset 0 -1px 0 rgba(0,0,0,0.1); }
 
   .stat-card { transition:transform 0.18s,box-shadow 0.18s; }
   .stat-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.08); }
 
   .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
-  .data-row:hover { background:rgba(220,38,38,0.025)!important; border-left-color:rgba(220,38,38,0.3); }
+  .data-row:hover { background:rgba(59,130,246,0.025)!important; border-left-color:rgba(59,130,246,0.3); }
 
-  .badge-glow-red  { box-shadow:0 0 6px rgba(248,113,113,0.28); }
+  .badge-glow-blue { box-shadow:0 0 6px rgba(96,165,250,0.35); }
+  .badge-glow-blue  { box-shadow:0 0 6px rgba(248,113,113,0.28); }
   .badge-glow-cyan { box-shadow:0 0 6px rgba(103,232,249,0.22); }
   .badge-glow-gold { box-shadow:0 0 6px rgba(251,191,36,0.22); }
 
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
-  .hot-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
 
   .discount-chip { transition:box-shadow 0.15s; }
-  .discount-chip:hover { box-shadow:0 0 10px rgba(220,38,38,0.42); }
+  .discount-chip:hover { box-shadow:0 0 10px rgba(59,130,246,0.42); }
 
   .btn-shimmer { position:relative; overflow:hidden; }
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
@@ -123,45 +126,55 @@ const STYLES = `
   .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
 
   .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.065); border-radius:16px; overflow:hidden; }
-  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.35) 35%,rgba(56,189,248,0.2) 65%,transparent); pointer-events:none; }
+  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(59,130,246,0.25) 35%,rgba(99,102,241,0.15) 65%,transparent); pointer-events:none; }
+
+  .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:28px; background:linear-gradient(to left,rgba(8,10,18,0.85),transparent); pointer-events:none; border-radius:0 8px 8px 0; }
+
+  .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
+  .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
+  .glass-pill { background:rgba(255,255,255,0.06); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
+  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 0 0 1px rgba(59,130,246,0.06),0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.07); }
 
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:rgba(220,38,38,0.22); border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(220,38,38,0.42); }
+  ::-webkit-scrollbar-thumb { background:rgba(59,130,246,0.22); border-radius:4px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(59,130,246,0.42); }
 
   @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 `;
 
 const T = {
   card: {
-    position: "relative",
-    background:
-      "linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))",
-    border: "1px solid rgba(255,255,255,0.07)",
+    position: 'relative',
+    background: 'linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.008))',
+    border: '1px solid rgba(255,255,255,0.055)',
+    backdropFilter: 'blur(12px)',
   },
   cardDark: {
-    position: "relative",
-    background: "rgba(255,255,255,0.022)",
-    border: "1px solid rgba(255,255,255,0.065)",
+    position: 'relative',
+    background: 'rgba(8,10,18,0.95)',
+    border: '1px solid rgba(255,255,255,0.055)',
   },
   modal: {
-    position: "relative",
-    background: "rgba(11,11,15,0.98)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    boxShadow: "0 0 0 1px rgba(220,38,38,0.07), 0 32px 64px rgba(0,0,0,0.72)",
+    position: 'relative',
+    background: 'rgba(5,7,14,0.99)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    boxShadow: '0 0 0 1px rgba(59,130,246,0.07), 0 40px 80px rgba(0,0,0,0.8)',
   },
-  divider: { borderBottom: "1px solid rgba(255,255,255,0.05)" },
+  divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
   btnRed: {
-    background: "linear-gradient(135deg,#dc2626,#b91c1c)",
-    boxShadow: "0 2px 10px rgba(220,38,38,0.28)",
+    background: 'linear-gradient(135deg, rgba(59,130,246,0.9), rgba(29,78,216,0.95))',
+    backdropFilter: 'blur(8px)',
+    boxShadow: '0 2px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.12)',
   },
 };
 
 const iCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all";
 const taCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all resize-none";
+  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -208,7 +221,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-400 border border-red-400/20 badge-glow-red">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20 badge-glow-blue">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
@@ -216,7 +229,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
 });
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
-function Sparkline({ data = [], color = '#dc2626', width = 80, height = 28 }) {
+function Sparkline({ data = [], color = '#3b82f6', width = 80, height = 28 }) {
   if (!data || data.length < 2) return null;
   const max = Math.max(...data, 1);
   const min = Math.min(...data);
@@ -272,9 +285,9 @@ function SettingsSection({
   title,
   subtitle,
   icon: Icon,
-  iconColor = "text-red-400",
-  iconBg = "rgba(220,38,38,0.1)",
-  iconBorder = "rgba(220,38,38,0.18)",
+  iconColor = "text-blue-400",
+  iconBg = "rgba(59,130,246,0.1)",
+  iconBorder = "rgba(59,130,246,0.18)",
   children,
 }) {
   return (
@@ -607,7 +620,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const ErrMsg = ({ k }) =>
     errors[k] ? (
-      <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1.5">
+      <p className="text-blue-400 text-xs mt-1.5 flex items-center gap-1.5">
         <AlertTriangle className="w-3 h-3 flex-shrink-0" />
         {errors[k]}
       </p>
@@ -623,14 +636,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
       >
         {/* Change count badge */}
         <div
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? "text-red-400" : changesLeft === 1 ? "text-amber-400" : "text-emerald-400"}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? "text-blue-400" : changesLeft === 1 ? "text-amber-400" : "text-emerald-400"}`}
           style={{
             background: dealershipLocked
-              ? "rgba(220,38,38,0.07)"
+              ? "rgba(59,130,246,0.07)"
               : changesLeft === 1
                 ? "rgba(251,191,36,0.07)"
                 : "rgba(52,211,153,0.07)",
-            border: `1px solid ${dealershipLocked ? "rgba(220,38,38,0.18)" : changesLeft === 1 ? "rgba(251,191,36,0.18)" : "rgba(52,211,153,0.18)"}`,
+            border: `1px solid ${dealershipLocked ? "rgba(59,130,246,0.18)" : changesLeft === 1 ? "rgba(251,191,36,0.18)" : "rgba(52,211,153,0.18)"}`,
           }}
         >
           {dealershipLocked ? (
@@ -686,7 +699,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 />
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
-              {subdomainStatus === 'taken' && <span className="text-xs text-red-400 whitespace-nowrap">⚠ Already taken</span>}
+              {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
               {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
             {subdomain !== profile?.subdomain && profile?.subdomain && (
@@ -723,7 +736,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               value={brandColor}
               onChange={(e) => setBrandColor(e.target.value)}
               placeholder="#c9a84c"
-              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-red-600/50 transition-all font-mono"
+              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
             />
             <div
               className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10"
@@ -848,7 +861,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
             <button
               onClick={() => setAnnouncementOn((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-red-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-blue-600" : "bg-white/10"}`}
             >
               <span
                 className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${announcementOn ? "left-5" : "left-0.5"}`}
@@ -966,7 +979,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
             <button
               onClick={() => setTgAutoPost((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-red-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-blue-600" : "bg-white/10"}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${tgAutoPost ? "left-5" : "left-0.5"}`} />
             </button>
@@ -1108,37 +1121,37 @@ function SettingsTab({ profile, onProfileUpdate }) {
       <div
         className="rounded-xl overflow-hidden"
         style={{
-          border: "1px solid rgba(220,38,38,0.22)",
-          background: "rgba(220,38,38,0.03)",
+          border: "1px solid rgba(59,130,246,0.22)",
+          background: "rgba(59,130,246,0.03)",
         }}
       >
         <button
           onClick={() => setShowDanger((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-red-500/[0.04] transition-colors"
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-blue-500/[0.04] transition-colors"
         >
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{
-                background: "rgba(220,38,38,0.12)",
-                border: "1px solid rgba(220,38,38,0.22)",
+                background: "rgba(59,130,246,0.12)",
+                border: "1px solid rgba(59,130,246,0.22)",
               }}
             >
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <AlertTriangle className="w-4 h-4 text-blue-400" />
             </div>
-            <p className="text-red-400 text-sm font-semibold">Danger Zone</p>
+            <p className="text-blue-400 text-sm font-semibold">Danger Zone</p>
           </div>
           {showDanger ? (
-            <ChevronUp className="w-4 h-4 text-red-500/50" />
+            <ChevronUp className="w-4 h-4 text-blue-500/50" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-red-500/50" />
+            <ChevronDown className="w-4 h-4 text-blue-500/50" />
           )}
         </button>
 
         {showDanger && (
           <div
             className="px-5 pb-5 space-y-4"
-            style={{ borderTop: "1px solid rgba(220,38,38,0.12)" }}
+            style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}
           >
             <p className="text-gray-500 text-xs pt-4">
               Deleting your account is permanent and cannot be undone. All your
@@ -1156,8 +1169,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
               disabled={deleteConfirm !== "DELETE"}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-30 transition-all"
               style={{
-                background: "linear-gradient(135deg,#dc2626,#991b1b)",
-                border: "1px solid rgba(220,38,38,0.3)",
+                background: "linear-gradient(135deg,#3b82f6,#1e40af)",
+                border: "1px solid rgba(59,130,246,0.3)",
               }}
             >
               Permanently Delete Account
@@ -1220,7 +1233,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
     >
       <div
         className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden"
-        style={T.modal}
+        style={undefined}
       >
         <div
           className="flex items-center justify-between px-5 py-4"
@@ -1252,7 +1265,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
                 RM {cur.toLocaleString()}
               </span>
               {orig && (
-                <span className="text-red-400 text-xs font-medium bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
+                <span className="text-blue-400 text-xs font-medium bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/20">
                   -{Math.round(((orig - cur) / orig) * 100)}%
                 </span>
               )}
@@ -1275,13 +1288,13 @@ function PriceEditModal({ listing, onClose, onSave }) {
                 }}
                 min="0"
                 autoFocus
-                className="w-full pl-12 pr-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-lg font-semibold focus:outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/15 transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-lg font-semibold focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/15 transition-all"
               />
             </div>
           </div>
           {npv > 0 && npv !== cur && (
             <div
-              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : isUp ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : isHot ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}
+              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : isUp ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : isHot ? "bg-blue-500/10 border-red-500/20 text-blue-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}
             >
               {isReset && (
                 <p className="font-medium">
@@ -1319,7 +1332,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
             </div>
           )}
           {err && (
-            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-blue-400 text-xs bg-blue-500/10 border border-red-500/20 rounded-lg px-3 py-2">
               ⚠ {err}
             </p>
           )}
@@ -1362,7 +1375,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
     >
       <div
         className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-        style={T.modal}
+        style={undefined}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -1629,25 +1642,25 @@ function AnalyticsTab({ listings, profile }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {kpis.map(({ label, val, sub, grad, icon, glow, spark, sparkColor }) => (
           <div
             key={label}
-            className="stat-card card-top rounded-xl overflow-hidden"
-            style={T.card}
+            className="stat-card card-top rounded-2xl overflow-hidden glass"
+            style={{ position: 'relative' }}
           >
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: `radial-gradient(circle at 100% 0%, rgba(220,38,38,0.05) 0%, transparent 55%)`,
+                background: `radial-gradient(circle at 100% 0%, rgba(59,130,246,0.05) 0%, transparent 55%)`,
               }}
             />
             {spark && (
               <div className="relative px-3.5 pt-3">
-                <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
+                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
               </div>
             )}
-            <div className={spark ? 'p-4 pt-2 relative' : 'p-4 relative'}>
+            <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
                   {label}
@@ -1660,7 +1673,7 @@ function AnalyticsTab({ listings, profile }) {
                 </div>
               </div>
               <p
-                className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
+                className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
               >
                 {val}
               </p>
@@ -1730,7 +1743,7 @@ function AnalyticsTab({ listings, profile }) {
                   }}
                   itemStyle={{ color: '#e5e7eb' }}
                   labelStyle={{ color: '#9ca3af', marginBottom: 4 }}
-                  cursor={{ stroke: 'rgba(220,38,38,0.2)', strokeWidth: 1 }}
+                  cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
                 />
                 <Legend
                   iconType="circle"
@@ -1740,8 +1753,8 @@ function AnalyticsTab({ listings, profile }) {
                 <Brush
                   dataKey="date"
                   height={20}
-                  stroke="rgba(220,38,38,0.3)"
-                  fill="rgba(220,38,38,0.05)"
+                  stroke="rgba(59,130,246,0.3)"
+                  fill="rgba(59,130,246,0.05)"
                   travellerWidth={6}
                   startIndex={Math.max(0, dailyChart.length - 14)}
                 />
@@ -1757,7 +1770,7 @@ function AnalyticsTab({ listings, profile }) {
       {topSalesmen.length > 0 && (
         <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
           <div className="flex items-center gap-2 p-4" style={T.divider}>
-            <BarChart2 className="w-4 h-4 text-red-400" />
+            <BarChart2 className="w-4 h-4 text-blue-400" />
             <p className="font-semibold text-white text-sm">
               Salesman Performance
             </p>
@@ -1877,7 +1890,7 @@ function AnalyticsTab({ listings, profile }) {
                 <tr
                   style={{
                     background: "rgba(255,255,255,0.02)",
-                    boxShadow: "inset 0 -1px 0 rgba(220,38,38,0.2)",
+                    boxShadow: "inset 0 -1px 0 rgba(59,130,246,0.2)",
                   }}
                 >
                   {[
@@ -1954,7 +1967,7 @@ function AnalyticsTab({ listings, profile }) {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold" : "bg-red-400/10 text-red-400 border-red-400/20 badge-glow-red"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold" : "bg-blue-400/10 text-blue-400 border-blue-400/20 badge-glow-blue"}`}
                       >
                         {l.status || "active"}
                       </span>
@@ -1975,12 +1988,12 @@ function AnalyticsTab({ listings, profile }) {
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{
-                background: "rgba(220,38,38,0.1)",
-                border: "1px solid rgba(220,38,38,0.18)",
-                boxShadow: "0 0 12px rgba(220,38,38,0.12)",
+                background: "rgba(59,130,246,0.1)",
+                border: "1px solid rgba(59,130,246,0.18)",
+                boxShadow: "0 0 12px rgba(59,130,246,0.12)",
               }}
             >
-              <Bot className="w-4 h-4 text-red-400" />
+              <Bot className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-left">
               <p className="text-white text-sm font-semibold">
@@ -2007,11 +2020,11 @@ function AnalyticsTab({ listings, profile }) {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                       style={{
-                        background: "rgba(220,38,38,0.12)",
-                        border: "1px solid rgba(220,38,38,0.18)",
+                        background: "rgba(59,130,246,0.12)",
+                        border: "1px solid rgba(59,130,246,0.18)",
                       }}
                     >
-                      <Bot className="w-3 h-3 text-red-400" />
+                      <Bot className="w-3 h-3 text-blue-400" />
                     </div>
                   )}
                   <div
@@ -2020,8 +2033,8 @@ function AnalyticsTab({ listings, profile }) {
                       m.role === "user"
                         ? {
                             background:
-                              "linear-gradient(135deg,#dc2626,#b91c1c)",
-                            boxShadow: "0 2px 8px rgba(220,38,38,0.22)",
+                              "linear-gradient(135deg,#3b82f6,#1d4ed8)",
+                            boxShadow: "0 2px 8px rgba(59,130,246,0.22)",
                           }
                         : {
                             background: "rgba(255,255,255,0.05)",
@@ -2038,11 +2051,11 @@ function AnalyticsTab({ listings, profile }) {
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                     style={{
-                      background: "rgba(220,38,38,0.12)",
-                      border: "1px solid rgba(220,38,38,0.18)",
+                      background: "rgba(59,130,246,0.12)",
+                      border: "1px solid rgba(59,130,246,0.18)",
                     }}
                   >
-                    <Bot className="w-3 h-3 text-red-400" />
+                    <Bot className="w-3 h-3 text-blue-400" />
                   </div>
                   <div
                     className="px-3.5 py-3 rounded-2xl rounded-tl-sm"
@@ -2055,7 +2068,7 @@ function AnalyticsTab({ listings, profile }) {
                       {[0, 1, 2].map((i) => (
                         <div
                           key={i}
-                          className="w-1.5 h-1.5 bg-red-500/40 rounded-full animate-bounce"
+                          className="w-1.5 h-1.5 bg-blue-500/40 rounded-full animate-bounce"
                           style={{ animationDelay: `${i * 0.15}s` }}
                         />
                       ))}
@@ -2104,7 +2117,7 @@ function AnalyticsTab({ listings, profile }) {
                   maxHeight: "120px",
                 }}
                 onFocus={(e) =>
-                  (e.target.style.borderColor = "rgba(220,38,38,0.4)")
+                  (e.target.style.borderColor = "rgba(59,130,246,0.4)")
                 }
                 onBlur={(e) =>
                   (e.target.style.borderColor = "rgba(255,255,255,0.08)")
@@ -2203,7 +2216,7 @@ function TeamTab({ managerDealership, dealerId }) {
       .from("profiles")
       .select("*")
       .eq("role", "salesman")
-      .eq("dealership", managerDealership)
+      .eq("dealer_id", dealerId)
       .order("created_at", { ascending: false });
     if (error) {
       setTeamError(error.message || "Failed to load team.");
@@ -2269,6 +2282,7 @@ function TeamTab({ managerDealership, dealerId }) {
           email: e,
           phone: p,
           dealership: managerDealership,
+          dealer_id: dealerId,
           slug: s,
           password: tempPw,
         }),
@@ -2326,7 +2340,7 @@ function TeamTab({ managerDealership, dealerId }) {
     ? Math.round((activeCount / salespeople.length) * 100)
     : 0;
   const inputCls =
-    "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+    "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-red-600/10 transition-all";
 
   return (
     <div className="space-y-4">
@@ -2405,11 +2419,11 @@ function TeamTab({ managerDealership, dealerId }) {
             <div
               className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
               style={{
-                background: "rgba(220,38,38,0.07)",
-                border: "1px solid rgba(220,38,38,0.12)",
+                background: "rgba(59,130,246,0.07)",
+                border: "1px solid rgba(59,130,246,0.12)",
               }}
             >
-              <Users className="w-5 h-5 text-red-500/40" />
+              <Users className="w-5 h-5 text-blue-500/40" />
             </div>
             <p className="text-gray-600 text-sm mb-4">
               No salespeople added yet
@@ -2444,7 +2458,7 @@ function TeamTab({ managerDealership, dealerId }) {
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                       style={{
-                        background: "linear-gradient(135deg,#dc2626,#7c3aed)",
+                        background: "linear-gradient(135deg,#3b82f6,#7c3aed)",
                       }}
                     >
                       {(s.full_name || "S")[0].toUpperCase()}
@@ -2566,8 +2580,8 @@ function TeamTab({ managerDealership, dealerId }) {
                     </button>
                     <button
                       onClick={() => setDeleteConfirmId(s.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition-all"
-                      style={{ border: "1px solid rgba(220,38,38,0.18)" }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-blue-500 hover:bg-blue-500/10 transition-all"
+                      style={{ border: "1px solid rgba(59,130,246,0.18)" }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Remove</span>
@@ -2586,7 +2600,7 @@ function TeamTab({ managerDealership, dealerId }) {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-            style={T.modal}
+            style={undefined}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -2628,7 +2642,7 @@ function TeamTab({ managerDealership, dealerId }) {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col"
-            style={T.modal}
+            style={undefined}
           >
             <div
               className="flex items-center justify-between px-5 py-4 flex-shrink-0"
@@ -2759,7 +2773,7 @@ function TeamTab({ managerDealership, dealerId }) {
                         value={slug}
                         onChange={(e) => setSlug(slugify(e.target.value))}
                         autoComplete="off"
-                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-red-600/50 transition-colors"
+                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-colors"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -2772,10 +2786,10 @@ function TeamTab({ managerDealership, dealerId }) {
                   </div>
                   {addError && (
                     <div
-                      className="rounded-xl px-3 py-2.5 text-red-400 text-xs"
+                      className="rounded-xl px-3 py-2.5 text-blue-400 text-xs"
                       style={{
-                        background: "rgba(220,38,38,0.07)",
-                        border: "1px solid rgba(220,38,38,0.18)",
+                        background: "rgba(59,130,246,0.07)",
+                        border: "1px solid rgba(59,130,246,0.18)",
                       }}
                     >
                       ⚠ {addError}
@@ -2815,8 +2829,8 @@ function parseTags(raw) {
   return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
 }
 
-const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
-const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#f87171', crack:'#f43f5e', replaced:'#a78bfa' };
+const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
+const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#93c5fd', crack:'#f43f5e', replaced:'#a78bfa' };
 
 function DrawerDamageMap({ damageMap }) {
   const zones = Array.isArray(damageMap) ? damageMap : [];
@@ -2900,7 +2914,7 @@ function ListingDetailDrawer({
   const monthly = sp > 0 ? Math.round((sp * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12)) : null;
   const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
   const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
-  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#f87171' }[listing.interior_grade] || '#9ca3af';
+  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#93c5fd' }[listing.interior_grade] || '#9ca3af';
   let damageMap = [];
   try { if (listing.damage_map) damageMap = typeof listing.damage_map === 'string' ? JSON.parse(listing.damage_map) : listing.damage_map; } catch {}
   const features = parseTags(listing.features);
@@ -2963,7 +2977,7 @@ function ListingDetailDrawer({
                     <div
                       key={i}
                       onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(220,38,38,0.6)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                     </div>
@@ -3017,7 +3031,7 @@ function ListingDetailDrawer({
                 {saving > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                    <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
+                    <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
                   </div>
                 )}
                 {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>}
@@ -3139,7 +3153,7 @@ function ListingDetailDrawer({
                 </button>
 
                 {/* Price */}
-                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                 </button>
 
@@ -3150,7 +3164,7 @@ function ListingDetailDrawer({
                 </button>
 
                 {/* Financing Calculator */}
-                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                 </button>
 
@@ -3168,7 +3182,7 @@ function ListingDetailDrawer({
                       )}
                       {salesmen.map(s => (
                         <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(168,85,247,0.1)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#c084fc' : '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
-                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
                         </button>
@@ -3185,7 +3199,7 @@ function ListingDetailDrawer({
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#f87171' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
 
@@ -3393,20 +3407,20 @@ function StockTab({ userId, listings }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
-          <div key={label} className="stat-card card-top rounded-xl overflow-hidden" style={T.card}>
+          <div key={label} className="stat-card card-top rounded-2xl overflow-hidden glass" style={{ position: 'relative' }}>
             {spark && (
               <div className="px-3.5 pt-3">
-                <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
+                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
               </div>
             )}
-            <div className={spark ? 'p-4 pt-2' : 'p-4'}>
+            <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
               </div>
-              <p className={`text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
+              <p className={`text-xl sm:text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
             </div>
           </div>
         ))}
@@ -3434,7 +3448,7 @@ function StockTab({ userId, listings }) {
                 border: 'none',
                 background: 'none',
                 color: stockView === id ? '#f3f4f6' : '#6b7280',
-                borderBottom: stockView === id ? '2px solid #dc2626' : '2px solid transparent',
+                borderBottom: stockView === id ? '2px solid #3b82f6' : '2px solid transparent',
                 fontFamily: "'DM Sans', sans-serif",
                 transition: 'color 0.15s',
                 display: 'flex',
@@ -3448,13 +3462,13 @@ function StockTab({ userId, listings }) {
                 fontWeight: 700,
                 padding: '1px 7px',
                 borderRadius: 10,
-                background: stockView === id ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.05)',
-                color: stockView === id ? '#f87171' : '#4b5563',
+                background: stockView === id ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+                color: stockView === id ? '#93c5fd' : '#4b5563',
               }}>{count}</span>
             </button>
           ))}
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-wrap">
           {loading ? (
             <p className="text-gray-500 text-sm p-6">Loading...</p>
           ) : units.length === 0 ? (
@@ -3481,7 +3495,7 @@ function StockTab({ userId, listings }) {
                     const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) : 0;
                     const isAging = u.status === 'in_stock' && days > 60;
                     return (
-                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.07)' : 'transparent'}>
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(59,130,246,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(59,130,246,0.07)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
                         </td>
@@ -3492,16 +3506,16 @@ function StockTab({ userId, listings }) {
                         )}
                         <td style={{ padding: '12px 14px', fontSize: 13 }}>
                           {isAging
-                            ? <span style={{ color: '#f87171', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
+                            ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
                             : <span style={{ color: '#9ca3af' }}>{u.purchase_date ? `${days}d` : '—'}</span>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
-                          {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
+                          {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
                         </td>
                         <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
-                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#f87171', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                           </td>
                         ) : (
                           <>
@@ -3526,7 +3540,7 @@ function StockTab({ userId, listings }) {
       {/* Add Stock Modal */}
       {showAdd && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={T.modal}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-white">Add Stock Unit</h3>
               <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -3561,7 +3575,7 @@ function StockTab({ userId, listings }) {
       {/* Mark Sold Modal */}
       {soldTarget && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={T.modal}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-white">Mark as Sold</h3>
               <button onClick={() => setSoldTarget(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -3635,7 +3649,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Enquiries</h2>
           <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Incoming buyer enquiries from your storefront</p>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-wrap">
           {loading ? (
             <p className="text-gray-500 text-sm p-6">Loading...</p>
           ) : enquiries.length === 0 ? (
@@ -3651,7 +3665,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               </thead>
               <tbody>
                 {enquiries.map(e => (
-                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(220,38,38,0.04)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
+                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.car_info || e.car || '—'}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
@@ -3729,7 +3743,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     confirmed: { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)'  },
     completed: { color: '#34d399', bg: 'rgba(52,211,153,0.12)',  border: 'rgba(52,211,153,0.3)'  },
     cancelled: { color: '#6b7280', bg: 'rgba(107,114,128,0.1)',  border: 'rgba(107,114,128,0.25)' },
-    no_show:   { color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)'  },
+    no_show:   { color: '#93c5fd', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)'  },
   };
 
   const fetchBookings = async () => {
@@ -3794,7 +3808,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
               {['list', 'week'].map(v => (
-                <button key={v} onClick={() => setView(v)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: view === v ? 'rgba(220,38,38,0.2)' : 'transparent', color: view === v ? '#f87171' : '#9ca3af', transition: 'all 0.15s' }}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
+                <button key={v} onClick={() => setView(v)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: view === v ? 'rgba(59,130,246,0.2)' : 'transparent', color: view === v ? '#93c5fd' : '#9ca3af', transition: 'all 0.15s' }}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
               ))}
             </div>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Booking</button>
@@ -3804,7 +3818,7 @@ function BookingsTab({ userId, listings, salesmen }) {
         {loading ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
         ) : view === 'list' ? (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-wrap">
             {bookings.length === 0 ? (
               <p className="text-gray-600 text-sm p-6">No bookings yet.</p>
             ) : (
@@ -3821,7 +3835,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                     const car = b.car_listings;
                     const sm = b.profiles;
                     return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{b.buyer_name || '—'}</td>
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
@@ -3855,7 +3869,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           </div>
         ) : (
           /* Week calendar view */
-          <div style={{ padding: 16, overflowX: 'auto' }}>
+          <div className="table-wrap" style={{ padding: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 8 }}>
               {weekDays.map(day => {
                 const dayStr = day.toDateString();
@@ -3865,8 +3879,8 @@ function BookingsTab({ userId, listings, salesmen }) {
                     <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{day.toLocaleDateString('en-MY', { weekday: 'short' })}</p>
                     <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 600, margin: '0 0 8px' }}>{day.getDate()}</p>
                     {dayBookings.map(b => (
-                      <div key={b.id} style={{ background: statusMeta[b.status]?.bg || 'rgba(220,38,38,0.1)', border: `1px solid ${statusMeta[b.status]?.border || 'rgba(220,38,38,0.2)'}`, borderRadius: 5, padding: '4px 7px', marginBottom: 4 }}>
-                        <p style={{ fontSize: 10, color: statusMeta[b.status]?.color || '#f87171', fontWeight: 600, margin: 0 }}>{new Date(b.appointment_date).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</p>
+                      <div key={b.id} style={{ background: statusMeta[b.status]?.bg || 'rgba(59,130,246,0.1)', border: `1px solid ${statusMeta[b.status]?.border || 'rgba(59,130,246,0.2)'}`, borderRadius: 5, padding: '4px 7px', marginBottom: 4 }}>
+                        <p style={{ fontSize: 10, color: statusMeta[b.status]?.color || '#93c5fd', fontWeight: 600, margin: 0 }}>{new Date(b.appointment_date).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</p>
                         <p style={{ fontSize: 11, color: '#f3f4f6', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.buyer_name || '—'}</p>
                       </div>
                     ))}
@@ -3881,7 +3895,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       {/* Add Booking Modal */}
       {showAdd && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={T.modal}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-white">Add Booking</h3>
               <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -4046,7 +4060,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Documents</h2>
           <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-wrap">
           {loading ? (
             <p className="text-gray-500 text-sm p-6">Loading...</p>
           ) : documents.length === 0 ? (
@@ -4062,8 +4076,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
               </thead>
               <tbody>
                 {documents.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#f87171', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
+                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
                     <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.car_label || (doc.car_listings ? `${doc.car_listings.brand} ${doc.car_listings.model}` : '—')}</td>
                     <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
@@ -4081,7 +4095,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
       {/* Generate Modal */}
       {showGen && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={T.modal}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-white">Generate Document</h3>
               <button onClick={() => setShowGen(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
@@ -4496,7 +4510,7 @@ export default function DashboardPage() {
     sold: {
       label: "Sold",
       dot: "bg-red-400",
-      cls: "bg-red-400/10 text-red-400 border-red-400/20 badge-glow-red",
+      cls: "bg-blue-400/10 text-blue-400 border-blue-400/20 badge-glow-blue",
       next: "active",
     },
   };
@@ -4532,7 +4546,12 @@ export default function DashboardPage() {
     return (
       <div
         className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
-        style={{ background: "linear-gradient(135deg,#dc2626,#7c3aed)" }}
+        style={{
+          background: "linear-gradient(135deg, rgba(59,130,246,0.8), rgba(99,102,241,0.8))",
+          backdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+        }}
       >
         {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
       </div>
@@ -4557,7 +4576,7 @@ export default function DashboardPage() {
             RM {sp.toLocaleString()}
           </span>
           <span
-            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-red-500/15 text-red-400 border-red-500/25 hot-glow badge-glow-red" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
+            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-blue-500/15 text-blue-400 border-blue-500/25 blue-glow badge-glow-blue" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
           >
             {isHot && <Flame className="w-3 h-3" />}−{pct}%
           </span>
@@ -4577,7 +4596,7 @@ export default function DashboardPage() {
       used: "bg-white/[0.06] text-gray-400 border border-white/10",
     })[c] || "bg-white/[0.06] text-gray-400 border border-white/10";
 
-  const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
+  const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
@@ -4699,7 +4718,7 @@ export default function DashboardPage() {
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
       <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#dc2626', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+      <a href="https://wa.me/60174155191" style={{ background: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
     </div>
   );
 
@@ -4714,7 +4733,7 @@ export default function DashboardPage() {
       style={{
         fontFamily: "'DM Sans',sans-serif",
         background:
-          "radial-gradient(ellipse 65% 40% at 0% 0%, rgba(220,38,38,0.06) 0%, transparent 55%), #09090b",
+          "radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
       }}
     >
       {sidebarOpen && (
@@ -4726,54 +4745,53 @@ export default function DashboardPage() {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{
-          background: "linear-gradient(155deg,#111118 0%,#0a0a0e 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.055)",
-          boxShadow:
-            "4px 0 28px rgba(0,0,0,0.65), inset -1px 0 0 rgba(220,38,38,0.07)",
-        }}
+        className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{
-              background: "linear-gradient(135deg,#dc2626,#7c3aed)",
-              boxShadow:
-                "0 0 18px rgba(220,38,38,0.42), 0 2px 8px rgba(0,0,0,0.5)",
+              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+              boxShadow: "0 0 18px rgba(59,130,246,0.42), 0 2px 8px rgba(0,0,0,0.5)",
             }}
           >
             S
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-black tracking-wider text-sm grad-red">
+            <p className="font-black tracking-wider text-sm grad-blue">
               ShiftOS
             </p>
             <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
           </div>
           {/* Bell in sidebar header */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setNotifOpen(p => !p)} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#f87171' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={() => setNotifOpen(p => !p)} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
-              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#dc2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#3b82f6', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-px mt-1 overflow-y-auto">
+        <nav className="flex-1 p-2 sm:p-3 space-y-px mt-1 overflow-y-auto">
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
               onClick={() => handleTabChange(id)}
-              className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
             >
               <Icon
-                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-red-400" : ""}`}
+                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-blue-400" : ""}`}
               />
               {label}
               {badge !== undefined && (
                 <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-red-300 bg-red-950/70" : "text-gray-600 bg-white/[0.05]"}`}
+                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-blue-300 bg-blue-950/70" : "text-gray-600 bg-white/[0.05]"}`}
                 >
                   {badge}
                 </span>
@@ -4822,11 +4840,14 @@ export default function DashboardPage() {
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
               style={{
-                background: "rgba(220,38,38,0.07)",
-                border: "1px solid rgba(220,38,38,0.13)",
+                background: "rgba(59,130,246,0.07)",
+                border: "1px solid rgba(59,130,246,0.15)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                boxShadow: "inset 0 1px 0 rgba(59,130,246,0.1)",
               }}
             >
-              <Building2 className="w-3.5 h-3.5 text-red-500/60 flex-shrink-0" />
+              <Building2 className="w-3.5 h-3.5 text-blue-500/60 flex-shrink-0" />
               <p className="text-xs font-semibold text-gray-300 truncate flex-1">
                 {profile.dealership}
               </p>
@@ -4839,14 +4860,14 @@ export default function DashboardPage() {
             className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
           >
             <Settings
-              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-400" : ""}`}
+              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-blue-400" : ""}`}
             />
             Settings
           </button>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-red-400 hover:bg-red-500/[0.06] transition-all"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-all"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -4858,85 +4879,97 @@ export default function DashboardPage() {
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
         {/* Mobile topbar */}
         <div
-          className="lg:hidden sticky top-0 z-10 flex items-center gap-3 px-4 py-3 backdrop-blur-xl"
+          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 backdrop-blur-xl"
           style={{
-            background: "rgba(9,9,11,0.92)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-            boxShadow: "0 1px 0 rgba(220,38,38,0.1)",
+            background: 'rgba(5,7,14,0.7)',
+            backdropFilter: 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 1px 0 rgba(59,130,246,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
           }}
         >
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
+            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
-              className="w-6 h-6 rounded-md flex items-center justify-center font-black text-xs"
-              style={{
-                background: "linear-gradient(135deg,#dc2626,#7c3aed)",
-                boxShadow: "0 0 8px rgba(220,38,38,0.32)",
-              }}
+              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs"
+              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 0 8px rgba(59,130,246,0.4)' }}
             >
               S
             </div>
-            <span className="font-bold text-white text-sm tracking-tight">
-              ShiftOS
-            </span>
+            <span className="font-bold text-white text-xs tracking-tight hidden xs:inline">ShiftOS</span>
           </div>
-          <span className="ml-1 text-gray-600 text-sm">
+          <span className="text-gray-500 text-xs truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
-          <div className="ml-auto flex items-center gap-2">
-            {/* Notification Bell */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setNotifOpen(p => !p)}
-                style={{ position: 'relative', background: notifCount > 0 ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${notifCount > 0 ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 8, padding: '6px', cursor: 'pointer', color: notifCount > 0 ? '#f87171' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Bell className="w-4 h-4" />
-                {notifCount > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 800, borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #09090b' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
-              </button>
-              {notifOpen && (
-                <>
-                  <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                  <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
-                      {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
-                    </div>
-                    {notifications.length === 0 ? (
-                      <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
-                    ) : notifications.slice(0, 10).map(n => (
-                      <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(220,38,38,0.04)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(220,38,38,0.04)'}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                          {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
-                            {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
-                            <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
-                          </div>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setNotifOpen(p => !p)}
+              style={{
+                position: 'relative',
+                background: notifCount > 0 ? 'rgba(59,130,246,0.1)' : 'transparent',
+                border: 'none', borderRadius: 8, padding: 6,
+                cursor: 'pointer',
+                color: notifCount > 0 ? '#93c5fd' : '#6b7280',
+                display: 'flex',
+              }}
+            >
+              <Bell className="w-4 h-4" />
+              {notifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  background: '#3b82f6', color: '#fff',
+                  fontSize: 8, fontWeight: 800, borderRadius: '50%',
+                  width: 14, height: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid #05070e',
+                }}>
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <>
+                <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+                  ) : notifications.slice(0, 10).map(n => (
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)'}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
+                          {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
+                          <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <Avatar />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
+          <Avatar />
         </div>
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: 'linear-gradient(135deg,rgba(220,38,38,0.09),rgba(124,58,237,0.07))', borderBottom: '1px solid rgba(220,38,38,0.18)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.09), rgba(99,102,241,0.07))', borderBottom: '1px solid rgba(59,130,246,0.18)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
               {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare className="w-3.5 h-3.5 text-red-400" />
+                  <div style={{ width: 28, height: 28, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
@@ -4953,7 +4986,7 @@ export default function DashboardPage() {
 
               {/* Progress bar */}
               <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#f87171)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#3b82f6,#93c5fd)', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
               {/* Checklist */}
@@ -4974,7 +5007,7 @@ export default function DashboardPage() {
                       cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(220,38,38,0.3)'; }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(59,130,246,0.3)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
                   >
                     {item.done
@@ -5005,19 +5038,19 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+        <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
               {TITLES[activeTab]?.title}
             </h1>
-            <p className="text-gray-600 text-sm mt-0.5">
+            <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
               {TITLES[activeTab]?.sub}
             </p>
             <div
               className="mt-4 h-px"
               style={{
                 background:
-                  "linear-gradient(90deg,rgba(220,38,38,0.32),rgba(56,189,248,0.18) 38%,transparent 68%)",
+                  "linear-gradient(90deg,rgba(59,130,246,0.4),rgba(99,102,241,0.2) 38%,transparent 65%)",
               }}
             />
           </div>
@@ -5025,26 +5058,26 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
                 {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow, spark, sparkColor }) => (
                   <div
                     key={label}
-                    className="stat-card card-top rounded-xl overflow-hidden"
-                    style={T.card}
+                    className="stat-card card-top rounded-2xl overflow-hidden glass"
+                    style={{ position: 'relative' }}
                   >
                     <div
                       className="absolute inset-0 pointer-events-none"
                       style={{
                         background:
-                          "radial-gradient(circle at 95% 5%, rgba(220,38,38,0.05) 0%, transparent 50%)",
+                          "radial-gradient(circle at 95% 5%, rgba(59,130,246,0.05) 0%, transparent 50%)",
                       }}
                     />
                     {spark && (
                       <div className="relative px-3.5 pt-3">
-                        <Sparkline data={spark} color={sparkColor || '#dc2626'} width={120} height={32} />
+                        <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
                       </div>
                     )}
-                    <div className={spark ? 'p-4 pt-2 relative' : 'p-4 relative'}>
+                    <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
                           {label}
@@ -5060,11 +5093,11 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <p
-                        className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
+                        className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
                       >
                         {val}
                       </p>
-                      <p className="text-xs text-gray-700 mt-2 hidden sm:block">
+                      <p className="text-xs text-gray-600 mt-1 relative truncate">
                         {sub}
                       </p>
                     </div>
@@ -5074,10 +5107,10 @@ export default function DashboardPage() {
 
               {/* ── Listings panel ── */}
               <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#991b1b', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#3b82f6', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#1e40af', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
-                <div style={{ position: 'relative', zIndex: 1, background: '#080C14', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
@@ -5102,7 +5135,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => setActiveTab("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
                         Add Listing
@@ -5114,18 +5147,18 @@ export default function DashboardPage() {
                   <div style={{ padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</div>
                 ) : listings.length === 0 ? (
                   <div style={{ padding: 48, textAlign: 'center' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                      <Car style={{ width: 24, height: 24, color: 'rgba(220,38,38,0.4)' }} />
+                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <Car style={{ width: 24, height: 24, color: 'rgba(59,130,246,0.4)' }} />
                     </div>
                     <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>No listings yet</p>
-                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
+                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
                       Add your first car
                     </button>
                   </div>
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block" style={{ overflowX: 'auto' }}>
+                    <div className="hidden md:block table-wrap">
                       <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                           <thead>
@@ -5150,7 +5183,7 @@ export default function DashboardPage() {
                                   key={l.id}
                                   onClick={() => setDetailListing(l)}
                                   style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s', opacity: isSold ? 0.6 : 1 }}
-                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                 >
                                   {/* Thumbnail */}
@@ -5173,7 +5206,7 @@ export default function DashboardPage() {
                                     {pct > 0 && (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                         <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                                        <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
+                                        <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
                                       </div>
                                     )}
                                   </td>
@@ -5232,7 +5265,7 @@ export default function DashboardPage() {
                             key={l.id}
                             onClick={() => setDetailListing(l)}
                             style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: isSold ? 0.6 : 1, cursor: 'pointer', transition: 'background 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -5253,7 +5286,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div style={{ marginTop: 6 }}>
                                   <span style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500 }}>RM {sp.toLocaleString()}</span>
-                                  {pct > 0 && <span style={{ fontSize: 11, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
+                                  {pct > 0 && <span style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
                                 </div>
                               </div>
                             </div>
@@ -5354,7 +5387,7 @@ export default function DashboardPage() {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-            style={T.modal}
+            style={undefined}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -5439,7 +5472,7 @@ export default function DashboardPage() {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
-            style={T.modal}
+            style={undefined}
           >
             <div
               className="flex items-center justify-between px-5 py-4 flex-shrink-0"
@@ -5482,7 +5515,7 @@ export default function DashboardPage() {
       {/* ── Post-listing stock purchase prompt ── */}
       {pendingStockListing && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={T.modal}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <div>
                 <h3 className="font-semibold text-white">Add Purchase Details?</h3>
