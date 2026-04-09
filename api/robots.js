@@ -1,6 +1,4 @@
-// Vercel Edge Function — dynamic robots.txt per tenant subdomain
-
-export const config = { runtime: "edge" };
+// Vercel Serverless Function — dynamic robots.txt per tenant subdomain
 
 const ROOT_DOMAIN = "xdrive.my";
 
@@ -13,8 +11,8 @@ const INTERNAL_PATHS = [
   "/auth",
 ];
 
-export default async function handler(req) {
-  const host = req.headers.get("host") ?? ROOT_DOMAIN;
+export default function handler(req, res) {
+  const host = req.headers.host ?? ROOT_DOMAIN;
   const baseUrl = `https://${host}`;
 
   const disallowLines = INTERNAL_PATHS.map((p) => `Disallow: ${p}`).join("\n");
@@ -33,11 +31,7 @@ ${disallowLines}
 Sitemap: ${baseUrl}/sitemap.xml
 `;
 
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=86400",
-    },
-  });
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(body);
 }
