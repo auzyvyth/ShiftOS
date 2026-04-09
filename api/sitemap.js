@@ -1,11 +1,8 @@
 // Vercel Edge Function — dynamic sitemap per tenant subdomain
-const cars = await carsRes.json();
-console.log('cars response:', JSON.stringify(cars).slice(0, 200));
 export const config = { runtime: "edge" };
-
 const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 function getSubdomain(host) {
   // Strip port if present
   const h = host.split(":")[0];
@@ -74,7 +71,7 @@ export default async function handler(req) {
   let carSlugs = [];
 
   const sbUrl = process.env.SUPABASE_URL;
-  const sbKey = process.env.VITE_SUPABASE_ANON_KEY;
+  const sbKey = process.env.SUPABASE_ANON_KEY;
 
   if (sbUrl && sbKey) {
     try {
