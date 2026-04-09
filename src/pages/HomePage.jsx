@@ -530,9 +530,24 @@ const HomePage = () => {
       `}</style>
 
       <Helmet>
-        <title>{siteName} — Buy Trusted Used Cars in Malaysia</title>
-        <meta name="description" content={`Browse verified used cars at ${siteName}. Transparent pricing, no hidden fees${profile?.dealership ? ` — ${profile.dealership}` : ''}.`} />
+        <title>
+          {profile
+            ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
+            : 'XDrive — Buy & Sell Used Cars in Malaysia'}
+        </title>
+        <meta name="description" content={
+          profile
+            ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
+            : "Malaysia's trusted used car marketplace. Browse hundreds of verified listings from top dealers."
+        } />
+        <meta property="og:title" content={
+          profile
+            ? `${profile.site_name || profile.dealership} — Used Cars`
+            : 'XDrive — Used Cars in Malaysia'
+        } />
+        <meta property="og:image" content={profile?.site_logo_url || 'https://xdrive.my/og-default.jpg'} />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="canonical" href="https://xdrive.my" />
       </Helmet>
 
       <Header />

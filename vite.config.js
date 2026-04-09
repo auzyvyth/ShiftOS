@@ -33,6 +33,8 @@ export default defineConfig({
 					'vendor-ui': ['lucide-react', 'react-helmet', 'react-i18next'],
 					// DnD
 					'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable'],
+					// PDF generation
+					'vendor-pdf': ['jspdf'],
 				},
 			},
 		},
