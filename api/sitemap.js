@@ -1,5 +1,6 @@
 // Vercel Edge Function — dynamic sitemap per tenant subdomain
-
+const cars = await carsRes.json();
+console.log('cars response:', JSON.stringify(cars).slice(0, 200));
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
