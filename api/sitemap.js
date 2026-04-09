@@ -3,9 +3,8 @@
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
-const SUPABASE_URL = "https://lemdkdizdlcirhbzqlos.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4";
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
 function getSubdomain(host) {
   // Strip port if present
@@ -69,7 +68,7 @@ export default async function handler(req) {
   if (subdomain) {
     // Tenant subdomain — look up dealer_id by slug, then fetch their active cars
     const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?slug=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
