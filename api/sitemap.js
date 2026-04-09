@@ -1,0 +1,118 @@
+// Vercel Edge Function — dynamic sitemap per tenant subdomain
+
+export const config = { runtime: "edge" };
+
+const ROOT_DOMAIN = "xdrive.my";
+const SUPABASE_URL = "https://lemdkdizdlcirhbzqlos.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlbWRrZGl6ZGxjaXJoYnpxbG9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjY2MTUsImV4cCI6MjA4ODIwMjYxNX0.KhD0skeM_lgmWfq94nIISvRWzEGUmBc8BReTLdPKji4";
+
+function getSubdomain(host) {
+  // Strip port if present
+  const h = host.split(":")[0];
+  if (h === ROOT_DOMAIN || h === `www.${ROOT_DOMAIN}`) return null;
+  if (h.endsWith(`.${ROOT_DOMAIN}`)) {
+    return h.slice(0, h.length - ROOT_DOMAIN.length - 1);
+  }
+  return null;
+}
+
+function xmlEscape(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildSitemap(baseUrl, staticRoutes, carSlugs) {
+  const staticUrls = staticRoutes
+    .map(
+      ({ path, changefreq, priority }) => `
+  <url>
+    <loc>${xmlEscape(baseUrl + path)}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`,
+    )
+    .join("");
+
+  const carUrls = carSlugs
+    .map(
+      (slug) => `
+  <url>
+    <loc>${xmlEscape(baseUrl + "/cars/" + slug)}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`,
+    )
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}${carUrls}
+</urlset>`;
+}
+
+export default async function handler(req) {
+  const host = req.headers.get("host") ?? ROOT_DOMAIN;
+  const subdomain = getSubdomain(host);
+  const baseUrl = `https://${host}`;
+
+  const staticRoutes = [
+    { path: "/", changefreq: "daily", priority: "1.0" },
+    { path: "/cars", changefreq: "daily", priority: "0.9" },
+    { path: "/calculator", changefreq: "monthly", priority: "0.6" },
+  ];
+
+  let carSlugs = [];
+
+  if (subdomain) {
+    // Tenant subdomain — look up dealer_id by slug, then fetch their active cars
+    const profileRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?slug=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+    const profiles = await profileRes.json();
+    const dealerId = profiles?.[0]?.id;
+
+    if (dealerId) {
+      const carsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        },
+      );
+      const cars = await carsRes.json();
+      carSlugs = (cars ?? []).map((c) => c.slug).filter(Boolean);
+    }
+  } else {
+    // Root domain — include all active public car listings
+    const carsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+    const cars = await carsRes.json();
+    carSlugs = (cars ?? []).map((c) => c.slug).filter(Boolean);
+  }
+
+  return new Response(buildSitemap(baseUrl, staticRoutes, carSlugs), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}

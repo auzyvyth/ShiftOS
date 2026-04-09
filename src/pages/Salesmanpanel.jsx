@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
@@ -271,6 +272,9 @@ export default function SalesmanPanel() {
       className="min-h-screen bg-gray-950 text-white"
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
 
       {/* Top bar */}
