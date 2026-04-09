@@ -1,5 +1,55 @@
-export default async function handler(req) {
-  const host = req.headers.get("host") ?? ROOT_DOMAIN;
+// Vercel Serverless Function — dynamic sitemap per tenant subdomain
+const ROOT_DOMAIN = "xdrive.my";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+function getSubdomain(host) {
+  const h = host.split(":")[0];
+  if (h === ROOT_DOMAIN || h === `www.${ROOT_DOMAIN}`) return null;
+  if (h.endsWith(`.${ROOT_DOMAIN}`)) {
+    return h.slice(0, h.length - ROOT_DOMAIN.length - 1);
+  }
+  return null;
+}
+
+function xmlEscape(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildSitemap(baseUrl, staticRoutes, carSlugs) {
+  const staticUrls = staticRoutes
+    .map(({ path, changefreq, priority }) => `
+  <url>
+    <loc>${xmlEscape(baseUrl + path)}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`).join("");
+  const carUrls = carSlugs
+    .map((slug) => `
+  <url>
+    <loc>${xmlEscape(baseUrl + "/cars/" + slug)}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}${carUrls}
+</urlset>`;
+}
+
+async function fetchJson(url, key) {
+  const res = await fetch(url, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+export default async function handler(req, res) {
+  const host = req.headers.host ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
   const baseUrl = `https://${host}`;
   const staticRoutes = [
@@ -32,11 +82,7 @@ export default async function handler(req) {
       }
     } catch (_) {}
   }
-  return new Response(buildSitemap(baseUrl, staticRoutes, carSlugs), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.status(200).send(buildSitemap(baseUrl, staticRoutes, carSlugs));
 }
