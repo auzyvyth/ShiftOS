@@ -1,3 +1,15 @@
+
+export default async function handler(req, res) {
+  // TEMP DEBUG — remove after testing
+  if (req.url?.includes('debug')) {
+    res.status(200).json({
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'set' : 'missing',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : 'missing',
+    });
+    return;
+  }
+  // ... rest of handler
+
 // Vercel Serverless Function — dynamic sitemap per tenant subdomain
 const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL;
