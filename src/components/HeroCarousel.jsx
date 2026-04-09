@@ -91,7 +91,7 @@ const HC_CSS = `
   /* ── DESKTOP content ── */
   .hc-content {
     position: absolute;
-    bottom: 200px;
+    bottom: 130px;
     left: 0;
     right: 0;
     z-index: 3;
@@ -245,7 +245,7 @@ const HC_CSS = `
 
   /* ── Counter ── */
   .hc-counter {
-    position:absolute; bottom:120px; left:48px; z-index:4;
+    position:absolute; bottom:50px; left:48px; z-index:4;
     font-size:10px; font-weight:600;
     letter-spacing:0.12em; color:rgba(255,255,255,0.35);
     background:rgba(255,255,255,0.05); backdrop-filter:blur(10px);
@@ -255,7 +255,7 @@ const HC_CSS = `
 
   /* ── Dots ── */
   .hc-dots {
-    position:absolute; bottom:120px; left:50%; transform:translateX(-50%);
+    position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
     display:flex; gap:8px; z-index:4;
   }
   .hc-dot {
@@ -313,13 +313,13 @@ const HC_CSS = `
      TABLET
   ════════════════ */
   @media (max-width:1024px) {
-    .hc-content { bottom:180px; }
+    .hc-content { bottom:110px; }
     .hc-content-wrap { padding:0 32px; gap:36px; }
     .hc-text { max-width:50%; }
     .hc-glass-card { max-width:46%; max-height:320px; }
     .hc-card-spacer { min-height:260px; max-height:320px; }
-    .hc-counter { left:32px; bottom:100px; }
-    .hc-dots    { bottom:100px; }
+    .hc-counter { left:32px; bottom:36px; }
+    .hc-dots    { bottom:36px; }
     .hc-spacer  { height:0; }
   }
 
