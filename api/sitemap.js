@@ -51,6 +51,14 @@ function buildSitemap(baseUrl, staticRoutes, carSlugs) {
 </urlset>`;
 }
 
+async function fetchJson(url, key) {
+  const res = await fetch(url, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export default async function handler(req) {
   const host = req.headers.get("host") ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
@@ -64,46 +72,34 @@ export default async function handler(req) {
 
   let carSlugs = [];
 
-  if (subdomain) {
-    // Tenant subdomain — look up dealer_id by slug, then fetch their active cars
-    const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
-    );
-    const profiles = await profileRes.json();
-    const dealerId = profiles?.[0]?.id;
+  const sbUrl = process.env.SUPABASE_URL;
+  const sbKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-    if (dealerId) {
-      const carsRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
-        {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-        },
-      );
-      const cars = await carsRes.json();
-      carSlugs = (cars ?? []).map((c) => c.slug).filter(Boolean);
+  if (sbUrl && sbKey) {
+    try {
+      if (subdomain) {
+        const profiles = await fetchJson(
+          `${sbUrl}/rest/v1/profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id&limit=1`,
+          sbKey,
+        );
+        const dealerId = profiles[0]?.id;
+        if (dealerId) {
+          const cars = await fetchJson(
+            `${sbUrl}/rest/v1/car_listings?dealer_id=eq.${encodeURIComponent(dealerId)}&status=eq.active&select=slug&limit=1000`,
+            sbKey,
+          );
+          carSlugs = cars.map((c) => c.slug).filter(Boolean);
+        }
+      } else {
+        const cars = await fetchJson(
+          `${sbUrl}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
+          sbKey,
+        );
+        carSlugs = cars.map((c) => c.slug).filter(Boolean);
+      }
+    } catch (_) {
+      // Fall through — return static-only sitemap
     }
-  } else {
-    // Root domain — include all active public car listings
-    const carsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/car_listings?status=eq.active&select=slug&limit=5000`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
-    );
-    const cars = await carsRes.json();
-    carSlugs = (cars ?? []).map((c) => c.slug).filter(Boolean);
   }
 
   return new Response(buildSitemap(baseUrl, staticRoutes, carSlugs), {
