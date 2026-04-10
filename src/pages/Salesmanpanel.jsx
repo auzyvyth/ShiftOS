@@ -145,7 +145,6 @@ export default function SalesmanPanel() {
       if (redirectByRole(profileData.role)) return;
 
       setProfile(profileData);
-      setUserId(uid);
       setLoading(false);
 
       if (profileData.slug) {
@@ -251,7 +250,7 @@ export default function SalesmanPanel() {
     supabase
       .from("leads")
       .select("*, car_listings(brand, model, year, selling_price)")
-      .eq("salesman_id", uid)
+      .eq("salesman_id", userId)
       .eq("is_deleted", false)
       .order("updated_at", { ascending: false })
       .then(({ data }) => {
@@ -264,21 +263,21 @@ export default function SalesmanPanel() {
       supabase
         .from("salesman_notifications")
         .select("*")
-        .eq("salesman_id", uid)
+        .eq("salesman_id", userId)
         .order("created_at", { ascending: false })
         .limit(20)
         .then(({ data }) => setNotifications(data || []));
     loadNotifs();
 
     const notifCh = supabase
-      .channel("salesman_notifs_" + uid)
+      .channel("salesman_notifs_" + userId)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "salesman_notifications",
-          filter: `salesman_id=eq.${uid}`,
+          filter: `salesman_id=eq.${userId}`,
         },
         loadNotifs,
       )
@@ -294,7 +293,7 @@ export default function SalesmanPanel() {
     supabase
       .from("car_listings")
       .select("id", { count: "exact", head: true })
-      .eq("assigned_to", uid)
+      .eq("assigned_to", userId)
       .eq("status", "sold")
       .gte("sold_at", monthStart)
       .then(({ count }) => setThisMonthSales(count || 0));
