@@ -2151,6 +2151,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [copiedId, setCopiedId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [newRole, setNewRole] = useState("salesman");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+60");
@@ -2215,7 +2216,7 @@ function TeamTab({ managerDealership, dealerId }) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("role", "salesman")
+      .in("role", ["salesman","manager","accountant","fi_officer","admin"])
       .eq("dealer_id", dealerId)
       .order("created_at", { ascending: false });
     if (error) {
@@ -2242,6 +2243,7 @@ function TeamTab({ managerDealership, dealerId }) {
     setTempPw("");
     setAddError("");
     setAddSuccess("");
+    setNewRole("salesman");
   };
 
   const handleAdd = async () => {
@@ -2285,6 +2287,7 @@ function TeamTab({ managerDealership, dealerId }) {
           dealer_id: dealerId,
           slug: s,
           password: tempPw,
+          role: newRole,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -2333,6 +2336,16 @@ function TeamTab({ managerDealership, dealerId }) {
     if (res.ok) setSalespeople((p) => p.filter((x) => x.id !== id));
     setDeleteConfirmId(null);
   };
+
+  const ROLE_COLORS = {
+    salesman:   '#3b82f6',
+    manager:    '#f97316',
+    accountant: '#22c55e',
+    fi_officer: '#a855f7',
+    admin:      '#94a3b8',
+  };
+  const roleOrder = ['manager','salesman','accountant','fi_officer','admin'];
+  const grouped = Object.fromEntries(roleOrder.map(r => [r, salespeople.filter(s => s.role === r)]));
 
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
   const inactiveCount = salespeople.filter((s) => s.is_active === false).length;
@@ -2441,8 +2454,20 @@ function TeamTab({ managerDealership, dealerId }) {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {salespeople.map((s) => (
+          <div>
+            {roleOrder.map(role => {
+              const members = grouped[role];
+              if (!members?.length) return null;
+              const color = ROLE_COLORS[role];
+              return (
+                <div key={role}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px 6px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      {role.replace('_',' ')} · {members.length}
+                    </span>
+                  </div>
+                  {members.map((s) => (
               <div
                 key={s.id}
                 className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-white/[0.02]"}`}
@@ -2466,6 +2491,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0 }} />
                       <p className="font-semibold text-white truncate">
                         {s.full_name}
                       </p>
@@ -2590,6 +2616,9 @@ function TeamTab({ managerDealership, dealerId }) {
                 </div>
               </div>
             ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -2696,6 +2725,40 @@ function TeamTab({ managerDealership, dealerId }) {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Role selector */}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2.5">Select Role</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { role: 'salesman',   label: 'Salesman',    color: '#3b82f6', desc: 'Sells cars, manages leads' },
+                        { role: 'manager',    label: 'Manager',     color: '#f97316', desc: 'Manages sales team' },
+                        { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
+                        { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
+                        { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
+                      ].map(({ role, label, color, desc }) => (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => setNewRole(role)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: 8,
+                            border: `1px solid ${newRole === role ? color : 'rgba(255,255,255,0.08)'}`,
+                            background: newRole === role ? `${color}18` : 'rgba(255,255,255,0.03)',
+                            cursor: 'pointer',
+                            fontFamily: "'DM Sans',sans-serif",
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: newRole === role ? color : '#9ca3af' }}>{label}</span>
+                          </div>
+                          <p style={{ fontSize: 10, color: '#4b5563', margin: '2px 0 0', textAlign: 'left' }}>{desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">

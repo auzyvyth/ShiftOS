@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-const ACCENT = '#94a3b8';
+const ACCENT = '#22c55e';
 
-export default function AdminPanel() {
+export default function AccountantPanel() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeNav, setActiveNav] = useState('listings');
+  const [activeNav, setActiveNav] = useState('stock');
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -16,7 +16,7 @@ export default function AdminPanel() {
       const { data: p } = await supabase
         .from('profiles').select('*')
         .eq('id', data.session.user.id).maybeSingle();
-      if (!p || p.role !== 'admin') { navigate('/login'); return; }
+      if (!p || p.role !== 'accountant') { navigate('/login'); return; }
       setProfile(p);
       setLoading(false);
     });
@@ -29,36 +29,43 @@ export default function AdminPanel() {
   );
 
   const NAV = [
-    { id: 'listings', label: 'Listings' },
-    { id: 'cars',     label: 'Cars' },
-    { id: 'media',    label: 'Media' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'stock',       label: 'Stock' },
+    { id: 'commissions', label: 'Commissions' },
+    { id: 'reports',     label: 'Reports' },
+    { id: 'documents',   label: 'Documents' },
+  ];
+
+  const STAT_CARDS = [
+    { label: 'Total Revenue',    value: '—', sub: 'All time' },
+    { label: 'Gross Profit',     value: '—', sub: 'This month' },
+    { label: 'Commissions Paid', value: '—', sub: 'This month' },
+    { label: 'Stock Value',      value: '—', sub: 'Current inventory' },
   ];
 
   const SECTIONS = {
-    listings: [
-      { label: 'Total Listings',   desc: 'All active and draft listings' },
-      { label: 'Published Today',  desc: 'Live listings added today' },
-      { label: 'Pending Review',   desc: 'Submitted but not live' },
-      { label: 'Bulk Actions',     desc: 'Mass publish, archive, or delete' },
+    stock: [
+      { label: 'Stock Overview', desc: 'Total units in inventory' },
+      { label: 'Stock Value', desc: 'Current inventory worth' },
+      { label: 'Aged Stock', desc: 'Listings over 60 days' },
+      { label: 'Turnover Rate', desc: 'Average days to sell' },
     ],
-    cars: [
-      { label: 'All Listings Table', desc: 'Full inventory with filters' },
-      { label: 'By Make / Model',    desc: 'Grouped vehicle categories' },
-      { label: 'Price History',      desc: 'Price change log per unit' },
-      { label: 'Sold Archive',       desc: 'Completed sales records' },
+    commissions: [
+      { label: 'Commission Breakdown', desc: 'Per salesman this month' },
+      { label: 'Pending Commissions', desc: 'Approved but not paid' },
+      { label: 'Commission History', desc: 'Historical payouts' },
+      { label: 'Top Earners', desc: 'Highest commission this month' },
     ],
-    media: [
-      { label: 'Image Library',   desc: 'All uploaded vehicle photos' },
-      { label: 'Video Links',     desc: 'YouTube / TikTok embeds' },
-      { label: 'Storage Usage',   desc: 'Bucket capacity overview' },
-      { label: 'Orphaned Media',  desc: 'Images not linked to any listing' },
+    reports: [
+      { label: 'Monthly P&L', desc: 'Profit and loss statement' },
+      { label: 'Sales Report', desc: 'Units sold by period' },
+      { label: 'Revenue Breakdown', desc: 'By car model and category' },
+      { label: 'Export', desc: 'Download CSV / PDF reports' },
     ],
-    settings: [
-      { label: 'Listing Rules',     desc: 'Required fields and validation' },
-      { label: 'Category Tags',     desc: 'Manage makes, models, and tags' },
-      { label: 'Watermark',         desc: 'Auto-stamp photos with logo' },
-      { label: 'Integrations',      desc: 'Third-party listing portals' },
+    documents: [
+      { label: 'Invoices', desc: 'All generated invoices' },
+      { label: 'Purchase Orders', desc: 'Stock acquisition records' },
+      { label: 'Payment Receipts', desc: 'Confirmed payments' },
+      { label: 'Tax Documents', desc: 'GST and tax filings' },
     ],
   };
 
@@ -67,7 +74,7 @@ export default function AdminPanel() {
       {/* Header */}
       <header style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT }} />
-        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: ACCENT }}>ADMIN PANEL</span>
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: ACCENT }}>ACCOUNTS</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: '#6b7280' }}>{profile?.full_name}</span>
         <button
           onClick={() => supabase.auth.signOut().then(() => navigate('/login'))}
@@ -103,6 +110,26 @@ export default function AdminPanel() {
 
       {/* Main */}
       <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+        {/* Financial Summary stat cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
+          {STAT_CARDS.map(c => (
+            <div
+              key={c.label}
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 12,
+                padding: '16px 20px',
+              }}
+            >
+              <p style={{ fontSize: 10, color: ACCENT, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>{c.label}</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>{c.value}</p>
+              <p style={{ fontSize: 11, color: '#374151' }}>{c.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Section cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           {(SECTIONS[activeNav] || []).map(s => (
             <div
