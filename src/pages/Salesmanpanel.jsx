@@ -115,6 +115,17 @@ export default function SalesmanPanel() {
   // Monthly target
   const [thisMonthSales, setThisMonthSales] = useState(0);
 
+  // Per-listing analytics
+  const [carStatsMap, setCarStatsMap] = useState({});
+
+  // Manager notes
+  const [managerNotes, setManagerNotes] = useState([]);
+  const [newNote, setNewNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+
+  // Commission breakdown
+  const [commissionDetails, setCommissionDetails] = useState([]);
+
   // ── page title
   useEffect(() => {
     document.title = t("salesman.meta.title", {
@@ -229,6 +240,46 @@ export default function SalesmanPanel() {
       .eq("salesman_id", userId)
       .order("created_at", { ascending: false })
       .then(({ data }) => setAppointments(data || []));
+
+    // Per-listing analytics
+    if (profile?.slug) {
+      supabase
+        .from("analytics_events")
+        .select("car_id, event_type")
+        .eq("salesman_slug", profile.slug)
+        .then(({ data }) => {
+          const map = {};
+          (data || []).forEach((e) => {
+            if (!e.car_id) return;
+            if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
+            if (["car_view", "link_visit"].includes(e.event_type))
+              map[e.car_id].views++;
+            if (["whatsapp_click", "call_click"].includes(e.event_type))
+              map[e.car_id].enquiries++;
+          });
+          setCarStatsMap(map);
+        });
+    }
+
+    // Commission breakdown (last 5 sold)
+    supabase
+      .from("car_listings")
+      .select("brand, model, year, commission_amount, sold_at")
+      .eq("assigned_to", userId)
+      .eq("status", "sold")
+      .not("commission_amount", "is", null)
+      .order("sold_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => setCommissionDetails(data || []));
+
+    // Manager notes
+    supabase
+      .from("salesman_notes")
+      .select("*")
+      .eq("salesman_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(({ data }) => setManagerNotes(data || []));
 
     // Enquiries via ref slug
     if (profile?.slug) {
@@ -352,12 +403,15 @@ export default function SalesmanPanel() {
         <img
           src={profile.avatar_url}
           alt="avatar"
-          className="w-16 h-16 rounded-full object-cover border-2 border-red-600/30"
+          className="w-16 h-16 rounded-full object-cover border-2 border-blue-500/30"
         />
       );
     const initial = (profile?.full_name || "S")[0].toUpperCase();
     return (
-      <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center font-bold text-2xl">
+      <div
+        className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl border-2 border-blue-500/30"
+        style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)" }}
+      >
         {initial}
       </div>
     );
@@ -527,7 +581,7 @@ export default function SalesmanPanel() {
         <div className="w-14 flex-shrink-0 text-center">
           <p
             className="text-2xl font-bold leading-none"
-            style={{ color: isToday ? "#60a5fa" : "#f87171" }}
+            style={{ color: "#60a5fa" }}
           >
             {dt.day}
           </p>
@@ -603,8 +657,12 @@ export default function SalesmanPanel() {
 
   return (
     <div
-      className="min-h-screen bg-gray-950 text-white"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
+      className="min-h-screen text-white"
+      style={{
+        background:
+          "radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), #05070e",
+        fontFamily: "'DM Sans', sans-serif",
+      }}
     >
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
@@ -612,7 +670,15 @@ export default function SalesmanPanel() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
 
       {/* Top bar */}
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header
+        className="px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+        style={{
+          background: "rgba(5,7,14,0.96)",
+          borderBottom: "1px solid rgba(255,255,255,0.048)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+        }}
+      >
         <div className="flex items-center gap-2">
           <div
             className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm"
@@ -805,7 +871,16 @@ export default function SalesmanPanel() {
           {/* ══ LEFT COLUMN ══ */}
           <div className="space-y-5">
             {/* Profile card — with commission + copy link */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div
+              style={{
+                background: "rgba(255,255,255,0.032)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+                padding: 20,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
               <div className="flex items-center gap-4">
                 <AvatarDisplay />
                 <div className="flex-1 min-w-0">
@@ -852,18 +927,52 @@ export default function SalesmanPanel() {
                   )}
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Total commission</span>
-                <span
-                  className="text-sm font-semibold"
-                  style={{
-                    color: commission && commission > 0 ? "#f87171" : "#6b7280",
-                  }}
-                >
-                  {commission === null
-                    ? "—"
-                    : `RM ${Number(commission).toLocaleString()}`}
-                </span>
+              <div className="mt-4 pt-3 border-t border-gray-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-500">
+                    Total commission
+                  </span>
+                  <span
+                    className="text-sm font-bold"
+                    style={{
+                      color:
+                        commission && commission > 0 ? "#4ade80" : "#6b7280",
+                    }}
+                  >
+                    {commission === null
+                      ? "—"
+                      : `RM ${Number(commission).toLocaleString()}`}
+                  </span>
+                </div>
+                {commissionDetails.length > 0 && (
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 4 }}
+                  >
+                    {commissionDetails.map((c, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>
+                          {c.year} {c.brand} {c.model}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "#4ade80",
+                          }}
+                        >
+                          +RM {Number(c.commission_amount).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -880,14 +989,34 @@ export default function SalesmanPanel() {
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.032)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: 16,
+                  textAlign: "center",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                }}
+              >
                 <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <Eye className="w-4 h-4 text-blue-400" />
                 </div>
                 <p className="text-2xl font-bold text-white">{myClicks}</p>
                 <p className="text-xs text-gray-500 mt-1">Link Clicks</p>
               </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.032)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: 16,
+                  textAlign: "center",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                }}
+              >
                 <div className="w-8 h-8 bg-yellow-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <MessageSquare className="w-4 h-4 text-yellow-400" />
                 </div>
@@ -966,7 +1095,16 @@ export default function SalesmanPanel() {
             </div>
 
             {/* Enquiries */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div
+              style={{
+                background: "rgba(255,255,255,0.032)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+                padding: 20,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
               <div className="flex items-center gap-2 mb-4">
                 <MessageSquare className="w-4 h-4 text-yellow-400" />
                 <p className="text-sm font-medium text-white">Enquiries</p>
@@ -1126,9 +1264,18 @@ export default function SalesmanPanel() {
             </div>
 
             {/* Upcoming Appointments */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div
+              style={{
+                background: "rgba(255,255,255,0.032)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+                padding: 20,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-red-400" />
+                <Clock className="w-4 h-4 text-blue-400" />
                 <p className="text-sm font-medium text-white">
                   Upcoming Appointments
                 </p>
@@ -1211,13 +1358,156 @@ export default function SalesmanPanel() {
                 })()
               )}
             </div>
+            {/* Notes to Manager */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.032)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+                padding: 20,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare className="w-4 h-4 text-purple-400" />
+                <p className="text-sm font-medium text-white">
+                  Notes to Manager
+                </p>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginBottom: 12,
+                  maxHeight: 180,
+                  overflowY: "auto",
+                }}
+              >
+                {managerNotes.length === 0 && (
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#374151",
+                      textAlign: "center",
+                      padding: "16px 0",
+                    }}
+                  >
+                    No notes yet. Leave a note for your manager.
+                  </p>
+                )}
+                {managerNotes.map((n) => (
+                  <div
+                    key={n.id}
+                    style={{
+                      background: "rgba(167,139,250,0.05)",
+                      border: "1px solid rgba(167,139,250,0.12)",
+                      borderRadius: 8,
+                      padding: "8px 12px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#d1d5db",
+                        margin: "0 0 3px",
+                      }}
+                    >
+                      {n.content}
+                    </p>
+                    <p style={{ fontSize: 10, color: "#374151", margin: 0 }}>
+                      {new Date(n.created_at).toLocaleDateString("en-MY")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Type a note..."
+                  style={{
+                    flex: 1,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    color: "#fff",
+                    outline: "none",
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && newNote.trim() && !noteSaving) {
+                      setNoteSaving(true);
+                      const { data } = await supabase
+                        .from("salesman_notes")
+                        .insert({
+                          salesman_id: userId,
+                          dealer_id: profile?.dealer_id,
+                          content: newNote.trim(),
+                        })
+                        .select()
+                        .single();
+                      if (data) setManagerNotes((p) => [data, ...p]);
+                      setNewNote("");
+                      setNoteSaving(false);
+                    }
+                  }}
+                />
+                <button
+                  disabled={!newNote.trim() || noteSaving}
+                  onClick={async () => {
+                    if (!newNote.trim() || noteSaving) return;
+                    setNoteSaving(true);
+                    const { data } = await supabase
+                      .from("salesman_notes")
+                      .insert({
+                        salesman_id: userId,
+                        dealer_id: profile?.dealer_id,
+                        content: newNote.trim(),
+                      })
+                      .select()
+                      .single();
+                    if (data) setManagerNotes((p) => [data, ...p]);
+                    setNewNote("");
+                    setNoteSaving(false);
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    background:
+                      noteSaving || !newNote.trim()
+                        ? "rgba(167,139,250,0.1)"
+                        : "rgba(167,139,250,0.2)",
+                    border: "1px solid rgba(167,139,250,0.3)",
+                    color: "#c084fc",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  {noteSaving ? "..." : "Send"}
+                </button>
+              </div>
+            </div>
           </div>
           {/* end left column */}
 
           {/* ══ RIGHT COLUMN: My Listings ══ */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div
+            style={{
+              background: "rgba(255,255,255,0.032)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 16,
+              padding: 20,
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
             <div className="flex items-center gap-2 mb-4">
-              <Car className="w-4 h-4 text-red-400" />
+              <Car className="w-4 h-4 text-blue-400" />
               <p className="text-sm font-medium text-white">My Listings</p>
               {myListings.length > 0 && (
                 <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
@@ -1271,7 +1561,7 @@ export default function SalesmanPanel() {
                             </p>
                             <StatusBadge status={car.status} />
                           </div>
-                          <p className="text-sm font-semibold text-red-400 mb-1">
+                          <p className="text-sm font-semibold text-blue-400 mb-1">
                             RM {price.toLocaleString()}
                           </p>
                           <p className="text-xs text-gray-500">
@@ -1286,6 +1576,51 @@ export default function SalesmanPanel() {
                               .join(" · ") || "—"}
                           </p>
                         </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#93c5fd",
+                            background: "rgba(59,130,246,0.08)",
+                            border: "1px solid rgba(59,130,246,0.15)",
+                            borderRadius: 6,
+                            padding: "2px 8px",
+                          }}
+                        >
+                          👁 {carStatsMap[car.id]?.views || 0} views
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#fbbf24",
+                            background: "rgba(251,191,36,0.08)",
+                            border: "1px solid rgba(251,191,36,0.15)",
+                            borderRadius: 6,
+                            padding: "2px 8px",
+                          }}
+                        >
+                          💬 {carStatsMap[car.id]?.enquiries || 0} enquiries
+                        </span>
+                        {(carStatsMap[car.id]?.views || 0) > 0 && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "#34d399",
+                              background: "rgba(52,211,153,0.08)",
+                              border: "1px solid rgba(52,211,153,0.15)",
+                              borderRadius: 6,
+                              padding: "2px 8px",
+                            }}
+                          >
+                            {(
+                              ((carStatsMap[car.id]?.enquiries || 0) /
+                                (carStatsMap[car.id]?.views || 1)) *
+                              100
+                            ).toFixed(1)}
+                            % CVR
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <button
@@ -1324,9 +1659,9 @@ export default function SalesmanPanel() {
                           onClick={() => setTiktokListing(car)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
                           style={{
-                            background: "rgba(220,38,38,0.10)",
-                            border: "1px solid rgba(220,38,38,0.30)",
-                            color: "#f87171",
+                            background: "rgba(59,130,246,0.10)",
+                            border: "1px solid rgba(59,130,246,0.30)",
+                            color: "#93c5fd",
                           }}
                         >
                           <Sparkles className="w-3 h-3" />
