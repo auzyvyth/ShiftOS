@@ -5020,7 +5020,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <nav className="flex-1 p-2 sm:p-3 space-y-px mt-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 space-y-px mt-1">
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
@@ -5061,8 +5061,8 @@ export default function DashboardPage() {
 
         {/* ── Sidebar bottom: profile + settings + logout ── */}
         <div
-          className="flex-shrink-0 p-3 space-y-1"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          className="shrink-0 p-3 space-y-1 border-t border-gray-800"
+          style={{}}
         >
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
@@ -5281,7 +5281,7 @@ export default function DashboardPage() {
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <div className="mb-4 sm:mb-6">
+          <div className="hidden sm:block mb-4 sm:mb-6">
             <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
               {TITLES[activeTab]?.title}
             </h1>
@@ -5348,7 +5348,7 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#3b82f6', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#1e40af', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
