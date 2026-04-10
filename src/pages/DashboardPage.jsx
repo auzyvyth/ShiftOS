@@ -3718,7 +3718,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     setLoading(true);
     const { data } = await supabase
       .from('whatsapp_enquiries')
-      .select('*')
+      .select(`*, listing:car_listings(brand, model, variant, selling_price)`)
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     setEnquiries(data || []);
@@ -3771,7 +3771,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
                 {enquiries.map(e => (
                   <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.car_info || e.car || '—'}</td>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || '—')}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
                     <td style={{ padding: '12px 14px' }}>
                       <select value={e.status || 'new'} onChange={ev => { ev.stopPropagation(); updateStatus(e.id, ev.target.value); }} style={{ fontSize: 11, fontWeight: 700, background: statusMeta[e.status || 'new']?.bg, color: statusMeta[e.status || 'new']?.color, border: `1px solid ${statusMeta[e.status || 'new']?.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}>
@@ -3798,7 +3798,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              {[['Buyer', selected.buyer_name], ['Car', selected.car_info || selected.car], ['Source', selected.source || selected.ref_slug], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
+              {[['Buyer', selected.buyer_name], ['Phone', selected.buyer_phone], ['Car', selected.listing ? `${selected.listing.brand} ${selected.listing.model}` : (selected.car_info || '—')], ['Message', selected.buyer_message], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 12 }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{k}</p>
                   <p style={{ fontSize: 13, color: '#f3f4f6', margin: 0 }}>{v || '—'}</p>
@@ -3930,45 +3930,24 @@ function BookingsTab({ userId, listings, salesmen }) {
     const sm = b.profiles;
     const isToday = b.appointment_date &&
       new Date(b.appointment_date).toDateString() === todayStr;
-    return (
-      <tr
-        key={b.id}
-        style={{
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
-          background: isToday ? 'rgba(59,130,246,0.03)' : 'transparent',
-          transition: 'background 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
-        onMouseLeave={e => e.currentTarget.style.background = isToday ? 'rgba(59,130,246,0.03)' : 'transparent'}
-      >
-        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>
-          {b.buyer_name || '—'}
-          {Date.now() - new Date(b.created_at) < 7200000 && (
-            <span style={{
-              marginLeft: 6, fontSize: 9, fontWeight: 800,
-              background: 'rgba(59,130,246,0.15)',
-              border: '1px solid rgba(59,130,246,0.3)',
-              color: '#93c5fd', borderRadius: 4,
-              padding: '1px 5px', letterSpacing: '0.08em',
-              verticalAlign: 'middle',
-            }}>NEW</span>
-          )}
-        </td>
-        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
-        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
-        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 12, whiteSpace: 'nowrap' }}>
-          {b.appointment_date
-            ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' })
-            : '—'}
-        </td>
-        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{sm?.full_name || '—'}</td>
-        <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
-        <td style={{ padding: '12px 14px' }}>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-            {[['confirm','confirmed'],['done','completed'],['cancel','cancelled'],['no-show','no_show']].filter(([,s]) => s !== b.status).slice(0,2).map(([label, s]) => (
-              <button key={s} onClick={() => updateStatus(b.id, s)} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
-            ))}
-            {b.status === 'confirmed' && b.buyer_phone && (() => {
+    const isNew = Date.now() - new Date(b.created_at) < 7200000;
+    const newBadge = isNew ? (
+      <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 800, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.08em', verticalAlign: 'middle' }}>NEW</span>
+    ) : null;
+
+    const actionButtons = (
+      <div className="flex flex-wrap gap-1 items-center">
+        {b.status === 'pending' && (
+          <>
+            <button onClick={() => updateStatus(b.id, 'confirmed')} style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Confirm</button>
+            <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
+          </>
+        )}
+        {b.status === 'confirmed' && (
+          <>
+            <button onClick={() => updateStatus(b.id, 'completed')} style={{ fontSize: 10, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Done</button>
+            <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
+            {b.buyer_phone && (() => {
               const carLabel = car ? `${car.brand} ${car.model} ${car.year}` : 'the vehicle';
               const dateStr = b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
               const typeLabel = (b.booking_type || 'appointment').replace('_', ' ');
@@ -3977,9 +3956,57 @@ function BookingsTab({ userId, listings, salesmen }) {
                 <a key="wa" href={`https://wa.me/${b.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>WA reminder</a>
               );
             })()}
-          </div>
-        </td>
-      </tr>
+          </>
+        )}
+        {b.status === 'completed' && <span style={{ fontSize: 12, color: '#34d399' }}>✓ Completed</span>}
+        {b.status === 'cancelled' && <span style={{ fontSize: 12, color: '#6b7280' }}>Cancelled</span>}
+      </div>
+    );
+
+    return (
+      <React.Fragment key={b.id}>
+        {/* Mobile card */}
+        <tr className="md:hidden">
+          <td colSpan={7} style={{ padding: '4px 12px' }}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-semibold text-white text-sm">{b.buyer_name || '—'}{newBadge}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">{b.buyer_phone || '—'}</p>
+                </div>
+                <StatusBadge status={b.status} />
+              </div>
+              <p className="text-gray-300 text-xs mb-1">{car ? `${car.brand} ${car.model}` : '—'}</p>
+              <p className="text-gray-500 text-xs mb-1">
+                {b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                {sm?.full_name ? ` · ${sm.full_name}` : ''}
+              </p>
+              <div className="mt-3">{actionButtons}</div>
+            </div>
+          </td>
+        </tr>
+        {/* Desktop row */}
+        <tr
+          className="hidden md:table-row"
+          style={{
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            background: isToday ? 'rgba(59,130,246,0.03)' : 'transparent',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
+          onMouseLeave={e => e.currentTarget.style.background = isToday ? 'rgba(59,130,246,0.03)' : 'transparent'}
+        >
+          <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{b.buyer_name || '—'}{newBadge}</td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
+          <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 12, whiteSpace: 'nowrap' }}>
+            {b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+          </td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{sm?.full_name || '—'}</td>
+          <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
+          <td style={{ padding: '12px 14px' }}>{actionButtons}</td>
+        </tr>
+      </React.Fragment>
     );
   };
 
@@ -4032,7 +4059,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   </div>
                   <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-                      <thead>
+                      <thead className="hidden md:table-header-group">
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                           {['Buyer', 'Phone', 'Car', 'Time', 'Salesman', 'Status', 'Actions'].map(h => (
                             <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
@@ -4070,7 +4097,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               </div>
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-                  <thead>
+                  <thead className="hidden md:table-header-group">
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       {['Buyer', 'Phone', 'Car', 'Scheduled', 'Salesman', 'Status', 'Actions'].map(h => (
                         <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
