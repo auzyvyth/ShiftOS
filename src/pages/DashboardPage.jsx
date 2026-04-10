@@ -4424,6 +4424,15 @@ export default function DashboardPage() {
   }, [profile]);
 
   useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     let active = true;
 
     // Shared loader — called on first mount AND on every auth state change so
@@ -4969,7 +4978,7 @@ export default function DashboardPage() {
       <aside
         className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="px-4 py-4 flex items-center gap-3" style={T.divider}>
+        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{
@@ -5041,7 +5050,7 @@ export default function DashboardPage() {
 
         {/* ── Sidebar bottom: profile + settings + logout ── */}
         <div
-          className="p-3 space-y-1"
+          className="flex-shrink-0 p-3 space-y-1"
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           {/* Profile row */}
