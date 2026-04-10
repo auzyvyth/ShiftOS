@@ -13,6 +13,9 @@ import SalesmanPanel from './pages/Salesmanpanel';
 import OnboardingPage from './pages/OnboardingPage';
 import AdminPanel from './pages/AdminPanel';
 import AdminPage from './pages/AdminPage';
+import ManagerPanel from './pages/ManagerPanel';
+import AccountantPanel from './pages/AccountantPanel';
+import FIPanel from './pages/FIPanel';
 import AccountsPanel from './pages/AccountsPanel';
 import ShiftOSPage from './pages/ShiftOSPage';
 import DealerSlugRedirect from './pages/DealerSlugRedirect';
@@ -43,10 +46,14 @@ function App() {
         <Route path="/auth/confirm" element={<AuthConfirmPage />} />
 
         {/* Protected — XDrive */}
-        <Route path="/dashboard"  element={<DashboardPage />} />
-        <Route path="/salesman"   element={<SalesmanPanel />} />
-        <Route path="/admin"      element={<AdminPage />} />
-        <Route path="/accounts"   element={<AccountsPanel />} />
+        <Route path="/dashboard"   element={<DashboardPage />} />
+        <Route path="/salesman"    element={<SalesmanPanel />} />
+        <Route path="/manager"     element={<ManagerPanel />} />
+        <Route path="/accountant"  element={<AccountantPanel />} />
+        <Route path="/fi"          element={<FIPanel />} />
+        <Route path="/admin"       element={<AdminPanel />} />
+        <Route path="/accounts"    element={<AccountsPanel />} />
+        <Route path="/platform"    element={<AdminPage />} />
 
         {/* Public — ShiftOS marketing */}
         <Route path="/shiftos"    element={<ShiftOSPage />} />

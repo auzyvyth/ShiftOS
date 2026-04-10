@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-const ACCENT = '#94a3b8';
+const ACCENT = '#f97316';
 
-export default function AdminPanel() {
+export default function ManagerPanel() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeNav, setActiveNav] = useState('listings');
+  const [activeNav, setActiveNav] = useState('team');
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -16,7 +16,7 @@ export default function AdminPanel() {
       const { data: p } = await supabase
         .from('profiles').select('*')
         .eq('id', data.session.user.id).maybeSingle();
-      if (!p || p.role !== 'admin') { navigate('/login'); return; }
+      if (!p || p.role !== 'manager') { navigate('/login'); return; }
       setProfile(p);
       setLoading(false);
     });
@@ -29,36 +29,43 @@ export default function AdminPanel() {
   );
 
   const NAV = [
-    { id: 'listings', label: 'Listings' },
-    { id: 'cars',     label: 'Cars' },
-    { id: 'media',    label: 'Media' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'team',      label: 'Team' },
+    { id: 'listings',  label: 'Listings' },
+    { id: 'bookings',  label: 'Bookings' },
+    { id: 'leads',     label: 'Leads' },
+    { id: 'analytics', label: 'Analytics' },
   ];
 
   const SECTIONS = {
+    team: [
+      { label: 'Team Overview', desc: 'Salesperson status and performance cards' },
+      { label: 'Active Members', desc: 'Who is currently active' },
+      { label: 'Performance Ranking', desc: 'Top performers this month' },
+      { label: 'Commission Summary', desc: 'Total commissions earned' },
+    ],
     listings: [
-      { label: 'Total Listings',   desc: 'All active and draft listings' },
-      { label: 'Published Today',  desc: 'Live listings added today' },
-      { label: 'Pending Review',   desc: 'Submitted but not live' },
-      { label: 'Bulk Actions',     desc: 'Mass publish, archive, or delete' },
+      { label: 'Active Listings', desc: 'All live car listings' },
+      { label: 'Pending Review', desc: 'Listings awaiting approval' },
+      { label: 'Sold This Month', desc: 'Recently closed deals' },
+      { label: 'Draft Listings', desc: 'Unpublished inventory' },
     ],
-    cars: [
-      { label: 'All Listings Table', desc: 'Full inventory with filters' },
-      { label: 'By Make / Model',    desc: 'Grouped vehicle categories' },
-      { label: 'Price History',      desc: 'Price change log per unit' },
-      { label: 'Sold Archive',       desc: 'Completed sales records' },
+    bookings: [
+      { label: "Today's Bookings", desc: 'Scheduled appointments' },
+      { label: 'Upcoming', desc: 'Next 7 days' },
+      { label: 'Past Bookings', desc: 'Historical appointments' },
+      { label: 'Cancellations', desc: 'Cancelled or no-show' },
     ],
-    media: [
-      { label: 'Image Library',   desc: 'All uploaded vehicle photos' },
-      { label: 'Video Links',     desc: 'YouTube / TikTok embeds' },
-      { label: 'Storage Usage',   desc: 'Bucket capacity overview' },
-      { label: 'Orphaned Media',  desc: 'Images not linked to any listing' },
+    leads: [
+      { label: 'New Leads', desc: 'Fresh enquiries' },
+      { label: 'In Progress', desc: 'Leads being worked' },
+      { label: 'Follow-up Due', desc: 'Overdue follow-ups' },
+      { label: 'Closed', desc: 'Won or lost leads' },
     ],
-    settings: [
-      { label: 'Listing Rules',     desc: 'Required fields and validation' },
-      { label: 'Category Tags',     desc: 'Manage makes, models, and tags' },
-      { label: 'Watermark',         desc: 'Auto-stamp photos with logo' },
-      { label: 'Integrations',      desc: 'Third-party listing portals' },
+    analytics: [
+      { label: 'Traffic Overview', desc: 'Page views and visits' },
+      { label: 'Conversion Rate', desc: 'Lead to sale ratio' },
+      { label: 'Top Listings', desc: 'Most viewed cars' },
+      { label: 'Salesman Activity', desc: 'Individual performance metrics' },
     ],
   };
 
@@ -67,7 +74,7 @@ export default function AdminPanel() {
       {/* Header */}
       <header style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT }} />
-        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: ACCENT }}>ADMIN PANEL</span>
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: ACCENT }}>MANAGER PANEL</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: '#6b7280' }}>{profile?.full_name}</span>
         <button
           onClick={() => supabase.auth.signOut().then(() => navigate('/login'))}
