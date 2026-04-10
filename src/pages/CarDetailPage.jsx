@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
 import CarCard from '../components/CarCard';
 import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
+import { captureRef, getRef } from '../utils/refTracking';
 
 /* ─── helpers ─── */
 const fmt      = (n) => Number(n).toLocaleString('en-MY');
@@ -30,9 +31,8 @@ function getOrCreateSession() {
 }
 
 function trackEvent(car, eventType) {
-  const ref = new URLSearchParams(window.location.search).get('ref');
   supabase.from('analytics_events').insert({
-    salesman_slug: ref || '',
+    salesman_slug: getRef() || '',
     event_type:    eventType,
     car_id:        car.id,
     car_name:      `${car.year} ${car.brand} ${car.model}`,
@@ -183,6 +183,11 @@ export default function CarDetailPage() {
     });
   }
 
+  /* ── capture ref on mount ── */
+  useEffect(() => {
+    captureRef();
+  }, []);
+
   /* ── fetch ── */
   useEffect(() => {
     async function load() {
@@ -206,6 +211,15 @@ export default function CarDetailPage() {
         setDealer(d);
       }
       trackEvent(carData, 'car_view');
+      const refSlug = getRef();
+      if (refSlug && carData.dealer_id) {
+        supabase.from('analytics_events').insert({
+          event_type: 'page_view',
+          salesman_slug: refSlug,
+          dealer_id: carData.dealer_id,
+          metadata: { page: window.location.pathname },
+        }).then(() => {});
+      }
 
       // fetch similar listings — same brand first, fallback to any dealer listing
       if (carData.dealer_id) {
@@ -301,7 +315,7 @@ export default function CarDetailPage() {
         car_info: `${car.year} ${car.brand} ${car.model}`,
         buyer_message: text,
         source: 'storefront',
-        ref_slug: sessionStorage.getItem('ref_slug') || null,
+        ref_slug: getRef() || null,
       }).then(() => {});
     }
     window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, text), '_blank');
@@ -313,14 +327,14 @@ export default function CarDetailPage() {
     if (submitting) return;
     setSubmitting(true);
 
-    // Resolve salesman_id: prefer ?ref= slug → profile id, fall back to assigned_to
+    // Resolve salesman_id: prefer ref slug → profile id, fall back to assigned_to
     let salesmanId = car.assigned_to || null;
-    const ref = new URLSearchParams(window.location.search).get('ref');
-    if (ref) {
+    const refSlug = getRef();
+    if (refSlug) {
       const { data: sm } = await supabase
         .from('profiles')
         .select('id')
-        .eq('slug', ref)
+        .eq('slug', refSlug)
         .maybeSingle();
       if (sm?.id) salesmanId = sm.id;
     }
