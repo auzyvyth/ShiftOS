@@ -1,13 +1,14 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const ROLE_ROUTES = {
-  salesman:   '/salesman',
-  admin:      '/admin',
-  manager:    '/dashboard',
-  accountant: '/accounts',
-  owner:      '/dashboard',
-  dealer:     '/dashboard',
-  superadmin: '/dashboard',
+  superadmin:  '/dashboard',
+  dealer:      '/dashboard',
+  owner:       '/dashboard',
+  manager:     '/manager',
+  salesman:    '/salesman',
+  accountant:  '/accountant',
+  fi_officer:  '/fi',
+  admin:       '/admin',
 };
 
 /**

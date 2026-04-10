@@ -223,7 +223,7 @@ export default function CarDetailPage() {
 
       // fetch similar listings — same brand first, fallback to any dealer listing
       if (carData.dealer_id) {
-        const simFields = 'id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, image_url, is_recon, auction_grade, interior_grade, import_country';
+        const simFields = 'id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country';
         const { data: simBrand } = await supabase
           .from('car_listings')
           .select(simFields)
