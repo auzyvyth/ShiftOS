@@ -30,6 +30,7 @@ import { supabase } from "../supabaseClient";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
+import { captureRef, getRef } from "../utils/refTracking";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
@@ -233,19 +234,33 @@ const HomePage = () => {
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
-  // Fire store_visit event once per session when viewing a dealer's subdomain storefront
+  // Capture ref slug from URL into sessionStorage on mount
+  useEffect(() => {
+    captureRef();
+  }, []);
+
+  // Fire store_visit + page_view events once per session when viewing a dealer's subdomain storefront
   useEffect(() => {
     if (!tenant?.id) return;
     const sessionKey = `sv_fired_${tenant.id}`;
-    if (sessionStorage.getItem(sessionKey)) return;
-    sessionStorage.setItem(sessionKey, '1');
-    const ref = new URLSearchParams(window.location.search).get('ref');
-    supabase.from('analytics_events').insert({
-      dealer_id: tenant.id,
-      event_type: 'store_visit',
-      salesman_slug: ref || null,
-      metadata: { source: ref ? 'salesman_link' : 'organic' },
-    }).then(() => {});
+    const slug = getRef();
+    if (!sessionStorage.getItem(sessionKey)) {
+      sessionStorage.setItem(sessionKey, '1');
+      supabase.from('analytics_events').insert({
+        dealer_id: tenant.id,
+        event_type: 'store_visit',
+        salesman_slug: slug || null,
+        metadata: { source: slug ? 'salesman_link' : 'organic' },
+      }).then(() => {});
+    }
+    if (slug) {
+      supabase.from('analytics_events').insert({
+        event_type: 'page_view',
+        salesman_slug: slug,
+        dealer_id: tenant.id,
+        metadata: { page: window.location.pathname },
+      }).then(() => {});
+    }
   }, [tenant?.id]);
 
   useEffect(() => {
