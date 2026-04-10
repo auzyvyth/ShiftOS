@@ -178,6 +178,24 @@ export default function SalesmanPanel() {
             ).length,
           );
         }
+
+        // Per-listing analytics — must run here where profileData is guaranteed
+        supabase
+          .from("analytics_events")
+          .select("car_id, event_type")
+          .eq("salesman_slug", profileData.slug)
+          .then(({ data: evtData }) => {
+            const map = {};
+            (evtData || []).forEach((e) => {
+              if (!e.car_id) return;
+              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
+              if (["car_view", "link_visit"].includes(e.event_type))
+                map[e.car_id].views++;
+              if (["whatsapp_click", "call_click"].includes(e.event_type))
+                map[e.car_id].enquiries++;
+            });
+            setCarStatsMap(map);
+          });
       }
     });
   }, [navigate]);
@@ -240,26 +258,6 @@ export default function SalesmanPanel() {
       .eq("salesman_id", userId)
       .order("created_at", { ascending: false })
       .then(({ data }) => setAppointments(data || []));
-
-    // Per-listing analytics
-    if (profile?.slug) {
-      supabase
-        .from("analytics_events")
-        .select("car_id, event_type")
-        .eq("salesman_slug", profile.slug)
-        .then(({ data }) => {
-          const map = {};
-          (data || []).forEach((e) => {
-            if (!e.car_id) return;
-            if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
-            if (["car_view", "link_visit"].includes(e.event_type))
-              map[e.car_id].views++;
-            if (["whatsapp_click", "call_click"].includes(e.event_type))
-              map[e.car_id].enquiries++;
-          });
-          setCarStatsMap(map);
-        });
-    }
 
     // Commission breakdown (last 5 sold)
     supabase
