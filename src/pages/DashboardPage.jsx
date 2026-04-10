@@ -3758,7 +3758,20 @@ function BookingsTab({ userId, listings, salesmen }) {
     setLoading(false);
   };
 
-  useEffect(() => { if (userId) fetchBookings(); }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    fetchBookings();
+    const ch = supabase
+      .channel('bookings_live_' + userId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'appointments',
+        filter: `dealer_id=eq.${userId}`,
+      }, () => fetchBookings())
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]);
 
   const handleAdd = async () => {
     setAddSaving(true);
