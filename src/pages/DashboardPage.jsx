@@ -2152,6 +2152,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [togglingId, setTogglingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newRole, setNewRole] = useState("salesman");
+  const [teamTab, setTeamTab] = useState("salesman");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+60");
@@ -2344,8 +2345,13 @@ function TeamTab({ managerDealership, dealerId }) {
     fi_officer: '#a855f7',
     admin:      '#94a3b8',
   };
-  const roleOrder = ['manager','salesman','accountant','fi_officer','admin'];
-  const grouped = Object.fromEntries(roleOrder.map(r => [r, salespeople.filter(s => s.role === r)]));
+  const ROLE_TABS = [
+    { role: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
+    { role: 'manager',    label: 'Managers',    color: '#f97316' },
+    { role: 'accountant', label: 'Accountants', color: '#22c55e' },
+    { role: 'fi_officer', label: 'F&I',         color: '#a855f7' },
+    { role: 'admin',      label: 'Admins',      color: '#94a3b8' },
+  ];
 
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
   const inactiveCount = salespeople.filter((s) => s.is_active === false).length;
@@ -2412,6 +2418,44 @@ function TeamTab({ managerDealership, dealerId }) {
             <span className="sm:hidden">Add</span>
           </button>
         </div>
+        {/* Role tabs */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto' }}>
+          {ROLE_TABS.map(({ role, label, color }) => {
+            const count = salespeople.filter(s => s.role === role).length;
+            return (
+              <button
+                key={role}
+                onClick={() => setTeamTab(role)}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'none',
+                  color: teamTab === role ? '#f3f4f6' : '#6b7280',
+                  borderBottom: teamTab === role ? `2px solid ${color}` : '2px solid transparent',
+                  fontFamily: "'DM Sans', sans-serif",
+                  transition: 'color 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+                {label}
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  padding: '1px 7px', borderRadius: 10,
+                  background: teamTab === role ? `${color}18` : 'rgba(255,255,255,0.05)',
+                  color: teamTab === role ? color : '#4b5563',
+                }}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
         {teamError && (
           <div
             className="m-4 rounded-lg px-3 py-2.5 text-amber-300 text-xs"
@@ -2455,19 +2499,16 @@ function TeamTab({ managerDealership, dealerId }) {
           </div>
         ) : (
           <div>
-            {roleOrder.map(role => {
-              const members = grouped[role];
-              if (!members?.length) return null;
-              const color = ROLE_COLORS[role];
+            {(() => {
+              const filteredTeam = salespeople.filter(s => s.role === teamTab);
               return (
-                <div key={role}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px 6px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                      {role.replace('_',' ')} · {members.length}
-                    </span>
-                  </div>
-                  {members.map((s) => (
+                <>
+                  {filteredTeam.length === 0 && (
+                    <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
+                      No {ROLE_TABS.find(t => t.role === teamTab)?.label} yet.
+                    </div>
+                  )}
+                  {filteredTeam.map((s) => (
               <div
                 key={s.id}
                 className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-white/[0.02]"}`}
@@ -2616,9 +2657,9 @@ function TeamTab({ managerDealership, dealerId }) {
                 </div>
               </div>
             ))}
-                </div>
+                </>
               );
-            })}
+            })()}
           </div>
         )}
       </div>
