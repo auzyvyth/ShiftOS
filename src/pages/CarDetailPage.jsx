@@ -125,6 +125,11 @@ export default function CarDetailPage() {
   const [booked, setBooked]         = useState(false);
   const bookingRef = useRef(null);
 
+  /* enquiry modal */
+  const [showEnquiryModal, setShowEnquiryModal] = useState(false);
+  const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '' });
+  const [enquirySubmitting, setEnquirySubmitting] = useState(false);
+
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
 
@@ -304,21 +309,30 @@ export default function CarDetailPage() {
   }
 
   /* ── WhatsApp ── */
-  async function handleWhatsApp() {
-    const text = `Hi, I'm interested in the ${car.year} ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''}. Is it still available?`;
+  function handleWhatsApp() {
+    setShowEnquiryModal(true);
+  }
+
+  async function handleEnquirySubmit() {
+    setEnquirySubmitting(true);
     trackEvent(car, 'whatsapp_click');
-    // Log enquiry (fire-and-forget, no await to avoid delaying WA open)
     if (car?.dealer_id) {
-      supabase.from('whatsapp_enquiries').insert({
+      await supabase.from('whatsapp_enquiries').insert({
         dealer_id: car.dealer_id,
         listing_id: car.id,
-        car_info: `${car.year} ${car.brand} ${car.model}`,
-        buyer_message: text,
-        source: 'storefront',
+        buyer_name: enquiryForm.name,
+        buyer_phone: enquiryForm.phone,
+        buyer_message: `Enquiry about ${car.brand} ${car.model} ${car.variant || ''}`.trim(),
         ref_slug: getRef() || null,
-      }).then(() => {});
+        source: 'storefront',
+        status: 'new',
+      });
     }
-    window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, text), '_blank');
+    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
+    window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, message), '_blank');
+    setShowEnquiryModal(false);
+    setEnquirySubmitting(false);
+    setEnquiryForm({ name: '', phone: '' });
   }
 
   /* ── booking ── */
@@ -1236,6 +1250,38 @@ export default function CarDetailPage() {
           WhatsApp
         </button>
       </div>
+
+      {/* ── Enquiry modal ── */}
+      {showEnquiryModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-white font-semibold text-lg mb-1">Contact Dealer</h3>
+            <p className="text-gray-400 text-sm mb-4">Enter your details to continue to WhatsApp</p>
+            <input
+              placeholder="Your name"
+              value={enquiryForm.name}
+              onChange={e => setEnquiryForm(p => ({ ...p, name: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-600"
+            />
+            <input
+              placeholder="Phone number (e.g. 0123456789)"
+              value={enquiryForm.phone}
+              onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-600"
+            />
+            <button
+              onClick={handleEnquirySubmit}
+              disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}
+              className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
+            >
+              {enquirySubmitting ? 'Opening WhatsApp...' : 'Continue to WhatsApp'}
+            </button>
+            <button onClick={() => setShowEnquiryModal(false)} className="w-full mt-2 text-gray-500 text-sm py-2">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
