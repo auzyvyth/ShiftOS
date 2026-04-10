@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { setRef, trackEvent } from '../lib/analytics';
+import { captureRef, getRef } from '../utils/refTracking';
 import {
   RotateCcw, ChevronDown, Search, SlidersHorizontal, X,
   ChevronUp, Flame, Car, Check,
@@ -163,12 +164,27 @@ const CarsPage = () => {
 
   /* ── ref tracking + URL search param ── */
   useEffect(() => {
+    captureRef();
     const params = new URLSearchParams(location.search);
     const ref = params.get('ref');
     if (ref) { setRef(ref); trackEvent('link_visit'); }
     const q = params.get('q');
     if (q) setSearchQuery(q);
   }, [location.search]);
+
+  /* ── page_view ── */
+  useEffect(() => {
+    if (!tenant?.id) return;
+    const slug = getRef();
+    if (slug) {
+      supabase.from('analytics_events').insert({
+        event_type: 'page_view',
+        salesman_slug: slug,
+        dealer_id: tenant.id,
+        metadata: { page: window.location.pathname },
+      }).then(() => {});
+    }
+  }, [tenant?.id]);
 
   /* ── hide/show search bar on scroll ── */
   useEffect(() => {
