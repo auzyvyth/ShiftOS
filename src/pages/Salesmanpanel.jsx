@@ -252,12 +252,24 @@ export default function SalesmanPanel() {
       });
 
     // Upcoming appointments
-    supabase
-      .from("appointments")
-      .select("*, car_listings(brand, model, year, images)")
-      .eq("salesman_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setAppointments(data || []));
+    const fetchAppts = () =>
+      supabase
+        .from("appointments")
+        .select("*, car_listings(brand, model, year, images)")
+        .eq("salesman_id", userId)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setAppointments(data || []));
+    fetchAppts();
+
+    const apptCh = supabase
+      .channel("appts_" + userId)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "appointments",
+        filter: `salesman_id=eq.${userId}`,
+      }, () => fetchAppts())
+      .subscribe();
 
     // Commission breakdown (last 5 sold)
     supabase
@@ -350,6 +362,7 @@ export default function SalesmanPanel() {
     return () => {
       supabase.removeChannel(ch);
       supabase.removeChannel(notifCh);
+      supabase.removeChannel(apptCh);
     };
   }, [userId]);
   // ─────────────────────────────────────────────────────────────────────────
