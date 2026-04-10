@@ -4976,7 +4976,7 @@ export default function DashboardPage() {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed h-screen overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
