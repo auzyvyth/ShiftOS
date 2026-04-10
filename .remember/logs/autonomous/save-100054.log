@@ -1,0 +1,4 @@
+/home/airy/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: line 135: cd: /home/airy/.claude/plugins/cache/claude-plugins-official/.claude/remember: No such file or directory
+/home/airy/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: line 140: [: : integer expression expected
+/home/airy/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: line 142: [: : integer expression expected
+/home/airy/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: line 155: echo: write error: No space left on device

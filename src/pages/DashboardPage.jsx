@@ -3752,7 +3752,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       .from('appointments')
       .select('*, car_listings(brand, model, year), profiles!salesman_id(full_name)')
       .eq('dealer_id', userId)
-      .order('appointment_date', { ascending: true });
+      .order('created_at', { ascending: false });
     if (error) console.error('[BookingsTab] fetchBookings error:', error.message, error);
     setBookings(data || []);
     setLoading(false);
@@ -3800,6 +3800,72 @@ function BookingsTab({ userId, listings, salesmen }) {
     const d = new Date(); d.setDate(d.getDate() + i); return d;
   });
 
+  const todayStr = new Date().toDateString();
+  const todaysBookings = bookings.filter(b =>
+    b.appointment_date && new Date(b.appointment_date).toDateString() === todayStr
+  );
+  const otherBookings = bookings.filter(b =>
+    !b.appointment_date || new Date(b.appointment_date).toDateString() !== todayStr
+  );
+
+  const renderBookingRow = (b) => {
+    const car = b.car_listings;
+    const sm = b.profiles;
+    const isToday = b.appointment_date &&
+      new Date(b.appointment_date).toDateString() === todayStr;
+    return (
+      <tr
+        key={b.id}
+        style={{
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          background: isToday ? 'rgba(59,130,246,0.03)' : 'transparent',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
+        onMouseLeave={e => e.currentTarget.style.background = isToday ? 'rgba(59,130,246,0.03)' : 'transparent'}
+      >
+        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>
+          {b.buyer_name || '—'}
+          {Date.now() - new Date(b.created_at) < 7200000 && (
+            <span style={{
+              marginLeft: 6, fontSize: 9, fontWeight: 800,
+              background: 'rgba(59,130,246,0.15)',
+              border: '1px solid rgba(59,130,246,0.3)',
+              color: '#93c5fd', borderRadius: 4,
+              padding: '1px 5px', letterSpacing: '0.08em',
+              verticalAlign: 'middle',
+            }}>NEW</span>
+          )}
+        </td>
+        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
+        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
+        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 12, whiteSpace: 'nowrap' }}>
+          {b.appointment_date
+            ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' })
+            : '—'}
+        </td>
+        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{sm?.full_name || '—'}</td>
+        <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
+        <td style={{ padding: '12px 14px' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {[['confirm','confirmed'],['done','completed'],['cancel','cancelled'],['no-show','no_show']].filter(([,s]) => s !== b.status).slice(0,2).map(([label, s]) => (
+              <button key={s} onClick={() => updateStatus(b.id, s)} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
+            ))}
+            {b.status === 'confirmed' && b.buyer_phone && (() => {
+              const carLabel = car ? `${car.brand} ${car.model} ${car.year}` : 'the vehicle';
+              const dateStr = b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+              const typeLabel = (b.booking_type || 'appointment').replace('_', ' ');
+              const msg = `Hi ${b.buyer_name || 'there'}, your ${typeLabel} for ${carLabel} is confirmed on ${dateStr}. Reply to reschedule.`;
+              return (
+                <a key="wa" href={`https://wa.me/${b.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>WA reminder</a>
+              );
+            })()}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
@@ -3818,55 +3884,94 @@ function BookingsTab({ userId, listings, salesmen }) {
         {loading ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
         ) : view === 'list' ? (
-          <div className="table-wrap">
-            {bookings.length === 0 ? (
-              <p className="text-gray-600 text-sm p-6">No bookings yet.</p>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    {['Buyer', 'Phone', 'Car', 'Type', 'Scheduled', 'Salesman', 'Deposit', 'Status', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(b => {
-                    const car = b.car_listings;
-                    const sm = b.profiles;
-                    return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{b.buyer_name || '—'}</td>
-                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
-                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
-                        <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{(b.booking_type || '').replace('_',' ')}</span></td>
-                        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 12, whiteSpace: 'nowrap' }}>{b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
-                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{sm?.full_name || '—'}</td>
-                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>{b.deposit_amount ? `RM ${Number(b.deposit_amount).toLocaleString()}` : '—'}</td>
-                        <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                            {[['confirm','confirmed'],['done','completed'],['cancel','cancelled'],['no-show','no_show']].filter(([,s]) => s !== b.status).slice(0,2).map(([label, s]) => (
-                              <button key={s} onClick={() => updateStatus(b.id, s)} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
-                            ))}
-                            {b.status === 'confirmed' && b.buyer_phone && (() => {
-                              const carLabel = car ? `${car.brand} ${car.model} ${car.year}` : 'the vehicle';
-                              const dateStr = b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
-                              const typeLabel = (b.booking_type || 'appointment').replace('_', ' ');
-                              const msg = `Hi ${b.buyer_name || 'there'}, your ${typeLabel} for ${carLabel} is confirmed on ${dateStr}. Reply to reschedule.`;
-                              return (
-                                <a href={`https://wa.me/${b.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>WA reminder</a>
-                              );
-                            })()}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <>
+            {/* TODAY'S BOOKINGS */}
+            {todaysBookings.length > 0 && (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 20px 8px',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  }}>
+                    <div style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: '#3b82f6',
+                      boxShadow: '0 0 6px rgba(59,130,246,0.8)',
+                      animation: 'hotpulse 1.5s ease-in-out infinite',
+                      flexShrink: 0,
+                    }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                      Today's Bookings
+                    </span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      background: 'rgba(59,130,246,0.12)',
+                      border: '1px solid rgba(59,130,246,0.25)',
+                      color: '#93c5fd',
+                      borderRadius: 20, padding: '1px 8px',
+                    }}>
+                      {todaysBookings.length}
+                    </span>
+                  </div>
+                  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          {['Buyer', 'Phone', 'Car', 'Time', 'Salesman', 'Status', 'Actions'].map(h => (
+                            <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {todaysBookings.map(b => renderBookingRow(b))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* ALL OTHER BOOKINGS */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 20px 8px',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                borderTop: todaysBookings.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                marginTop: todaysBookings.length > 0 ? 8 : 0,
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  All Bookings
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: '#4b5563',
+                  borderRadius: 20, padding: '1px 8px',
+                }}>
+                  {otherBookings.length}
+                </span>
+              </div>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      {['Buyer', 'Phone', 'Car', 'Scheduled', 'Salesman', 'Status', 'Actions'].map(h => (
+                        <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {otherBookings.length === 0 && todaysBookings.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>No bookings yet.</td></tr>
+                    ) : otherBookings.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '20px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>No other bookings.</td></tr>
+                    ) : (
+                      otherBookings.map(b => renderBookingRow(b))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+          </>
         ) : (
           /* Week calendar view */
           <div className="table-wrap" style={{ padding: 16 }}>
