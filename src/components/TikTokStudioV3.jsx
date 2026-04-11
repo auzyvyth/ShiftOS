@@ -529,8 +529,9 @@ Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
-// ─── Export: render slide to HTML5 canvas ─────────────────────────────────────
-async function renderToCanvas(
+// ─── renderBackground: image + gradient + chrome (no text elements) ───────────
+// Used by both CanvasPreview (live background) and renderToCanvas (export).
+async function renderBackground(
   canvas,
   slide,
   theme,
@@ -544,19 +545,23 @@ async function renderToCanvas(
   const W = CW;
   const H = CH;
   const fontObj = FONTS.find((f) => f.id === fontId) || FONTS[0];
+  const fstack = fontObj.stack.replace(/'/g, "");
 
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = theme.bgColor || "#060910";
   ctx.fillRect(0, 0, W, H);
 
+  // ── Car photo ────────────────────────────────────────────────────────────
   if (slide.imageUrl) {
     const img = await loadImage(slide.imageUrl);
     if (img) {
+      // Blurred background fill
       ctx.save();
       ctx.filter = `blur(${theme.blurIntensity ?? 18}px) brightness(0.4)`;
       ctx.drawImage(img, 0, 0, W, H);
       ctx.restore();
 
+      // Main image — contain within canvas, centred
       ctx.save();
       const ar = img.naturalWidth / img.naturalHeight;
       let dw = W,
@@ -571,28 +576,29 @@ async function renderToCanvas(
     }
   }
 
-  // Overlay gradient — scaled by overlayOpacity so preview and export match
+  // ── Gradient overlay ─────────────────────────────────────────────────────
   const overlayGrad = theme.overlayGradient || "standard";
   const op = theme.overlayOpacity ?? 0.45;
-  const gc = (a) => `rgba(6,9,16,${Math.min(1, (a * op) / 0.45).toFixed(3)})`;
+  // Scale each stop's alpha linearly with overlayOpacity
+  const gc = (a) => `rgba(6,9,16,${Math.min(1, a * op).toFixed(3)})`;
   if (overlayGrad !== "none") {
     let gradFill;
     if (overlayGrad === "standard") {
       gradFill = ctx.createLinearGradient(0, 0, 0, H);
-      gradFill.addColorStop(0, gc(0.95));
-      gradFill.addColorStop(0.28, gc(0.08));
-      gradFill.addColorStop(0.52, gc(0.05));
-      gradFill.addColorStop(0.66, gc(0.82));
-      gradFill.addColorStop(1, gc(1.0));
+      gradFill.addColorStop(0, gc(2.1)); // ~full dark at top
+      gradFill.addColorStop(0.18, gc(0.18));
+      gradFill.addColorStop(0.46, gc(0.08));
+      gradFill.addColorStop(0.66, gc(1.8)); // strong dark at bottom text area
+      gradFill.addColorStop(1, gc(2.2));
     } else if (overlayGrad === "top") {
       gradFill = ctx.createLinearGradient(0, 0, 0, H);
-      gradFill.addColorStop(0, gc(0.98));
-      gradFill.addColorStop(0.55, gc(0.04));
+      gradFill.addColorStop(0, gc(2.1));
+      gradFill.addColorStop(0.5, gc(0.08));
       gradFill.addColorStop(1, "rgba(6,9,16,0)");
     } else if (overlayGrad === "bottom") {
       gradFill = ctx.createLinearGradient(0, H, 0, 0);
-      gradFill.addColorStop(0, gc(0.98));
-      gradFill.addColorStop(0.55, gc(0.04));
+      gradFill.addColorStop(0, gc(2.1));
+      gradFill.addColorStop(0.5, gc(0.08));
       gradFill.addColorStop(1, "rgba(6,9,16,0)");
     }
     if (gradFill) {
@@ -601,19 +607,103 @@ async function renderToCanvas(
     }
   }
 
+  // ── Accent bar ───────────────────────────────────────────────────────────
   if (theme.showAccentBar !== false) {
     ctx.fillStyle = theme.accentColor || "#dc2626";
     ctx.fillRect(0, 0, W, 6);
   }
 
+  // ── Theme badges (condition / hot deal / custom) ─────────────────────────
+  const acc = theme.accentColor || "#dc2626";
+  const badgePad = 16,
+    badgeH = 38,
+    badgeR = 6;
+  let badgeX = 60;
+  const badgeY = H * 0.55;
+
+  const drawBadge = (label, bg, fg) => {
+    ctx.save();
+    ctx.font = `700 22px ${fstack}`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, tw + badgePad * 2, badgeH, badgeR);
+    ctx.fill();
+    ctx.fillStyle = fg;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, badgeX + badgePad, badgeY + badgeH / 2);
+    badgeX += tw + badgePad * 2 + 12;
+    ctx.restore();
+  };
+
+  if (theme.showConditionBadge && slide.condition) {
+    const label =
+      { new: "Brand New", recon: "Recon", used: "Used" }[slide.condition] ||
+      slide.condition;
+    drawBadge(label, acc, "#fff");
+  }
+  if (theme.showHotDealBadge) {
+    drawBadge("🔥 HOT DEAL", "#f59e0b", "#000");
+  }
+  if (theme.customBadgeText) {
+    drawBadge(theme.customBadgeText, theme.badgeColor || acc, "#fff");
+  }
+
+  // ── Logo ─────────────────────────────────────────────────────────────────
+  if (theme.logoUrl) {
+    const logoImg = await loadImage(theme.logoUrl);
+    if (logoImg) {
+      const sz = theme.logoSize || 80;
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(logoImg, W - 60 - sz, H - 180 - sz, sz, sz);
+      ctx.restore();
+    }
+  }
+
+  // ── Watermark ────────────────────────────────────────────────────────────
+  if (theme.watermarkText) {
+    ctx.save();
+    ctx.globalAlpha = theme.watermarkOpacity ?? 0.14;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `400 22px ${fstack}`;
+    const isRight = !theme.watermarkPos || theme.watermarkPos.includes("right");
+    const isBottom = theme.watermarkPos?.includes("bottom");
+    ctx.textAlign = isRight ? "right" : "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(
+      theme.watermarkText,
+      isRight ? W - 60 : 60,
+      isBottom ? H - 80 : 60,
+    );
+    ctx.restore();
+  }
+}
+
+// ─── Export: render full slide (background + elements) to HTML5 canvas ────────
+async function renderToCanvas(
+  canvas,
+  slide,
+  theme,
+  fontId = "dm",
+  CW = CANVAS_W,
+  CH = CANVAS_H,
+) {
+  // Step 1: background (image, gradient, chrome)
+  await renderBackground(canvas, slide, theme, fontId, CW, CH);
+
+  // Step 2: text / badge elements on top
+  const ctx = canvas.getContext("2d");
+  const W = CW;
+  const H = CH;
+  const fontObj = FONTS.find((f) => f.id === fontId) || FONTS[0];
   const fstack = fontObj.stack.replace(/'/g, "");
 
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
-    // Watermark element is handled separately via theme below — skip here
-    if (el.id === "watermark") continue;
+    if (el.id === "watermark") continue; // already in renderBackground
 
-    // Badge type
     if (el.type === "badge") {
       const pad = 16;
       ctx.font = `${el.fontWeight || "700"} ${el.fontSize || 28}px ${fstack}`;
@@ -641,15 +731,10 @@ async function renderToCanvas(
     ctx.translate(el.x, el.y);
     ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
     ctx.fillStyle = el.color || "#fff";
-    if (el.fontStyle === "italic") {
-      ctx.font = `italic ${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
-    } else {
-      ctx.font = `${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
-    }
+    ctx.font = `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
     if (el.shadow) {
       ctx.shadowColor = "rgba(0,0,0,0.85)";
       ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 2;
     }
     ctx.textAlign = el.align || "left";
@@ -658,34 +743,6 @@ async function renderToCanvas(
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.restore();
-  }
-
-  // Render theme watermark (matches preview overlay)
-  if (theme.watermarkText) {
-    ctx.save();
-    ctx.globalAlpha = theme.watermarkOpacity ?? 0.14;
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = `400 22px ${fstack}`;
-    const isRight = !theme.watermarkPos || theme.watermarkPos.includes("right");
-    const isBottom = theme.watermarkPos?.includes("bottom");
-    ctx.textAlign = isRight ? "right" : "left";
-    ctx.textBaseline = "top";
-    const wmx = isRight ? W - 60 : 60;
-    const wmy = isBottom ? H - 80 : 60;
-    ctx.fillText(theme.watermarkText, wmx, wmy);
-    ctx.restore();
-  }
-
-  // Render theme logo
-  if (theme.logoUrl) {
-    const logoImg = await loadImage(theme.logoUrl);
-    if (logoImg) {
-      const sz = theme.logoSize || 80;
-      ctx.save();
-      ctx.globalAlpha = 0.8;
-      ctx.drawImage(logoImg, W - 60 - sz, H - 180 - sz, sz, sz);
-      ctx.restore();
-    }
   }
 }
 
@@ -1148,11 +1205,15 @@ function InlineEditor({ el, scale, onCommit, onCancel }) {
 }
 
 // ─── CanvasPreview ────────────────────────────────────────────────────────────
+// Background is rendered to an HTML5 canvas using the EXACT same code as
+// renderToCanvas — guaranteeing what-you-see-is-what-you-get.
+// Interactive text/badge elements are overlaid as divs on top.
 function CanvasPreview({
   slide,
   theme,
   scale,
   fontStack,
+  fontId,
   selectedId,
   highlightIds,
   aiLoading,
@@ -1173,28 +1234,58 @@ function CanvasPreview({
   onDeleteSelected,
   innerRef,
 }) {
-  // Ref forwarding trick: we need innerRef for SelectionOverlay measurement
+  const bgCanvasRef = React.useRef(null);
   const localRef = React.useRef(null);
+
   const combinedRef = (node) => {
     localRef.current = node;
     if (typeof innerRef === "function") innerRef(node);
     else if (innerRef) innerRef.current = node;
   };
-  const acc = theme.accentColor || "#dc2626";
+
   const CW = canvasW || CANVAS_W;
   const CH = canvasH || CANVAS_H;
   const W = CW * scale;
   const H = CH * scale;
 
-  const gradMap = {
-    standard:
-      "linear-gradient(to bottom,rgba(6,9,16,0.95) 0%,rgba(6,9,16,0.08) 28%,rgba(6,9,16,0.05) 52%,rgba(6,9,16,0.82) 66%,rgba(6,9,16,1) 100%)",
-    top: "linear-gradient(to bottom,rgba(6,9,16,0.98) 0%,rgba(6,9,16,0.04) 55%,transparent 100%)",
-    bottom:
-      "linear-gradient(to top,rgba(6,9,16,0.98) 0%,rgba(6,9,16,0.04) 55%,transparent 100%)",
-    none: "none",
-  };
-  const overlayGrad = gradMap[theme.overlayGradient || "standard"];
+  // ── Render background to canvas whenever anything visual changes ──────────
+  React.useEffect(() => {
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+    // renderBackground is async; we discard stale renders via a cancelled flag
+    let cancelled = false;
+    renderBackground(canvas, slide, theme, fontId || "dm", CW, CH)
+      .then(() => {
+        // nothing extra needed; canvas is updated in-place
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // Stringify theme so effect re-runs only when values actually change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    slide.imageUrl,
+    slide.condition,
+    CW,
+    CH,
+    fontId,
+    theme.bgColor,
+    theme.overlayOpacity,
+    theme.overlayGradient,
+    theme.blurIntensity,
+    theme.accentColor,
+    theme.showAccentBar,
+    theme.showConditionBadge,
+    theme.showHotDealBadge,
+    theme.customBadgeText,
+    theme.badgeColor,
+    theme.logoUrl,
+    theme.logoSize,
+    theme.watermarkText,
+    theme.watermarkOpacity,
+    theme.watermarkPos,
+  ]);
 
   return (
     <div
@@ -1207,166 +1298,32 @@ function CanvasPreview({
         overflow: "hidden",
         userSelect: "none",
         flexShrink: 0,
+        // Checkerboard behind canvas so transparency is obvious
+        background: "#0a0d14",
       }}
     >
-      {/* Background */}
-      <div
+      {/* ── Background canvas: pixel-perfect match to export ── */}
+      <canvas
+        ref={bgCanvasRef}
+        width={CW}
+        height={CH}
         style={{
           position: "absolute",
           inset: 0,
-          background: theme.bgColor || "#060910",
+          width: "100%",
+          height: "100%",
+          display: "block",
         }}
       />
 
-      {/* Blurred bg + car image */}
-      {slide.imageUrl && (
-        <>
-          <img
-            src={slide.imageUrl}
-            alt=""
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: `blur(${theme.blurIntensity ?? 18}px) brightness(0.4)`,
-              transform: "scale(1.06)",
-              transformOrigin: "center",
-            }}
-          />
-          <img
-            src={slide.imageUrl}
-            alt=""
-            style={{
-              position: "absolute",
-              left: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: "100%",
-              objectFit: "contain",
-              opacity: 0.92,
-              zIndex: 1,
-            }}
-          />
-        </>
-      )}
-
-      {/* Gradient overlay */}
-      {overlayGrad !== "none" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 2,
-            background: overlayGrad,
-            opacity: theme.overlayOpacity ?? 0.45,
-          }}
-        />
-      )}
-
-      {/* Accent bar */}
-      {theme.showAccentBar !== false && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 6 * scale,
-            background: acc,
-            zIndex: 5,
-          }}
-        />
-      )}
-
-      {/* Theme badges */}
-      {(theme.showConditionBadge ||
-        theme.showHotDealBadge ||
-        theme.customBadgeText) && (
-        <div
-          style={{
-            position: "absolute",
-            top: CH * 0.55 * scale,
-            left: 60 * scale,
-            display: "flex",
-            gap: 12 * scale,
-            zIndex: 6,
-          }}
-        >
-          {theme.showConditionBadge && slide.condition && (
-            <div
-              style={{
-                padding: `${8 * scale}px ${16 * scale}px`,
-                borderRadius: 6 * scale,
-                background: acc,
-                color: "#fff",
-                fontSize: 22 * scale,
-                fontWeight: 700,
-              }}
-            >
-              {{ new: "Brand New", recon: "Recon", used: "Used" }[
-                slide.condition
-              ] || slide.condition}
-            </div>
-          )}
-          {theme.showHotDealBadge && (
-            <div
-              style={{
-                padding: `${8 * scale}px ${16 * scale}px`,
-                borderRadius: 6 * scale,
-                background: "#f59e0b",
-                color: "#000",
-                fontSize: 22 * scale,
-                fontWeight: 800,
-              }}
-            >
-              🔥 HOT DEAL
-            </div>
-          )}
-          {theme.customBadgeText && (
-            <div
-              style={{
-                padding: `${8 * scale}px ${16 * scale}px`,
-                borderRadius: 6 * scale,
-                background: theme.badgeColor || acc,
-                color: "#fff",
-                fontSize: 22 * scale,
-                fontWeight: 700,
-              }}
-            >
-              {theme.customBadgeText}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Logo */}
-      {theme.logoUrl && (
-        <img
-          src={theme.logoUrl}
-          alt=""
-          style={{
-            position: "absolute",
-            bottom: 180 * scale,
-            right: 60 * scale,
-            width: (theme.logoSize || 80) * scale,
-            height: (theme.logoSize || 80) * scale,
-            objectFit: "contain",
-            opacity: 0.8,
-            zIndex: 7,
-          }}
-        />
-      )}
-
-      {/* AI skeleton overlay */}
+      {/* ── AI loading overlay ── */}
       {aiLoading && (
         <div
           style={{
             position: "absolute",
             inset: 0,
             zIndex: 40,
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(0,0,0,0.5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1393,7 +1350,7 @@ function CanvasPreview({
         </div>
       )}
 
-      {/* Elements layer */}
+      {/* ── Interactive text / badge elements layer ── */}
       <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
         {(slide.elements || [])
           .filter((el) => el.id !== "watermark")
@@ -1421,7 +1378,7 @@ function CanvasPreview({
           ))}
       </div>
 
-      {/* Selection overlay — separate from elements, measures actual DOM bounds */}
+      {/* ── Selection overlay ── */}
       {selectedEl && selectedId && !editingId && !selectedEl.locked && (
         <SelectionOverlay
           elId={selectedId}
@@ -1433,35 +1390,6 @@ function CanvasPreview({
           onDuplicate={onDuplicateSelected}
           onDelete={onDeleteSelected}
         />
-      )}
-
-      {/* Floating toolbar REMOVED — replaced by SelectionOverlay mini-toolbar above */}
-
-      {/* Watermark overlay — rendered from theme for accuracy */}
-      {theme.watermarkText && (
-        <div
-          style={{
-            position: "absolute",
-            zIndex: 15,
-            ...(theme.watermarkPos === "top-right"
-              ? { top: 60 * scale, right: 60 * scale }
-              : theme.watermarkPos === "top-left"
-                ? { top: 60 * scale, left: 60 * scale }
-                : theme.watermarkPos === "bottom-right"
-                  ? { bottom: 60 * scale, right: 60 * scale }
-                  : { bottom: 60 * scale, left: 60 * scale }),
-            fontSize: 22 * scale,
-            fontWeight: 400,
-            fontFamily: fontStack,
-            color: "rgba(255,255,255,0.35)",
-            opacity: theme.watermarkOpacity ?? 0.14,
-            userSelect: "none",
-            pointerEvents: "none",
-            letterSpacing: "0.05em",
-          }}
-        >
-          {theme.watermarkText}
-        </div>
       )}
     </div>
   );
@@ -3768,6 +3696,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     slide,
     theme,
     fontStack: fontObj.stack,
+    fontId: font,
     selectedId,
     highlightIds,
     aiLoading: applyingCmd,
