@@ -180,6 +180,42 @@ const FONTS = [
     stack: "'Raleway',sans-serif",
     url: "https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;800&display=swap",
   },
+  {
+    id: "poppins",
+    label: "Poppins",
+    stack: "'Poppins',sans-serif",
+    url: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap",
+  },
+  {
+    id: "inter",
+    label: "Inter",
+    stack: "'Inter',sans-serif",
+    url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap",
+  },
+  {
+    id: "nunito",
+    label: "Nunito",
+    stack: "'Nunito',sans-serif",
+    url: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap",
+  },
+  {
+    id: "playfair",
+    label: "Playfair Display",
+    stack: "'Playfair Display',serif",
+    url: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&display=swap",
+  },
+  {
+    id: "exo",
+    label: "Exo 2",
+    stack: "'Exo 2',sans-serif",
+    url: "https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap",
+  },
+  {
+    id: "teko",
+    label: "Teko",
+    stack: "'Teko',sans-serif",
+    url: "https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&display=swap",
+  },
 ];
 const GFONTS_LOADED = new Set();
 function ensureFont(fontId) {
@@ -610,10 +646,22 @@ async function renderToCanvas(
     ctx.translate(el.x, el.y);
     ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
     ctx.fillStyle = el.color || "#fff";
-    ctx.font = `${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
+    if (el.fontStyle === "italic") {
+      ctx.font = `italic ${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
+    } else {
+      ctx.font = `${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
+    }
+    if (el.shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
+    }
     ctx.textAlign = el.align || "left";
     ctx.textBaseline = "top";
     ctx.fillText(el.content || "", 0, 0);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
     ctx.restore();
   }
 }
@@ -633,10 +681,25 @@ function CanvasElement({
 }) {
   if (!el.visible) return null;
 
+  // Clean handle style — circular, minimal (shared by both badge and text branches)
+  const H = Math.max(4, 5 / scale);
+  const hBase = {
+    position: "absolute",
+    width: H,
+    height: H,
+    background: "#fff",
+    border: `${1.5 / scale}px solid rgba(220,38,38,0.7)`,
+    borderRadius: "50%",
+    boxSizing: "border-box",
+    zIndex: 2,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+  };
+
   // Badge type — render as pill
   if (el.type === "badge") {
     return (
       <div
+        data-el-id={el.id}
         style={{
           position: "absolute",
           left: el.x * scale,
@@ -649,12 +712,12 @@ function CanvasElement({
           borderRadius: 999,
           opacity: el.opacity ?? 1,
           transform: `rotate(${el.rotation || 0}deg)`,
-          transformOrigin: "top left",
+          transformOrigin: "center",
           cursor: el.locked ? "default" : "pointer",
           userSelect: "none",
           zIndex: selected ? 20 : 10,
           boxShadow: selected
-            ? `0 0 0 ${1 / scale}px rgba(255,255,255,0.85), 0 0 0 ${2.5 / scale}px rgba(220,38,38,0.4)`
+            ? `0 0 0 ${0.75 / scale}px rgba(255,255,255,0.9), 0 0 0 ${1.5 / scale}px rgba(220,38,38,0.35)`
             : "none",
           whiteSpace: "nowrap",
           animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
@@ -676,36 +739,59 @@ function CanvasElement({
         onDoubleClick={() => !el.locked && onDoubleClick(el.id)}
       >
         {el.content}
+        {selected && !el.locked && (
+          <>
+            {[
+              {
+                pos: "nw",
+                s: { top: -H / 2, left: -H / 2, cursor: "nw-resize" },
+              },
+              {
+                pos: "ne",
+                s: { top: -H / 2, right: -H / 2, cursor: "ne-resize" },
+              },
+              {
+                pos: "sw",
+                s: { bottom: -H / 2, left: -H / 2, cursor: "sw-resize" },
+              },
+              {
+                pos: "se",
+                s: { bottom: -H / 2, right: -H / 2, cursor: "se-resize" },
+              },
+            ].map(({ pos, s }) => (
+              <div
+                key={pos}
+                style={{ ...hBase, ...s }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  onStartResize(e, el.id, pos);
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  onStartResize(e, el.id, pos);
+                }}
+              />
+            ))}
+          </>
+        )}
       </div>
     );
   }
 
-  // Clean handle style — circular, minimal
-  const H = Math.max(6, 7 / scale);
-  const hBase = {
-    position: "absolute",
-    width: H,
-    height: H,
-    background: "#fff",
-    border: `${1.5 / scale}px solid rgba(220,38,38,0.7)`,
-    borderRadius: "50%",
-    boxSizing: "border-box",
-    zIndex: 2,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-  };
-
   return (
     <div
+      data-el-id={el.id}
       style={{
         position: "absolute",
         left: el.x * scale,
         top: el.y * scale,
         fontSize: el.fontSize * scale,
         fontWeight: el.fontWeight,
+        fontStyle: el.fontStyle || "normal",
         color: el.color,
         opacity: el.opacity ?? 1,
         transform: `rotate(${el.rotation || 0}deg)`,
-        transformOrigin: "top left",
+        transformOrigin: "center",
         textAlign: el.align,
         fontFamily: fontStack,
         lineHeight: 1.2,
@@ -714,7 +800,10 @@ function CanvasElement({
         userSelect: "none",
         zIndex: selected ? 20 : 10,
         boxShadow: selected
-          ? `0 0 0 ${1 / scale}px rgba(255,255,255,0.85), 0 0 0 ${2.5 / scale}px rgba(220,38,38,0.4)`
+          ? `0 0 0 ${0.75 / scale}px rgba(255,255,255,0.9), 0 0 0 ${1.5 / scale}px rgba(220,38,38,0.35)`
+          : "none",
+        textShadow: el.shadow
+          ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
         animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
       }}
@@ -1106,6 +1195,7 @@ function CanvasPreview({
             inset: 0,
             zIndex: 2,
             background: overlayGrad,
+            opacity: theme.overlayOpacity ?? 0.45,
           }}
         />
       )}
@@ -1240,32 +1330,61 @@ function CanvasPreview({
 
       {/* Elements layer */}
       <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
-        {(slide.elements || []).map((el) => (
-          <React.Fragment key={el.id}>
-            {editingId === el.id ? (
-              <InlineEditor
-                el={el}
-                scale={scale}
-                onCommit={(v) => onCommitEdit(el.id, v)}
-                onCancel={onCancelEdit}
-              />
-            ) : (
-              <CanvasElement
-                el={el}
-                scale={scale}
-                selected={selectedId === el.id}
-                highlighted={(highlightIds || []).includes(el.id)}
-                fontStack={fontStack}
-                onSelect={onSelectElement}
-                onStartDrag={onStartDrag}
-                onStartResize={onStartResize}
-                onStartRotate={onStartRotate}
-                onDoubleClick={onDoubleClickElement}
-              />
-            )}
-          </React.Fragment>
-        ))}
+        {(slide.elements || [])
+          .filter((el) => el.id !== "watermark")
+          .map((el) => (
+            <React.Fragment key={el.id}>
+              {editingId === el.id ? (
+                <InlineEditor
+                  el={el}
+                  scale={scale}
+                  onCommit={(v) => onCommitEdit(el.id, v)}
+                  onCancel={onCancelEdit}
+                />
+              ) : (
+                <CanvasElement
+                  el={el}
+                  scale={scale}
+                  selected={selectedId === el.id}
+                  highlighted={(highlightIds || []).includes(el.id)}
+                  fontStack={fontStack}
+                  onSelect={onSelectElement}
+                  onStartDrag={onStartDrag}
+                  onStartResize={onStartResize}
+                  onStartRotate={onStartRotate}
+                  onDoubleClick={onDoubleClickElement}
+                />
+              )}
+            </React.Fragment>
+          ))}
       </div>
+
+      {/* Watermark overlay — rendered from theme for accuracy */}
+      {theme.watermarkText && (
+        <div
+          style={{
+            position: "absolute",
+            zIndex: 15,
+            ...(theme.watermarkPos === "top-right"
+              ? { top: 60 * scale, right: 60 * scale }
+              : theme.watermarkPos === "top-left"
+                ? { top: 60 * scale, left: 60 * scale }
+                : theme.watermarkPos === "bottom-right"
+                  ? { bottom: 60 * scale, right: 60 * scale }
+                  : { bottom: 60 * scale, left: 60 * scale }),
+            fontSize: 22 * scale,
+            fontWeight: 400,
+            fontFamily: fontStack,
+            color: "rgba(255,255,255,0.35)",
+            opacity: theme.watermarkOpacity ?? 0.14,
+            userSelect: "none",
+            pointerEvents: "none",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {theme.watermarkText}
+        </div>
+      )}
 
       {/* Floating toolbar */}
       {selectedEl && selectedId && !editingId && (
@@ -1652,6 +1771,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [language, setLanguage] = useState("en");
   const [hookText, setHookText] = useState("");
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [scale, setScale] = useState(0.3);
   const [isMobile, setIsMobile] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -1771,10 +1891,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       setIsMobile(vw < 768);
-      const sidePanels = vw < 768 ? 0 : 56 + 320 + 40;
-      const maxW = Math.max(100, vw - sidePanels);
-      const maxH = vh - 52 - 16;
-      setScale(Math.min(maxW / CW, maxH / CH, 1));
+      if (vw < 768) {
+        setScale(Math.min(((vw - 20) * 0.9) / CW, (vh - 210) / CH, 1));
+      } else {
+        // Canva layout: 28px inset + 54px icon strip + 280px panel + 80px canvas padding
+        const usableW = vw - 28 - 54 - 280 - 80;
+        // 28px inset + 48px header + 110px film strip + 60px canvas padding
+        const usableH = vh - 28 - 48 - 110 - 60;
+        setScale(
+          Math.min(Math.max(usableW, 100) / CW, Math.max(usableH, 100) / CH, 1),
+        );
+      }
     };
     calc();
     window.addEventListener("resize", calc);
@@ -1994,9 +2121,20 @@ export default function TikTokStudioV3({ listing, onClose }) {
     (e, id) => {
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el || !canvasInnerRef.current) return;
-      const rect = canvasInnerRef.current.getBoundingClientRect();
-      const centerX = rect.left + el.x * scale;
-      const centerY = rect.top + el.y * scale;
+      // Use actual rendered element center for accurate rotation pivot
+      const elDiv = canvasInnerRef.current.querySelector(
+        `[data-el-id="${id}"]`,
+      );
+      let centerX, centerY;
+      if (elDiv) {
+        const r = elDiv.getBoundingClientRect();
+        centerX = (r.left + r.right) / 2;
+        centerY = (r.top + r.bottom) / 2;
+      } else {
+        const rect = canvasInnerRef.current.getBoundingClientRect();
+        centerX = rect.left + el.x * scale;
+        centerY = rect.top + el.y * scale;
+      }
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
       rotating.current = {
@@ -2030,7 +2168,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           fontSize: Math.round(
             Math.max(
               16,
-              Math.min(200, origFontSize + ((startY - cy) / scale) * 0.5),
+              Math.min(200, origFontSize + ((cy - startY) / scale) * 0.5),
             ),
           ),
         });
@@ -2161,6 +2299,119 @@ export default function TikTokStudioV3({ listing, onClose }) {
       );
     },
     [active],
+  );
+
+  const applyTemplateContent = useCallback(
+    (templateId) => {
+      const brand = listing?.brand || "";
+      const model = listing?.model || "";
+      const variant = listing?.variant || "";
+      const year = String(listing?.year || "");
+      const price = listing?.selling_price || listing?.price;
+      const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
+      const monthly = calcMonthly(price);
+      const monthlyStr = monthly ? `RM ${monthly.toLocaleString()}/mo` : "";
+      const mileage = listing?.mileage
+        ? Number(listing.mileage).toLocaleString() + " km"
+        : "";
+      const trans = listing?.transmission || "";
+      const fuel = listing?.fuel_type || listing?.fuel || "";
+      const cond = listing?.condition || "";
+      const condLabel =
+        { new: "Brand New", recon: "Recon", used: "Used" }[cond] || cond;
+      const whatsapp = slide?.whatsapp || listing?.whatsapp_number || "";
+      const featureList = features.slice(0, 3).join(", ");
+
+      const contentMap = {
+        hype: {
+          hook: "POV: You just found your dream car 🚗",
+          headline:
+            [`${year} ${brand} ${model}`, variant]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || "Your Car",
+          price: priceStr || "Price on Request",
+          stats: [mileage, trans, fuel].filter(Boolean).join(" · "),
+        },
+        "hero-hook": {
+          hook: `This ${brand} ${model} will CHANGE your life 🔥`,
+          headline:
+            [`${year} ${brand} ${model}`, variant]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || "Your Car",
+          price: priceStr || "Price on Request",
+          stats: [condLabel, mileage].filter(Boolean).join(" · "),
+        },
+        "specs-breakdown": {
+          hook: `Full specs breakdown 📋`,
+          headline:
+            [`${year} ${brand} ${model}`, variant]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || "Your Car",
+          price:
+            featureList || [trans, fuel, mileage].filter(Boolean).join(" · "),
+          stats: [condLabel, mileage, trans, fuel].filter(Boolean).join(" · "),
+        },
+        pricing: {
+          hook: `Best deal in Malaysia 💰`,
+          headline: priceStr || "Price on Request",
+          price: monthlyStr ? `As low as ${monthlyStr}` : priceStr,
+          stats: `${condLabel} · ${mileage}`.replace(/^·\s*|·\s*$/, "").trim(),
+        },
+        cta: {
+          hook: `DM us now! Limited unit 📲`,
+          headline:
+            [`${year} ${brand} ${model}`].join(" ").trim() || "Your Car",
+          price: priceStr || "Price on Request",
+          stats: whatsapp ? `WhatsApp: ${whatsapp}` : "Contact us today",
+        },
+        story: {
+          hook: `${condLabel ? condLabel + " · " : ""}${year} ${brand} ${model} ✨`,
+          headline:
+            [`${year} ${brand} ${model}`, variant]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || "Your Car",
+          price: priceStr || "Price on Request",
+          stats: [mileage, trans, fuel].filter(Boolean).join(" · "),
+        },
+        minimal: {
+          hook: `${brand} ${model}`,
+          headline:
+            [`${year} ${brand} ${model}`, variant]
+              .filter(Boolean)
+              .join(" ")
+              .trim() || "Your Car",
+          price: priceStr || "Price on Request",
+          stats: "",
+        },
+      };
+
+      const c = contentMap[templateId];
+      if (!c) return;
+
+      setSlides((ss) =>
+        ss.map((s, i) =>
+          i !== active
+            ? s
+            : {
+                ...s,
+                template: templateId,
+                elements: s.elements.map((el) => {
+                  if (el.id === "hook") return { ...el, content: c.hook };
+                  if (el.id === "headline")
+                    return { ...el, content: c.headline };
+                  if (el.id === "price") return { ...el, content: c.price };
+                  if (el.id === "stats") return { ...el, content: c.stats };
+                  return el;
+                }),
+              },
+        ),
+      );
+    },
+    [active, listing, slide, features],
   );
 
   const addSlide = useCallback(() => {
@@ -2451,36 +2702,41 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </div>
         </div>
 
-        {/* Font weight + align */}
+        {/* Font weight */}
         <div
           style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}
         >
-          {["400", "700", "800"].map((w) => (
+          {[
+            { w: "300", label: "Thin" },
+            { w: "400", label: "Reg" },
+            { w: "600", label: "Med" },
+            { w: "700", label: "Bold" },
+            { w: "800", label: "Black" },
+          ].map(({ w, label }) => (
             <button
               key={w}
               onClick={() => updateSelectedElement({ fontWeight: w })}
               style={{
                 flex: 1,
-                padding: "5px 4px",
+                padding: "5px 3px",
                 borderRadius: 6,
-                border: `1px solid ${
-                  selectedEl.fontWeight === w
-                    ? "rgba(220,38,38,0.5)"
-                    : "rgba(255,255,255,0.08)"
-                }`,
+                border: `1px solid ${selectedEl.fontWeight === w ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
                 background:
                   selectedEl.fontWeight === w
                     ? "rgba(220,38,38,0.1)"
                     : "transparent",
                 color: "rgba(255,255,255,0.6)",
-                fontSize: 10,
+                fontSize: 9,
                 cursor: "pointer",
                 fontWeight: w,
               }}
             >
-              {w === "400" ? "Reg" : w === "700" ? "Bold" : "XBold"}
+              {label}
             </button>
           ))}
+        </div>
+        {/* Align */}
+        <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
           {["left", "center", "right"].map((a) => (
             <button
               key={a}
@@ -2489,11 +2745,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 flex: 1,
                 padding: "5px 4px",
                 borderRadius: 6,
-                border: `1px solid ${
-                  selectedEl.align === a
-                    ? "rgba(220,38,38,0.5)"
-                    : "rgba(255,255,255,0.08)"
-                }`,
+                border: `1px solid ${selectedEl.align === a ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
                 background:
                   selectedEl.align === a
                     ? "rgba(220,38,38,0.1)"
@@ -2506,6 +2758,55 @@ export default function TikTokStudioV3({ listing, onClose }) {
               {a === "left" ? "◀" : a === "center" ? "■" : "▶"}
             </button>
           ))}
+        </div>
+        {/* Italic + Shadow toggles */}
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <button
+            onClick={() =>
+              updateSelectedElement({
+                fontStyle:
+                  selectedEl.fontStyle === "italic" ? "normal" : "italic",
+              })
+            }
+            style={{
+              flex: 1,
+              padding: "6px 4px",
+              borderRadius: 6,
+              border: `1px solid ${selectedEl.fontStyle === "italic" ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+              background:
+                selectedEl.fontStyle === "italic"
+                  ? "rgba(220,38,38,0.1)"
+                  : "transparent",
+              color:
+                selectedEl.fontStyle === "italic"
+                  ? "#dc2626"
+                  : "rgba(255,255,255,0.5)",
+              fontSize: 11,
+              cursor: "pointer",
+              fontStyle: "italic",
+            }}
+          >
+            Italic
+          </button>
+          <button
+            onClick={() =>
+              updateSelectedElement({ shadow: !selectedEl.shadow })
+            }
+            style={{
+              flex: 1,
+              padding: "6px 4px",
+              borderRadius: 6,
+              border: `1px solid ${selectedEl.shadow ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+              background: selectedEl.shadow
+                ? "rgba(220,38,38,0.1)"
+                : "transparent",
+              color: selectedEl.shadow ? "#dc2626" : "rgba(255,255,255,0.5)",
+              fontSize: 11,
+              cursor: "pointer",
+            }}
+          >
+            Shadow
+          </button>
         </div>
       </div>
     );
@@ -2545,7 +2846,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         {SLIDE_TEMPLATES.map((t) => (
           <button
             key={t.id}
-            onClick={() => patchSlide({ template: t.id })}
+            onClick={() => applyTemplateContent(t.id)}
             style={{
               padding: "7px 4px",
               borderRadius: 8,
@@ -2913,9 +3214,18 @@ export default function TikTokStudioV3({ listing, onClose }) {
       <PInput
         value={theme.watermarkText}
         placeholder="Your brand name"
-        onChange={(e) =>
-          setTheme((t) => ({ ...t, watermarkText: e.target.value }))
-        }
+        onChange={(e) => {
+          const text = e.target.value;
+          setTheme((t) => ({ ...t, watermarkText: text }));
+          setSlides((ss) =>
+            ss.map((s) => ({
+              ...s,
+              elements: s.elements.map((el) =>
+                el.id === "watermark" ? { ...el, content: text } : el,
+              ),
+            })),
+          );
+        }}
       />
       <div style={{ display: "flex", gap: 5, marginTop: 7 }}>
         {["top-right", "top-left", "bottom-right", "bottom-left"].map((p) => (
@@ -2951,7 +3261,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
           min={0}
           max={1}
           step={0.01}
-          onChange={(v) => setTheme((t) => ({ ...t, watermarkOpacity: v }))}
+          onChange={(v) => {
+            setTheme((t) => ({ ...t, watermarkOpacity: v }));
+            setSlides((ss) =>
+              ss.map((s) => ({
+                ...s,
+                elements: s.elements.map((el) =>
+                  el.id === "watermark" ? { ...el, opacity: v } : el,
+                ),
+              })),
+            );
+          }}
           fmt={(v) => `${Math.round(v * 100)}%`}
         />
       </div>
@@ -3337,11 +3657,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Tab bar + routing ────────────────────────────────────────────────────
   const TABS = [
-    { id: "slide", label: "Slide" },
-    { id: "design", label: "Design" },
-    { id: "brand", label: "Brand" },
-    { id: "badges", label: "Badges" },
-    { id: "ai", label: "✦ AI" },
+    { id: "slide", label: "Slides", icon: "⊞" },
+    { id: "design", label: "Design", icon: "◎" },
+    { id: "brand", label: "Brand", icon: "✺" },
+    { id: "badges", label: "Badges", icon: "⬟" },
+    { id: "ai", label: "AI", icon: "⚡" },
   ];
 
   const renderTab = () => {
@@ -3352,6 +3672,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     if (activeTab === "ai") return AIPanel();
   };
 
+  // tabBar used only in mobile sidebar
   const tabBar = (
     <div
       style={{
@@ -3420,8 +3741,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Mobile layout ────────────────────────────────────────────────────────
   if (isMobile) {
-    const mobScale = Math.min(((window.innerWidth - 20) * 0.45) / CW, 200 / CH);
-
+    const mobScale = Math.min(
+      ((window.innerWidth - 20) * 0.9) / CW,
+      (window.innerHeight - 100 - 110) / CH,
+    );
     return (
       <div
         style={{
@@ -3434,7 +3757,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           fontFamily: "'DM Sans',sans-serif",
         }}
       >
-        {/* Mobile header */}
+        {/* Header */}
         <div
           style={{
             height: 46,
@@ -3457,11 +3780,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             TT STUDIO V3
           </span>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            {/* Undo/redo on mobile header */}
             <button
               onClick={undo}
               disabled={historyIdx.current <= 0}
-              title="Undo"
               style={{
                 width: 26,
                 height: 26,
@@ -3481,7 +3802,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <button
               onClick={redo}
               disabled={historyIdx.current >= history.current.length - 1}
-              title="Redo"
               style={{
                 width: 26,
                 height: 26,
@@ -3499,11 +3819,26 @@ export default function TikTokStudioV3({ listing, onClose }) {
               ↪
             </button>
             <button
+              onClick={() => saveSingle(active)}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 7,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "transparent",
+                color: "rgba(255,255,255,0.7)",
+                cursor: "pointer",
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              ↓
+            </button>
+            <button
               onClick={saveAll}
               disabled={downloading}
               style={{
                 padding: "5px 12px",
-                borderRadius: 8,
+                borderRadius: 7,
                 border: "none",
                 background: "#dc2626",
                 color: "#fff",
@@ -3531,347 +3866,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </div>
         </div>
 
-        {/* Preview + film strip row */}
+        {/* Film strip */}
         <div
           style={{
             display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            padding: "8px 10px",
-            flexShrink: 0,
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <CanvasPreview {...previewProps} scale={mobScale} />
-            {/* Pinch-to-resize hint */}
-            <p
-              style={{
-                fontSize: 8,
-                color: "rgba(255,255,255,0.2)",
-                textAlign: "center",
-                marginTop: 3,
-              }}
-            >
-              pinch to resize
-            </p>
-            {active > 0 && (
-              <button
-                onClick={() => setActive((i) => i - 1)}
-                style={{
-                  position: "absolute",
-                  left: -10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.7)",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                ‹
-              </button>
-            )}
-            {active < total - 1 && (
-              <button
-                onClick={() => setActive((i) => i + 1)}
-                style={{
-                  position: "absolute",
-                  right: -10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.7)",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                ›
-              </button>
-            )}
-          </div>
-
-          {/* Film strip */}
-          <div
-            style={{
-              flex: 1,
-              overflowX: "auto",
-              display: "flex",
-              gap: 5,
-              alignItems: "center",
-            }}
-          >
-            {slides.map((s, i) => (
-              <FilmThumb
-                key={s.id}
-                slide={s}
-                idx={i}
-                active={i === active}
-                onSelect={(i) => {
-                  setActive(i);
-                  setSelectedId(null);
-                }}
-                onDelete={removeSlide}
-              />
-            ))}
-            <button
-              onClick={addSlide}
-              style={{
-                width: 36,
-                height: 64,
-                flexShrink: 0,
-                borderRadius: 6,
-                border: "1px dashed rgba(255,255,255,0.14)",
-                background: "transparent",
-                color: "rgba(255,255,255,0.3)",
-                cursor: "pointer",
-                fontSize: 18,
-              }}
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {tabBar}
-
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
-          {renderTab()}
-        </div>
-
-        {/* Mobile AI bar — shown except when on AI tab */}
-        {activeTab !== "ai" && (
-          <div
-            style={{
-              padding: "10px 14px",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-              background: "rgba(8,12,20,0.98)",
-              display: "flex",
-              gap: 7,
-              flexShrink: 0,
-            }}
-          >
-            <input
-              value={aiCmd}
-              onChange={(e) => setAiCmd(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && runAICommand()}
-              disabled={aiAtLimit}
-              placeholder="AI edit…"
-              style={{
-                flex: 1,
-                padding: "10px 13px",
-                background: "rgba(0,0,0,0.4)",
-                border: "1px solid rgba(220,38,38,0.18)",
-                borderRadius: 9,
-                color: "#fff",
-                fontFamily: "'DM Sans',sans-serif",
-                fontSize: 13,
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={runAICommand}
-              disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 9,
-                border: "none",
-                background: "#dc2626",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {applyingCmd ? "…" : "⚡"}
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── Desktop layout ───────────────────────────────────────────────────────
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        background: "#080C14",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "'DM Sans',sans-serif",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          height: 52,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          flexShrink: 0,
-        }}
-      >
-        {/* Left: branding */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: 20,
-              letterSpacing: "0.05em",
-              color: "#fff",
-            }}
-          >
-            TIKTOK STUDIO
-          </span>
-          <span
-            style={{
-              fontSize: 9,
-              background: "#dc2626",
-              color: "#fff",
-              padding: "2px 6px",
-              borderRadius: 999,
-              fontWeight: 700,
-            }}
-          >
-            V3
-          </span>
-          {/* Format badge */}
-          <span
-            style={{
-              fontSize: 9,
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.4)",
-              padding: "2px 8px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            {currentFormat.icon} {canvasFormat}
-          </span>
-        </div>
-
-        {/* Right: undo/redo + export + close */}
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {/* Undo */}
-          <button
-            onClick={undo}
-            disabled={historyIdx.current <= 0}
-            title="Undo (Ctrl+Z)"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "transparent",
-              color:
-                historyIdx.current > 0
-                  ? "rgba(255,255,255,0.6)"
-                  : "rgba(255,255,255,0.15)",
-              cursor: historyIdx.current > 0 ? "pointer" : "default",
-              fontSize: 14,
-            }}
-          >
-            ↩
-          </button>
-          {/* Redo */}
-          <button
-            onClick={redo}
-            disabled={historyIdx.current >= history.current.length - 1}
-            title="Redo (Ctrl+Y)"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "transparent",
-              color:
-                historyIdx.current < history.current.length - 1
-                  ? "rgba(255,255,255,0.6)"
-                  : "rgba(255,255,255,0.15)",
-              cursor:
-                historyIdx.current < history.current.length - 1
-                  ? "pointer"
-                  : "default",
-              fontSize: 14,
-            }}
-          >
-            ↪
-          </button>
-
-          <button
-            onClick={() => saveSingle(active)}
-            disabled={dlIdx === active}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "transparent",
-              color: "rgba(255,255,255,0.65)",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            ↓ Save slide
-          </button>
-          <button
-            onClick={saveAll}
-            disabled={downloading}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "none",
-              background: "#dc2626",
-              color: "#fff",
-              cursor: downloading ? "wait" : "pointer",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {downloading ? "Exporting…" : "Export all"}
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 16,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Film strip sidebar */}
-        <div
-          style={{
-            width: 56,
-            background: "rgba(0,0,0,0.25)",
-            borderRight: "1px solid rgba(255,255,255,0.05)",
-            display: "flex",
-            flexDirection: "column",
             alignItems: "center",
-            padding: "10px 0",
             gap: 6,
-            overflowY: "auto",
+            padding: "6px 12px",
+            overflowX: "auto",
             flexShrink: 0,
+            borderBottom: "1px solid rgba(255,255,255,0.04)",
+            background: "rgba(0,0,0,0.2)",
           }}
         >
           {slides.map((s, i) => (
@@ -3890,25 +3895,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
           <button
             onClick={addSlide}
             style={{
-              width: 40,
-              height: 40,
-              marginTop: 4,
-              borderRadius: 8,
+              width: 36,
+              height: 64,
+              flexShrink: 0,
+              borderRadius: 6,
               border: "1px dashed rgba(255,255,255,0.14)",
               background: "transparent",
               color: "rgba(255,255,255,0.3)",
               cursor: "pointer",
-              fontSize: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: 18,
             }}
           >
             +
           </button>
         </div>
 
-        {/* Canvas area */}
+        {/* Canvas preview area — full width, dominant */}
         <div
           style={{
             flex: 1,
@@ -3923,8 +3925,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <div
               style={{
                 position: "relative",
-                width: CW * scale,
-                height: CH * scale,
+                width: CW * mobScale,
+                height: CH * mobScale,
               }}
             >
               <ImagePicker
@@ -3935,28 +3937,674 @@ export default function TikTokStudioV3({ listing, onClose }) {
               />
             </div>
           ) : (
-            <CanvasPreview {...previewProps} scale={scale} />
+            <CanvasPreview
+              {...previewProps}
+              scale={mobScale}
+              canvasW={CW}
+              canvasH={CH}
+            />
+          )}
+
+          {/* Sidebar toggle button — floats over canvas */}
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              zIndex: 30,
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "rgba(13,17,23,0.9)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {sidebarOpen ? "✕" : "☰"}
+          </button>
+
+          {/* Prev/Next slide */}
+          {active > 0 && (
+            <button
+              onClick={() => setActive((i) => i - 1)}
+              style={{
+                position: "absolute",
+                left: 6,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: 16,
+                zIndex: 20,
+              }}
+            >
+              ‹
+            </button>
+          )}
+          {active < total - 1 && (
+            <button
+              onClick={() => setActive((i) => i + 1)}
+              style={{
+                position: "absolute",
+                right: sidebarOpen ? 280 : 6,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: 16,
+                zIndex: 20,
+              }}
+            >
+              ›
+            </button>
+          )}
+
+          {/* SIDEBAR */}
+          {sidebarOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 270,
+                background: "#0d1117",
+                borderLeft: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                flexDirection: "column",
+                zIndex: 25,
+                overflowY: "hidden",
+              }}
+            >
+              {tabBar}
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
+                {renderTab()}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Right panel */}
+        {/* AI bar — always at bottom */}
         <div
           style={{
-            width: 320,
-            background: "#0d1117",
-            borderLeft: "1px solid rgba(255,255,255,0.05)",
+            padding: "8px 12px",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(8,12,20,0.97)",
             display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
+            gap: 6,
             flexShrink: 0,
           }}
         >
-          {tabBar}
-          <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-            {renderTab()}
+          <input
+            value={aiCmd}
+            onChange={(e) => setAiCmd(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runAICommand()}
+            disabled={aiAtLimit}
+            placeholder="AI: make price bigger, red accent…"
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              background: "rgba(0,0,0,0.4)",
+              border: "1px solid rgba(220,38,38,0.18)",
+              borderRadius: 8,
+              color: "#fff",
+              fontFamily: "'DM Sans',sans-serif",
+              fontSize: 12,
+              outline: "none",
+            }}
+          />
+          <button
+            onClick={runAICommand}
+            disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
+            style={{
+              padding: "9px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: "#dc2626",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            {applyingCmd ? "…" : "⚡"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout — Canva-style ─────────────────────────────────────────
+  return (
+    <>
+      {/* Backdrop dimmer */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9998,
+          background: "rgba(0,0,0,0.65)",
+        }}
+      />
+
+      {/* Main popup — almost full page, Canva-style */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 14,
+          zIndex: 9999,
+          borderRadius: 16,
+          overflow: "hidden",
+          background: "#080C14",
+          boxShadow:
+            "0 32px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.07)",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: "'DM Sans',sans-serif",
+        }}
+      >
+        {/* ── TOP HEADER ─────────────────────────────────────────── */}
+        <div
+          style={{
+            height: 48,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            flexShrink: 0,
+            background: "#0a0d14",
+          }}
+        >
+          {/* Left: logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: 19,
+                letterSpacing: "0.06em",
+                color: "#fff",
+              }}
+            >
+              TIKTOK STUDIO
+            </span>
+            <span
+              style={{
+                fontSize: 8,
+                background: "#dc2626",
+                color: "#fff",
+                padding: "2px 6px",
+                borderRadius: 999,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+              }}
+            >
+              V3
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.35)",
+                padding: "2px 8px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              {currentFormat.icon} {canvasFormat} · {total} slide
+              {total !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {/* Center: undo/redo */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <button
+              onClick={undo}
+              disabled={historyIdx.current <= 0}
+              title="Undo (Ctrl+Z)"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 7,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "transparent",
+                color:
+                  historyIdx.current > 0
+                    ? "rgba(255,255,255,0.6)"
+                    : "rgba(255,255,255,0.15)",
+                cursor: historyIdx.current > 0 ? "pointer" : "default",
+                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ↩
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIdx.current >= history.current.length - 1}
+              title="Redo (Ctrl+Y)"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 7,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "transparent",
+                color:
+                  historyIdx.current < history.current.length - 1
+                    ? "rgba(255,255,255,0.6)"
+                    : "rgba(255,255,255,0.15)",
+                cursor:
+                  historyIdx.current < history.current.length - 1
+                    ? "pointer"
+                    : "default",
+                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ↪
+            </button>
+          </div>
+
+          {/* Right: actions */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button
+              onClick={() => saveSingle(active)}
+              disabled={dlIdx === active}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "transparent",
+                color: "rgba(255,255,255,0.65)",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              ↓ Save slide
+            </button>
+            <button
+              onClick={saveAll}
+              disabled={downloading}
+              style={{
+                padding: "6px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: "#dc2626",
+                color: "#fff",
+                cursor: downloading ? "wait" : "pointer",
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              {downloading ? "Exporting…" : "Export all"}
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.04)",
+                color: "rgba(255,255,255,0.6)",
+                cursor: "pointer",
+                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* ── BODY ───────────────────────────────────────────────── */}
+        <div
+          style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}
+        >
+          {/* ── LEFT ICON STRIP (54px) ───────────────────────────── */}
+          <div
+            style={{
+              width: 54,
+              background: "#0a0d14",
+              borderRight: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              paddingTop: 8,
+              gap: 2,
+              flexShrink: 0,
+              zIndex: 2,
+            }}
+          >
+            {TABS.map((t) => {
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  title={t.label}
+                  style={{
+                    width: 46,
+                    height: 52,
+                    borderRadius: 10,
+                    border: "none",
+                    background: isActive
+                      ? "rgba(220,38,38,0.12)"
+                      : "transparent",
+                    color: isActive ? "#dc2626" : "rgba(255,255,255,0.35)",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 3,
+                    position: "relative",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {/* Active indicator — left edge accent */}
+                  {isActive && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: -4,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: 3,
+                        height: 24,
+                        borderRadius: "0 3px 3px 0",
+                        background: "#dc2626",
+                      }}
+                    />
+                  )}
+                  <span style={{ fontSize: 17, lineHeight: 1 }}>{t.icon}</span>
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 600,
+                      letterSpacing: "0.03em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {t.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── LEFT PANEL (280px) ───────────────────────────────── */}
+          <div
+            style={{
+              width: 280,
+              background: "#0d1117",
+              borderRight: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {/* Panel header */}
+            <div
+              style={{
+                height: 40,
+                display: "flex",
+                alignItems: "center",
+                padding: "0 16px",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.3)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                {TABS.find((t) => t.id === activeTab)?.label}
+              </span>
+            </div>
+            {/* Panel content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
+              {renderTab()}
+            </div>
+          </div>
+
+          {/* ── CANVAS CENTER AREA ───────────────────────────────── */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              background: "#111827",
+              minWidth: 0,
+            }}
+          >
+            {/* Canvas workspace */}
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                position: "relative",
+                padding: "24px",
+              }}
+            >
+              {showImagePicker ? (
+                <div
+                  style={{
+                    position: "relative",
+                    width: CW * scale,
+                    height: CH * scale,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                  }}
+                >
+                  <ImagePicker
+                    images={rawImages}
+                    current={slide.imageUrl}
+                    onSelect={(url) => patchSlide({ imageUrl: url })}
+                    onClose={() => setShowImagePicker(false)}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    boxShadow:
+                      "0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
+                    borderRadius: 4,
+                    flexShrink: 0,
+                    lineHeight: 0,
+                  }}
+                >
+                  <CanvasPreview
+                    {...previewProps}
+                    scale={scale}
+                    canvasW={CW}
+                    canvasH={CH}
+                  />
+                </div>
+              )}
+
+              {/* Slide nav arrows */}
+              {active > 0 && (
+                <button
+                  onClick={() => setActive((i) => i - 1)}
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "rgba(13,17,23,0.85)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 5,
+                  }}
+                >
+                  ‹
+                </button>
+              )}
+              {active < total - 1 && (
+                <button
+                  onClick={() => setActive((i) => i + 1)}
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "rgba(13,17,23,0.85)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 5,
+                  }}
+                >
+                  ›
+                </button>
+              )}
+
+              {/* Slide counter */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 12,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.25)",
+                  background: "rgba(0,0,0,0.4)",
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              >
+                {active + 1} / {total}
+              </div>
+            </div>
+
+            {/* ── FILM STRIP (bottom) ──────────────────────────── */}
+            <div
+              style={{
+                height: 102,
+                background: "#0a0d14",
+                borderTop: "1px solid rgba(255,255,255,0.05)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "0 16px",
+                overflowX: "auto",
+                flexShrink: 0,
+              }}
+            >
+              {slides.map((s, i) => (
+                <FilmThumb
+                  key={s.id}
+                  slide={s}
+                  idx={i}
+                  active={i === active}
+                  onSelect={(i) => {
+                    setActive(i);
+                    setSelectedId(null);
+                  }}
+                  onDelete={removeSlide}
+                />
+              ))}
+              {/* Duplicate current */}
+              <button
+                onClick={duplicateSlide}
+                title="Duplicate slide"
+                style={{
+                  width: 44,
+                  height: 78,
+                  flexShrink: 0,
+                  borderRadius: 5,
+                  border: "1px dashed rgba(255,255,255,0.1)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>⧉</span>
+                <span style={{ fontSize: 7, opacity: 0.6 }}>DUP</span>
+              </button>
+              {/* Add new slide */}
+              <button
+                onClick={addSlide}
+                title="Add slide"
+                style={{
+                  width: 44,
+                  height: 78,
+                  flexShrink: 0,
+                  borderRadius: 5,
+                  border: "1px dashed rgba(220,38,38,0.25)",
+                  background: "transparent",
+                  color: "rgba(220,38,38,0.45)",
+                  cursor: "pointer",
+                  fontSize: 22,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
