@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import TikTokGenerator from "../components/TikTokGenerator";
+import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
   LogOut,
   Link,
@@ -2090,7 +2090,7 @@ export default function SalesmanPanel() {
 
       {/* TikTok Studio modal */}
       {tiktokListing && (
-        <TikTokGenerator
+        <TikTokStudioV3
           listing={tiktokListing}
           onClose={() => setTiktokListing(null)}
         />

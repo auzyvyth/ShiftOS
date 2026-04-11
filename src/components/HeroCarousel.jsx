@@ -95,13 +95,18 @@ const HC_CSS = `
     left: 0;
     right: 0;
     z-index: 3;
-    padding-top: 72px;
   }
 
   .hc-content-wrap {
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .hc-content-row {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -424,16 +429,11 @@ const HC_CSS = `
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 
-  /* ── Hero search bar — anchored to top, below the floating header ── */
+  /* ── Hero search bar — sits above hero text in content flow ── */
   .hc-search-bar {
-    position: absolute;
-    top: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 4;
     width: 100%;
     max-width: 600px;
-    padding: 0 32px;
+    align-self: center;
   }
   .hc-search-form {
     position: relative;
@@ -491,19 +491,25 @@ const HC_CSS = `
 
   /* Tablet ≤1024px */
   @media (max-width:1024px) {
-    .hc-search-bar { top: 88px; max-width: 480px; padding: 0 24px; }
+    .hc-search-bar { max-width: 480px; }
+    .hc-content-row { gap: 36px; }
     .hc-search-input { font-size: 14px; padding: 13px 50px 13px 42px; }
     .hc-search-btn { width: 34px; height: 34px; border-radius: 8px; }
     .hc-search-btn svg { width: 13px; height: 13px; }
   }
 
-  /* Mobile ≤768px — compact bar, push content-wrap down to clear it */
+  /* Mobile ≤768px — restore absolute bar, dissolve content-row wrapper */
   @media (max-width:768px) {
     .hc-search-bar {
+      position: absolute;
       top: 84px;
+      left: 50%;
+      transform: translateX(-50%);
       padding: 0 20px;
       max-width: 100%;
+      align-self: auto;
     }
+    .hc-content-row { display: contents; }
     .hc-search-input {
       font-size: 13px;
       padding: 11px 44px 11px 36px;
@@ -890,60 +896,87 @@ export default function HeroCarousel({ siteName, waNumber }) {
         {/* Content */}
         <div className="hc-content">
           <div className="hc-content-wrap">
-            {/* 1. Title */}
-            <div className="hc-text">
-              <div key={`c-${animKey}`} className="hc-anim">
-                <div className="hc-eyebrow">
-                  <div className="hc-eyebrow-dot" />
-                  <span className="hc-eyebrow-label">
-                    {badge || "Verified Listing"}
-                  </span>
-                </div>
-                <h1 className="hc-car-name hc-syne">
-                  {s.year && <span className="hc-year-accent">{s.year} </span>}
-                  {s.car_name}
-                </h1>
-                {/* Desktop: meta/price/ctas inline */}
-                <MetaBlock />
-              </div>
-            </div>
-
-            {/* 2. Right image glass card — ALL images stacked ── */}
-            <div className="hc-glass-card">
-              {/* spacer maintains card height */}
-              <img
-                className="hc-card-spacer"
-                src={slides[0]?.image_url}
-                alt=""
-                style={{ visibility: "hidden", display: "block" }}
-              />
-              {slides.map((slide, i) =>
-                slide.image_url ? (
-                  <img
-                    key={`card-${i}`}
-                    src={slide.image_url}
-                    alt={i === idx ? `${slide.car_name} preview` : ""}
-                    className={`hc-card-img${i === idx ? " active" : ""}`}
-                    loading={i === 0 ? "eager" : "lazy"}
-                  />
-                ) : null,
-              )}
-              <div className="hc-trust-badge">
-                <div className="hc-trust-dot" />
-                <span className="hc-trust-text">Verified · No Hidden Fees</span>
-                <CheckCircle
-                  size={11}
-                  style={{
-                    color: "#22c55e",
-                    marginLeft: "auto",
-                    flexShrink: 0,
-                  }}
+            {/* Search bar — above hero text on desktop, absolute on mobile */}
+            <div className="hc-search-bar">
+              <form
+                className="hc-search-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = heroSearch.trim();
+                  if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
+                }}
+              >
+                <Search className="hc-search-icon" />
+                <input
+                  className="hc-search-input"
+                  type="text"
+                  placeholder="Search brand or model…"
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
                 />
-              </div>
+                <button type="submit" className="hc-search-btn" aria-label="Search">
+                  <ArrowRight />
+                </button>
+              </form>
             </div>
 
-            {/* 3. Mobile only: meta + price + CTAs below image */}
-            <MetaBlock extraClass="hc-below-image" />
+            {/* Content row: title + card */}
+            <div className="hc-content-row">
+              {/* 1. Title */}
+              <div className="hc-text">
+                <div key={`c-${animKey}`} className="hc-anim">
+                  <div className="hc-eyebrow">
+                    <div className="hc-eyebrow-dot" />
+                    <span className="hc-eyebrow-label">
+                      {badge || "Verified Listing"}
+                    </span>
+                  </div>
+                  <h1 className="hc-car-name hc-syne">
+                    {s.year && <span className="hc-year-accent">{s.year} </span>}
+                    {s.car_name}
+                  </h1>
+                  {/* Desktop: meta/price/ctas inline */}
+                  <MetaBlock />
+                </div>
+              </div>
+
+              {/* 2. Right image glass card — ALL images stacked ── */}
+              <div className="hc-glass-card">
+                {/* spacer maintains card height */}
+                <img
+                  className="hc-card-spacer"
+                  src={slides[0]?.image_url}
+                  alt=""
+                  style={{ visibility: "hidden", display: "block" }}
+                />
+                {slides.map((slide, i) =>
+                  slide.image_url ? (
+                    <img
+                      key={`card-${i}`}
+                      src={slide.image_url}
+                      alt={i === idx ? `${slide.car_name} preview` : ""}
+                      className={`hc-card-img${i === idx ? " active" : ""}`}
+                      loading={i === 0 ? "eager" : "lazy"}
+                    />
+                  ) : null,
+                )}
+                <div className="hc-trust-badge">
+                  <div className="hc-trust-dot" />
+                  <span className="hc-trust-text">Verified · No Hidden Fees</span>
+                  <CheckCircle
+                    size={11}
+                    style={{
+                      color: "#22c55e",
+                      marginLeft: "auto",
+                      flexShrink: 0,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 3. Mobile only: meta + price + CTAs below image */}
+              <MetaBlock extraClass="hc-below-image" />
+            </div>
           </div>
         </div>
 
@@ -960,30 +993,6 @@ export default function HeroCarousel({ siteName, waNumber }) {
             ))}
           </div>
         )}
-
-        {/* Search bar */}
-        <div className="hc-search-bar">
-          <form
-            className="hc-search-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const q = heroSearch.trim();
-              if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
-            }}
-          >
-            <Search className="hc-search-icon" />
-            <input
-              className="hc-search-input"
-              type="text"
-              placeholder="Search brand or model…"
-              value={heroSearch}
-              onChange={(e) => setHeroSearch(e.target.value)}
-            />
-            <button type="submit" className="hc-search-btn" aria-label="Search">
-              <ArrowRight />
-            </button>
-          </form>
-        </div>
 
         {/* Nav arrows */}
         {slides.length > 1 && (
