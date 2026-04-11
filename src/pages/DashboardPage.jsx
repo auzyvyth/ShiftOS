@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
-import TikTokGenerator from "../components/TikTokGenerator";
+import TikTokStudioV3 from "../components/TikTokStudioV3";
 import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
@@ -5727,7 +5727,7 @@ export default function DashboardPage() {
       )}
 
       {tiktokListing && (
-        <TikTokGenerator
+        <TikTokStudioV3
           listing={tiktokListing}
           onClose={() => setTiktokListing(null)}
         />
