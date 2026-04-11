@@ -273,7 +273,6 @@ const STYLE_PRESETS = [
 const SLIDE_TEMPLATES = [
   { id: "hype", label: "Hype", icon: "🔥" },
   { id: "hero-hook", label: "Hook", icon: "⚡" },
-  { id: "specs-breakdown", label: "Specs", icon: "📋" },
   { id: "pricing", label: "Pricing", icon: "💰" },
   { id: "cta", label: "CTA", icon: "📲" },
   { id: "story", label: "Story", icon: "✨" },
@@ -432,15 +431,7 @@ function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
   });
 
   if (!images.length) return [makeSlide(null, "hype")];
-  const tpls = [
-    "hype",
-    "story",
-    "specs-breakdown",
-    "pricing",
-    "cta",
-    "minimal",
-    "hype",
-  ];
+  const tpls = ["hype", "story", "pricing", "cta", "minimal", "hype", "hype"];
   return images.slice(0, 7).map((img, i) => makeSlide(img, tpls[i] || "hype"));
 }
 
@@ -580,26 +571,28 @@ async function renderToCanvas(
     }
   }
 
-  // Overlay gradient
+  // Overlay gradient — scaled by overlayOpacity so preview and export match
   const overlayGrad = theme.overlayGradient || "standard";
+  const op = theme.overlayOpacity ?? 0.45;
+  const gc = (a) => `rgba(6,9,16,${Math.min(1, (a * op) / 0.45).toFixed(3)})`;
   if (overlayGrad !== "none") {
     let gradFill;
     if (overlayGrad === "standard") {
       gradFill = ctx.createLinearGradient(0, 0, 0, H);
-      gradFill.addColorStop(0, "rgba(6,9,16,0.95)");
-      gradFill.addColorStop(0.28, "rgba(6,9,16,0.08)");
-      gradFill.addColorStop(0.52, "rgba(6,9,16,0.05)");
-      gradFill.addColorStop(0.66, "rgba(6,9,16,0.82)");
-      gradFill.addColorStop(1, "rgba(6,9,16,1)");
+      gradFill.addColorStop(0, gc(0.95));
+      gradFill.addColorStop(0.28, gc(0.08));
+      gradFill.addColorStop(0.52, gc(0.05));
+      gradFill.addColorStop(0.66, gc(0.82));
+      gradFill.addColorStop(1, gc(1.0));
     } else if (overlayGrad === "top") {
       gradFill = ctx.createLinearGradient(0, 0, 0, H);
-      gradFill.addColorStop(0, "rgba(6,9,16,0.98)");
-      gradFill.addColorStop(0.55, "rgba(6,9,16,0.04)");
+      gradFill.addColorStop(0, gc(0.98));
+      gradFill.addColorStop(0.55, gc(0.04));
       gradFill.addColorStop(1, "rgba(6,9,16,0)");
     } else if (overlayGrad === "bottom") {
       gradFill = ctx.createLinearGradient(0, H, 0, 0);
-      gradFill.addColorStop(0, "rgba(6,9,16,0.98)");
-      gradFill.addColorStop(0.55, "rgba(6,9,16,0.04)");
+      gradFill.addColorStop(0, gc(0.98));
+      gradFill.addColorStop(0.55, gc(0.04));
       gradFill.addColorStop(1, "rgba(6,9,16,0)");
     }
     if (gradFill) {
@@ -617,6 +610,8 @@ async function renderToCanvas(
 
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
+    // Watermark element is handled separately via theme below — skip here
+    if (el.id === "watermark") continue;
 
     // Badge type
     if (el.type === "badge") {
@@ -664,116 +659,99 @@ async function renderToCanvas(
     ctx.shadowBlur = 0;
     ctx.restore();
   }
+
+  // Render theme watermark (matches preview overlay)
+  if (theme.watermarkText) {
+    ctx.save();
+    ctx.globalAlpha = theme.watermarkOpacity ?? 0.14;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = `400 22px ${fstack}`;
+    const isRight = !theme.watermarkPos || theme.watermarkPos.includes("right");
+    const isBottom = theme.watermarkPos?.includes("bottom");
+    ctx.textAlign = isRight ? "right" : "left";
+    ctx.textBaseline = "top";
+    const wmx = isRight ? W - 60 : 60;
+    const wmy = isBottom ? H - 80 : 60;
+    ctx.fillText(theme.watermarkText, wmx, wmy);
+    ctx.restore();
+  }
+
+  // Render theme logo
+  if (theme.logoUrl) {
+    const logoImg = await loadImage(theme.logoUrl);
+    if (logoImg) {
+      const sz = theme.logoSize || 80;
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(logoImg, W - 60 - sz, H - 180 - sz, sz, sz);
+      ctx.restore();
+    }
+  }
 }
 
-// ─── CanvasElement ────────────────────────────────────────────────────────────
+// ─── CanvasElement ─────────────────────────────────────────────────────────────
+// Pure rendering only — no selection visuals. SelectionOverlay handles all that.
 function CanvasElement({
   el,
   scale,
-  selected,
   highlighted,
   fontStack,
   onSelect,
   onStartDrag,
-  onStartResize,
-  onStartRotate,
   onDoubleClick,
 }) {
   if (!el.visible) return null;
 
-  // Clean handle style — circular, minimal (shared by both badge and text branches)
-  const H = Math.max(4, 5 / scale);
-  const hBase = {
+  const sharedStyle = {
     position: "absolute",
-    width: H,
-    height: H,
-    background: "#fff",
-    border: `${1.5 / scale}px solid rgba(220,38,38,0.7)`,
-    borderRadius: "50%",
-    boxSizing: "border-box",
-    zIndex: 2,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+    left: el.x * scale,
+    top: el.y * scale,
+    opacity: el.opacity ?? 1,
+    transform: `rotate(${el.rotation || 0}deg)`,
+    transformOrigin: "center",
+    cursor: el.locked ? "default" : "pointer",
+    userSelect: "none",
+    animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
   };
 
-  // Badge type — render as pill
+  const handlers = {
+    onClick: (e) => {
+      e.stopPropagation();
+      onSelect(el.id);
+    },
+    onMouseDown: (e) => {
+      if (el.locked) return;
+      e.stopPropagation();
+      onStartDrag(e, el.id);
+    },
+    onTouchStart: (e) => {
+      if (el.locked) return;
+      e.stopPropagation();
+      onStartDrag(e, el.id);
+    },
+    onDoubleClick: () => !el.locked && onDoubleClick(el.id),
+  };
+
   if (el.type === "badge") {
     return (
       <div
         data-el-id={el.id}
         style={{
-          position: "absolute",
-          left: el.x * scale,
-          top: el.y * scale,
+          ...sharedStyle,
           background: el.bgColor || el.color || "#dc2626",
           color: "#fff",
           fontSize: el.fontSize * scale,
           fontWeight: el.fontWeight,
+          fontFamily: fontStack,
           padding: `${6 * scale}px ${14 * scale}px`,
           borderRadius: 999,
-          opacity: el.opacity ?? 1,
-          transform: `rotate(${el.rotation || 0}deg)`,
-          transformOrigin: "center",
-          cursor: el.locked ? "default" : "pointer",
-          userSelect: "none",
-          zIndex: selected ? 20 : 10,
-          boxShadow: selected
-            ? `0 0 0 ${0.75 / scale}px rgba(255,255,255,0.9), 0 0 0 ${1.5 / scale}px rgba(220,38,38,0.35)`
-            : "none",
           whiteSpace: "nowrap",
-          animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
+          zIndex: 10,
+          lineHeight: 1.3,
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(el.id);
-        }}
-        onMouseDown={(e) => {
-          if (el.locked) return;
-          e.stopPropagation();
-          onStartDrag(e, el.id);
-        }}
-        onTouchStart={(e) => {
-          if (el.locked) return;
-          e.stopPropagation();
-          onStartDrag(e, el.id);
-        }}
-        onDoubleClick={() => !el.locked && onDoubleClick(el.id)}
+        {...handlers}
       >
         {el.content}
-        {selected && !el.locked && (
-          <>
-            {[
-              {
-                pos: "nw",
-                s: { top: -H / 2, left: -H / 2, cursor: "nw-resize" },
-              },
-              {
-                pos: "ne",
-                s: { top: -H / 2, right: -H / 2, cursor: "ne-resize" },
-              },
-              {
-                pos: "sw",
-                s: { bottom: -H / 2, left: -H / 2, cursor: "sw-resize" },
-              },
-              {
-                pos: "se",
-                s: { bottom: -H / 2, right: -H / 2, cursor: "se-resize" },
-              },
-            ].map(({ pos, s }) => (
-              <div
-                key={pos}
-                style={{ ...hBase, ...s }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  onStartResize(e, el.id, pos);
-                }}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  onStartResize(e, el.id, pos);
-                }}
-              />
-            ))}
-          </>
-        )}
       </div>
     );
   }
@@ -782,265 +760,345 @@ function CanvasElement({
     <div
       data-el-id={el.id}
       style={{
-        position: "absolute",
-        left: el.x * scale,
-        top: el.y * scale,
+        ...sharedStyle,
         fontSize: el.fontSize * scale,
         fontWeight: el.fontWeight,
         fontStyle: el.fontStyle || "normal",
         color: el.color,
-        opacity: el.opacity ?? 1,
-        transform: `rotate(${el.rotation || 0}deg)`,
-        transformOrigin: "center",
         textAlign: el.align,
         fontFamily: fontStack,
         lineHeight: 1.2,
         whiteSpace: "nowrap",
-        cursor: el.locked ? "default" : selected ? "move" : "pointer",
-        userSelect: "none",
-        zIndex: selected ? 20 : 10,
-        boxShadow: selected
-          ? `0 0 0 ${0.75 / scale}px rgba(255,255,255,0.9), 0 0 0 ${1.5 / scale}px rgba(220,38,38,0.35)`
-          : "none",
+        zIndex: 10,
         textShadow: el.shadow
           ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
-        animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
       }}
-      onMouseDown={(e) => {
-        if (el.locked) return;
-        e.stopPropagation();
-        onStartDrag(e, el.id);
-      }}
-      onTouchStart={(e) => {
-        if (el.locked) return;
-        e.stopPropagation();
-        onStartDrag(e, el.id);
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(el.id);
-      }}
-      onDoubleClick={() => !el.locked && onDoubleClick(el.id)}
+      {...handlers}
     >
       {el.content}
-      {selected && !el.locked && (
-        <>
-          {/* Rotate handle */}
-          <div
-            style={{
-              position: "absolute",
-              top: -(H * 2.8),
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: H,
-              height: H,
-              background: "#fff",
-              border: `${1.5 / scale}px solid rgba(220,38,38,0.7)`,
-              borderRadius: "50%",
-              cursor: "grab",
-              zIndex: 3,
-              boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              onStartRotate(e, el.id);
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              onStartRotate(e, el.id);
-            }}
-          />
-          {/* Connector line — subtle */}
-          <div
-            style={{
-              position: "absolute",
-              top: -(H * 1.8),
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 1 / scale,
-              height: H * 1.8,
-              background: "rgba(255,255,255,0.3)",
-            }}
-          />
-          {/* Corner resize handles */}
-          {[
-            {
-              pos: "nw",
-              s: { top: -H / 2, left: -H / 2, cursor: "nw-resize" },
-            },
-            {
-              pos: "ne",
-              s: { top: -H / 2, right: -H / 2, cursor: "ne-resize" },
-            },
-            {
-              pos: "sw",
-              s: { bottom: -H / 2, left: -H / 2, cursor: "sw-resize" },
-            },
-            {
-              pos: "se",
-              s: { bottom: -H / 2, right: -H / 2, cursor: "se-resize" },
-            },
-          ].map(({ pos, s }) => (
-            <div
-              key={pos}
-              style={{ ...hBase, ...s }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                onStartResize(e, el.id, pos);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                onStartResize(e, el.id, pos);
-              }}
-            />
-          ))}
-        </>
-      )}
     </div>
   );
 }
 
-// ─── ElementToolbar ───────────────────────────────────────────────────────────
-function ElementToolbar({
+// ─── SelectionOverlay ──────────────────────────────────────────────────────────
+// Separate bounding-box overlay — matches how Canva/Figma/tldraw work.
+// Measures the actual rendered element via getBoundingClientRect so the box
+// is always pixel-perfect regardless of text length, rotation, or fontSize.
+function SelectionOverlay({
+  elId,
   el,
-  scale,
-  canvasW,
+  canvasInnerRef,
+  onStartResize,
+  onStartRotate,
   onUpdate,
   onDuplicate,
   onDelete,
 }) {
-  if (!el) return null;
-  const left = Math.max(0, Math.min(el.x * scale, canvasW - 240));
-  const top = Math.max(4, el.y * scale - 46);
+  const [bounds, setBounds] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!canvasInnerRef?.current || !elId) {
+      setBounds(null);
+      return;
+    }
+    const measure = () => {
+      const container = canvasInnerRef.current;
+      const div = container?.querySelector(`[data-el-id="${elId}"]`);
+      if (!div || !container) {
+        setBounds(null);
+        return;
+      }
+      const cRect = container.getBoundingClientRect();
+      const eRect = div.getBoundingClientRect();
+      setBounds({
+        left: eRect.left - cRect.left,
+        top: eRect.top - cRect.top,
+        width: eRect.width,
+        height: eRect.height,
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    const container = canvasInnerRef.current;
+    const div = container?.querySelector(`[data-el-id="${elId}"]`);
+    if (div) ro.observe(div);
+    // Also re-measure on animation frame to catch position changes during drag
+    let raf;
+    const loop = () => {
+      measure();
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [elId, canvasInnerRef, el]);
+
+  if (!bounds || el?.locked) return null;
+
+  const PAD = 4;
+  const H = 8; // handle square size
+  const HALF = H / 2;
+
+  const handleBase = {
+    position: "absolute",
+    width: H,
+    height: H,
+    background: "#ffffff",
+    border: "1.5px solid #dc2626",
+    borderRadius: 2,
+    boxSizing: "border-box",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+    pointerEvents: "all",
+    zIndex: 3,
+  };
+
+  const corners = [
+    { pos: "nw", style: { top: -HALF, left: -HALF, cursor: "nw-resize" } },
+    { pos: "ne", style: { top: -HALF, right: -HALF, cursor: "ne-resize" } },
+    { pos: "sw", style: { bottom: -HALF, left: -HALF, cursor: "sw-resize" } },
+    { pos: "se", style: { bottom: -HALF, right: -HALF, cursor: "se-resize" } },
+  ];
+
   return (
     <div
       style={{
         position: "absolute",
-        top,
-        left,
-        display: "flex",
-        alignItems: "center",
-        gap: 3,
+        left: bounds.left - PAD,
+        top: bounds.top - PAD,
+        width: bounds.width + PAD * 2,
+        height: bounds.height + PAD * 2,
+        pointerEvents: "none",
         zIndex: 50,
-        background: "rgba(13,17,23,0.97)",
-        border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 8,
-        padding: "3px 6px",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
-        pointerEvents: "all",
       }}
     >
-      <label title="Color" style={{ display: "flex", cursor: "pointer" }}>
+      {/* 1px clean selection border */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          border: "1.5px solid rgba(255,255,255,0.88)",
+          borderRadius: 2,
+          boxSizing: "border-box",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Corner resize handles */}
+      {corners.map(({ pos, style }) => (
+        <div
+          key={pos}
+          style={{ ...handleBase, ...style }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            onStartResize(e, elId, pos);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            onStartResize(e, elId, pos);
+          }}
+        />
+      ))}
+
+      {/* Rotate handle — above top-center */}
+      <div
+        style={{
+          position: "absolute",
+          top: -(30 + HALF),
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          pointerEvents: "all",
+          cursor: "grab",
+          gap: 0,
+          zIndex: 4,
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          onStartRotate(e, elId);
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          onStartRotate(e, elId);
+        }}
+      >
         <div
           style={{
-            width: 20,
-            height: 20,
-            borderRadius: 4,
-            background: el.color,
-            border: "1px solid rgba(255,255,255,0.2)",
-            overflow: "hidden",
-            position: "relative",
+            width: 1.5,
+            height: 18,
+            background: "rgba(255,255,255,0.45)",
+          }}
+        />
+        <div
+          style={{
+            width: H + 2,
+            height: H + 2,
+            borderRadius: "50%",
+            background: "#fff",
+            border: "1.5px solid #dc2626",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 9,
+            color: "#dc2626",
+            lineHeight: 1,
+            fontWeight: 700,
           }}
         >
-          <input
-            type="color"
-            value={el.color || "#ffffff"}
-            onChange={(e) => onUpdate({ color: e.target.value })}
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: 0,
-              cursor: "pointer",
-              width: "100%",
-              height: "100%",
-            }}
-          />
+          ↻
         </div>
-      </label>
-      <TBSep />
-      <TBBtn
-        title="Bold"
-        active={el.fontWeight === "800" || el.fontWeight === "700"}
-        onClick={() =>
-          onUpdate({ fontWeight: el.fontWeight === "800" ? "400" : "800" })
-        }
+      </div>
+
+      {/* Floating mini toolbar — above the rotate handle */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "100%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          marginBottom: 38,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          pointerEvents: "all",
+          background: "rgba(10,13,20,0.97)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 9,
+          padding: "3px 5px",
+          boxShadow: "0 6px 24px rgba(0,0,0,0.55)",
+          whiteSpace: "nowrap",
+          zIndex: 5,
+        }}
       >
-        <b style={{ fontSize: 11 }}>B</b>
-      </TBBtn>
-      <TBBtn
-        title="Align"
-        onClick={() =>
-          onUpdate({
-            align:
-              el.align === "left"
-                ? "center"
-                : el.align === "center"
-                  ? "right"
-                  : "left",
-          })
-        }
-      >
-        <span style={{ fontSize: 9 }}>
-          {el.align === "left" ? "◀" : el.align === "center" ? "■" : "▶"}
-        </span>
-      </TBBtn>
-      <TBSep />
-      <TBBtn
-        title="Toggle visibility"
-        onClick={() => onUpdate({ visible: !el.visible })}
-      >
-        <span style={{ fontSize: 10 }}>{el.visible ? "👁" : "○"}</span>
-      </TBBtn>
-      <TBBtn title="Duplicate" onClick={onDuplicate}>
-        <span style={{ fontSize: 10 }}>⧉</span>
-      </TBBtn>
-      <TBBtn title="Delete" danger onClick={onDelete}>
-        <span style={{ fontSize: 10 }}>✕</span>
-      </TBBtn>
+        {/* Bold */}
+        <MiniBtn
+          active={el?.fontWeight >= "700"}
+          onClick={() =>
+            onUpdate({ fontWeight: el?.fontWeight >= "700" ? "400" : "700" })
+          }
+          title="Bold"
+        >
+          <b>B</b>
+        </MiniBtn>
+        {/* Italic */}
+        <MiniBtn
+          active={el?.fontStyle === "italic"}
+          onClick={() =>
+            onUpdate({
+              fontStyle: el?.fontStyle === "italic" ? "normal" : "italic",
+            })
+          }
+          title="Italic"
+        >
+          <i>I</i>
+        </MiniBtn>
+        <MiniSep />
+        {/* Align */}
+        {[
+          ["left", "◀"],
+          ["center", "■"],
+          ["right", "▶"],
+        ].map(([a, icon]) => (
+          <MiniBtn
+            key={a}
+            active={el?.align === a}
+            onClick={() => onUpdate({ align: a })}
+            title={`Align ${a}`}
+          >
+            <span style={{ fontSize: 8 }}>{icon}</span>
+          </MiniBtn>
+        ))}
+        <MiniSep />
+        {/* Color swatch */}
+        <label title="Color" style={{ display: "flex", cursor: "pointer" }}>
+          <div
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              background: el?.color || "#fff",
+              border: "1px solid rgba(255,255,255,0.25)",
+              overflow: "hidden",
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            <input
+              type="color"
+              value={el?.color || "#ffffff"}
+              onChange={(e) => onUpdate({ color: e.target.value })}
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: 0,
+                cursor: "pointer",
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          </div>
+        </label>
+        <MiniSep />
+        {/* Duplicate */}
+        <MiniBtn onClick={onDuplicate} title="Duplicate">
+          ⧉
+        </MiniBtn>
+        {/* Delete */}
+        <MiniBtn danger onClick={onDelete} title="Delete">
+          ✕
+        </MiniBtn>
+      </div>
     </div>
   );
 }
-function TBSep() {
-  return (
-    <div
-      style={{
-        width: 1,
-        height: 16,
-        background: "rgba(255,255,255,0.1)",
-        margin: "0 2px",
-      }}
-    />
-  );
-}
-function TBBtn({ children, onClick, active, danger, title }) {
+
+function MiniBtn({ children, onClick, active, danger, title }) {
   return (
     <button
       onClick={onClick}
       title={title}
       style={{
-        width: 24,
-        height: 24,
+        width: 22,
+        height: 22,
         border: "none",
-        borderRadius: 4,
+        borderRadius: 5,
         cursor: "pointer",
         background: active
-          ? "rgba(220,38,38,0.25)"
+          ? "rgba(220,38,38,0.2)"
           : danger
-            ? "rgba(239,68,68,0.12)"
+            ? "rgba(239,68,68,0.1)"
             : "transparent",
         color: danger
           ? "#f87171"
           : active
             ? "#dc2626"
-            : "rgba(255,255,255,0.65)",
+            : "rgba(255,255,255,0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        fontSize: 10,
+        fontFamily: "inherit",
       }}
     >
       {children}
     </button>
+  );
+}
+function MiniSep() {
+  return (
+    <div
+      style={{
+        width: 1,
+        height: 14,
+        background: "rgba(255,255,255,0.1)",
+        margin: "0 1px",
+      }}
+    />
   );
 }
 
@@ -1115,6 +1173,13 @@ function CanvasPreview({
   onDeleteSelected,
   innerRef,
 }) {
+  // Ref forwarding trick: we need innerRef for SelectionOverlay measurement
+  const localRef = React.useRef(null);
+  const combinedRef = (node) => {
+    localRef.current = node;
+    if (typeof innerRef === "function") innerRef(node);
+    else if (innerRef) innerRef.current = node;
+  };
   const acc = theme.accentColor || "#dc2626";
   const CW = canvasW || CANVAS_W;
   const CH = canvasH || CANVAS_H;
@@ -1133,7 +1198,7 @@ function CanvasPreview({
 
   return (
     <div
-      ref={innerRef}
+      ref={combinedRef}
       onClick={onDeselectAll}
       style={{
         position: "relative",
@@ -1345,19 +1410,32 @@ function CanvasPreview({
                 <CanvasElement
                   el={el}
                   scale={scale}
-                  selected={selectedId === el.id}
                   highlighted={(highlightIds || []).includes(el.id)}
                   fontStack={fontStack}
                   onSelect={onSelectElement}
                   onStartDrag={onStartDrag}
-                  onStartResize={onStartResize}
-                  onStartRotate={onStartRotate}
                   onDoubleClick={onDoubleClickElement}
                 />
               )}
             </React.Fragment>
           ))}
       </div>
+
+      {/* Selection overlay — separate from elements, measures actual DOM bounds */}
+      {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+        <SelectionOverlay
+          elId={selectedId}
+          el={selectedEl}
+          canvasInnerRef={localRef}
+          onStartResize={onStartResize}
+          onStartRotate={onStartRotate}
+          onUpdate={onUpdateSelected}
+          onDuplicate={onDuplicateSelected}
+          onDelete={onDeleteSelected}
+        />
+      )}
+
+      {/* Floating toolbar REMOVED — replaced by SelectionOverlay mini-toolbar above */}
 
       {/* Watermark overlay — rendered from theme for accuracy */}
       {theme.watermarkText && (
@@ -1384,18 +1462,6 @@ function CanvasPreview({
         >
           {theme.watermarkText}
         </div>
-      )}
-
-      {/* Floating toolbar */}
-      {selectedEl && selectedId && !editingId && (
-        <ElementToolbar
-          el={selectedEl}
-          scale={scale}
-          canvasW={W}
-          onUpdate={onUpdateSelected}
-          onDuplicate={onDuplicateSelected}
-          onDelete={onDeleteSelected}
-        />
       )}
     </div>
   );
@@ -2343,17 +2409,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           price: priceStr || "Price on Request",
           stats: [condLabel, mileage].filter(Boolean).join(" · "),
         },
-        "specs-breakdown": {
-          hook: `Full specs breakdown 📋`,
-          headline:
-            [`${year} ${brand} ${model}`, variant]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || "Your Car",
-          price:
-            featureList || [trans, fuel, mileage].filter(Boolean).join(" · "),
-          stats: [condLabel, mileage, trans, fuel].filter(Boolean).join(" · "),
-        },
+
         pricing: {
           hook: `Best deal in Malaysia 💰`,
           headline: priceStr || "Price on Request",
