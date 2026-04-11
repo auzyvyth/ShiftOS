@@ -555,23 +555,44 @@ async function renderBackground(
   if (slide.imageUrl) {
     const img = await loadImage(slide.imageUrl);
     if (img) {
-      // Blurred background fill
+      // Blurred background — cover fill (no black bars)
       ctx.save();
-      ctx.filter = `blur(${theme.blurIntensity ?? 18}px) brightness(0.4)`;
-      ctx.drawImage(img, 0, 0, W, H);
+      ctx.filter = `blur(${theme.blurIntensity ?? 18}px) brightness(0.35)`;
+      const bAr = img.naturalWidth / img.naturalHeight;
+      const cAr = W / H;
+      let bw, bh, bx, by;
+      if (bAr > cAr) {
+        bh = H;
+        bw = H * bAr;
+        bx = (W - bw) / 2;
+        by = 0;
+      } else {
+        bw = W;
+        bh = W / bAr;
+        bx = 0;
+        by = (H - bh) / 2;
+      }
+      ctx.drawImage(img, bx, by, bw, bh);
       ctx.restore();
 
-      // Main image — contain within canvas, centred
+      // Main image — cover fill so photo always fills the entire frame
       ctx.save();
       const ar = img.naturalWidth / img.naturalHeight;
-      let dw = W,
-        dh = W / ar;
-      if (dh > H) {
+      const car = W / H;
+      let dw, dh, dx, dy;
+      if (ar > car) {
         dh = H;
         dw = H * ar;
+        dx = (W - dw) / 2;
+        dy = 0;
+      } else {
+        dw = W;
+        dh = W / ar;
+        dx = 0;
+        dy = (H - dh) / 2;
       }
       ctx.globalAlpha = 0.92;
-      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      ctx.drawImage(img, dx, dy, dw, dh);
       ctx.restore();
     }
   }
@@ -1770,6 +1791,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [isMobile, setIsMobile] = useState(false);
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
+  const [savedDesigns, setSavedDesigns] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("ttsv3_designs") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [designName, setDesignName] = useState("");
   const [cmdHistory, setCmdHistory] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("ttsv3_ai_history") || "[]");
@@ -1888,12 +1917,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
       if (vw < 768) {
         setScale(Math.min(((vw - 20) * 0.9) / CW, (vh - 210) / CH, 1));
       } else {
-        // Canva layout: 28px inset + 54px icon strip + 280px panel + 80px canvas padding
-        const usableW = vw - 28 - 54 - 280 - 80;
-        // 28px inset + 48px header + 110px film strip + 60px canvas padding
-        const usableH = vh - 28 - 48 - 110 - 60;
+        // popup inset(28) + icon(54) + panel(280) + side-padding(56)
+        const usableW = vw - 28 - 54 - 280 - 56;
+        // popup inset(28) + header(48) + filmstrip(102) + top+bottom padding(52)
+        const usableH = vh - 28 - 48 - 102 - 52;
         setScale(
-          Math.min(Math.max(usableW, 100) / CW, Math.max(usableH, 100) / CH, 1),
+          Math.min(
+            Math.max(usableW, 100) / CW,
+            Math.max(usableH, 100) / CH,
+            0.98,
+          ),
         );
       }
     };
@@ -3639,6 +3672,61 @@ export default function TikTokStudioV3({ listing, onClose }) {
     </div>
   );
 
+  // ── Save / load design ───────────────────────────────────────────────────
+  const saveDesign = useCallback(async () => {
+    // Generate a small thumbnail from the current background canvas
+    let thumb = null;
+    try {
+      const thumbCanvas = document.createElement("canvas");
+      thumbCanvas.width = 108;
+      thumbCanvas.height = 192;
+      await renderBackground(thumbCanvas, slide, theme, font, 108, 192);
+      thumb = thumbCanvas.toDataURL("image/jpeg", 0.6);
+    } catch {}
+
+    const name =
+      designName.trim() ||
+      `${listing?.brand || "Design"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    const entry = {
+      id: uid(),
+      name,
+      thumb,
+      theme: { ...theme },
+      font,
+      elements: JSON.parse(JSON.stringify(slide?.elements || [])),
+      format: canvasFormat,
+      savedAt: Date.now(),
+    };
+    const updated = [entry, ...savedDesigns].slice(0, 24);
+    setSavedDesigns(updated);
+    localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    setDesignName("");
+  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing]);
+
+  const loadDesign = useCallback((d) => {
+    setTheme(d.theme);
+    setFont(d.font);
+    if (d.format) setCanvasFormat(d.format);
+    if (d.elements?.length) {
+      setSlides((ss) =>
+        ss.map((s) => ({
+          ...s,
+          elements: d.elements.map((e) => ({ ...e, id: uid() })),
+        })),
+      );
+    }
+    setActiveTab("slide");
+  }, []);
+
+  const deleteDesign = useCallback(
+    (id) => {
+      const updated = savedDesigns.filter((d) => d.id !== id);
+      setSavedDesigns(updated);
+      localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    },
+    [savedDesigns],
+  );
+
   // ── Tab bar + routing ────────────────────────────────────────────────────
   const TABS = [
     { id: "slide", label: "Slides", icon: "⊞" },
@@ -3646,7 +3734,207 @@ export default function TikTokStudioV3({ listing, onClose }) {
     { id: "brand", label: "Brand", icon: "✺" },
     { id: "badges", label: "Badges", icon: "⬟" },
     { id: "ai", label: "AI", icon: "⚡" },
+    { id: "library", label: "Library", icon: "🗂" },
   ];
+
+  // ── Library Panel ────────────────────────────────────────────────────────
+  const LibraryPanel = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionHead label="Save current design" />
+      <input
+        value={designName}
+        onChange={(e) => setDesignName(e.target.value)}
+        placeholder="Name this design (optional)"
+        style={{
+          width: "100%",
+          padding: "8px 10px",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 8,
+          color: "#fff",
+          fontFamily: "'DM Sans',sans-serif",
+          fontSize: 12,
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+        onFocus={(e) => (e.target.style.borderColor = "rgba(220,38,38,0.45)")}
+        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+      />
+      <button
+        onClick={saveDesign}
+        style={{
+          width: "100%",
+          padding: "10px 0",
+          borderRadius: 9,
+          border: "none",
+          background: "#dc2626",
+          color: "#fff",
+          fontWeight: 700,
+          cursor: "pointer",
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+        }}
+      >
+        💾 Save theme + layout
+      </button>
+
+      {savedDesigns.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "32px 0",
+            color: "rgba(255,255,255,0.2)",
+            fontSize: 11,
+          }}
+        >
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🗂</div>
+          No saved designs yet
+        </div>
+      ) : (
+        <>
+          <SectionHead
+            label={`${savedDesigns.length} saved design${savedDesigns.length !== 1 ? "s" : ""}`}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {savedDesigns.map((d) => (
+              <div
+                key={d.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 10,
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                }}
+                onClick={() => loadDesign(d)}
+              >
+                {/* Thumbnail */}
+                <div
+                  style={{
+                    width: 32,
+                    height: 57,
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    background: d.theme?.bgColor || "#060910",
+                    position: "relative",
+                  }}
+                >
+                  {d.thumb && (
+                    <img
+                      src={d.thumb}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  )}
+                  {/* Accent color dot */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 2,
+                      right: 2,
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: d.theme?.accentColor || "#dc2626",
+                    }}
+                  />
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.8)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {d.name}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 9,
+                      color: "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    {new Date(d.savedAt).toLocaleDateString()} ·{" "}
+                    {d.elements?.length || 0} elements ·{" "}
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: d.theme?.accentColor || "#dc2626",
+                        verticalAlign: "middle",
+                      }}
+                    />
+                  </p>
+                </div>
+
+                {/* Apply + delete */}
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      loadDesign(d);
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(220,38,38,0.3)",
+                      background: "rgba(220,38,38,0.1)",
+                      color: "#dc2626",
+                      cursor: "pointer",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteDesign(d.id);
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.25)",
+                      cursor: "pointer",
+                      fontSize: 9,
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   const renderTab = () => {
     if (activeTab === "slide") return SlidePanel();
@@ -3654,6 +3942,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     if (activeTab === "brand") return BrandPanel();
     if (activeTab === "badges") return BadgesPanel();
     if (activeTab === "ai") return AIPanel();
+    if (activeTab === "library") return LibraryPanel();
   };
 
   // tabBar used only in mobile sidebar
