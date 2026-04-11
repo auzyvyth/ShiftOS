@@ -1,60 +1,37 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
-import {
-  X,
-  Download,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  Trash2,
-  Image as ImageIcon,
-  Plus,
-  Palette,
-  Tag,
-  Shield,
-  Layers,
-  RefreshCw,
-  Wand2,
-  Save,
-  Check,
-  Move,
-  RotateCcw,
-  ZoomIn,
-  AlignLeft,
-  AlignCenter,
-  Type,
-  Eye,
-  EyeOff,
-  Copy,
-  ChevronDown,
-  ChevronUp,
-  Zap,
-} from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
 const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const AI_LIMIT = 100;
+
+const SUGGESTION_POOL = [
+  "make price bigger","center the hook","price in red",
+  "rotate headline -5deg","make hook smaller","gold accent",
+  "move price to top","bold the headline","hide watermark",
+  "make it minimal","add hot deal badge","increase opacity",
+];
+
+// ─── CSS animations ───────────────────────────────────────────────────────────
+if (typeof document !== "undefined" && !document.getElementById("ttsv3-styles")) {
+  const s = document.createElement("style");
+  s.id = "ttsv3-styles";
+  s.textContent = `
+    @keyframes ttsv3-spin { to { transform: rotate(360deg); } }
+    @keyframes ttsv3-highlight { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 0 4px rgba(220,38,38,0.7); } }
+  `;
+  document.head.appendChild(s);
+}
 
 // ─── roundRect polyfill ───────────────────────────────────────────────────────
 (function () {
   if (typeof CanvasRenderingContext2D === "undefined") return;
   if (CanvasRenderingContext2D.prototype.roundRect) return;
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-    r = Math.min(
-      typeof r === "number" ? r : 0,
-      Math.abs(w) / 2,
-      Math.abs(h) / 2,
-    );
-    this.moveTo(x + r, y);
-    this.lineTo(x + w - r, y);
+    r = Math.min(typeof r === "number" ? r : 0, Math.abs(w) / 2, Math.abs(h) / 2);
+    this.moveTo(x + r, y); this.lineTo(x + w - r, y);
     this.quadraticCurveTo(x + w, y, x + w, y + r);
     this.lineTo(x + w, y + h - r);
     this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
@@ -66,1775 +43,582 @@ const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
   };
 })();
 
-// ─── JSZip loader ────────────────────────────────────────────────────────────
-let _zip = null;
-function loadJSZip() {
-  if (!_zip)
-    _zip = new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-      s.onload = () => res(window.JSZip);
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  return _zip;
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function parseList(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  try { const p = JSON.parse(val); if (Array.isArray(p)) return p.filter(Boolean); } catch {}
+  return String(val).split(",").map(s => s.trim()).filter(Boolean);
 }
-
+function calcMonthly(price) {
+  if (!price) return null;
+  const loan = price * 0.9;
+  return Math.round((loan + (3.5 / 100) * loan * 9) / (9 * 12));
+}
 function isIOS() {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
-
 const IMG_CACHE = new Map();
 function loadImage(url) {
   if (!url) return Promise.resolve(null);
   if (!IMG_CACHE.has(url)) {
-    const p = new Promise((res) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => res(img);
-      img.onerror = () => res(null);
-      img.src = url;
-    });
-    IMG_CACHE.set(url, p);
+    IMG_CACHE.set(url, new Promise(res => {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      img.onload = () => res(img); img.onerror = () => res(null); img.src = url;
+    }));
   }
   return IMG_CACHE.get(url);
 }
+let _zip = null;
+function loadJSZip() {
+  if (!_zip) _zip = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.onload = () => res(window.JSZip); s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return _zip;
+}
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
-export const FONTS = [
-  {
-    id: "dm",
-    label: "DM Sans",
-    stack: "'DM Sans',sans-serif",
-    weights: ["400", "700", "800"],
-  },
-  {
-    id: "bebas",
-    label: "Bebas Neue",
-    stack: "'Bebas Neue',sans-serif",
-    weights: ["400", "400", "400"],
-  },
-  {
-    id: "oswald",
-    label: "Oswald",
-    stack: "'Oswald',sans-serif",
-    weights: ["400", "600", "700"],
-  },
-  {
-    id: "montserrat",
-    label: "Montserrat",
-    stack: "'Montserrat',sans-serif",
-    weights: ["400", "700", "800"],
-  },
-  {
-    id: "anton",
-    label: "Anton",
-    stack: "'Anton',sans-serif",
-    weights: ["400", "400", "400"],
-  },
-  {
-    id: "barlow",
-    label: "Barlow Condensed",
-    stack: "'Barlow Condensed',sans-serif",
-    weights: ["400", "600", "700"],
-  },
-  {
-    id: "russo",
-    label: "Russo One",
-    stack: "'Russo One',sans-serif",
-    weights: ["400", "400", "400"],
-  },
-  {
-    id: "raleway",
-    label: "Raleway",
-    stack: "'Raleway',sans-serif",
-    weights: ["400", "700", "800"],
-  },
+const FONTS = [
+  { id:"dm",         label:"DM Sans",          stack:"'DM Sans',sans-serif",         url:"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800&display=swap" },
+  { id:"bebas",      label:"Bebas Neue",        stack:"'Bebas Neue',sans-serif",       url:"https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" },
+  { id:"oswald",     label:"Oswald",            stack:"'Oswald',sans-serif",           url:"https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" },
+  { id:"montserrat", label:"Montserrat",        stack:"'Montserrat',sans-serif",       url:"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" },
+  { id:"anton",      label:"Anton",             stack:"'Anton',sans-serif",            url:"https://fonts.googleapis.com/css2?family=Anton&display=swap" },
+  { id:"barlow",     label:"Barlow Condensed",  stack:"'Barlow Condensed',sans-serif", url:"https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&display=swap" },
+  { id:"russo",      label:"Russo One",         stack:"'Russo One',sans-serif",        url:"https://fonts.googleapis.com/css2?family=Russo+One&display=swap" },
+  { id:"raleway",    label:"Raleway",           stack:"'Raleway',sans-serif",          url:"https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;800&display=swap" },
 ];
 const GFONTS_LOADED = new Set();
 function ensureFont(fontId) {
   if (GFONTS_LOADED.has(fontId)) return;
   GFONTS_LOADED.add(fontId);
-  const urls = {
-    dm: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800&display=swap",
-    bebas: "https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap",
-    oswald:
-      "https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap",
-    montserrat:
-      "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap",
-    anton: "https://fonts.googleapis.com/css2?family=Anton&display=swap",
-    barlow:
-      "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&display=swap",
-    russo: "https://fonts.googleapis.com/css2?family=Russo+One&display=swap",
-    raleway:
-      "https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;800&display=swap",
-  };
-  if (!urls[fontId]) return;
-  const l = document.createElement("link");
-  l.rel = "stylesheet";
-  l.href = urls[fontId];
+  const f = FONTS.find(f => f.id === fontId);
+  if (!f?.url) return;
+  const l = document.createElement("link"); l.rel = "stylesheet"; l.href = f.url;
   document.head.appendChild(l);
 }
 
 // ─── Style Presets ────────────────────────────────────────────────────────────
 const STYLE_PRESETS = [
-  {
-    id: "dark-luxury",
-    label: "Dark Luxury",
-    preview: ["#0d0d0d", "#c9a84c"],
-    theme: {
-      accentColor: "#c9a84c",
-      bgColor: "#0d0d0d",
-      overlayOpacity: 0.55,
-      textColor: "#ffffff",
-      overlayStyle: "dark",
-    },
-  },
-  {
-    id: "street-red",
-    label: "Street Bold",
-    preview: ["#0a0a0a", "#e53935"],
-    theme: {
-      accentColor: "#e53935",
-      bgColor: "#0a0a0a",
-      overlayOpacity: 0.45,
-      textColor: "#ffffff",
-      overlayStyle: "dark",
-    },
-  },
-  {
-    id: "neon-blue",
-    label: "Neon Blue",
-    preview: ["#020918", "#00d4ff"],
-    theme: {
-      accentColor: "#00d4ff",
-      bgColor: "#020918",
-      overlayOpacity: 0.5,
-      textColor: "#ffffff",
-      overlayStyle: "dark",
-    },
-  },
-  {
-    id: "clean-white",
-    label: "Clean White",
-    preview: ["#f5f5f5", "#1a1a1a"],
-    theme: {
-      accentColor: "#1a1a1a",
-      bgColor: "#f0f0f0",
-      overlayOpacity: 0.3,
-      textColor: "#ffffff",
-      overlayStyle: "light",
-    },
-  },
-  {
-    id: "emerald",
-    label: "Emerald",
-    preview: ["#021a0d", "#00c853"],
-    theme: {
-      accentColor: "#00c853",
-      bgColor: "#021a0d",
-      overlayOpacity: 0.5,
-      textColor: "#ffffff",
-      overlayStyle: "dark",
-    },
-  },
-  {
-    id: "purple-haze",
-    label: "Purple Haze",
-    preview: ["#0d0520", "#8b5cf6"],
-    theme: {
-      accentColor: "#8b5cf6",
-      bgColor: "#0d0520",
-      overlayOpacity: 0.52,
-      textColor: "#ffffff",
-      overlayStyle: "dark",
-    },
-  },
+  { id:"dark-luxury", label:"Dark Luxury", dots:["#0d0d0d","#c9a84c"], theme:{ accentColor:"#c9a84c", bgColor:"#0d0d0d", overlayOpacity:0.55 } },
+  { id:"street-red",  label:"Street Bold", dots:["#0a0a0a","#e53935"], theme:{ accentColor:"#e53935", bgColor:"#0a0a0a", overlayOpacity:0.45 } },
+  { id:"neon-blue",   label:"Neon Blue",   dots:["#020918","#00d4ff"], theme:{ accentColor:"#00d4ff", bgColor:"#020918", overlayOpacity:0.50 } },
+  { id:"clean-white", label:"Clean White", dots:["#f5f5f5","#1a1a1a"], theme:{ accentColor:"#1a1a1a", bgColor:"#f0f0f0", overlayOpacity:0.30 } },
+  { id:"emerald",     label:"Emerald",     dots:["#021a0d","#00c853"], theme:{ accentColor:"#00c853", bgColor:"#021a0d", overlayOpacity:0.50 } },
+  { id:"purple-haze", label:"Purple Haze", dots:["#0d0520","#8b5cf6"], theme:{ accentColor:"#8b5cf6", bgColor:"#0d0520", overlayOpacity:0.52 } },
 ];
 
 // ─── Templates ────────────────────────────────────────────────────────────────
-export const SLIDE_TEMPLATES = [
-  { id: "hype", label: "Hype", desc: "Bold price, full impact", icon: "🔥" },
-  {
-    id: "hero-hook",
-    label: "Hero Hook",
-    desc: "Impact opener with hook",
-    icon: "⚡",
-  },
-  {
-    id: "specs-breakdown",
-    label: "Specs",
-    desc: "Features checklist",
-    icon: "📋",
-  },
-  { id: "pricing", label: "Pricing", desc: "Monthly installment", icon: "💰" },
-  { id: "cta", label: "CTA", desc: "WhatsApp call-to-action", icon: "📲" },
-  { id: "story", label: "Story", desc: "Lifestyle, soft vibe", icon: "✨" },
-  { id: "minimal", label: "Minimal", desc: "Clean, just the car", icon: "🖤" },
+const SLIDE_TEMPLATES = [
+  { id:"hype",            label:"Hype",    icon:"🔥" },
+  { id:"hero-hook",       label:"Hook",    icon:"⚡" },
+  { id:"specs-breakdown", label:"Specs",   icon:"📋" },
+  { id:"pricing",         label:"Pricing", icon:"💰" },
+  { id:"cta",             label:"CTA",     icon:"📲" },
+  { id:"story",           label:"Story",   icon:"✨" },
+  { id:"minimal",         label:"Minimal", icon:"🖤" },
 ];
-
-// ─── Utils ────────────────────────────────────────────────────────────────────
-function parseList(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.filter(Boolean);
-  try {
-    const p = JSON.parse(val);
-    if (Array.isArray(p)) return p.filter(Boolean);
-  } catch (e) {}
-  return String(val)
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-function calcMonthly(price) {
-  if (!price) return null;
-  const loan = price * 0.9;
-  const interest = (3.5 / 100) * loan * 9;
-  return Math.round((loan + interest) / (9 * 12));
-}
 
 // ─── Default Theme ────────────────────────────────────────────────────────────
 const DEFAULT_THEME = {
-  accentColor: "#e53935",
-  bgColor: "#060910",
-  overlayOpacity: 0.45,
-  overlayStyle: "dark",
-  textColor: "#ffffff",
-  headlineSize: 72,
-  priceSize: 52,
-  statsSize: 32,
-  hookSize: 38,
-  textAlign: "left",
-  textPosition: "bottom",
-  watermarkText: "",
-  watermarkOpacity: 0.14,
-  watermarkPos: "top-right",
-  logoUrl: null,
-  logoSize: 80,
-  showAccentBar: true,
-  priceTagStyle: "plain",
-  showConditionBadge: false,
-  showHotDealBadge: false,
-  customBadgeText: "",
-  badgeColor: "#e53935",
+  accentColor:"#dc2626", bgColor:"#060910", overlayOpacity:0.45,
+  overlayStyle:"dark", textColor:"#ffffff",
+  watermarkText:"", watermarkOpacity:0.14, watermarkPos:"top-right",
+  logoUrl:null, logoSize:80, showAccentBar:true,
+  showConditionBadge:false, showHotDealBadge:false,
+  customBadgeText:"", badgeColor:"#dc2626",
 };
 
+// ─── Default elements builder ─────────────────────────────────────────────────
+function buildDefaultElements(listing, theme, dealerName) {
+  const brand = listing?.brand || "", model = listing?.model || "";
+  const variant = listing?.variant || "", year = String(listing?.year || "");
+  const price = listing?.selling_price || listing?.price;
+  const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
+  const mileage = listing?.mileage ? Number(listing.mileage).toLocaleString() + " km" : "";
+  const trans = listing?.transmission || "", fuel = listing?.fuel_type || listing?.fuel || "";
+  const acc = theme?.accentColor || "#dc2626";
+  return [
+    { id:"hook",      type:"text",
+      content:"POV: You just found your dream car 🚗",
+      x:540, y:110, fontSize:38, fontWeight:"600",
+      color:"#ffffff", rotation:0, opacity:0.92, align:"center", visible:true, locked:false },
+    { id:"headline",  type:"text",
+      content:[`${year} ${brand} ${model}`, variant].filter(Boolean).join(" ").trim() || "Your Car",
+      x:60, y:1480, fontSize:72, fontWeight:"800",
+      color:"#ffffff", rotation:0, opacity:1, align:"left", visible:true, locked:false },
+    { id:"price",     type:"text",
+      content:priceStr || "Price on Request",
+      x:60, y:1590, fontSize:52, fontWeight:"700",
+      color:acc, rotation:0, opacity:1, align:"left", visible:true, locked:false },
+    { id:"stats",     type:"text",
+      content:[mileage, trans, fuel].filter(Boolean).join(" · ") || "",
+      x:60, y:1665, fontSize:30, fontWeight:"400",
+      color:"rgba(255,255,255,0.65)", rotation:0, opacity:1, align:"left", visible:true, locked:false },
+    { id:"watermark", type:"text",
+      content:dealerName || "XDrive",
+      x:1020, y:72, fontSize:24, fontWeight:"400",
+      color:"rgba(255,255,255,0.35)", rotation:0, opacity:0.5, align:"right", visible:true, locked:true },
+  ];
+}
+
 // ─── Build default slides ─────────────────────────────────────────────────────
-function buildDefaultSlides(
-  listing,
-  images,
-  features,
-  specs,
-  dealerName,
-  whatsapp,
-) {
-  const brand = listing?.brand || "",
-    model = listing?.model || "",
-    variant = listing?.variant || "";
+function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
+  const brand = listing?.brand || "", model = listing?.model || "", variant = listing?.variant || "";
   const year = String(listing?.year || "");
   const price = listing?.selling_price || listing?.price;
   const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
-  const mileage = listing?.mileage
-    ? Number(listing.mileage).toLocaleString() + " km"
-    : "";
+  const mileage = listing?.mileage ? Number(listing.mileage).toLocaleString() + " km" : "";
   const cond = listing?.condition || "";
-  const condLabel =
-    { new: "Brand New", recon: "Recon", used: "Used" }[cond] || cond;
-  const trans = listing?.transmission || "",
-    fuel = listing?.fuel_type || listing?.fuel || "";
-  const engine = listing?.engine_cc ? listing.engine_cc + "cc" : "";
-  const carName =
-    `${brand} ${model}${variant ? " " + variant : ""} ${year}`.trim();
+  const condLabel = { new:"Brand New", recon:"Recon", used:"Used" }[cond] || cond;
   const statsLine = [year, condLabel, mileage].filter(Boolean).join(" · ");
-  const monthly = calcMonthly(price);
-  const img0 = images[0] || null;
-  const fallbackFeatures =
-    features.length > 0
-      ? features
-      : [engine, trans, fuel, mileage, condLabel].filter(Boolean);
-
-  const tplCycle = [
-    "hype",
-    "story",
-    "specs-breakdown",
-    "hype",
-    "minimal",
-    "pricing",
-    "hype",
-    "story",
-    "specs-breakdown",
-    "hype",
-    "minimal",
-  ];
-  const base = {
-    condition: cond,
-    fitMode: "auto",
-    enabled: true,
-    carName,
-    priceStr,
-    priceNum: price || 0,
-    statsLine,
-    monthly,
-    features: fallbackFeatures,
-    dealerName,
-    whatsapp,
-  };
-
-  const structured = [
-    {
-      id: 0,
-      index: 0,
-      imageUrl: img0,
-      template: "hero-hook",
-      hookText: `${brand} ${model} — Best Deal In Malaysia 🔥`.trim(),
-      ...base,
-    },
-    {
-      id: 1,
-      index: 1,
-      imageUrl: images[1] || img0,
-      template: "specs-breakdown",
-      hookText: `Why Choose The ${model}?`,
-      ...base,
-    },
-    {
-      id: 2,
-      index: 2,
-      imageUrl: images[2] || img0,
-      template: "pricing",
-      hookText: "Monthly Installment",
-      ...base,
-    },
-    {
-      id: 3,
-      index: 3,
-      imageUrl: images[3] || img0,
-      template: "cta",
-      hookText: "Contact Us Today",
-      ...base,
-    },
-  ];
-
-  const imageSlides = images.slice(0, 11).map((img, i) => ({
-    id: i + 4,
-    index: i + 4,
-    imageUrl: img,
-    template: tplCycle[i % tplCycle.length],
-    hookText: "",
-    ...base,
-  }));
-
-  return [...structured, ...imageSlides];
+  const makeSlide = (img, template) => ({
+    id:uid(), imageUrl:img || null, template,
+    carName:`${year} ${brand} ${model}${variant ? " " + variant : ""}`.trim(),
+    priceStr, priceNum:price || 0, statsLine, hookText:"",
+    features, condition:cond, dealerName:dealerName || "", whatsapp:whatsapp || "",
+    monthly:calcMonthly(price),
+    elements:buildDefaultElements(listing, DEFAULT_THEME, dealerName),
+  });
+  if (!images.length) return [makeSlide(null, "hype")];
+  const tpls = ["hype","story","specs-breakdown","pricing","cta","minimal","hype"];
+  return images.slice(0, 7).map((img, i) => makeSlide(img, tpls[i] || "hype"));
 }
 
-// ─── AI Text Generation ───────────────────────────────────────────────────────
-async function generateSlideText(listing, language, hookText, slideCount) {
+// ─── AI: rate limiting via Supabase ai_usage ──────────────────────────────────
+async function getAIUsage(dealerId) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase.from("ai_usage")
+    .select("count").eq("dealer_id", dealerId).eq("date", today).maybeSingle();
+  return data?.count || 0;
+}
+async function incrementAIUsage(dealerId) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase.from("ai_usage")
+    .select("id,count").eq("dealer_id", dealerId).eq("date", today).maybeSingle();
+  if (data) {
+    await supabase.from("ai_usage").update({ count:data.count + 1 }).eq("id", data.id);
+    return data.count + 1;
+  }
+  await supabase.from("ai_usage").insert({ dealer_id:dealerId, date:today, count:1 });
+  return 1;
+}
+
+// ─── AI: canvas edit command ──────────────────────────────────────────────────
+async function applyAICommand(command, elements, theme, selectedElementId) {
+  const system = `You are a canvas design AI for TikTok car listing slides. Canvas is 1080x1920px. Return ONLY valid JSON: {"elements":[only changed elements with id + changed fields],"theme":{only changed theme fields}}. Never return unchanged items. x:0-1080, y:0-1920, fontSize:20-200.`;
+  const res = await fetch(`${SERVER_URL}/ai/messages`, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      model:"claude-sonnet-4-6", max_tokens:800, system,
+      messages:[{ role:"user", content:JSON.stringify({ command, elements, selectedElementId, theme }) }],
+    }),
+  });
+  if (!res.ok) throw new Error("AI error");
+  const data = await res.json();
+  const text = Array.isArray(data?.content) ? data.content.map(b => b.text || "").join("") : "";
+  return JSON.parse(text.replace(/```json|```/g, "").trim());
+}
+
+// ─── AI: generate slide copy ──────────────────────────────────────────────────
+async function generateSlidesCopy(listing, slideCount, language, hookText) {
   const price = listing?.selling_price || listing?.price;
-  const priceStr = price
-    ? "RM " + Number(price).toLocaleString()
-    : "Ask for Price";
-  const lang =
-    language === "bm"
-      ? "Bahasa Malaysia (casual dealer tone)"
-      : "English (punchy Malaysian car market)";
-  const prompt = `Malaysian car dealer TikTok slide copywriter. Write ${slideCount} slides.
+  const priceStr = price ? "RM " + Number(price).toLocaleString() : "N/A";
+  const lang = language === "bm"
+    ? "Bahasa Malaysia (casual dealer tone)"
+    : "English (punchy Malaysian car market)";
+  const prompt = `Malaysian car dealer TikTok copywriter. Write ${slideCount} slides.
 CAR: ${listing?.year || ""} ${listing?.brand || ""} ${listing?.model || ""} ${listing?.variant || ""}
 Price: ${priceStr} | Mileage: ${listing?.mileage ? Number(listing.mileage).toLocaleString() + " km" : "N/A"}
-Condition: ${listing?.condition || ""} | Trans: ${listing?.transmission || ""} | Fuel: ${listing?.fuel_type || listing?.fuel || ""}
-Engine: ${listing?.engine_cc ? listing.engine_cc + "cc" : ""} | Location: ${listing?.state || "Malaysia"}
-${hookText ? 'Seller hook: "' + hookText + '"' : ""}
-Language: ${lang}
-Each slide: hookText (punchy, max 6 words, ALL CAPS), carName (full car name), priceStr (price string), statsLine (year · condition · mileage).
-Return ONLY valid JSON array: [{"hookText":"...","carName":"...","priceStr":"...","statsLine":"..."},...]`;
-
+Condition: ${listing?.condition || ""} | Trans: ${listing?.transmission || ""} | Fuel: ${listing?.fuel_type || ""}
+${hookText ? 'Hook: "' + hookText + '"' : ""} | Language: ${lang}
+Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car title"}]`;
   const res = await fetch(`${SERVER_URL}/ai/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000,
+      messages:[{ role:"user", content:prompt }] }),
   });
   if (!res.ok) throw new Error("API error");
   const data = await res.json();
-  let text = Array.isArray(data?.content)
-    ? data.content.map((b) => b.text || "").join("")
-    : data?.completion || "";
+  const text = Array.isArray(data?.content) ? data.content.map(b => b.text || "").join("") : "";
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
-// ─── AI Canvas Command ────────────────────────────────────────────────────────
-async function applyAICommand(command, currentSlide, currentTheme) {
-  const prompt = `You are a design AI for a TikTok car listing slide editor. Apply the user's command to the slide JSON.
-
-CURRENT SLIDE STATE:
-${JSON.stringify({ slide: currentSlide, theme: currentTheme }, null, 2)}
-
-USER COMMAND: "${command}"
-
-Apply the command and return ONLY a valid JSON object with two keys:
-- "slide": updated slide fields (only fields that changed)
-- "theme": updated theme fields (only fields that changed)
-
-Examples of commands and what to change:
-- "make price bigger" → theme.priceSize increases by 10-16
-- "move hook to bottom" → slide.hookPosition = "bottom"
-- "change accent to blue" → theme.accentColor = "#2196f3"
-- "make it minimal" → apply minimal template changes
-- "price red" → theme.priceColor = "#e53935"
-- "bigger headline" → theme.headlineSize increases
-- "center text" → theme.textAlign = "center"
-- "make hook smaller" → theme.hookSize decreases
-- "remove hook" → slide.hookText = ""
-- "add hot deal badge" → theme.showHotDealBadge = true
-
-Return ONLY the JSON, no explanation.`;
-
-  const res = await fetch(`${SERVER_URL}/ai/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error("API error");
-  const data = await res.json();
-  let text = Array.isArray(data?.content)
-    ? data.content.map((b) => b.text || "").join("")
-    : "";
-  return JSON.parse(text.replace(/```json|```/g, "").trim());
-}
-
-// ─── Canvas Export Renderer ───────────────────────────────────────────────────
+// ─── Export: render slide to HTML5 canvas ─────────────────────────────────────
 async function renderToCanvas(canvas, slide, theme, fontId = "dm") {
   const ctx = canvas.getContext("2d");
-  const W = canvas.width,
-    H = canvas.height;
+  const W = canvas.width, H = canvas.height;
+  const fontObj = FONTS.find(f => f.id === fontId) || FONTS[0];
   ctx.clearRect(0, 0, W, H);
-  const fontDef = FONTS.find((f) => f.id === fontId) || FONTS[0];
-  const stack = fontDef.stack;
-  const img = await loadImage(slide.imageUrl);
-  const logoImg = theme.logoUrl ? await loadImage(theme.logoUrl) : null;
-  const acc = theme.accentColor || "#e53935";
-  const pad = Math.round((64 * W) / 1080);
-
-  // Background
   ctx.fillStyle = theme.bgColor || "#060910";
   ctx.fillRect(0, 0, W, H);
-
-  if (img) {
-    // Blurred BG
-    ctx.save();
-    try {
-      ctx.filter = "blur(18px) brightness(0.4)";
-    } catch (e) {}
-    const sc = Math.max(W / img.width, H / img.height);
-    ctx.drawImage(
-      img,
-      (W - img.width * sc) / 2,
-      (H - img.height * sc) / 2,
-      img.width * sc,
-      img.height * sc,
-    );
-    ctx.restore();
-    // Car image fitted to full width
-    const fitH = img.height * (W / img.width);
-    ctx.globalAlpha = 0.92;
-    ctx.drawImage(img, 0, (H - fitH) / 2, W, fitH);
-    ctx.globalAlpha = 1;
-  }
-
-  // Overlay gradient
-  const ov = ctx.createLinearGradient(0, 0, 0, H);
-  ov.addColorStop(0, "rgba(6,9,16,0.95)");
-  ov.addColorStop(0.28, "rgba(6,9,16,0.08)");
-  ov.addColorStop(0.52, "rgba(6,9,16,0.05)");
-  ov.addColorStop(0.66, "rgba(6,9,16,0.82)");
-  ov.addColorStop(1, "rgba(6,9,16,1)");
-  ctx.fillStyle = ov;
-  ctx.fillRect(0, 0, W, H);
-
-  // Accent bar
-  if (theme.showAccentBar !== false) {
-    ctx.fillStyle = acc;
-    ctx.fillRect(0, 0, W, Math.round((6 * H) / 1920));
-  }
-
-  function draw(text, x, y, weight, size, colour, maxW, align = "left") {
-    if (!text) return;
-    ctx.save();
-    ctx.font = `${weight} ${size}px ${stack}`;
-    ctx.textAlign = align;
-    ctx.textBaseline = "top";
-    while (ctx.measureText(text).width > maxW && size > 14) {
-      size -= 2;
-      ctx.font = `${weight} ${size}px ${stack}`;
-    }
-    ctx.lineWidth = Math.max(size * 0.07, 2.5);
-    ctx.strokeStyle = "rgba(0,0,0,0.9)";
-    ctx.lineJoin = "round";
-    ctx.strokeText(text, x, y);
-    ctx.fillStyle = colour;
-    ctx.fillText(text, x, y);
-    ctx.restore();
-  }
-
-  const tpl = slide.template || "hype";
-  const isCenter = theme.textAlign === "center";
-  const xBase = isCenter ? W / 2 : pad;
-  const align = isCenter ? "center" : "left";
-  const maxW = isCenter ? W * 0.9 : W - pad * 2;
-
-  // Hook text
-  if (slide.hookText) {
-    const hSz = Math.round(((theme.hookSize || 38) * W) / 1080);
-    const hookY = Math.round(H * 0.07);
-    draw(
-      slide.hookText.toUpperCase(),
-      W / 2,
-      hookY,
-      "800",
-      hSz,
-      "#fff",
-      W * 0.85,
-      "center",
-    );
-    ctx.save();
-    ctx.font = `800 ${hSz}px ${stack}`;
-    const hw = Math.min(
-      ctx.measureText(slide.hookText.toUpperCase()).width,
-      W * 0.85,
-    );
-    ctx.fillStyle = acc;
-    ctx.fillRect((W - hw) / 2, hookY + hSz + 6, hw, 4);
-    ctx.restore();
-  }
-
-  // Watermark
-  if (theme.watermarkText) {
-    ctx.save();
-    ctx.font = `600 ${Math.round((26 * W) / 1080)}px ${stack}`;
-    ctx.fillStyle = `rgba(255,255,255,${theme.watermarkOpacity || 0.14})`;
-    const iR = (theme.watermarkPos || "top-right").includes("right");
-    const iB = (theme.watermarkPos || "top-right").includes("bottom");
-    ctx.textAlign = iR ? "right" : "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(
-      theme.watermarkText.toUpperCase(),
-      iR ? W - Math.round((52 * W) / 1080) : Math.round((52 * W) / 1080),
-      iB ? H - Math.round((80 * H) / 1920) : Math.round((52 * H) / 1920),
-    );
-    ctx.restore();
-  }
-
-  // Logo
-  if (logoImg) {
-    const maxLH = Math.round(((theme.logoSize || 80) * H) / 1920);
-    const lScale = maxLH / logoImg.height,
-      lw = logoImg.width * lScale,
-      lh = logoImg.height * lScale;
-    const iR = (theme.watermarkPos || "top-right").includes("right");
-    const iB = (theme.watermarkPos || "top-right").includes("bottom");
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.drawImage(
-      logoImg,
-      iR ? W - Math.round((48 * W) / 1080) - lw : Math.round((48 * W) / 1080),
-      iB ? H - Math.round((60 * H) / 1920) - lh : Math.round((40 * H) / 1920),
-      lw,
-      lh,
-    );
-    ctx.restore();
-  }
-
-  // Badges
-  if (theme.showConditionBadge && slide.condition) {
-    const badgeTxt =
-      { new: "BRAND NEW", recon: "RECON", used: "USED" }[slide.condition] ||
-      slide.condition.toUpperCase();
-    const bSz = Math.round((24 * W) / 1080),
-      bPad = Math.round((20 * W) / 1080);
-    ctx.save();
-    ctx.font = `800 ${bSz}px ${stack}`;
-    const bw = ctx.measureText(badgeTxt).width + bPad * 2;
-    ctx.fillStyle = acc;
-    ctx.beginPath();
-    ctx.roundRect(pad, Math.round(H * 0.55), bw, bSz + bPad, 6);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(badgeTxt, pad + bPad, Math.round(H * 0.55) + bPad / 2);
-    ctx.restore();
-  }
-  if (theme.showHotDealBadge) {
-    const bSz = Math.round((24 * W) / 1080),
-      bPad = Math.round((20 * W) / 1080);
-    ctx.save();
-    ctx.font = `800 ${bSz}px ${stack}`;
-    const bTxt = "🔥 HOT DEAL";
-    const bw = ctx.measureText(bTxt).width + bPad * 2;
-    ctx.fillStyle = "#ff6b00";
-    ctx.beginPath();
-    ctx.roundRect(
-      pad + (theme.showConditionBadge ? 200 : 0),
-      Math.round(H * 0.55),
-      bw,
-      bSz + bPad,
-      6,
-    );
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(
-      bTxt,
-      pad + (theme.showConditionBadge ? 200 : 0) + bPad,
-      Math.round(H * 0.55) + bPad / 2,
-    );
-    ctx.restore();
-  }
-  if (theme.customBadgeText) {
-    const bSz = Math.round((24 * W) / 1080),
-      bPad = Math.round((20 * W) / 1080);
-    ctx.save();
-    ctx.font = `800 ${bSz}px ${stack}`;
-    const bw =
-      ctx.measureText(theme.customBadgeText.toUpperCase()).width + bPad * 2;
-    ctx.fillStyle = theme.badgeColor || acc;
-    ctx.beginPath();
-    ctx.roundRect(W - pad - bw, Math.round(H * 0.55), bw, bSz + bPad, 6);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(
-      theme.customBadgeText.toUpperCase(),
-      W - pad - bw + bPad,
-      Math.round(H * 0.55) + bPad / 2,
-    );
-    ctx.restore();
-  }
-
-  const hSz = Math.round(((theme.headlineSize || 72) * W) / 1080);
-  const pSz = Math.round(((theme.priceSize || 52) * W) / 1080);
-  const sSz = Math.round(((theme.statsSize || 32) * W) / 1080);
-
-  if (tpl === "specs-breakdown") {
-    const feats = Array.isArray(slide.features)
-      ? slide.features.slice(0, 6)
-      : [];
-    draw(
-      slide.carName || "",
-      xBase,
-      H * 0.62,
-      "800",
-      Math.round((52 * W) / 1080),
-      "#fff",
-      maxW,
-      align,
-    );
-    ctx.save();
-    ctx.fillStyle = acc;
-    ctx.fillRect(
-      isCenter ? (W - 100) / 2 : pad,
-      H * 0.62 + Math.round((52 * W) / 1080) + 10,
-      100,
-      3,
-    );
-    ctx.restore();
-    const fSz = Math.round((34 * W) / 1080),
-      fGap = Math.round(fSz * 1.65);
-    let fy = H * 0.62 + Math.round((52 * W) / 1080) + 32;
-    for (let i = 0; i < feats.length && fy < H * 0.93; i++) {
+  if (slide.imageUrl) {
+    const img = await loadImage(slide.imageUrl);
+    if (img) {
+      ctx.save(); ctx.filter = "blur(18px) brightness(0.4)";
+      ctx.drawImage(img, 0, 0, W, H); ctx.restore();
       ctx.save();
-      ctx.fillStyle = acc + "33";
-      ctx.beginPath();
-      ctx.arc(pad + fSz * 0.5, fy + fSz * 0.5, fSz * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = acc;
-      ctx.font = `700 ${Math.round(fSz * 0.55)}px ${stack}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("✓", pad + fSz * 0.5, fy + fSz * 0.5);
+      const ar = img.naturalWidth / img.naturalHeight;
+      let dw = W, dh = W / ar;
+      if (dh > H) { dh = H; dw = H * ar; }
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
       ctx.restore();
-      draw(
-        feats[i],
-        pad + fSz * 1.3,
-        fy,
-        "600",
-        fSz,
-        "rgba(255,255,255,0.88)",
-        W - pad * 2 - fSz * 1.4,
-      );
-      fy += fGap;
     }
-  } else if (tpl === "pricing") {
-    const monthly = slide.monthly || calcMonthly(slide.priceNum);
-    const mStr = monthly
-      ? `RM ${Number(monthly).toLocaleString()}`
-      : slide.priceStr || "";
-    draw(
-      "MONTHLY PAYMENT",
-      W / 2,
-      H * 0.4,
-      "700",
-      Math.round((28 * W) / 1080),
-      acc,
-      W * 0.9,
-      "center",
-    );
-    draw(
-      mStr,
-      W / 2,
-      H * 0.48,
-      "800",
-      Math.round((100 * W) / 1080),
-      "#fff",
-      W * 0.9,
-      "center",
-    );
-    draw(
-      "/month",
-      W / 2,
-      H * 0.48 + Math.round((100 * W) / 1080) + 10,
-      "400",
-      Math.round((28 * W) / 1080),
-      "rgba(255,255,255,0.4)",
-      W * 0.5,
-      "center",
-    );
-    const bxY = H * 0.72,
-      bxH = H * 0.18;
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.beginPath();
-    ctx.roundRect(pad, bxY, W - pad * 2, bxH, 14);
-    ctx.fill();
-    ctx.restore();
-    const downStr = slide.priceNum
-      ? "RM " + Number(slide.priceNum * 0.1).toLocaleString()
-      : "";
-    [
-      { l: "Full Price", v: slide.priceStr || "" },
-      { l: "Down Payment (10%)", v: downStr },
-      { l: "Rate / Tenure", v: "3.5% / 9 Years" },
-    ].forEach(({ l, v }, i) => {
-      const ly = bxY + 40 + i * (Math.round((28 * W) / 1080) + 18);
-      draw(
-        l,
-        pad + 40,
-        ly,
-        "600",
-        Math.round((28 * W) / 1080),
-        "rgba(255,255,255,0.38)",
-        W / 2 - pad,
-      );
-      draw(
-        v,
-        W - pad - 40,
-        ly,
-        "700",
-        Math.round((28 * W) / 1080),
-        "rgba(255,255,255,0.78)",
-        W / 2 - pad,
-        "right",
-      );
-    });
-  } else if (tpl === "cta") {
-    const dnSz = Math.round((52 * W) / 1080);
-    draw(
-      slide.dealerName || theme.watermarkText || "",
-      W / 2,
-      H * 0.66,
-      "800",
-      dnSz,
-      "#fff",
-      W - pad * 2,
-      "center",
-    );
-    draw(
-      slide.carName || "",
-      W / 2,
-      H * 0.66 + dnSz + 16,
-      "600",
-      Math.round((36 * W) / 1080),
-      "rgba(255,255,255,0.5)",
-      W - pad * 2,
-      "center",
-    );
-    const waY = H * 0.79,
-      waH = Math.round((80 * H) / 1920);
-    ctx.save();
-    ctx.fillStyle = acc;
-    ctx.beginPath();
-    ctx.roundRect(pad, waY, W - pad * 2, waH, waH / 2);
-    ctx.fill();
-    ctx.restore();
-    const waStr = slide.whatsapp
-      ? `📲 WhatsApp: ${slide.whatsapp}`
-      : "📲 WhatsApp Us";
-    draw(
-      waStr,
-      W / 2,
-      waY + waH / 2 - Math.round((36 * W) / 1080) / 2,
-      "800",
-      Math.round((36 * W) / 1080),
-      "#fff",
-      W - pad * 2 - 60,
-      "center",
-    );
-    draw(
-      "DM for Test Drive · Best Price Guaranteed",
-      W / 2,
-      H * 0.88,
-      "600",
-      Math.round((26 * W) / 1080),
-      "rgba(255,255,255,0.25)",
-      W - pad * 2,
-      "center",
-    );
-  } else if (tpl === "minimal") {
-    draw(slide.carName || "", xBase, H * 0.8, "800", hSz, "#fff", maxW, align);
-    draw(
-      slide.priceStr || "",
-      xBase,
-      H * 0.8 + hSz + 8,
-      "700",
-      pSz,
-      acc,
-      maxW,
-      align,
-    );
-  } else if (tpl === "story") {
-    // Softer vibe
-    const storySz = Math.round((58 * W) / 1080);
-    draw(
-      slide.carName || "",
-      xBase,
-      H * 0.74,
-      "800",
-      storySz,
-      "#fff",
-      maxW,
-      align,
-    );
-    draw(
-      slide.priceStr || "",
-      xBase,
-      H * 0.74 + storySz + 12,
-      "600",
-      Math.round((42 * W) / 1080),
-      theme.priceColor || acc,
-      maxW,
-      align,
-    );
-    draw(
-      slide.statsLine || "",
-      xBase,
-      H * 0.74 + storySz + Math.round((42 * W) / 1080) + 24,
-      "400",
-      Math.round((30 * W) / 1080),
-      "rgba(255,255,255,0.55)",
-      maxW,
-      align,
-    );
-  } else {
-    // hype / hero-hook / default
-    const bY = H * 0.74;
-    draw(slide.carName || "", xBase, bY, "800", hSz, "#fff", maxW, align);
-    draw(
-      slide.priceStr || "",
-      xBase,
-      bY + hSz + 10,
-      "700",
-      pSz,
-      theme.priceColor || acc,
-      maxW,
-      align,
-    );
-    draw(
-      slide.statsLine || "",
-      xBase,
-      bY + hSz + pSz + 22,
-      "600",
-      sSz,
-      "rgba(255,255,255,0.65)",
-      maxW,
-      align,
-    );
   }
-
-  // Slide number
-  ctx.save();
-  ctx.font = `700 ${Math.round((22 * W) / 1080)}px ${stack}`;
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(
-    String((slide.index ?? 0) + 1).padStart(2, "0"),
-    W - Math.round((48 * W) / 1080),
-    H - Math.round((48 * H) / 1920),
-  );
-  ctx.restore();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, "rgba(6,9,16,0.95)");
+  grad.addColorStop(0.28, "rgba(6,9,16,0.08)");
+  grad.addColorStop(0.52, "rgba(6,9,16,0.05)");
+  grad.addColorStop(0.66, "rgba(6,9,16,0.82)");
+  grad.addColorStop(1, "rgba(6,9,16,1)");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  if (theme.showAccentBar !== false) {
+    ctx.fillStyle = theme.accentColor || "#dc2626"; ctx.fillRect(0, 0, W, 6);
+  }
+  const fstack = fontObj.stack.replace(/'/g, "");
+  for (const el of (slide.elements || [])) {
+    if (!el.visible) continue;
+    ctx.save();
+    ctx.globalAlpha = el.opacity ?? 1;
+    ctx.translate(el.x, el.y);
+    ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
+    ctx.fillStyle = el.color || "#fff";
+    ctx.font = `${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
+    ctx.textAlign = el.align || "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(el.content || "", 0, 0);
+    ctx.restore();
+  }
 }
 
-// ─── Slide Preview (HTML - live preview) ─────────────────────────────────────
-function SlidePreview({ slide, theme, fontId = "dm", animKey }) {
-  const outerRef = useRef(null);
-  const [scale, setScale] = useState(0);
-  const acc = theme.accentColor || "#e53935";
-  const tpl = slide.template || "hype";
-  const monthly = slide.monthly || calcMonthly(slide.priceNum);
-  const mStr = monthly
-    ? `RM ${Number(monthly).toLocaleString()}`
-    : slide.priceStr || "";
-  const feats = Array.isArray(slide.features) ? slide.features.slice(0, 6) : [];
-  const fontDef = FONTS.find((f) => f.id === fontId) || FONTS[0];
-  const fontStack = fontDef.stack;
-  const isCenter = theme.textAlign === "center";
-  const pad = 64;
-
-  useEffect(() => {
-    if (!outerRef.current) return;
-    const obs = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setScale(Math.min(width / CANVAS_W, height / CANVAS_H));
-    });
-    obs.observe(outerRef.current);
-    return () => obs.disconnect();
-  }, []);
-
-  const textX = isCenter ? CANVAS_W / 2 : pad;
-  const textAlign = isCenter ? "center" : "left";
-
-  const hSz = theme.headlineSize || 72;
-  const pSz = theme.priceSize || 52;
-  const sSz = theme.statsSize || 32;
-  const hookSz = theme.hookSize || 38;
-
-  let bottomContent;
-  if (tpl === "specs-breakdown") {
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 130,
-          left: pad,
-          right: pad,
-          zIndex: 5,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 800,
-            color: "#fff",
-            lineHeight: 1.1,
-            marginBottom: 8,
-            textAlign,
-          }}
-        >
-          {slide.carName || ""}
-        </div>
-        <div
-          style={{
-            width: 100,
-            height: 3,
-            background: acc,
-            marginBottom: 28,
-            marginLeft: isCenter ? "auto" : 0,
-            marginRight: isCenter ? "auto" : 0,
-          }}
-        />
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {feats.map((f, i) => (
-            <div
-              key={i}
-              style={{ display: "flex", alignItems: "center", gap: 22 }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: acc + "33",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{ color: acc, fontSize: 20, fontWeight: 700 }}>
-                  ✓
-                </span>
-              </div>
-              <span
-                style={{
-                  fontSize: 34,
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.88)",
-                }}
-              >
-                {f}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  } else if (tpl === "pricing") {
-    const downStr = slide.priceNum
-      ? "RM " + Number(slide.priceNum * 0.1).toLocaleString()
-      : "";
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 60,
-          left: pad,
-          right: pad,
-          zIndex: 5,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: acc,
-            letterSpacing: "0.14em",
-            textAlign: "center",
-            marginBottom: 10,
-          }}
-        >
-          MONTHLY PAYMENT
-        </div>
-        <div
-          style={{
-            fontSize: 110,
-            fontWeight: 800,
-            color: "#fff",
-            lineHeight: 1,
-            textAlign: "center",
-          }}
-        >
-          {mStr}
-        </div>
-        <div
-          style={{
-            fontSize: 30,
-            color: "rgba(255,255,255,0.35)",
-            textAlign: "center",
-            marginBottom: 32,
-          }}
-        >
-          /month
-        </div>
-        <div
-          style={{
-            background: "rgba(0,0,0,0.45)",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.08)",
-            padding: "36px 48px",
-          }}
-        >
-          {[
-            { l: "Full Price", v: slide.priceStr || "" },
-            { l: "Down Payment (10%)", v: downStr },
-            { l: "Rate / Tenure", v: "3.5% / 9 Years" },
-          ].map(({ l, v }, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "16px 0",
-                borderTop: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 28,
-                  color: "rgba(255,255,255,0.38)",
-                  fontWeight: 600,
-                }}
-              >
-                {l}
-              </span>
-              <span
-                style={{
-                  fontSize: 28,
-                  color: "rgba(255,255,255,0.78)",
-                  fontWeight: 700,
-                }}
-              >
-                {v}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  } else if (tpl === "cta") {
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 100,
-          left: pad,
-          right: pad,
-          zIndex: 5,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 800,
-            color: "#fff",
-            textAlign: "center",
-            marginBottom: 16,
-          }}
-        >
-          {slide.dealerName || theme.watermarkText || ""}
-        </div>
-        <div
-          style={{
-            fontSize: 36,
-            color: "rgba(255,255,255,0.45)",
-            textAlign: "center",
-            marginBottom: 44,
-          }}
-        >
-          {slide.carName || ""}
-        </div>
-        <div
-          style={{
-            background: acc,
-            borderRadius: 999,
-            padding: "44px 60px",
-            textAlign: "center",
-            marginBottom: 28,
-          }}
-        >
-          <span style={{ color: "#fff", fontSize: 42, fontWeight: 800 }}>
-            📲 {slide.whatsapp || "WhatsApp Us"}
-          </span>
-        </div>
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: 26,
-            color: "rgba(255,255,255,0.2)",
-          }}
-        >
-          DM for Test Drive · Best Price Guaranteed
-        </div>
-      </div>
-    );
-  } else if (tpl === "minimal") {
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 130,
-          left: isCenter ? 0 : pad,
-          right: isCenter ? 0 : pad,
-          width: isCenter ? "100%" : undefined,
-          zIndex: 5,
-          textAlign,
-        }}
-      >
-        <div
-          style={{
-            fontSize: hSz,
-            fontWeight: 800,
-            color: "#fff",
-            lineHeight: 1.1,
-            marginBottom: 10,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.carName || ""}
-        </div>
-        <div
-          style={{
-            fontSize: pSz,
-            fontWeight: 700,
-            color: theme.priceColor || acc,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.priceStr || ""}
-        </div>
-      </div>
-    );
-  } else if (tpl === "story") {
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 130,
-          left: isCenter ? 0 : pad,
-          right: isCenter ? 0 : pad,
-          width: isCenter ? "100%" : undefined,
-          zIndex: 5,
-          textAlign,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 58,
-            fontWeight: 800,
-            color: "#fff",
-            lineHeight: 1.1,
-            marginBottom: 12,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.carName || ""}
-        </div>
-        <div
-          style={{
-            fontSize: 42,
-            fontWeight: 600,
-            color: theme.priceColor || acc,
-            marginBottom: 12,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.priceStr || ""}
-        </div>
-        <div
-          style={{
-            fontSize: 30,
-            color: "rgba(255,255,255,0.55)",
-            fontWeight: 400,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.statsLine || ""}
-        </div>
-      </div>
-    );
-  } else {
-    // hype / hero-hook / default
-    bottomContent = (
-      <div
-        style={{
-          position: "absolute",
-          bottom: 130,
-          left: isCenter ? 0 : pad,
-          right: isCenter ? 0 : pad,
-          width: isCenter ? "100%" : undefined,
-          zIndex: 5,
-          textAlign,
-        }}
-      >
-        <div
-          style={{
-            fontSize: hSz,
-            fontWeight: 800,
-            color: "#fff",
-            lineHeight: 1.1,
-            marginBottom: 12,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.carName || ""}
-        </div>
-        <div
-          style={{
-            fontSize: pSz,
-            fontWeight: 700,
-            color: theme.priceColor || acc,
-            marginBottom: 12,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {slide.priceStr || ""}
-        </div>
-        <div
-          style={{
-            fontSize: sSz,
-            color: "rgba(255,255,255,0.6)",
-            fontWeight: 600,
-            padding: isCenter ? "0 64px" : 0,
-          }}
-        >
-          {(slide.statsLine || "")
-            .split(" · ")
-            .filter(Boolean)
-            .map((s, i) => (
-              <span key={i}>
-                {i > 0 && (
-                  <span
-                    style={{ color: "rgba(255,255,255,0.2)", margin: "0 8px" }}
-                  >
-                    ·
-                  </span>
-                )}
-                {s}
-              </span>
-            ))}
-        </div>
-      </div>
-    );
-  }
-
+// ─── CanvasElement ────────────────────────────────────────────────────────────
+function CanvasElement({ el, scale, selected, highlighted, fontStack,
+    onSelect, onStartDrag, onStartResize, onStartRotate, onDoubleClick }) {
+  if (!el.visible) return null;
+  const H = Math.max(8, 10 / scale);
+  const hBase = {
+    position:"absolute", width:H, height:H,
+    background:"#dc2626", border:`${2 / scale}px solid #fff`,
+    borderRadius:2, boxSizing:"border-box", zIndex:2,
+  };
   return (
     <div
-      ref={outerRef}
       style={{
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-        position: "relative",
-        background: "#060910",
-        fontFamily: fontStack,
+        position:"absolute",
+        left:el.x * scale,
+        top:el.y * scale,
+        fontSize:el.fontSize * scale,
+        fontWeight:el.fontWeight,
+        color:el.color,
+        opacity:el.opacity ?? 1,
+        transform:`rotate(${el.rotation || 0}deg)`,
+        transformOrigin:"top left",
+        textAlign:el.align,
+        fontFamily:fontStack,
+        lineHeight:1.2,
+        whiteSpace:"nowrap",
+        cursor:el.locked ? "default" : selected ? "move" : "pointer",
+        userSelect:"none",
+        zIndex:selected ? 20 : 10,
+        outline:selected ? `${2 / scale}px solid #dc2626` : "none",
+        outlineOffset:`${3 / scale}px`,
+        animation:highlighted ? "ttsv3-highlight 0.6s ease" : "none",
       }}
+      onMouseDown={e => { if (el.locked) return; e.stopPropagation(); onStartDrag(e, el.id); }}
+      onTouchStart={e => { if (el.locked) return; e.stopPropagation(); onStartDrag(e, el.id); }}
+      onClick={e => { e.stopPropagation(); onSelect(el.id); }}
+      onDoubleClick={() => !el.locked && onDoubleClick(el.id)}
     >
-      {scale > 0 && (
-        <div
-          key={animKey}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: CANVAS_W,
-            height: CANVAS_H,
-            transformOrigin: "top left",
-            transform: `scale(${scale})`,
-            overflow: "hidden",
-            background: theme.bgColor || "#060910",
-          }}
-        >
-          {/* BG blur */}
-          {slide.imageUrl && (
-            <img
-              src={slide.imageUrl}
-              alt=""
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                width: CANVAS_W,
-                height: CANVAS_H,
-                objectFit: "cover",
-                filter: "blur(18px) brightness(0.4)",
-                transform: "scale(1.06)",
-                transformOrigin: "center",
-              }}
-            />
-          )}
-          {/* Car image */}
-          {slide.imageUrl && (
-            <img
-              src={slide.imageUrl}
-              alt=""
-              style={{
-                position: "absolute",
-                left: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: CANVAS_W,
-                height: "auto",
-                objectFit: "contain",
-                opacity: 0.92,
-                zIndex: 1,
-              }}
-            />
-          )}
-          {/* Gradient overlay */}
+      {el.content}
+      {selected && !el.locked && (
+        <>
+          {/* Rotate handle */}
           <div
             style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom,rgba(6,9,16,0.95) 0%,rgba(6,9,16,0.08) 28%,rgba(6,9,16,0.05) 52%,rgba(6,9,16,0.82) 66%,#060910 100%)",
-              zIndex: 2,
+              position:"absolute", top:-(H * 2.8), left:"50%",
+              transform:"translateX(-50%)",
+              width:H, height:H, background:"#dc2626",
+              border:`${2 / scale}px solid #fff`,
+              borderRadius:"50%", cursor:"grab", zIndex:3,
             }}
+            onMouseDown={e => { e.stopPropagation(); onStartRotate(e, el.id); }}
+            onTouchStart={e => { e.stopPropagation(); onStartRotate(e, el.id); }}
           />
-          {/* Accent bar */}
-          {theme.showAccentBar !== false && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 6,
-                background: acc,
-                zIndex: 10,
-              }}
+          <div style={{
+            position:"absolute", top:-(H * 1.8), left:"50%",
+            transform:"translateX(-50%)",
+            width:1 / scale, height:H * 1.8,
+            background:"rgba(220,38,38,0.5)",
+          }} />
+          {/* Corner resize handles */}
+          {[
+            { pos:"nw", s:{ top:-H/2,    left:-H/2,    cursor:"nw-resize" } },
+            { pos:"ne", s:{ top:-H/2,    right:-H/2,   cursor:"ne-resize" } },
+            { pos:"sw", s:{ bottom:-H/2, left:-H/2,    cursor:"sw-resize" } },
+            { pos:"se", s:{ bottom:-H/2, right:-H/2,   cursor:"se-resize" } },
+          ].map(({ pos, s }) => (
+            <div key={pos} style={{ ...hBase, ...s }}
+              onMouseDown={e => { e.stopPropagation(); onStartResize(e, el.id, pos); }}
+              onTouchStart={e => { e.stopPropagation(); onStartResize(e, el.id, pos); }}
             />
-          )}
-          {/* Badges */}
-          {(theme.showConditionBadge ||
-            theme.showHotDealBadge ||
-            theme.customBadgeText) && (
-            <div
-              style={{
-                position: "absolute",
-                top: CANVAS_H * 0.55,
-                left: pad,
-                right: pad,
-                display: "flex",
-                gap: 16,
-                zIndex: 6,
-              }}
-            >
-              {theme.showConditionBadge && slide.condition && (
-                <div
-                  style={{
-                    padding: "10px 20px",
-                    borderRadius: 8,
-                    background: acc,
-                    fontSize: 24,
-                    fontWeight: 800,
-                    color: "#fff",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {{ new: "BRAND NEW", recon: "RECON", used: "USED" }[
-                    slide.condition
-                  ] || slide.condition.toUpperCase()}
-                </div>
-              )}
-              {theme.showHotDealBadge && (
-                <div
-                  style={{
-                    padding: "10px 20px",
-                    borderRadius: 8,
-                    background: "#ff6b00",
-                    fontSize: 24,
-                    fontWeight: 800,
-                    color: "#fff",
-                  }}
-                >
-                  🔥 HOT DEAL
-                </div>
-              )}
-              {theme.customBadgeText && (
-                <div
-                  style={{
-                    padding: "10px 20px",
-                    borderRadius: 8,
-                    background: theme.badgeColor || acc,
-                    fontSize: 24,
-                    fontWeight: 800,
-                    color: "#fff",
-                    marginLeft: "auto",
-                  }}
-                >
-                  {theme.customBadgeText.toUpperCase()}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Hook */}
-          {slide.hookText && (
-            <div
-              style={{
-                position: "absolute",
-                top: 150,
-                left: 0,
-                right: 0,
-                textAlign: "center",
-                padding: "0 80px",
-                zIndex: 5,
-              }}
-            >
-              <div
-                style={{
-                  color: "#fff",
-                  fontSize: hookSz,
-                  fontWeight: 800,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  lineHeight: 1.25,
-                }}
-              >
-                {slide.hookText}
-              </div>
-              <div
-                style={{
-                  width: 120,
-                  height: 4,
-                  background: acc,
-                  margin: "12px auto 0",
-                }}
-              />
-            </div>
-          )}
-          {/* Bottom content */}
-          {bottomContent}
-          {/* Watermark */}
-          {theme.watermarkText && (
-            <div
-              style={{
-                position: "absolute",
-                top: (theme.watermarkPos || "top-right").includes("bottom")
-                  ? undefined
-                  : 52,
-                bottom: (theme.watermarkPos || "top-right").includes("bottom")
-                  ? 80
-                  : undefined,
-                right: (theme.watermarkPos || "top-right").includes("right")
-                  ? 52
-                  : undefined,
-                left: (theme.watermarkPos || "top-right").includes("right")
-                  ? undefined
-                  : 52,
-                fontSize: 26,
-                fontWeight: 700,
-                color: `rgba(255,255,255,${theme.watermarkOpacity || 0.14})`,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                zIndex: 5,
-              }}
-            >
-              {theme.watermarkText}
-            </div>
-          )}
-          {/* Logo */}
-          {theme.logoUrl && (
-            <img
-              src={theme.logoUrl}
-              alt=""
-              style={{
-                position: "absolute",
-                top: (theme.watermarkPos || "top-right").includes("bottom")
-                  ? undefined
-                  : 40,
-                bottom: (theme.watermarkPos || "top-right").includes("bottom")
-                  ? 60
-                  : undefined,
-                right: (theme.watermarkPos || "top-right").includes("right")
-                  ? 52
-                  : undefined,
-                left: (theme.watermarkPos || "top-right").includes("right")
-                  ? undefined
-                  : 52,
-                height: theme.logoSize || 80,
-                objectFit: "contain",
-                opacity: 0.85,
-                zIndex: 5,
-              }}
-            />
-          )}
-          {/* Slide number */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 48,
-              right: 48,
-              fontSize: 22,
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.18)",
-              zIndex: 5,
-            }}
-          >
-            {String((slide.index ?? 0) + 1).padStart(2, "0")}
-          </div>
-        </div>
+          ))}
+        </>
       )}
     </div>
   );
 }
 
-// ─── Thumbnail ────────────────────────────────────────────────────────────────
-const Thumb = React.memo(function Thumb({
-  slide,
-  fontId,
-  theme,
-  isActive,
-  index,
-  onClick,
-  onDelete,
-  showDelete,
-}) {
+// ─── ElementToolbar ───────────────────────────────────────────────────────────
+function ElementToolbar({ el, scale, canvasW, onUpdate, onDuplicate, onDelete }) {
+  if (!el) return null;
+  const left = Math.max(0, Math.min(el.x * scale, canvasW - 240));
+  const top  = Math.max(4, el.y * scale - 46);
   return (
-    <div
-      onClick={onClick}
-      style={{
-        position: "relative",
-        flexShrink: 0,
-        cursor: "pointer",
-        width: 52,
-        height: 92,
-        borderRadius: 8,
-        border: isActive
-          ? "2px solid #e53935"
-          : "2px solid rgba(255,255,255,0.08)",
-        overflow: "hidden",
-        transition: "all 0.15s",
-        transform: isActive ? "scale(1.07)" : "scale(1)",
-        opacity: slide.enabled === false ? 0.3 : 1,
-        boxShadow: isActive ? "0 0 12px rgba(229,57,53,0.4)" : "none",
-      }}
-    >
-      <SlidePreview slide={slide} theme={theme} fontId={fontId} />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "rgba(0,0,0,0.65)",
-          fontSize: 8,
-          fontWeight: 700,
-          color: isActive ? "#ff6b6b" : "rgba(255,255,255,0.4)",
-          textAlign: "center",
-          padding: "2px 0",
-          fontFamily: "'DM Sans',sans-serif",
+    <div style={{
+      position:"absolute", top, left,
+      display:"flex", alignItems:"center", gap:3, zIndex:50,
+      background:"rgba(13,17,23,0.97)", border:"1px solid rgba(255,255,255,0.1)",
+      borderRadius:8, padding:"3px 6px",
+      boxShadow:"0 4px 20px rgba(0,0,0,0.6)", pointerEvents:"all",
+    }}>
+      <label title="Color" style={{ display:"flex", cursor:"pointer" }}>
+        <div style={{
+          width:20, height:20, borderRadius:4, background:el.color,
+          border:"1px solid rgba(255,255,255,0.2)",
+          overflow:"hidden", position:"relative",
+        }}>
+          <input type="color" value={el.color} onChange={e => onUpdate({ color:e.target.value })}
+            style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer", width:"100%", height:"100%" }} />
+        </div>
+      </label>
+      <TBSep />
+      <TBBtn title="Bold" active={el.fontWeight === "800" || el.fontWeight === "700"}
+        onClick={() => onUpdate({ fontWeight:el.fontWeight === "800" ? "400" : "800" })}>
+        <b style={{ fontSize:11 }}>B</b>
+      </TBBtn>
+      <TBBtn title="Align"
+        onClick={() => onUpdate({ align:el.align==="left"?"center":el.align==="center"?"right":"left" })}>
+        <span style={{ fontSize:9 }}>{el.align==="left"?"◀":el.align==="center"?"■":"▶"}</span>
+      </TBBtn>
+      <TBSep />
+      <TBBtn title="Toggle visibility" onClick={() => onUpdate({ visible:!el.visible })}>
+        <span style={{ fontSize:10 }}>{el.visible ? "👁" : "○"}</span>
+      </TBBtn>
+      <TBBtn title="Duplicate" onClick={onDuplicate}>
+        <span style={{ fontSize:10 }}>⧉</span>
+      </TBBtn>
+      <TBBtn title="Delete" danger onClick={onDelete}>
+        <span style={{ fontSize:10 }}>✕</span>
+      </TBBtn>
+    </div>
+  );
+}
+function TBSep() {
+  return <div style={{ width:1, height:16, background:"rgba(255,255,255,0.1)", margin:"0 2px" }} />;
+}
+function TBBtn({ children, onClick, active, danger, title }) {
+  return (
+    <button onClick={onClick} title={title} style={{
+      width:24, height:24, border:"none", borderRadius:4, cursor:"pointer",
+      background:active ? "rgba(220,38,38,0.25)" : danger ? "rgba(239,68,68,0.12)" : "transparent",
+      color:danger ? "#f87171" : active ? "#dc2626" : "rgba(255,255,255,0.65)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+    }}>{children}</button>
+  );
+}
+
+// ─── InlineEditor ─────────────────────────────────────────────────────────────
+function InlineEditor({ el, scale, onCommit, onCancel }) {
+  const [val, setVal] = useState(el.content);
+  return (
+    <div style={{
+      position:"absolute", left:el.x * scale, top:el.y * scale, zIndex:60,
+      transform:`rotate(${el.rotation || 0}deg)`, transformOrigin:"top left",
+    }}>
+      <textarea autoFocus value={val} onChange={e => setVal(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === "Escape") onCancel();
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onCommit(val); }
         }}
-      >
-        {index + 1}
+        onBlur={() => onCommit(val)}
+        style={{
+          fontSize:el.fontSize * scale, fontWeight:el.fontWeight,
+          color:el.color, fontFamily:"inherit",
+          background:"rgba(0,0,0,0.8)", border:"2px solid #dc2626",
+          borderRadius:4, padding:4, outline:"none",
+          resize:"both", minWidth:80, lineHeight:1.2,
+        }} />
+    </div>
+  );
+}
+
+// ─── CanvasPreview ────────────────────────────────────────────────────────────
+function CanvasPreview({ slide, theme, scale, fontStack, selectedId, highlightIds,
+    aiLoading, onSelectElement, onDeselectAll, onStartDrag, onStartResize, onStartRotate,
+    onDoubleClickElement, editingId, onCommitEdit, onCancelEdit,
+    selectedEl, onUpdateSelected, onDuplicateSelected, onDeleteSelected, innerRef }) {
+  const acc = theme.accentColor || "#dc2626";
+  const W = CANVAS_W * scale, H = CANVAS_H * scale;
+  return (
+    <div ref={innerRef} onClick={onDeselectAll}
+      style={{ position:"relative", width:W, height:H, overflow:"hidden", userSelect:"none", flexShrink:0 }}>
+      {/* Background */}
+      <div style={{ position:"absolute", inset:0, background:theme.bgColor || "#060910" }} />
+      {/* Blurred bg + car image */}
+      {slide.imageUrl && <>
+        <img src={slide.imageUrl} alt="" style={{
+          position:"absolute", inset:0, width:"100%", height:"100%",
+          objectFit:"cover", filter:"blur(18px) brightness(0.4)",
+          transform:"scale(1.06)", transformOrigin:"center",
+        }} />
+        <img src={slide.imageUrl} alt="" style={{
+          position:"absolute", left:0, top:"50%",
+          transform:"translateY(-50%)", width:"100%",
+          objectFit:"contain", opacity:0.92, zIndex:1,
+        }} />
+      </>}
+      {/* Gradient */}
+      <div style={{
+        position:"absolute", inset:0, zIndex:2,
+        background:"linear-gradient(to bottom,rgba(6,9,16,0.95) 0%,rgba(6,9,16,0.08) 28%,rgba(6,9,16,0.05) 52%,rgba(6,9,16,0.82) 66%,rgba(6,9,16,1) 100%)",
+      }} />
+      {/* Accent bar */}
+      {theme.showAccentBar !== false &&
+        <div style={{ position:"absolute", top:0, left:0, right:0, height:6 * scale, background:acc, zIndex:5 }} />}
+      {/* Badges */}
+      {(theme.showConditionBadge || theme.showHotDealBadge || theme.customBadgeText) && (
+        <div style={{ position:"absolute", top:CANVAS_H * 0.55 * scale, left:60 * scale, display:"flex", gap:12 * scale, zIndex:6 }}>
+          {theme.showConditionBadge && slide.condition && (
+            <div style={{ padding:`${8*scale}px ${16*scale}px`, borderRadius:6*scale, background:acc, color:"#fff", fontSize:22*scale, fontWeight:700 }}>
+              {{ new:"Brand New", recon:"Recon", used:"Used" }[slide.condition] || slide.condition}
+            </div>
+          )}
+          {theme.showHotDealBadge && (
+            <div style={{ padding:`${8*scale}px ${16*scale}px`, borderRadius:6*scale, background:"#f59e0b", color:"#000", fontSize:22*scale, fontWeight:800 }}>🔥 HOT DEAL</div>
+          )}
+          {theme.customBadgeText && (
+            <div style={{ padding:`${8*scale}px ${16*scale}px`, borderRadius:6*scale, background:theme.badgeColor || acc, color:"#fff", fontSize:22*scale, fontWeight:700 }}>
+              {theme.customBadgeText}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Logo */}
+      {theme.logoUrl && (
+        <img src={theme.logoUrl} alt="" style={{
+          position:"absolute", bottom:180*scale, right:60*scale,
+          width:(theme.logoSize||80)*scale, height:(theme.logoSize||80)*scale,
+          objectFit:"contain", opacity:0.8, zIndex:7,
+        }} />
+      )}
+      {/* AI skeleton overlay */}
+      {aiLoading && (
+        <div style={{
+          position:"absolute", inset:0, zIndex:40,
+          background:"rgba(0,0,0,0.45)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{
+              width:36*scale, height:36*scale, margin:"0 auto 10px",
+              border:`${3*scale}px solid rgba(220,38,38,0.3)`,
+              borderTop:`${3*scale}px solid #dc2626`,
+              borderRadius:"50%", animation:"ttsv3-spin 0.8s linear infinite",
+            }} />
+            <p style={{ color:"rgba(255,255,255,0.65)", fontSize:12*scale }}>AI is editing…</p>
+          </div>
+        </div>
+      )}
+      {/* Elements layer */}
+      <div style={{ position:"absolute", inset:0, zIndex:10 }}>
+        {(slide.elements || []).map(el => (
+          <React.Fragment key={el.id}>
+            {editingId === el.id
+              ? <InlineEditor el={el} scale={scale}
+                  onCommit={v => onCommitEdit(el.id, v)} onCancel={onCancelEdit} />
+              : <CanvasElement el={el} scale={scale}
+                  selected={selectedId === el.id}
+                  highlighted={(highlightIds || []).includes(el.id)}
+                  fontStack={fontStack}
+                  onSelect={onSelectElement}
+                  onStartDrag={onStartDrag}
+                  onStartResize={onStartResize}
+                  onStartRotate={onStartRotate}
+                  onDoubleClick={onDoubleClickElement} />}
+          </React.Fragment>
+        ))}
       </div>
-      {showDelete && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
+      {/* Floating toolbar */}
+      {selectedEl && selectedId && !editingId && (
+        <ElementToolbar el={selectedEl} scale={scale} canvasW={W}
+          onUpdate={onUpdateSelected}
+          onDuplicate={onDuplicateSelected}
+          onDelete={onDeleteSelected} />
+      )}
+    </div>
+  );
+}
+
+// ─── FilmThumb ────────────────────────────────────────────────────────────────
+const FilmThumb = React.memo(function FilmThumb({ slide, idx, active, onSelect, onDelete }) {
+  return (
+    <div onClick={() => onSelect(idx)} style={{
+      position:"relative", width:44, height:78, flexShrink:0,
+      borderRadius:5, overflow:"hidden", cursor:"pointer", background:"#111827",
+      border:`2px solid ${active ? "#dc2626" : "rgba(255,255,255,0.07)"}`,
+      transition:"border-color 0.15s",
+    }}>
+      {slide.imageUrl && <img src={slide.imageUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", opacity:0.65 }} />}
+      <div style={{ position:"absolute", bottom:2, left:0, right:0, textAlign:"center", fontSize:8, color:"rgba(255,255,255,0.4)" }}>{idx+1}</div>
+      {active && (
+        <button onClick={e => { e.stopPropagation(); onDelete(idx); }}
           style={{
-            position: "absolute",
-            top: 2,
-            right: 2,
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: "rgba(239,68,68,0.9)",
-            border: "none",
-            color: "#fff",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            opacity: 0,
-            transition: "opacity 0.15s",
-          }}
-          className="thumb-del"
-        >
-          <X size={8} />
-        </button>
+            position:"absolute", top:2, right:2, width:13, height:13,
+            borderRadius:"50%", background:"rgba(239,68,68,0.9)", border:"none",
+            color:"#fff", cursor:"pointer", fontSize:8, padding:0,
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>✕</button>
       )}
     </div>
   );
 });
 
-// ─── Image Picker ─────────────────────────────────────────────────────────────
+// ─── ImagePicker ──────────────────────────────────────────────────────────────
 function ImagePicker({ images, current, onSelect, onClose }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "rgba(0,0,0,0.96)",
-        zIndex: 30,
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 4,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 14px",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.5)",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-          }}
-        >
+    <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.97)", zIndex:30, display:"flex", flexDirection:"column" }}>
+      <div style={{
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        padding:"12px 14px", borderBottom:"1px solid rgba(255,255,255,0.07)", flexShrink:0,
+      }}>
+        <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em" }}>
           Choose Photo · {images.length} available
         </span>
-        <button
-          onClick={onClose}
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.05)",
-            color: "#fff",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <X size={12} />
-        </button>
+        <button onClick={onClose} style={{
+          width:26, height:26, borderRadius:"50%",
+          border:"1px solid rgba(255,255,255,0.12)",
+          background:"rgba(255,255,255,0.05)", color:"#fff", cursor:"pointer",
+        }}>✕</button>
       </div>
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: 10,
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 6,
-        }}
-      >
+      <div style={{ flex:1, overflowY:"auto", padding:10, display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6 }}>
         {images.map((url, i) => (
-          <div
-            key={i}
-            onClick={() => {
-              onSelect(url);
-              onClose();
-            }}
-            style={{
-              position: "relative",
-              aspectRatio: "4/3",
-              borderRadius: 8,
-              overflow: "hidden",
-              cursor: "pointer",
-              border:
-                current === url ? "2px solid #e53935" : "2px solid transparent",
-              transition: "border-color 0.15s",
-            }}
-          >
-            <img
-              src={url}
-              alt=""
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
+          <div key={i} onClick={() => { onSelect(url); onClose(); }} style={{
+            position:"relative", aspectRatio:"4/3", borderRadius:8, overflow:"hidden",
+            cursor:"pointer", border:current===url ? "2px solid #dc2626" : "2px solid transparent",
+          }}>
+            <img src={url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
             {current === url && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(229,57,53,0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Check size={20} color="#fff" />
-              </div>
+              <div style={{
+                position:"absolute", inset:0, background:"rgba(220,38,38,0.25)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:18, color:"#fff",
+              }}>✓</div>
             )}
           </div>
         ))}
@@ -1846,2219 +630,820 @@ function ImagePicker({ images, current, onSelect, onClose }) {
 // ─── UI Primitives ────────────────────────────────────────────────────────────
 function ColorRow({ label, value, onChange }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "9px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-      }}
-    >
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-        {label}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.2)",
-            fontFamily: "monospace",
-          }}
-        >
-          {value}
-        </span>
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: 30,
-            height: 30,
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            padding: 2,
-            background: "transparent",
-          }}
-        />
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+      <span style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>{label}</span>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ fontSize:10, color:"rgba(255,255,255,0.2)", fontFamily:"monospace" }}>{value}</span>
+        <input type="color" value={value} onChange={e => onChange(e.target.value)}
+          style={{ width:30, height:30, border:"none", borderRadius:8, cursor:"pointer", padding:2, background:"transparent" }} />
       </div>
     </div>
   );
 }
-function SliderRow({ label, value, min, max, step = 1, onChange, fmt }) {
+function SliderRow({ label, value, min, max, step=0.01, onChange, fmt }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 6,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.3)",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.09em",
-          }}
-        >
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.5)",
-            fontFamily: "monospace",
-          }}
-        >
-          {fmt ? fmt(value) : value}
-        </span>
+    <div style={{ marginBottom:12 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+        <span style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>{label}</span>
+        <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)", fontWeight:600 }}>{fmt ? fmt(value) : value}</span>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#e53935", height: 4 }}
-      />
-    </div>
-  );
-}
-function PillRow({ options, value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          style={{
-            padding: "5px 11px",
-            borderRadius: 999,
-            border: `1px solid ${value === o.value ? "#e53935" : "rgba(255,255,255,0.08)"}`,
-            background:
-              value === o.value ? "rgba(229,57,53,0.15)" : "transparent",
-            color: value === o.value ? "#e53935" : "rgba(255,255,255,0.35)",
-            fontSize: 11,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            transition: "all 0.12s",
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{ width:"100%", accentColor:"#dc2626" }} />
     </div>
   );
 }
 function Toggle({ value, onChange, label }) {
   return (
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        cursor: "pointer",
-      }}
-    >
-      <div
-        onClick={() => onChange(!value)}
-        style={{
-          width: 36,
-          height: 20,
-          borderRadius: 999,
-          background: value ? "#e53935" : "rgba(255,255,255,0.08)",
-          position: "relative",
-          transition: "background 0.2s",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 2,
-            left: value ? 18 : 2,
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: "#fff",
-            transition: "left 0.2s",
-          }}
-        />
+    <label style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
+      <div onClick={() => onChange(!value)} style={{
+        width:36, height:20, borderRadius:999,
+        background:value ? "#dc2626" : "rgba(255,255,255,0.08)",
+        position:"relative", transition:"background 0.2s", flexShrink:0,
+      }}>
+        <div style={{
+          position:"absolute", top:2, left:value ? 18 : 2,
+          width:16, height:16, borderRadius:"50%",
+          background:"#fff", transition:"left 0.2s",
+        }} />
       </div>
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-        {label}
-      </span>
+      <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>{label}</span>
     </label>
   );
 }
 function SectionHead({ label }) {
   return (
-    <p
-      style={{
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: "0.13em",
-        textTransform: "uppercase",
-        color: "rgba(255,255,255,0.18)",
-        margin: "20px 0 10px",
-        paddingBottom: 6,
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-      }}
-    >
-      {label}
-    </p>
+    <p style={{
+      fontSize:9, fontWeight:700, letterSpacing:"0.13em", textTransform:"uppercase",
+      color:"rgba(255,255,255,0.18)", margin:"18px 0 9px", paddingBottom:6,
+      borderBottom:"1px solid rgba(255,255,255,0.05)",
+    }}>{label}</p>
   );
 }
-function Input({ value, onChange, placeholder, big, onFocus, onBlur }) {
-  const s = {
-    width: "100%",
-    padding: big ? "11px 14px" : "9px 13px",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 10,
-    color: "#fff",
-    fontFamily: "'DM Sans',sans-serif",
-    fontSize: big ? 14 : 12,
-    fontWeight: big ? 700 : 400,
-    outline: "none",
-    boxSizing: "border-box",
-    transition: "border-color 0.15s",
-  };
+function PInput({ value, onChange, placeholder }) {
   return (
-    <input
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      style={s}
-      onFocus={(e) => {
-        e.target.style.borderColor = "rgba(229,57,53,0.5)";
-        onFocus && onFocus(e);
-      }}
-      onBlur={(e) => {
-        e.target.style.borderColor = "rgba(255,255,255,0.08)";
-        onBlur && onBlur(e);
-      }}
-    />
-  );
-}
-function Label({ children }) {
-  return (
-    <span
+    <input value={value} onChange={onChange} placeholder={placeholder}
       style={{
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: "0.09em",
-        textTransform: "uppercase",
-        color: "rgba(255,255,255,0.28)",
-        display: "block",
-        marginBottom: 5,
+        width:"100%", padding:"9px 12px",
+        background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
+        borderRadius:10, color:"#fff", fontFamily:"'DM Sans',sans-serif",
+        fontSize:12, outline:"none", boxSizing:"border-box",
       }}
-    >
-      {children}
-    </span>
+      onFocus={e => e.target.style.borderColor = "rgba(220,38,38,0.45)"}
+      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function TikTokStudioV3({ listing, onClose }) {
-  const rawImages = (listing?.images || []).filter(Boolean);
-  const dealership = listing?.dealership_name || "";
-
-  // State
-  const [slides, setSlides] = useState(() =>
-    buildDefaultSlides(listing, rawImages, [], [], dealership, ""),
-  );
-  const [active, setActive] = useState(0);
-  const [font, setFont] = useState("dm");
-  const [theme, setTheme] = useState(() => ({
-    ...DEFAULT_THEME,
-    watermarkText: dealership,
-  }));
-  const [lang, setLang] = useState("en");
-  const [hookInput, setHookInput] = useState("");
-  const [aiCmd, setAiCmd] = useState("");
-  const [generating, setGenerating] = useState(false);
+  const [slides, setSlides]           = useState([]);
+  const [active, setActive]           = useState(0);
+  const [selectedId, setSelectedId]   = useState(null);
+  const [editingId, setEditingId]     = useState(null);
+  const [activeTab, setActiveTab]     = useState("slide");
+  const [theme, setTheme]             = useState(DEFAULT_THEME);
+  const [font, setFont]               = useState("dm");
+  const [aiCmd, setAiCmd]             = useState("");
   const [applyingCmd, setApplyingCmd] = useState(false);
-  const [genError, setGenError] = useState("");
+  const [aiUsage, setAiUsage]         = useState({ count:0, loaded:false });
+  const [highlightIds, setHighlightIds] = useState([]);
   const [downloading, setDownloading] = useState(false);
-  const [dlIdx, setDlIdx] = useState(null);
-  const [activeTab, setActiveTab] = useState("slide");
+  const [dlIdx, setDlIdx]             = useState(null);
+  const [savedBrand, setSavedBrand]   = useState(false);
+  const [genError, setGenError]       = useState(null);
+  const [language, setLanguage]       = useState("en");
+  const [hookText, setHookText]       = useState("");
   const [showImagePicker, setShowImagePicker] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [animKey, setAnimKey] = useState(0);
-  const [savedBrand, setSavedBrand] = useState(false);
-  const [features, setFeatures] = useState([]);
-  const [imagePageStart, setImagePageStart] = useState(11);
-  const [cmdHistory, setCmdHistory] = useState([]);
+  const [scale, setScale]             = useState(0.3);
+  const [isMobile, setIsMobile]       = useState(false);
+  const [userId, setUserId]           = useState(null);
+  const [cmdHistory, setCmdHistory]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ttsv3_ai_history") || "[]"); } catch { return []; }
+  });
+  const [suggestions] = useState(() =>
+    [...SUGGESTION_POOL].sort(() => Math.random() - 0.5).slice(0, 6));
 
-  const filmRef = useRef(null);
-  const logoInputRef = useRef(null);
-  const aiInputRef = useRef(null);
+  // Interaction state via refs (avoids re-render during drag)
+  const dragging  = useRef(null);
+  const resizing  = useRef(null);
+  const rotating  = useRef(null);
+  const canvasInnerRef = useRef(null);
+  const aiInputRef     = useRef(null);
 
-  const slide = slides[active] || slides[0] || {};
-  const total = slides.length;
+  // Derived
+  const slide      = useMemo(() => slides[active] || null, [slides, active]);
+  const total      = slides.length;
+  const rawImages  = useMemo(() => {
+    const p = parseList(listing?.photos || listing?.images);
+    return p.length ? p : listing?.image_url ? [listing.image_url] : [];
+  }, [listing]);
+  const features   = useMemo(() => parseList(listing?.features || listing?.extras || listing?.accessories), [listing]);
+  const fontObj    = useMemo(() => FONTS.find(f => f.id === font) || FONTS[0], [font]);
+  const selectedEl = useMemo(() => slide?.elements?.find(e => e.id === selectedId) || null, [slide, selectedId]);
+  const aiAtLimit  = aiUsage.count >= AI_LIMIT;
 
-  const patchTheme = useCallback(
-    (key, val) => setTheme((t) => ({ ...t, [key]: val })),
-    [],
-  );
-  const patch = useCallback(
-    (field, value) =>
-      setSlides((prev) =>
-        prev.map((s, i) => (i === active ? { ...s, [field]: value } : s)),
-      ),
-    [active],
-  );
-  const patchMulti = useCallback(
-    (obj) =>
-      setSlides((prev) =>
-        prev.map((s, i) => (i === active ? { ...s, ...obj } : s)),
-      ),
-    [active],
-  );
-
-  // Load features from DB
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!listing?.id) return;
-    supabase
-      .from("car_listings")
-      .select("features,specs")
-      .eq("id", listing.id)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        const f = parseList(data.features);
-        setFeatures(f);
-        setSlides((prev) =>
-          prev.map((sl) => ({
-            ...sl,
-            features: f.length > 0 ? f : sl.features,
-          })),
-        );
-      });
-  }, [listing?.id]);
-
-  // Load branding from profile
-  useEffect(() => {
-    async function load() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase
-          .from("profiles")
-          .select(
-            "brand_color,font_choice,watermark_text,logo_url,dealership_name,whatsapp_number",
-          )
-          .eq("id", user.id)
-          .single();
-        if (!data) return;
-        const dn = data.dealership_name || dealership,
-          wa = data.whatsapp_number || "";
-        setTheme((t) => ({
-          ...t,
-          accentColor: data.brand_color || t.accentColor,
-          badgeColor: data.brand_color || t.badgeColor,
-          watermarkText: data.watermark_text || dn || t.watermarkText,
-          logoUrl: data.logo_url || t.logoUrl,
-        }));
-        if (data.font_choice) setFont(data.font_choice);
-        setSlides((prev) =>
-          prev.map((sl) => ({ ...sl, dealerName: dn, whatsapp: wa })),
-        );
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setProfileLoading(false);
-      }
-    }
-    load();
-    FONTS.forEach((f) => ensureFont(f.id));
+    supabase.auth.getUser().then(({ data:{ user } }) => {
+      if (!user) return;
+      setUserId(user.id);
+      getAIUsage(user.id).then(count => setAiUsage({ count, loaded:true }));
+      supabase.from("profiles")
+        .select("brand_color,font_choice,watermark_text,logo_url")
+        .eq("id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (!data) return;
+          setTheme(t => ({
+            ...t,
+            ...(data.brand_color    ? { accentColor:data.brand_color }      : {}),
+            ...(data.watermark_text ? { watermarkText:data.watermark_text } : {}),
+            ...(data.logo_url       ? { logoUrl:data.logo_url }              : {}),
+          }));
+          if (data.font_choice) setFont(data.font_choice);
+        });
+    });
   }, []);
 
-  // Scroll film strip to active
   useEffect(() => {
-    const el = filmRef.current;
-    if (!el) return;
-    const thumb = el.children[active];
-    if (thumb)
-      thumb.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    setAnimKey((k) => k + 1);
-  }, [active]);
+    if (slides.length) return;
+    const dealerName = listing?.dealer_name || "";
+    setSlides(buildDefaultSlides(listing, rawImages, features, dealerName, listing?.whatsapp_number || ""));
+    ensureFont("dm");
+  }, [listing, rawImages, features]);
 
-  // Keyboard shortcuts
+  // ── Scale ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const h = (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
-        return;
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") setActive((i) => Math.max(0, i - 1));
-      if (e.key === "ArrowRight") setActive((i) => Math.min(total - 1, i + 1));
+    const calc = () => {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      setIsMobile(vw < 768);
+      const sidePanels = vw < 768 ? 0 : 56 + 320 + 40;
+      const maxW = Math.max(100, vw - sidePanels);
+      const maxH = vh - 52 - 16;
+      setScale(Math.min(maxW / CANVAS_W, maxH / CANVAS_H, 1));
+    };
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────
+  useEffect(() => {
+    const h = e => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.key === "Escape") { selectedId ? setSelectedId(null) : onClose(); }
+      if (e.key === "ArrowLeft")  setActive(i => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setActive(i => Math.min(total - 1, i + 1));
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) deleteSelected();
+      if ((e.metaKey || e.ctrlKey) && e.key === "d" && selectedId) { e.preventDefault(); duplicateSelected(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose, total]);
+  }, [onClose, total, selectedId]);
 
-  const saveBranding = useCallback(async () => {
+  // ── Element helpers ──────────────────────────────────────────────────────
+  const updateElement = useCallback((id, patch) => {
+    setSlides(ss => ss.map((s, i) => i !== active ? s : {
+      ...s, elements:s.elements.map(e => e.id === id ? { ...e, ...patch } : e),
+    }));
+  }, [active]);
+
+  const updateSelectedElement = useCallback(patch => {
+    if (selectedId) updateElement(selectedId, patch);
+  }, [selectedId, updateElement]);
+
+  const deleteSelected = useCallback(() => {
+    if (!selectedId) return;
+    setSlides(ss => ss.map((s, i) => i !== active ? s : {
+      ...s, elements:s.elements.filter(e => e.id !== selectedId),
+    }));
+    setSelectedId(null);
+  }, [selectedId, active]);
+
+  const duplicateSelected = useCallback(() => {
+    if (!selectedId || !slide) return;
+    const el = slide.elements.find(e => e.id === selectedId);
+    if (!el) return;
+    const dup = { ...el, id:uid(), x:el.x + 30, y:el.y + 30, locked:false };
+    setSlides(ss => ss.map((s, i) => i !== active ? s : { ...s, elements:[...s.elements, dup] }));
+    setSelectedId(dup.id);
+  }, [selectedId, slide, active]);
+
+  const addTextElement = useCallback(() => {
+    const el = {
+      id:uid(), type:"text", content:"New Text",
+      x:200, y:600, fontSize:48, fontWeight:"700",
+      color:"#ffffff", rotation:0, opacity:1,
+      align:"left", visible:true, locked:false,
+    };
+    setSlides(ss => ss.map((s, i) => i !== active ? s : { ...s, elements:[...s.elements, el] }));
+    setSelectedId(el.id);
+  }, [active]);
+
+  // ── Drag / Resize / Rotate via document events ───────────────────────────
+  const onStartDrag = useCallback((e, id) => {
+    if (id !== selectedId) { setSelectedId(id); return; }
+    const el = slide?.elements?.find(el => el.id === id);
+    if (!el) return;
+    const cx = e.touches?.[0]?.clientX ?? e.clientX;
+    const cy = e.touches?.[0]?.clientY ?? e.clientY;
+    dragging.current = { id, startX:cx, startY:cy, origX:el.x, origY:el.y };
+    e.preventDefault();
+  }, [selectedId, slide]);
+
+  const onStartResize = useCallback((e, id, handle) => {
+    const el = slide?.elements?.find(el => el.id === id);
+    if (!el) return;
+    const cy = e.touches?.[0]?.clientY ?? e.clientY;
+    resizing.current = { id, handle, startY:cy, origFontSize:el.fontSize };
+    e.preventDefault(); e.stopPropagation();
+  }, [slide]);
+
+  const onStartRotate = useCallback((e, id) => {
+    const el = slide?.elements?.find(el => el.id === id);
+    if (!el || !canvasInnerRef.current) return;
+    const rect = canvasInnerRef.current.getBoundingClientRect();
+    const centerX = rect.left + el.x * scale;
+    const centerY = rect.top  + el.y * scale;
+    const cx = e.touches?.[0]?.clientX ?? e.clientX;
+    const cy = e.touches?.[0]?.clientY ?? e.clientY;
+    rotating.current = {
+      id, centerX, centerY,
+      startAngle:Math.atan2(cy - centerY, cx - centerX) * (180 / Math.PI),
+      origRotation:el.rotation || 0,
+    };
+    e.preventDefault(); e.stopPropagation();
+  }, [slide, scale]);
+
+  useEffect(() => {
+    const onMove = e => {
+      const cx = e.touches?.[0]?.clientX ?? e.clientX;
+      const cy = e.touches?.[0]?.clientY ?? e.clientY;
+      if (dragging.current) {
+        const { id, startX, startY, origX, origY } = dragging.current;
+        updateElement(id, {
+          x:Math.max(0, Math.min(CANVAS_W, origX + (cx - startX) / scale)),
+          y:Math.max(0, Math.min(CANVAS_H, origY + (cy - startY) / scale)),
+        });
+      }
+      if (resizing.current) {
+        const { id, startY, origFontSize } = resizing.current;
+        updateElement(id, { fontSize:Math.round(Math.max(16, Math.min(200, origFontSize + (startY - cy) / scale * 0.5))) });
+      }
+      if (rotating.current) {
+        const { id, centerX, centerY, startAngle, origRotation } = rotating.current;
+        const angle = Math.atan2(cy - centerY, cx - centerX) * (180 / Math.PI);
+        updateElement(id, { rotation:Math.round((origRotation + angle - startAngle + 360) % 360) });
+      }
+    };
+    const onUp = () => { dragging.current = null; resizing.current = null; rotating.current = null; };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove, { passive:false });
+    document.addEventListener("touchend", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+    };
+  }, [scale, updateElement]);
+
+  const onCommitEdit = useCallback((id, value) => {
+    updateElement(id, { content:value }); setEditingId(null);
+  }, [updateElement]);
+
+  // ── AI command ───────────────────────────────────────────────────────────
+  const runAICommand = useCallback(async () => {
+    if (!aiCmd.trim() || applyingCmd || aiAtLimit) return;
+    const cmd = aiCmd.trim();
+    setApplyingCmd(true); setAiCmd(""); setGenError(null);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase
-        .from("profiles")
-        .update({
-          brand_color: theme.accentColor,
-          font_choice: font,
-          watermark_text: theme.watermarkText,
-          logo_url: theme.logoUrl,
-        })
-        .eq("id", user.id);
-      setSavedBrand(true);
-      setTimeout(() => setSavedBrand(false), 2500);
-    } catch (e) {
-      console.error(e);
+      if (userId) {
+        const newCount = await incrementAIUsage(userId);
+        setAiUsage(u => ({ ...u, count:newCount }));
+      }
+      const result = await applyAICommand(cmd, slide?.elements || [], theme, selectedId);
+      if (result.elements?.length) {
+        setSlides(ss => ss.map((s, i) => i !== active ? s : {
+          ...s, elements:s.elements.map(el => {
+            const changed = result.elements.find(c => c.id === el.id);
+            return changed ? { ...el, ...changed } : el;
+          }),
+        }));
+        const ids = result.elements.map(e => e.id);
+        setHighlightIds(ids);
+        setTimeout(() => setHighlightIds([]), 700);
+      }
+      if (result.theme) setTheme(t => ({ ...t, ...result.theme }));
+      setCmdHistory(h => {
+        const n = [cmd, ...h.filter(c => c !== cmd)].slice(0, 5);
+        localStorage.setItem("ttsv3_ai_history", JSON.stringify(n));
+        return n;
+      });
+    } catch {
+      setGenError("AI command failed. Try again.");
+      setTimeout(() => setGenError(null), 4000);
     }
+    setApplyingCmd(false);
+  }, [aiCmd, applyingCmd, aiAtLimit, userId, slide, theme, selectedId, active]);
+
+  // ── Brand Kit save ───────────────────────────────────────────────────────
+  const saveBranding = useCallback(async () => {
+    const { data:{ user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({
+      brand_color:theme.accentColor, font_choice:font,
+      watermark_text:theme.watermarkText, logo_url:theme.logoUrl,
+    }).eq("id", user.id);
+    setSavedBrand(true);
+    setTimeout(() => setSavedBrand(false), 2500);
   }, [theme, font]);
 
-  const applyPreset = useCallback((preset) => {
-    setTheme((t) => ({ ...t, ...preset.theme }));
-  }, []);
+  // ── Slide management ─────────────────────────────────────────────────────
+  const patchSlide = useCallback(patch => {
+    setSlides(ss => ss.map((s, i) => i === active ? { ...s, ...patch } : s));
+  }, [active]);
 
   const addSlide = useCallback(() => {
-    const price = listing?.selling_price || listing?.price;
-    const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
-    const n = {
-      id: Date.now(),
-      index: slides.length,
-      imageUrl: rawImages[0] || null,
-      condition: listing?.condition || "",
-      template: "hype",
-      fitMode: "auto",
-      enabled: true,
-      carName: `${listing?.brand || ""} ${listing?.model || ""}`.trim(),
-      priceStr,
-      bottomLeft: priceStr,
-      priceNum: price || 0,
-      statsLine: "",
-      monthly: calcMonthly(price),
-      hookText: "",
-      features,
-      dealerName: slide.dealerName || "",
-      whatsapp: slide.whatsapp || "",
+    const s = {
+      id:uid(), imageUrl:rawImages[0] || null, template:"hype",
+      carName:`${listing?.brand||""} ${listing?.model||""}`.trim(),
+      priceStr:listing?.selling_price ? "RM " + Number(listing.selling_price).toLocaleString() : "",
+      priceNum:listing?.selling_price || 0, statsLine:"", hookText:"",
+      features, condition:listing?.condition || "",
+      dealerName:slide?.dealerName || "", whatsapp:slide?.whatsapp || "",
+      monthly:calcMonthly(listing?.selling_price),
+      elements:buildDefaultElements(listing, theme, slide?.dealerName || ""),
     };
-    setSlides((prev) => [...prev, n]);
+    setSlides(ss => [...ss, s]);
     setTimeout(() => setActive(slides.length), 0);
-  }, [slides.length, listing, rawImages, features, slide]);
+  }, [slides.length, listing, rawImages, features, slide, theme]);
 
   const duplicateSlide = useCallback(() => {
-    const dup = { ...slide, id: Date.now(), index: slides.length };
-    setSlides((prev) => [...prev, dup]);
+    if (!slide) return;
+    const dup = { ...slide, id:uid(), elements:slide.elements.map(e => ({ ...e, id:uid() })) };
+    setSlides(ss => [...ss, dup]);
     setTimeout(() => setActive(slides.length), 0);
   }, [slide, slides.length]);
 
-  const removeSlide = useCallback(
-    (idx) => {
-      if (total <= 1) return;
-      setSlides((prev) =>
-        prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, index: i })),
-      );
-      setActive((i) => Math.min(i, total - 2));
-    },
-    [total],
-  );
+  const removeSlide = useCallback(idx => {
+    if (total <= 1) return;
+    setSlides(ss => ss.filter((_, i) => i !== idx));
+    setActive(i => Math.min(i, total - 2));
+    setSelectedId(null);
+  }, [total]);
 
-  const addMoreImages = useCallback(() => {
-    const next = rawImages.slice(imagePageStart, imagePageStart + 10);
-    if (!next.length) return;
-    const price = listing?.selling_price || listing?.price;
-    const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
-    const cond = listing?.condition || "";
-    const condLabel =
-      { new: "Brand New", recon: "Recon", used: "Used" }[cond] || cond;
-    const mileage = listing?.mileage
-      ? Number(listing.mileage).toLocaleString() + " km"
-      : "";
-    const carName =
-      `${listing?.brand || ""} ${listing?.model || ""}${listing?.variant ? " " + listing.variant : ""} ${listing?.year || ""}`.trim();
-    const statsLine = [String(listing?.year || ""), condLabel, mileage]
-      .filter(Boolean)
-      .join(" · ");
-    const tplCycle = ["hype", "story", "specs-breakdown", "minimal", "hype"];
-    const newSlides = next.map((img, i) => ({
-      id: Date.now() + i,
-      index: slides.length + i,
-      imageUrl: img,
-      condition: cond,
-      template: tplCycle[i % tplCycle.length],
-      fitMode: "auto",
-      enabled: true,
-      carName,
-      priceStr,
-      priceNum: price || 0,
-      statsLine,
-      monthly: calcMonthly(price),
-      hookText: "",
-      features,
-      dealerName: slide.dealerName || "",
-      whatsapp: slide.whatsapp || "",
-    }));
-    setSlides((prev) => [
-      ...prev,
-      ...newSlides.map((s, i) => ({ ...s, index: prev.length + i })),
-    ]);
-    setImagePageStart((p) => p + 10);
-  }, [rawImages, imagePageStart, slides.length, listing, features, slide]);
-
-  const generateText = useCallback(async () => {
-    setGenerating(true);
-    setGenError("");
-    try {
-      const results = await generateSlideText(listing, lang, hookInput, total);
-      setSlides((prev) =>
-        prev.map((s, i) => (results[i] ? { ...s, ...results[i] } : s)),
-      );
-    } catch {
-      setGenError("AI failed — try again or edit manually.");
-    }
-    setGenerating(false);
-  }, [listing, lang, hookInput, total]);
-
-  const runAICommand = useCallback(async () => {
-    if (!aiCmd.trim()) return;
-    setApplyingCmd(true);
-    const cmd = aiCmd.trim();
-    setCmdHistory((h) => [cmd, ...h.slice(0, 4)]);
-    setAiCmd("");
-    try {
-      const result = await applyAICommand(cmd, slide, theme);
-      if (result.slide) patchMulti(result.slide);
-      if (result.theme) setTheme((t) => ({ ...t, ...result.theme }));
-    } catch {
-      setGenError("Command failed — try again.");
-    }
-    setApplyingCmd(false);
-  }, [aiCmd, slide, theme, patchMulti]);
-
-  // Export
-  const exportName = (idx) => {
-    const d = (theme.watermarkText || "XDrive").replace(/\s+/g, "");
-    const c = `${listing?.brand || ""}${listing?.model || ""}`.replace(
-      /\s+/g,
-      "",
-    );
+  // ── Export ───────────────────────────────────────────────────────────────
+  const exportName = idx => {
+    const d = (theme.watermarkText || listing?.dealer_name || "XDrive").replace(/\s+/g, "");
+    const c = `${listing?.brand||""}${listing?.model||""}`.replace(/\s+/g, "");
     const dt = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     return `${d}_${c}_${dt}_${String(idx + 1).padStart(2, "0")}.jpg`;
   };
 
-  const toBlob = useCallback(
-    async (idx) => {
-      const c = document.createElement("canvas");
-      c.width = CANVAS_W;
-      c.height = CANVAS_H;
-      await renderToCanvas(c, { ...slides[idx], index: idx }, theme, font);
-      return new Promise((res) => c.toBlob(res, "image/jpeg", 0.93));
-    },
-    [slides, theme, font],
-  );
+  const toBlob = useCallback(async idx => {
+    const c = document.createElement("canvas");
+    c.width = CANVAS_W; c.height = CANVAS_H;
+    await renderToCanvas(c, slides[idx], theme, font);
+    return new Promise(res => c.toBlob(res, "image/jpeg", 0.93));
+  }, [slides, theme, font]);
 
-  const saveSingle = useCallback(
-    async (idx) => {
-      setDlIdx(idx);
-      const blob = await toBlob(idx),
-        url = URL.createObjectURL(blob);
-      if (isIOS()) {
-        window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-      } else {
-        const a = document.createElement("a");
-        a.download = exportName(idx);
-        a.href = url;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-      setDlIdx(null);
-    },
-    [toBlob],
-  );
+  const saveSingle = useCallback(async idx => {
+    setDlIdx(idx);
+    const blob = await toBlob(idx), url = URL.createObjectURL(blob);
+    if (isIOS()) { window.open(url, "_blank"); setTimeout(() => URL.revokeObjectURL(url), 10000); }
+    else {
+      const a = document.createElement("a"); a.download = exportName(idx); a.href = url; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    setDlIdx(null);
+  }, [toBlob]);
 
   const saveAll = useCallback(async () => {
     setDownloading(true);
-    const d = (theme.watermarkText || "XDrive").replace(/\s+/g, "");
-    const c = `${listing?.brand || ""}${listing?.model || ""}`.replace(
-      /\s+/g,
-      "",
-    );
-    const dt = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     if (isIOS()) {
       for (let i = 0; i < total; i++) {
-        const blob = await toBlob(i);
-        const url = URL.createObjectURL(blob);
+        const blob = await toBlob(i), url = URL.createObjectURL(blob);
         window.open(url, "_blank");
         setTimeout(() => URL.revokeObjectURL(url), 15000);
-        await new Promise((r) => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 600));
       }
-      setDownloading(false);
-      return;
+      setDownloading(false); return;
     }
-    try {
-      const JSZip = await loadJSZip(),
-        zip = new JSZip(),
-        folder = zip.folder(`${d}_${c}_${dt}`);
-      for (let i = 0; i < total; i++)
-        folder.file(exportName(i), await toBlob(i));
-      const zb = await zip.generateAsync({ type: "blob" }),
-        url = URL.createObjectURL(zb);
-      const a = document.createElement("a");
-      a.download = `${d}_${c}_${dt}.zip`;
-      a.href = url;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch {
-      for (let i = 0; i < total; i++) {
-        await saveSingle(i);
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
+    const JSZip = await loadJSZip(), zip = new JSZip();
+    for (let i = 0; i < total; i++) zip.file(exportName(i), await toBlob(i));
+    const out = await zip.generateAsync({ type:"blob" });
+    const url = URL.createObjectURL(out);
+    const d = (theme.watermarkText||"XDrive").replace(/\s+/g,"");
+    const c = `${listing?.brand||""}${listing?.model||""}`.replace(/\s+/g,"");
+    const dt = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const a = document.createElement("a"); a.download = `${d}_${c}_${dt}.zip`; a.href = url; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
     setDownloading(false);
-  }, [total, theme, listing, toBlob, saveSingle]);
+  }, [total, toBlob, theme, listing]);
 
-  // ─── Tab Panels ────────────────────────────────────────────────────────────
+  if (!slide) return null;
 
+  // ── Tab panels ────────────────────────────────────────────────────────────
   const SlidePanel = () => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-        position: "relative",
-      }}
-    >
-      {showImagePicker && rawImages.length > 0 && (
-        <ImagePicker
-          images={rawImages}
-          current={slide.imageUrl}
-          onSelect={(url) => patch("imageUrl", url)}
-          onClose={() => setShowImagePicker(false)}
-        />
-      )}
-
-      {/* Image controls */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {rawImages.length > 0 && (
-          <button
-            onClick={() => setShowImagePicker(true)}
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 5,
-              padding: "9px 0",
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              color: "rgba(255,255,255,0.6)",
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <ImageIcon size={12} /> Change Photo
-          </button>
-        )}
-        <label
-          style={{
-            flex: rawImages.length > 0 ? 0 : 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "9px 11px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.03)",
-            color: "rgba(255,255,255,0.4)",
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Upload{" "}
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files[0]) {
-                const r = new FileReader();
-                r.onload = (ev) => patch("imageUrl", ev.target.result);
-                r.readAsDataURL(e.target.files[0]);
-              }
-            }}
-          />
-        </label>
-        <button
-          onClick={duplicateSlide}
-          style={{
-            padding: "9px 10px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.03)",
-            color: "rgba(255,255,255,0.4)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: "inherit",
-          }}
-        >
-          <Copy size={11} />
-        </button>
-        {total > 1 && (
-          <button
-            onClick={() => removeSlide(active)}
-            style={{
-              padding: "9px 10px",
-              borderRadius: 10,
-              border: "1px solid rgba(239,68,68,0.2)",
-              background: "rgba(239,68,68,0.05)",
-              color: "#f87171",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: "inherit",
-            }}
-          >
-            <Trash2 size={11} />
-          </button>
-        )}
-      </div>
-
-      {/* Template picker */}
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      <SectionHead label="Image" />
+      <button onClick={() => setShowImagePicker(true)} style={{
+        width:"100%", padding:"9px 0", borderRadius:10,
+        border:"1px dashed rgba(255,255,255,0.14)", background:"transparent",
+        color:"rgba(255,255,255,0.4)", cursor:"pointer", fontSize:12,
+      }}>📷 Change photo</button>
       <SectionHead label="Template" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-        {SLIDE_TEMPLATES.map((tpl) => (
-          <button
-            key={tpl.id}
-            onClick={() => patch("template", tpl.id)}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 9,
-              border: `1px solid ${slide.template === tpl.id ? "#e53935" : "rgba(255,255,255,0.07)"}`,
-              background:
-                slide.template === tpl.id
-                  ? "rgba(229,57,53,0.1)"
-                  : "rgba(255,255,255,0.02)",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              textAlign: "left",
-              transition: "all 0.12s",
-            }}
-          >
-            <p
-              style={{
-                color:
-                  slide.template === tpl.id
-                    ? "#e53935"
-                    : "rgba(255,255,255,0.65)",
-                fontSize: 11,
-                fontWeight: 700,
-                margin: "0 0 2px",
-              }}
-            >
-              {tpl.icon} {tpl.label}
-            </p>
-            <p
-              style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, margin: 0 }}
-            >
-              {tpl.desc}
-            </p>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:5 }}>
+        {SLIDE_TEMPLATES.map(t => (
+          <button key={t.id} onClick={() => patchSlide({ template:t.id })} style={{
+            padding:"7px 4px", borderRadius:8, cursor:"pointer",
+            border:`1px solid ${slide.template===t.id?"rgba(220,38,38,0.5)":"rgba(255,255,255,0.07)"}`,
+            background:slide.template===t.id?"rgba(220,38,38,0.1)":"transparent",
+            color:slide.template===t.id?"#dc2626":"rgba(255,255,255,0.45)",
+            display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+          }}>
+            <span style={{ fontSize:14 }}>{t.icon}</span>
+            <span style={{ fontSize:9 }}>{t.label}</span>
           </button>
         ))}
       </div>
-
-      {/* Content */}
-      <SectionHead label="Content" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div>
-          <Label>Hook Line</Label>
-          <Input
-            value={slide.hookText || ""}
-            onChange={(e) => patch("hookText", e.target.value)}
-            placeholder="e.g. CLEANEST M4 IN MALAYSIA 🔥"
-          />
-        </div>
-        <div>
-          <Label>Car Name</Label>
-          <Input
-            value={slide.carName || ""}
-            onChange={(e) => patch("carName", e.target.value)}
-            placeholder="BMW M4 Competition 2023"
-            big
-          />
-        </div>
-        <div>
-          <Label>Price</Label>
-          <Input
-            value={slide.priceStr || ""}
-            onChange={(e) => patch("priceStr", e.target.value)}
-            placeholder="RM 278,000"
-          />
-        </div>
-        <div>
-          <Label>Stats Line</Label>
-          <Input
-            value={slide.statsLine || ""}
-            onChange={(e) => patch("statsLine", e.target.value)}
-            placeholder="2023 · Recon · 10,000 km"
-          />
-        </div>
+      <SectionHead label="Elements" />
+      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+        {slide.elements.map(el => (
+          <div key={el.id} onClick={() => setSelectedId(el.id)} style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"7px 10px", borderRadius:8, cursor:"pointer",
+            background:selectedId===el.id?"rgba(220,38,38,0.08)":"rgba(255,255,255,0.025)",
+            border:`1px solid ${selectedId===el.id?"rgba(220,38,38,0.28)":"rgba(255,255,255,0.05)"}`,
+          }}>
+            <span style={{ fontSize:11, color:"rgba(255,255,255,0.65)", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {el.content || "(empty)"}
+            </span>
+            <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+              <button onClick={e => { e.stopPropagation(); updateElement(el.id, { visible:!el.visible }); }}
+                style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:el.visible?"rgba(255,255,255,0.45)":"rgba(255,255,255,0.2)" }}>
+                {el.visible ? "👁" : "○"}
+              </button>
+              <button onClick={e => { e.stopPropagation(); updateElement(el.id, { locked:!el.locked }); }}
+                style={{ background:"none", border:"none", cursor:"pointer", fontSize:11, color:el.locked?"#dc2626":"rgba(255,255,255,0.25)" }}>
+                {el.locked ? "🔒" : "🔓"}
+              </button>
+            </div>
+          </div>
+        ))}
+        <button onClick={addTextElement} style={{
+          padding:"8px 0", borderRadius:8, border:"1px dashed rgba(255,255,255,0.1)",
+          background:"transparent", color:"rgba(255,255,255,0.28)", cursor:"pointer", fontSize:11,
+        }}>+ Add text element</button>
       </div>
-
-      <Toggle
-        value={slide.enabled !== false}
-        onChange={(v) => patch("enabled", v)}
-        label="Include in export"
-      />
     </div>
   );
 
   const DesignPanel = () => (
     <div>
-      {/* Style presets */}
-      <SectionHead label="Style Presets" />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 6,
-          marginBottom: 4,
-        }}
-      >
-        {STYLE_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => applyPreset(p)}
-            style={{
-              padding: "10px 6px",
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "rgba(255,255,255,0.02)",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              textAlign: "center",
-              transition: "all 0.12s",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 4,
-                justifyContent: "center",
-                marginBottom: 6,
-              }}
-            >
-              {p.preview.map((c, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: c,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                />
-              ))}
+      <SectionHead label="Style Preset" />
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:14 }}>
+        {STYLE_PRESETS.map(p => (
+          <button key={p.id} onClick={() => setTheme(t => ({ ...t, ...p.theme }))} style={{
+            padding:"7px 6px", borderRadius:8, cursor:"pointer",
+            border:"1px solid rgba(255,255,255,0.07)", background:"rgba(255,255,255,0.03)",
+            display:"flex", alignItems:"center", gap:5,
+          }}>
+            <div style={{ display:"flex", gap:3 }}>
+              {p.dots.map((c, i) => <div key={i} style={{ width:11, height:11, borderRadius:"50%", background:c }} />)}
             </div>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.5)",
-                display: "block",
-              }}
-            >
-              {p.label}
-            </span>
+            <span style={{ fontSize:9, color:"rgba(255,255,255,0.45)" }}>{p.label}</span>
           </button>
         ))}
       </div>
-
       <SectionHead label="Colors" />
-      <ColorRow
-        label="Accent / Primary"
-        value={theme.accentColor}
-        onChange={(v) => patchTheme("accentColor", v)}
-      />
-      <ColorRow
-        label="Background"
-        value={theme.bgColor}
-        onChange={(v) => patchTheme("bgColor", v)}
-      />
-      <ColorRow
-        label="Price color"
-        value={theme.priceColor || theme.accentColor}
-        onChange={(v) => patchTheme("priceColor", v)}
-      />
-
-      <SectionHead label="Typography" />
-      <div style={{ marginBottom: 12 }}>
-        <Label>Font</Label>
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          {FONTS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => {
-                ensureFont(f.id);
-                setFont(f.id);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "9px 13px",
-                borderRadius: 9,
-                cursor: "pointer",
-                width: "100%",
-                border: `1px solid ${font === f.id ? "#e53935" : "rgba(255,255,255,0.07)"}`,
-                background:
-                  font === f.id
-                    ? "rgba(229,57,53,0.08)"
-                    : "rgba(255,255,255,0.02)",
-                fontFamily: f.stack,
-                transition: "all 0.12s",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 13,
-                  color: font === f.id ? "#e53935" : "rgba(255,255,255,0.65)",
-                  fontWeight: 600,
-                }}
-              >
-                {f.label}
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "rgba(255,255,255,0.18)",
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                Aa Bb
-              </span>
-            </button>
-          ))}
-        </div>
+      <ColorRow label="Accent"     value={theme.accentColor} onChange={v => setTheme(t => ({ ...t, accentColor:v }))} />
+      <ColorRow label="Background" value={theme.bgColor}     onChange={v => setTheme(t => ({ ...t, bgColor:v }))} />
+      <SectionHead label="Font" />
+      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+        {FONTS.map(f => (
+          <button key={f.id} onClick={() => { setFont(f.id); ensureFont(f.id); }} style={{
+            padding:"8px 12px", borderRadius:8, textAlign:"left", cursor:"pointer",
+            border:`1px solid ${font===f.id?"rgba(220,38,38,0.45)":"rgba(255,255,255,0.06)"}`,
+            background:font===f.id?"rgba(220,38,38,0.07)":"transparent",
+            color:"rgba(255,255,255,0.7)", fontFamily:f.stack, fontSize:13,
+          }}>{f.label}</button>
+        ))}
       </div>
-
-      <SectionHead label="Text Size" />
-      <SliderRow
-        label="Headline"
-        value={theme.headlineSize}
-        min={48}
-        max={160}
-        step={4}
-        onChange={(v) => patchTheme("headlineSize", v)}
-      />
-      <SliderRow
-        label="Price"
-        value={theme.priceSize}
-        min={32}
-        max={120}
-        step={4}
-        onChange={(v) => patchTheme("priceSize", v)}
-      />
-      <SliderRow
-        label="Stats"
-        value={theme.statsSize}
-        min={20}
-        max={64}
-        step={2}
-        onChange={(v) => patchTheme("statsSize", v)}
-      />
-      <SliderRow
-        label="Hook"
-        value={theme.hookSize}
-        min={24}
-        max={72}
-        step={2}
-        onChange={(v) => patchTheme("hookSize", v)}
-      />
-
-      <SectionHead label="Layout" />
-      <div style={{ marginBottom: 12 }}>
-        <Label>Text Align</Label>
-        <PillRow
-          options={[
-            { label: "Left", value: "left" },
-            { label: "Center", value: "center" },
-          ]}
-          value={theme.textAlign}
-          onChange={(v) => patchTheme("textAlign", v)}
-        />
-      </div>
-      <SliderRow
-        label="Overlay opacity"
-        value={theme.overlayOpacity}
-        min={0}
-        max={0.9}
-        step={0.05}
-        onChange={(v) => patchTheme("overlayOpacity", v)}
-        fmt={(v) => Math.round(v * 100) + "%"}
-      />
-      <Toggle
-        value={theme.showAccentBar !== false}
-        onChange={(v) => patchTheme("showAccentBar", v)}
-        label="Show accent bar (top)"
-      />
+      <SectionHead label="Overlay" />
+      <SliderRow label="Opacity" value={theme.overlayOpacity} min={0} max={1} step={0.01}
+        onChange={v => setTheme(t => ({ ...t, overlayOpacity:v }))} fmt={v => `${Math.round(v*100)}%`} />
+      <SectionHead label="Options" />
+      <Toggle value={theme.showAccentBar !== false}
+        onChange={v => setTheme(t => ({ ...t, showAccentBar:v }))} label="Top accent bar" />
     </div>
   );
 
   const BrandPanel = () => (
     <div>
-      {profileLoading && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 12px",
-            background: "rgba(229,57,53,0.06)",
-            borderRadius: 8,
-            marginBottom: 14,
-            border: "1px solid rgba(229,57,53,0.12)",
-          }}
-        >
-          <Loader2
-            size={12}
-            style={{ animation: "spin 1s linear infinite", color: "#e53935" }}
-          />
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-            Loading your branding…
-          </span>
-        </div>
-      )}
-
       <SectionHead label="Watermark" />
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          marginBottom: 4,
-        }}
-      >
-        <div>
-          <Label>Dealership name</Label>
-          <Input
-            value={theme.watermarkText}
-            onChange={(e) => patchTheme("watermarkText", e.target.value)}
-            placeholder="Your dealership name"
-          />
-        </div>
-        <div>
-          <Label>Position</Label>
-          <PillRow
-            options={[
-              { label: "↗ Top R", value: "top-right" },
-              { label: "↖ Top L", value: "top-left" },
-              { label: "↘ Bot R", value: "bottom-right" },
-              { label: "↙ Bot L", value: "bottom-left" },
-            ]}
-            value={theme.watermarkPos}
-            onChange={(v) => patchTheme("watermarkPos", v)}
-          />
-        </div>
-        <SliderRow
-          label="Opacity"
-          value={theme.watermarkOpacity}
-          min={0.04}
-          max={0.6}
-          step={0.02}
-          onChange={(v) => patchTheme("watermarkOpacity", v)}
-          fmt={(v) => Math.round(v * 100) + "%"}
-        />
+      <PInput value={theme.watermarkText} placeholder="Your brand name"
+        onChange={e => setTheme(t => ({ ...t, watermarkText:e.target.value }))} />
+      <div style={{ display:"flex", gap:5, marginTop:7 }}>
+        {["top-right","top-left","bottom-right","bottom-left"].map(p => (
+          <button key={p} onClick={() => setTheme(t => ({ ...t, watermarkPos:p }))} style={{
+            flex:1, padding:"5px 2px", borderRadius:6, cursor:"pointer", fontSize:8,
+            border:`1px solid ${theme.watermarkPos===p?"rgba(220,38,38,0.4)":"rgba(255,255,255,0.08)"}`,
+            background:theme.watermarkPos===p?"rgba(220,38,38,0.08)":"transparent",
+            color:"rgba(255,255,255,0.4)",
+          }}>{p.replace("-", "\n")}</button>
+        ))}
       </div>
-
+      <div style={{ marginTop:10 }}>
+        <SliderRow label="Watermark opacity" value={theme.watermarkOpacity} min={0} max={1} step={0.01}
+          onChange={v => setTheme(t => ({ ...t, watermarkOpacity:v }))} fmt={v => `${Math.round(v*100)}%`} />
+      </div>
       <SectionHead label="Logo" />
-      <input
-        ref={logoInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          if (e.target.files[0]) {
-            const r = new FileReader();
-            r.onload = (ev) => patchTheme("logoUrl", ev.target.result);
-            r.readAsDataURL(e.target.files[0]);
-          }
-        }}
-      />
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button
-          onClick={() => logoInputRef.current?.click()}
-          style={{
-            flex: 1,
-            padding: "10px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.03)",
-            color: "rgba(255,255,255,0.6)",
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 5,
-          }}
-        >
-          <ImageIcon size={12} />
-          {theme.logoUrl ? "Swap Logo" : "Upload Logo"}
-        </button>
-        {theme.logoUrl && (
-          <button
-            onClick={() => patchTheme("logoUrl", null)}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid rgba(239,68,68,0.15)",
-              background: "rgba(239,68,68,0.05)",
-              color: "#f87171",
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: "inherit",
-            }}
-          >
-            Remove
-          </button>
-        )}
-      </div>
+      <PInput value={theme.logoUrl || ""} placeholder="Logo image URL"
+        onChange={e => setTheme(t => ({ ...t, logoUrl:e.target.value || null }))} />
       {theme.logoUrl && (
-        <>
-          <div
-            style={{
-              padding: 10,
-              background: "rgba(255,255,255,0.02)",
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 10,
-            }}
-          >
-            <img
-              src={theme.logoUrl}
-              alt="logo"
-              style={{ height: 32, objectFit: "contain", borderRadius: 4 }}
-            />
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
-              Shows on all slides
-            </span>
-          </div>
-          <SliderRow
-            label="Logo size"
-            value={theme.logoSize || 80}
-            min={40}
-            max={180}
-            step={10}
-            onChange={(v) => patchTheme("logoSize", v)}
-          />
-        </>
+        <div style={{ marginTop:10 }}>
+          <SliderRow label="Logo size" value={theme.logoSize||80} min={40} max={200} step={4}
+            onChange={v => setTheme(t => ({ ...t, logoSize:v }))} fmt={v => `${v}px`} />
+        </div>
       )}
-
-      <SectionHead label="Save Brand Kit" />
-      <button
-        onClick={saveBranding}
-        style={{
-          width: "100%",
-          padding: "11px",
-          borderRadius: 10,
-          border: `1px solid ${savedBrand ? "rgba(34,197,94,0.4)" : "rgba(229,57,53,0.25)"}`,
-          background: savedBrand
-            ? "rgba(34,197,94,0.08)"
-            : "rgba(229,57,53,0.06)",
-          color: savedBrand ? "#4ade80" : "#e53935",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: "pointer",
-          fontFamily: "inherit",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          transition: "all 0.2s",
-        }}
-      >
-        {savedBrand ? (
-          <>
-            <Check size={13} /> Saved!
-          </>
-        ) : (
-          <>
-            <Save size={13} /> Save as Brand Kit
-          </>
-        )}
-      </button>
-      <p
-        style={{
-          fontSize: 10,
-          color: "rgba(255,255,255,0.15)",
-          marginTop: 6,
-          textAlign: "center",
-        }}
-      >
-        Saves colour, font, watermark & logo across all dealers
-      </p>
+      <button onClick={saveBranding} style={{
+        width:"100%", padding:"11px 0", marginTop:12, borderRadius:10, border:"none",
+        background:savedBrand?"rgba(34,197,94,0.85)":"rgba(220,38,38,0.85)",
+        color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13, transition:"background 0.3s",
+      }}>{savedBrand ? "✓ Saved!" : "Save Brand Kit"}</button>
     </div>
   );
 
   const BadgesPanel = () => (
-    <div>
-      <SectionHead label="Price Tag" />
-      <div style={{ marginBottom: 14 }}>
-        <PillRow
-          options={[
-            { label: "Plain", value: "plain" },
-            { label: "Pill", value: "pill" },
-            { label: "Boxed", value: "boxed" },
-          ]}
-          value={theme.priceTagStyle}
-          onChange={(v) => patchTheme("priceTagStyle", v)}
-        />
-      </div>
-
-      <SectionHead label="Auto Badges" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Toggle
-          value={theme.showConditionBadge}
-          onChange={(v) => patchTheme("showConditionBadge", v)}
-          label={`Condition badge (${slide.condition?.toUpperCase() || "AUTO"})`}
-        />
-        <Toggle
-          value={theme.showHotDealBadge}
-          onChange={(v) => patchTheme("showHotDealBadge", v)}
-          label="🔥 Hot Deal badge"
-        />
-      </div>
-
-      <SectionHead label="Custom Badge" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div>
-          <Label>Badge text</Label>
-          <Input
-            value={theme.customBadgeText}
-            onChange={(e) => patchTheme("customBadgeText", e.target.value)}
-            placeholder="e.g. NEGOTIABLE"
-          />
-        </div>
-        <ColorRow
-          label="Badge colour"
-          value={theme.badgeColor}
-          onChange={(v) => patchTheme("badgeColor", v)}
-        />
-      </div>
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      <SectionHead label="Badges" />
+      <Toggle value={theme.showConditionBadge}
+        onChange={v => setTheme(t => ({ ...t, showConditionBadge:v }))}
+        label={`Condition (${({ new:"Brand New", recon:"Recon", used:"Used" })[listing?.condition||""] || "N/A"})`} />
+      <Toggle value={theme.showHotDealBadge}
+        onChange={v => setTheme(t => ({ ...t, showHotDealBadge:v }))} label="🔥 Hot Deal badge" />
+      <SectionHead label="Custom badge" />
+      <PInput value={theme.customBadgeText} placeholder="Badge text (empty = hidden)"
+        onChange={e => setTheme(t => ({ ...t, customBadgeText:e.target.value }))} />
+      <ColorRow label="Badge color" value={theme.badgeColor||"#dc2626"}
+        onChange={v => setTheme(t => ({ ...t, badgeColor:v }))} />
     </div>
   );
+
+  const aiPct  = Math.round((aiUsage.count / AI_LIMIT) * 100);
+  const aiNear = aiUsage.count >= 90;
 
   const AIPanel = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* AI Canvas Command */}
-      <div
-        style={{
-          background: "rgba(229,57,53,0.05)",
-          border: "1px solid rgba(229,57,53,0.15)",
-          borderRadius: 12,
-          padding: "14px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 10,
-          }}
-        >
-          <Wand2 size={13} color="#e53935" />
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#e53935",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            AI Canvas Edit
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      {/* Usage meter */}
+      <div style={{ background:"rgba(220,38,38,0.05)", border:"1px solid rgba(220,38,38,0.15)", borderRadius:12, padding:14 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:"#dc2626", textTransform:"uppercase", letterSpacing:"0.06em" }}>✦ AI Canvas Edit</span>
+          <span style={{ fontSize:11, color:aiNear?"#f97316":"rgba(255,255,255,0.35)" }}>
+            {aiUsage.loaded ? `${aiUsage.count}/${AI_LIMIT} today` : "…"}
           </span>
         </div>
-        <p
-          style={{
-            fontSize: 11,
-            color: "rgba(255,255,255,0.3)",
-            marginBottom: 10,
-          }}
-        >
-          Type what you want changed — AI applies it instantly
-        </p>
-        <div style={{ display: "flex", gap: 6 }}>
-          <input
-            ref={aiInputRef}
-            value={aiCmd}
-            onChange={(e) => setAiCmd(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runAICommand()}
-            placeholder="e.g. make price bigger, change accent to blue..."
-            style={{
-              flex: 1,
-              padding: "10px 13px",
-              background: "rgba(0,0,0,0.3)",
-              border: "1px solid rgba(229,57,53,0.25)",
-              borderRadius: 9,
-              color: "#fff",
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 12,
-              outline: "none",
-            }}
-          />
-          <button
-            onClick={runAICommand}
-            disabled={applyingCmd || !aiCmd.trim()}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 9,
-              border: "none",
-              background: applyingCmd ? "rgba(229,57,53,0.4)" : "#e53935",
-              color: "#fff",
-              cursor: applyingCmd ? "default" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {applyingCmd ? (
-              <Loader2
-                size={14}
-                style={{ animation: "spin 1s linear infinite" }}
-              />
-            ) : (
-              <Zap size={14} />
-            )}
-          </button>
+        <div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.07)", overflow:"hidden" }}>
+          <div style={{
+            height:"100%", width:`${Math.min(100, aiPct)}%`, borderRadius:2,
+            background:aiAtLimit?"#ef4444":aiNear?"#f97316":"#dc2626",
+            transition:"width 0.3s",
+          }} />
         </div>
-        {/* Suggestions */}
-        <div
-          style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}
-        >
-          {[
-            "make price bigger",
-            "center all text",
-            "add hot deal badge",
-            "make minimal",
-            "blue accent",
-          ].map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                setAiCmd(s);
-                setTimeout(() => aiInputRef.current?.focus(), 0);
-              }}
-              style={{
-                padding: "4px 9px",
-                borderRadius: 999,
-                border: "1px solid rgba(229,57,53,0.2)",
-                background: "transparent",
-                color: "rgba(229,57,53,0.6)",
-                fontSize: 9,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        {cmdHistory.length > 0 && (
-          <div
-            style={{
-              marginTop: 10,
-              borderTop: "1px solid rgba(255,255,255,0.05)",
-              paddingTop: 8,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 9,
-                color: "rgba(255,255,255,0.2)",
-                marginBottom: 5,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              Recent
-            </p>
-            {cmdHistory.map((c, i) => (
-              <button
-                key={i}
-                onClick={() => setAiCmd(c)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "4px 0",
-                  background: "none",
-                  border: "none",
-                  color: "rgba(255,255,255,0.3)",
-                  fontSize: 11,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                ↩ {c}
-              </button>
-            ))}
-          </div>
-        )}
+        {aiNear && !aiAtLimit && <p style={{ fontSize:10, color:"#f97316", marginTop:5 }}>Almost at daily limit</p>}
+        {aiAtLimit && <p style={{ fontSize:10, color:"#ef4444", marginTop:5 }}>Daily limit reached. Resets tomorrow.</p>}
       </div>
-
-      {/* Text generation */}
-      <SectionHead label="Generate All Slide Text" />
-      <div style={{ display: "flex", gap: 6 }}>
-        {["en", "bm"].map((l) => (
-          <button
-            key={l}
-            onClick={() => setLang(l)}
-            style={{
-              flex: 1,
-              padding: "9px",
-              borderRadius: 10,
-              cursor: "pointer",
-              border: `1px solid ${lang === l ? "#e53935" : "rgba(255,255,255,0.08)"}`,
-              background:
-                lang === l ? "rgba(229,57,53,0.1)" : "rgba(255,255,255,0.02)",
-              color: lang === l ? "#e53935" : "rgba(255,255,255,0.35)",
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: "inherit",
-            }}
-          >
-            {l === "en" ? "🇬🇧 English" : "🇲🇾 Bahasa"}
-          </button>
+      {/* Command input */}
+      <div style={{ display:"flex", gap:6 }}>
+        <input ref={aiInputRef} value={aiCmd} onChange={e => setAiCmd(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && runAICommand()} disabled={aiAtLimit}
+          placeholder="e.g. make price bigger, red accent…"
+          style={{
+            flex:1, padding:"10px 13px", background:"rgba(0,0,0,0.3)",
+            border:"1px solid rgba(220,38,38,0.22)", borderRadius:9, color:"#fff",
+            fontFamily:"'DM Sans',sans-serif", fontSize:12, outline:"none",
+            opacity:aiAtLimit ? 0.4 : 1,
+          }} />
+        <button onClick={runAICommand} disabled={applyingCmd||!aiCmd.trim()||aiAtLimit} style={{
+          padding:"10px 14px", borderRadius:9, border:"none",
+          background:applyingCmd?"rgba(220,38,38,0.45)":"#dc2626",
+          color:"#fff", cursor:applyingCmd||aiAtLimit?"default":"pointer",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          {applyingCmd
+            ? <div style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.3)", borderTop:"2px solid #fff", borderRadius:"50%", animation:"ttsv3-spin 0.8s linear infinite" }} />
+            : "⚡"}
+        </button>
+      </div>
+      {genError && <p style={{ fontSize:11, color:"#f87171" }}>{genError}</p>}
+      {/* Suggestion chips */}
+      <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+        {suggestions.map(s => (
+          <button key={s} onClick={() => { setAiCmd(s); setTimeout(() => aiInputRef.current?.focus(), 0); }} style={{
+            padding:"4px 9px", borderRadius:999, border:"1px solid rgba(220,38,38,0.2)",
+            background:"transparent", color:"rgba(220,38,38,0.65)",
+            fontSize:9, fontWeight:700, cursor:"pointer",
+            fontFamily:"inherit", textTransform:"uppercase", letterSpacing:"0.06em",
+          }}>{s}</button>
         ))}
       </div>
-      <Input
-        value={hookInput}
-        onChange={(e) => setHookInput(e.target.value)}
-        placeholder={`Hook — e.g. Cleanest ${listing?.brand || "car"} in Malaysia`}
-      />
-      <button
-        onClick={generateText}
-        disabled={generating}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          padding: "12px",
-          borderRadius: 10,
-          border: "none",
-          background: "#e53935",
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: generating ? "default" : "pointer",
-          opacity: generating ? 0.6 : 1,
-          fontFamily: "inherit",
-          width: "100%",
-        }}
-      >
-        {generating ? (
-          <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
-        ) : (
-          <Sparkles size={13} />
-        )}
-        {generating
-          ? `Writing ${total} slides…`
-          : `Generate All ${total} Slides`}
-      </button>
-      {genError && (
-        <p
-          style={{
-            fontSize: 11,
-            color: "#fbbf24",
-            background: "rgba(251,191,36,0.06)",
-            border: "1px solid rgba(251,191,36,0.12)",
-            borderRadius: 8,
-            padding: "8px 12px",
-            margin: 0,
-          }}
-        >
-          {genError}
-        </p>
+      {/* Command history */}
+      {cmdHistory.length > 0 && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:8 }}>
+          <p style={{ fontSize:9, color:"rgba(255,255,255,0.2)", marginBottom:5, textTransform:"uppercase", letterSpacing:"0.08em" }}>Recent</p>
+          {cmdHistory.map((c, i) => (
+            <button key={i} onClick={() => setAiCmd(c)} style={{
+              display:"block", width:"100%", textAlign:"left", padding:"5px 0",
+              background:"none", border:"none", color:"rgba(255,255,255,0.32)",
+              fontSize:11, cursor:"pointer", fontFamily:"inherit",
+              borderBottom:i<cmdHistory.length-1?"1px solid rgba(255,255,255,0.04)":"none",
+            }}>↺ {c}</button>
+          ))}
+        </div>
       )}
+      {/* Generate slide copy */}
+      <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:14 }}>
+        <SectionHead label="Generate slide text" />
+        <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+          {["en","bm"].map(l => (
+            <button key={l} onClick={() => setLanguage(l)} style={{
+              flex:1, padding:"6px 0", borderRadius:8, cursor:"pointer", fontSize:11, fontWeight:600,
+              border:`1px solid ${language===l?"rgba(220,38,38,0.4)":"rgba(255,255,255,0.07)"}`,
+              background:language===l?"rgba(220,38,38,0.1)":"transparent",
+              color:language===l?"#dc2626":"rgba(255,255,255,0.35)",
+            }}>{l === "en" ? "English" : "Bahasa M"}</button>
+          ))}
+        </div>
+        <PInput value={hookText} placeholder="Your hook idea (optional)"
+          onChange={e => setHookText(e.target.value)} />
+        <button onClick={async () => {
+          setApplyingCmd(true);
+          try {
+            const res = await generateSlidesCopy(listing, total, language, hookText);
+            if (Array.isArray(res)) {
+              setSlides(ss => ss.map((s, i) => {
+                const d = res[i]; if (!d) return s;
+                return {
+                  ...s, elements:s.elements.map(el =>
+                    el.id === "hook"     ? { ...el, content:d.hookText  || el.content } :
+                    el.id === "headline" ? { ...el, content:d.headline  || el.content } : el
+                  ),
+                };
+              }));
+            }
+          } catch { setGenError("Generation failed."); }
+          setApplyingCmd(false);
+        }} style={{
+          width:"100%", padding:"10px 0", marginTop:8, borderRadius:9, border:"none",
+          background:"rgba(220,38,38,0.75)", color:"#fff", fontWeight:700,
+          cursor:applyingCmd?"wait":"pointer", fontSize:12,
+        }}>{applyingCmd ? "Generating…" : "Generate All Slides"}</button>
+      </div>
     </div>
   );
 
-  const tabPanel = () => {
-    if (activeTab === "slide") return <SlidePanel />;
+  // ── Tab bar + routing ────────────────────────────────────────────────────
+  const TABS = [
+    { id:"slide",  label:"Slide"  },
+    { id:"design", label:"Design" },
+    { id:"brand",  label:"Brand"  },
+    { id:"badges", label:"Badges" },
+    { id:"ai",     label:"✦ AI"  },
+  ];
+  const renderTab = () => {
+    if (activeTab === "slide")  return <SlidePanel />;
     if (activeTab === "design") return <DesignPanel />;
-    if (activeTab === "brand") return <BrandPanel />;
+    if (activeTab === "brand")  return <BrandPanel />;
     if (activeTab === "badges") return <BadgesPanel />;
-    if (activeTab === "ai") return <AIPanel />;
+    if (activeTab === "ai")     return <AIPanel />;
+  };
+  const tabBar = (
+    <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+      {TABS.map(t => (
+        <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+          flex:1, padding:"10px 4px", border:"none", fontFamily:"'DM Sans',sans-serif",
+          borderBottom:`2px solid ${activeTab===t.id?"#dc2626":"transparent"}`,
+          background:"transparent",
+          color:activeTab===t.id?"#dc2626":"rgba(255,255,255,0.32)",
+          cursor:"pointer", fontSize:11, fontWeight:600, transition:"all 0.15s",
+        }}>{t.label}</button>
+      ))}
+    </div>
+  );
+
+  // Shared props for CanvasPreview
+  const previewProps = {
+    slide, theme, fontStack:fontObj.stack,
+    selectedId, highlightIds, aiLoading:applyingCmd,
+    onSelectElement:id => { setSelectedId(id); setEditingId(null); },
+    onDeselectAll:() => { setSelectedId(null); setEditingId(null); },
+    onStartDrag, onStartResize, onStartRotate,
+    onDoubleClickElement:id => setEditingId(id),
+    editingId, onCommitEdit, onCancelEdit:() => setEditingId(null),
+    selectedEl, onUpdateSelected:updateSelectedElement,
+    onDuplicateSelected:duplicateSelected,
+    onDeleteSelected:deleteSelected,
+    innerRef:canvasInnerRef,
   };
 
-  const TABS = [
-    { id: "slide", label: "Slide", icon: <Layers size={11} /> },
-    { id: "design", label: "Design", icon: <Palette size={11} /> },
-    { id: "brand", label: "Brand", icon: <Shield size={11} /> },
-    { id: "badges", label: "Badges", icon: <Tag size={11} /> },
-    { id: "ai", label: "AI", icon: <Wand2 size={11} /> },
-  ];
-
-  const remainingImages =
-    rawImages.length > imagePageStart ? rawImages.length - imagePageStart : 0;
-
-  const FilmStrip = ({ horizontal }) => (
-    <div
-      ref={horizontal ? filmRef : null}
-      style={
-        horizontal
-          ? {
-              flexShrink: 0,
-              display: "flex",
-              gap: 7,
-              overflowX: "auto",
-              padding: "8px 12px",
-              background: "#060610",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              scrollbarWidth: "none",
-              alignItems: "center",
-            }
-          : {
-              display: "flex",
-              flexDirection: "column",
-              gap: 7,
-              overflow: "auto",
-              flex: 1,
-              scrollbarWidth: "none",
-            }
-      }
-    >
-      {!horizontal && (
-        <div
-          ref={filmRef}
-          style={{ display: "flex", flexDirection: "column", gap: 7 }}
-        >
-          {slides.map((s, i) => (
-            <Thumb
-              key={s.id ?? i}
-              slide={s}
-              theme={theme}
-              fontId={font}
-              isActive={i === active}
-              index={i}
-              onClick={() => setActive(i)}
-              onDelete={() => removeSlide(i)}
-              showDelete={total > 1}
-            />
-          ))}
-        </div>
-      )}
-      {horizontal &&
-        slides.map((s, i) => (
-          <Thumb
-            key={s.id ?? i}
-            slide={s}
-            theme={theme}
-            fontId={font}
-            isActive={i === active}
-            index={i}
-            onClick={() => setActive(i)}
-            onDelete={() => removeSlide(i)}
-            showDelete={total > 1}
-          />
-        ))}
-      {remainingImages > 0 && (
-        <button
-          onClick={addMoreImages}
-          style={{
-            flexShrink: 0,
-            width: 52,
-            height: 92,
-            borderRadius: 8,
-            border: "2px dashed rgba(229,57,53,0.35)",
-            background: "rgba(229,57,53,0.04)",
-            color: "#e53935",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 2,
-          }}
-        >
-          <Plus size={13} />
-          <span style={{ fontSize: 7, fontWeight: 700 }}>
-            +{remainingImages}
-          </span>
-        </button>
-      )}
-      <button
-        onClick={addSlide}
-        style={{
-          flexShrink: 0,
-          width: 52,
-          height: 92,
-          borderRadius: 8,
-          border: "2px dashed rgba(255,255,255,0.1)",
-          background: "rgba(255,255,255,0.015)",
-          color: "rgba(255,255,255,0.25)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Plus size={15} />
-      </button>
-    </div>
-  );
-
-  const PreviewPane = () => (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#070711",
-        gap: 12,
-        padding: "20px",
-        position: "relative",
-      }}
-    >
-      <div
-        style={{
-          aspectRatio: "9/16",
-          height: "min(calc(100dvh - 180px), 540px)",
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow:
-            "0 24px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04)",
-          flexShrink: 0,
-        }}
-      >
-        <SlidePreview
-          slide={{ ...slide, index: active }}
-          theme={theme}
-          fontId={font}
-          animKey={`${active}-${animKey}`}
-        />
-      </div>
-      <button
-        onClick={() => setActive((i) => Math.max(0, i - 1))}
-        disabled={active === 0}
-        style={{
-          position: "absolute",
-          left: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: active === 0 ? 0.1 : 0.7,
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <button
-        onClick={() => setActive((i) => Math.min(total - 1, i + 1))}
-        disabled={active === total - 1}
-        style={{
-          position: "absolute",
-          right: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: active === total - 1 ? 0.1 : 0.7,
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <ChevronRight size={16} />
-      </button>
-      <div
-        style={{
-          fontSize: 10,
-          color: "rgba(255,255,255,0.2)",
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-        }}
-      >
-        {active + 1} / {total} ·{" "}
-        {SLIDE_TEMPLATES.find((t) => t.id === slide.template)?.label || "Hype"}{" "}
-        · ← →
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes tgIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-        .tg * { box-sizing: border-box; }
-        .tg ::-webkit-scrollbar { display: none; }
-        .tg-d { display: none !important; }
-        .tg-m { display: flex !important; }
-        @media (min-width: 768px) { .tg-d { display: flex !important; } .tg-m { display: none !important; } }
-        .thumb-wrap:hover .thumb-del { opacity: 1 !important; }
-        input[type=range] { height: 3px; border-radius: 2px; }
-      `}</style>
-
-      <div
-        className="tg"
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 300,
-          background: "rgba(0,0,0,0.92)",
-          backdropFilter: "blur(16px)",
-          fontFamily: "'DM Sans',sans-serif",
-        }}
-      >
-        {/* ── DESKTOP ────────────────────────────────────────────────────── */}
-        <div
-          className="tg-d"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed",
-            inset: 0,
-            flexDirection: "column",
-            background: "#08080f",
-            animation: "tgIn 0.22s ease",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "0 20px",
-              height: 52,
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              background: "#0b0b15",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  background: "#e53935",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.12 8.72 6.34 6.34 0 0 0 11.65-3.42V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1-.07z" />
-                </svg>
-              </div>
-              <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>
-                Content Studio V3
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>
-                {listing?.brand} {listing?.model} · {total} slides
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "rgba(255,255,255,0.15)",
-                  marginRight: 4,
-                }}
-              >
-                ← → to navigate
-              </span>
-              <button
-                onClick={() => saveSingle(active)}
-                disabled={dlIdx === active}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "7px 13px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  opacity: dlIdx === active ? 0.5 : 1,
-                }}
-              >
-                {dlIdx === active ? (
-                  <Loader2
-                    size={12}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : (
-                  <Download size={12} />
-                )}{" "}
-                This slide
-              </button>
-              <button
-                onClick={saveAll}
-                disabled={downloading}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "7px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#e53935",
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: downloading ? "default" : "pointer",
-                  fontFamily: "inherit",
-                  opacity: downloading ? 0.6 : 1,
-                }}
-              >
-                {downloading ? (
-                  <Loader2
-                    size={12}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : (
-                  <Download size={12} />
-                )}
-                {downloading
-                  ? "Packing…"
-                  : isIOS()
-                    ? `Save All (${total})`
-                    : `Export ZIP (${total})`}
-              </button>
-              <button
-                onClick={onClose}
-                style={{
-                  width: 32,
-                  height: 32,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              overflow: "hidden",
-              minHeight: 0,
-            }}
-          >
-            {/* Film strip - vertical left */}
-            <div
-              style={{
-                width: 78,
-                background: "#06060f",
-                borderRight: "1px solid rgba(255,255,255,0.05)",
-                display: "flex",
-                flexDirection: "column",
-                padding: "12px 13px",
-                overflowY: "auto",
-                flexShrink: 0,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 8,
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.15)",
-                  marginBottom: 10,
-                  marginTop: 0,
-                }}
-              >
-                Slides
-              </p>
-              <FilmStrip horizontal={false} />
-            </div>
-
-            {/* Preview */}
-            <PreviewPane />
-
-            {/* Right panel */}
-            <div
-              style={{
-                width: 310,
-                background: "#0b0b15",
-                borderLeft: "1px solid rgba(255,255,255,0.06)",
-                display: "flex",
-                flexDirection: "column",
-                flexShrink: 0,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  gap: 2,
-                  padding: "10px 10px",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  flexShrink: 0,
-                  flexWrap: "wrap",
-                }}
-              >
-                {TABS.map(({ id, label, icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 7,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background:
-                        activeTab === id
-                          ? "rgba(229,57,53,0.12)"
-                          : "rgba(255,255,255,0.02)",
-                      border: `1px solid ${activeTab === id ? "rgba(229,57,53,0.35)" : "rgba(255,255,255,0.06)"}`,
-                      color:
-                        activeTab === id ? "#e53935" : "rgba(255,255,255,0.35)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      transition: "all 0.12s",
-                    }}
-                  >
-                    {icon}
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px" }}>
-                {tabPanel()}
-              </div>
-            </div>
+  // ── Mobile layout ────────────────────────────────────────────────────────
+  if (isMobile) {
+    const mobScale = (window.innerWidth * 0.5) / CANVAS_W;
+    return (
+      <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#080C14", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ height:46, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 12px", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:"0.05em", color:"#fff" }}>TT STUDIO V3</span>
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={saveAll} disabled={downloading} style={{ padding:"5px 12px", borderRadius:8, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>
+              {downloading ? "…" : "Export"}
+            </button>
+            <button onClick={onClose} style={{ width:30, height:30, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.05)", color:"#fff", cursor:"pointer" }}>✕</button>
           </div>
         </div>
-
-        {/* ── MOBILE ─────────────────────────────────────────────────────── */}
-        <div
-          className="tg-m"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed",
-            inset: 0,
-            flexDirection: "column",
-            background: "#08080f",
-            animation: "tgIn 0.22s ease",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 14px",
-              background: "#0b0b15",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              flexShrink: 0,
-            }}
-          >
-            <button
-              onClick={onClose}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.03)",
-                color: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <X size={15} />
-            </button>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 12 }}>
-              {active + 1}/{total} · {listing?.brand} {listing?.model}
-            </span>
-            <button
-              onClick={saveAll}
-              disabled={downloading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "7px 12px",
-                borderRadius: 8,
-                border: "none",
-                background: "#e53935",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                opacity: downloading ? 0.6 : 1,
-              }}
-            >
-              {downloading ? (
-                <Loader2
-                  size={11}
-                  style={{ animation: "spin 1s linear infinite" }}
-                />
-              ) : (
-                <Download size={11} />
-              )}
-              {downloading ? "…" : isIOS() ? "Save" : "ZIP"}
-            </button>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"8px 10px", flexShrink:0, borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ position:"relative", flexShrink:0 }}>
+            <CanvasPreview {...previewProps} scale={mobScale} />
+            {active > 0 && <button onClick={() => setActive(i => i-1)} style={{ position:"absolute", left:-10, top:"50%", transform:"translateY(-50%)", width:20, height:20, borderRadius:"50%", background:"rgba(0,0,0,0.7)", border:"none", color:"#fff", cursor:"pointer" }}>‹</button>}
+            {active < total-1 && <button onClick={() => setActive(i => i+1)} style={{ position:"absolute", right:-10, top:"50%", transform:"translateY(-50%)", width:20, height:20, borderRadius:"50%", background:"rgba(0,0,0,0.7)", border:"none", color:"#fff", cursor:"pointer" }}>›</button>}
           </div>
-
-          {/* Preview */}
-          <div
-            style={{
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              background: "#060610",
-              padding: "12px 16px",
-              position: "relative",
-            }}
-          >
-            <div style={{ position: "relative" }}>
-              <div
-                style={{
-                  width: 140,
-                  height: 249,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  boxShadow:
-                    "0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
-                }}
-              >
-                <SlidePreview
-                  slide={{ ...slide, index: active }}
-                  theme={theme}
-                  fontId={font}
-                  animKey={`m-${active}-${animKey}`}
-                />
-              </div>
-              <button
-                onClick={() => saveSingle(active)}
-                disabled={dlIdx === active}
-                style={{
-                  position: "absolute",
-                  bottom: 6,
-                  right: 6,
-                  width: 26,
-                  height: 26,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.75)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {dlIdx === active ? (
-                  <Loader2
-                    size={10}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : (
-                  <Download size={10} />
-                )}
-              </button>
-            </div>
-            <button
-              onClick={() => setActive((i) => Math.max(0, i - 1))}
-              disabled={active === 0}
-              style={{
-                position: "absolute",
-                left: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(0,0,0,0.6)",
-                color: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: active === 0 ? 0.1 : 0.7,
-              }}
-            >
-              <ChevronLeft size={13} />
-            </button>
-            <button
-              onClick={() => setActive((i) => Math.min(total - 1, i + 1))}
-              disabled={active === total - 1}
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(0,0,0,0.6)",
-                color: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: active === total - 1 ? 0.1 : 0.7,
-              }}
-            >
-              <ChevronRight size={13} />
-            </button>
-          </div>
-
-          {/* Horizontal film strip */}
-          <FilmStrip horizontal={true} />
-
-          {/* Tabs */}
-          <div
-            style={{
-              display: "flex",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              background: "#0b0b15",
-              flexShrink: 0,
-              overflowX: "auto",
-            }}
-          >
-            {TABS.map(({ id, label, icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                style={{
-                  flex: "none",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                  padding: "8px 14px",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  borderBottom:
-                    activeTab === id
-                      ? "2px solid #e53935"
-                      : "2px solid transparent",
-                  color:
-                    activeTab === id ? "#e53935" : "rgba(255,255,255,0.25)",
-                  transition: "color 0.15s",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 3,
-                  }}
-                >
-                  {icon}
-                  {label}
-                </span>
-              </button>
+          <div style={{ flex:1, overflowX:"auto", display:"flex", gap:5, alignItems:"center" }}>
+            {slides.map((s, i) => (
+              <FilmThumb key={s.id} slide={s} idx={i} active={i===active}
+                onSelect={i => { setActive(i); setSelectedId(null); }} onDelete={removeSlide} />
             ))}
-          </div>
-
-          {/* Panel */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "16px 14px",
-              overscrollBehavior: "contain",
-            }}
-          >
-            {tabPanel()}
+            <button onClick={addSlide} style={{ width:36, height:64, flexShrink:0, borderRadius:6, border:"1px dashed rgba(255,255,255,0.14)", background:"transparent", color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:18 }}>+</button>
           </div>
         </div>
+        {tabBar}
+        <div style={{ flex:1, overflowY:"auto", padding:"12px 14px" }}>{renderTab()}</div>
+        {activeTab !== "ai" && (
+          <div style={{ padding:"8px 12px", borderTop:"1px solid rgba(255,255,255,0.06)", background:"rgba(8,12,20,0.97)", display:"flex", gap:6, flexShrink:0 }}>
+            <input value={aiCmd} onChange={e => setAiCmd(e.target.value)}
+              onKeyDown={e => e.key==="Enter"&&runAICommand()} disabled={aiAtLimit}
+              placeholder="AI edit…"
+              style={{ flex:1, padding:"8px 12px", background:"rgba(0,0,0,0.4)", border:"1px solid rgba(220,38,38,0.18)", borderRadius:8, color:"#fff", fontFamily:"'DM Sans',sans-serif", fontSize:12, outline:"none" }} />
+            <button onClick={runAICommand} disabled={applyingCmd||!aiCmd.trim()||aiAtLimit}
+              style={{ padding:"8px 12px", borderRadius:8, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+              {applyingCmd ? "…" : "⚡"}
+            </button>
+          </div>
+        )}
       </div>
-    </>
+    );
+  }
+
+  // ── Desktop layout ───────────────────────────────────────────────────────
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#080C14", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif" }}>
+      {/* Header */}
+      <div style={{ height:52, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, letterSpacing:"0.05em", color:"#fff" }}>TIKTOK STUDIO</span>
+          <span style={{ fontSize:9, background:"#dc2626", color:"#fff", padding:"2px 6px", borderRadius:999, fontWeight:700 }}>V3</span>
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <button onClick={() => saveSingle(active)} disabled={dlIdx===active} style={{ padding:"6px 14px", borderRadius:8, border:"1px solid rgba(255,255,255,0.12)", background:"transparent", color:"rgba(255,255,255,0.65)", cursor:"pointer", fontSize:12 }}>
+            ↓ Save slide
+          </button>
+          <button onClick={saveAll} disabled={downloading} style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#dc2626", color:"#fff", cursor:downloading?"wait":"pointer", fontSize:12, fontWeight:700 }}>
+            {downloading ? "Exporting…" : "Export all"}
+          </button>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.05)", color:"#fff", cursor:"pointer", fontSize:16 }}>✕</button>
+        </div>
+      </div>
+
+      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+        {/* Film strip */}
+        <div style={{ width:56, background:"rgba(0,0,0,0.25)", borderRight:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 0", gap:6, overflowY:"auto", flexShrink:0 }}>
+          {slides.map((s, i) => (
+            <FilmThumb key={s.id} slide={s} idx={i} active={i===active}
+              onSelect={i => { setActive(i); setSelectedId(null); }}
+              onDelete={removeSlide} />
+          ))}
+          <button onClick={addSlide} style={{ width:40, height:40, marginTop:4, borderRadius:8, border:"1px dashed rgba(255,255,255,0.14)", background:"transparent", color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+        </div>
+
+        {/* Canvas area */}
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", position:"relative" }}>
+          {showImagePicker ? (
+            <div style={{ position:"relative", width:CANVAS_W*scale, height:CANVAS_H*scale }}>
+              <ImagePicker images={rawImages} current={slide.imageUrl}
+                onSelect={url => patchSlide({ imageUrl:url })}
+                onClose={() => setShowImagePicker(false)} />
+            </div>
+          ) : (
+            <CanvasPreview {...previewProps} scale={scale} />
+          )}
+        </div>
+
+        {/* Right panel */}
+        <div style={{ width:320, background:"#0d1117", borderLeft:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", overflow:"hidden", flexShrink:0 }}>
+          {tabBar}
+          <div style={{ flex:1, overflowY:"auto", padding:"14px 16px" }}>{renderTab()}</div>
+        </div>
+      </div>
+    </div>
   );
 }
