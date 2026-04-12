@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Check, ChevronRight, ChevronLeft, ChevronDown, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck, ShieldCheck, Globe } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck, ShieldCheck, Globe, Tag, Search, X as XIcon } from 'lucide-react';
 import DamageMap from './DamageMap';
+import { getCategoryCfg } from '../utils/serviceCategories';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -23,6 +24,9 @@ const initialListing = {
   localRegDate: '',
   chassisStatus: '',
   damageMap: [],
+  // Services
+  included_services: [],
+  baseReconCost: 0, // recon_cost excluding services (computed at pre-fill)
 };
 
 const CAR_DATA = {
@@ -254,6 +258,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
+
+  // ── Included services state ──────────────────────────────────────────────
+  const [servicesOpen, setServicesOpen]       = useState(false);
+  const [pickerOpen, setPickerOpen]           = useState(false);
+  const [serviceCatalogue, setServiceCatalogue] = useState([]);
+  const [catalogueLoaded, setCatalogueLoaded] = useState(false);
+  const [serviceSearch, setServiceSearch]     = useState('');
   const navigate = useNavigate();
 
   useEffect(() => { previewUrlsRef.current = previews; }, [previews]);
@@ -294,11 +305,48 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         localRegDate: listing.local_reg_date || '',
         chassisStatus: listing.chassis_status || '',
         damageMap: listing.damage_map || [],
+        included_services: listing.included_services || [],
+        // base recon = total recon minus previously-stored services cost
+        baseReconCost: Math.max(0, (listing.recon_cost || 0) - (listing.included_services_cost || 0)),
       });
       setPreviews(listing.images || []);
       setStep(1);
     }
   }, [listing]);
+
+  // Fetch dealer products when picker is first opened
+  useEffect(() => {
+    if (!pickerOpen || catalogueLoaded) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('dealer_products')
+        .select('id, name, category, cost_price, selling_price')
+        .eq('dealer_id', session.user.id)
+        .eq('is_active', true)
+        .order('name');
+      setServiceCatalogue(data || []);
+      setCatalogueLoaded(true);
+    })();
+  }, [pickerOpen]);
+
+  const addService = (product) => {
+    const entry = {
+      product_id: product.id,
+      name:       product.name,
+      category:   product.category,
+      cost:       product.cost_price || 0,
+      icon:       product.category,
+    };
+    setForm(f => ({ ...f, included_services: [...(f.included_services || []), entry] }));
+    setPickerOpen(false);
+    setServiceSearch('');
+  };
+
+  const removeService = (idx) => {
+    setForm(f => ({ ...f, included_services: (f.included_services || []).filter((_, i) => i !== idx) }));
+  };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const handleChange = e => set(e.target.name, e.target.value);
@@ -420,6 +468,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     setUploading(true);
     try {
       const imageUrls = await uploadImages();
+      const servicesCost = (form.included_services || []).reduce((sum, s) => sum + (s.cost || 0), 0);
       const payload = {
         brand: form.brand, model: form.model, variant: form.variant,
         state: form.state, city: form.city,
@@ -443,6 +492,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         local_reg_date: form.isRecon ? (form.localRegDate  || null) : null,
         chassis_status: form.isRecon ? (form.chassisStatus || null) : null,
         damage_map: form.damageMap || [],
+        included_services: form.included_services || [],
+        included_services_cost: servicesCost,
+        recon_cost: (form.baseReconCost || 0) + servicesCost,
       };
 
       if (listing) {
@@ -454,7 +506,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           .select('*');
         if (error) throw error;
         if (!data?.length) throw new Error('Update blocked — your dealer_id may not match your account. Run the fix SQL in Supabase (see README or ask your admin).');
-        onUpdate(data[0]);
+        const savedListing = data[0];
+        onUpdate(savedListing);
+        // Sync services to linked stock_unit
+        if (savedListing?.id) {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          if (s) await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', s.user.id);
+        }
       } else {
         // Create mode — insert new record
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -465,7 +523,12 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           .select()
           .single();
         if (error) throw error;
-        onCreate(data);
+        const savedListing = data;
+        onCreate(savedListing);
+        // Sync services to linked stock_unit (if one is auto-created)
+        if (savedListing?.id) {
+          await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', session.user.id);
+        }
         previews.forEach(p => { if (typeof p !== 'string') URL.revokeObjectURL(p); });
         setForm(initialListing); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); setStep(1);
       }
@@ -759,6 +822,140 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
             </div>
           )}
+
+          {/* ── Included Services & Add-ons ── */}
+          <div className="rounded-2xl border border-gray-800 overflow-hidden">
+            {/* Header toggle */}
+            <button
+              type="button"
+              onClick={() => setServicesOpen(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-900 hover:bg-gray-800/80 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Tag className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-semibold text-white">Included Services &amp; Add-ons</span>
+                {form.included_services.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold">
+                    {form.included_services.length}
+                  </span>
+                )}
+              </div>
+              {servicesOpen ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+            </button>
+
+            {servicesOpen && (
+              <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+                {/* Attached list */}
+                {form.included_services.length > 0 && (
+                  <div className="space-y-2">
+                    {form.included_services.map((svc, idx) => {
+                      const cfg = getCategoryCfg(svc.category);
+                      const CatIcon = cfg.icon;
+                      return (
+                        <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-800/60 border border-gray-700">
+                          <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{svc.name}</p>
+                            <p className="text-xs text-gray-500">{cfg.label}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-white whitespace-nowrap">
+                            RM {Number(svc.selling_price || 0).toLocaleString()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeService(idx)}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                          >
+                            <XIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {/* Cost summary */}
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
+                      <span className="text-xs text-gray-400 font-medium">Total included services cost</span>
+                      <span className="text-sm font-semibold text-blue-400">
+                        RM {form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Service toggle */}
+                {!pickerOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-700 hover:border-blue-500/40 text-gray-500 hover:text-blue-400 text-sm transition-colors"
+                  >
+                    <Tag className="w-4 h-4" />
+                    Add a service from catalogue
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+                    {/* Search bar */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
+                      <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={serviceSearch}
+                        onChange={e => setServiceSearch(e.target.value)}
+                        placeholder="Search catalogue…"
+                        className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setPickerOpen(false); setServiceSearch(''); }}
+                        className="text-gray-500 hover:text-white"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {/* Catalogue list */}
+                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-700/50">
+                      {serviceCatalogue.length === 0 && (
+                        <p className="text-center text-gray-600 text-sm py-6">
+                          {catalogueLoaded ? 'No products in catalogue yet' : 'Loading…'}
+                        </p>
+                      )}
+                      {serviceCatalogue
+                        .filter(p =>
+                          !serviceSearch ||
+                          p.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+                          p.category.toLowerCase().includes(serviceSearch.toLowerCase())
+                        )
+                        .filter(p => p.is_active !== false)
+                        .map(p => {
+                          const cfg = getCategoryCfg(p.category);
+                          const CatIcon = cfg.icon;
+                          const alreadyAdded = form.included_services.some(s => s.id === p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              disabled={alreadyAdded}
+                              onClick={() => addService(p)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-700/50'}`}
+                            >
+                              <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">{p.name}</p>
+                                <p className="text-xs text-gray-500">{cfg.label}</p>
+                              </div>
+                              <span className="text-sm font-semibold text-white whitespace-nowrap">
+                                RM {Number(p.selling_price || 0).toLocaleString()}
+                              </span>
+                              {alreadyAdded && <span className="text-xs text-gray-500">Added</span>}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
