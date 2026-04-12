@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator } from 'lucide-react';
+import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package } from 'lucide-react';
+import { getCategoryCfg } from '../utils/serviceCategories';
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
 import CarCard from '../components/CarCard';
@@ -957,6 +958,38 @@ export default function CarDetailPage() {
             </div>
           ))}
         </div>
+
+        {/* ── What's Included ── */}
+        {Array.isArray(car.included_services) && car.included_services.length > 0 && (
+          <div style={{ padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '0 0 24px' }}>
+            <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', fontWeight: 600, marginBottom: 14 }}>What's Included</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {car.included_services.map((svc, i) => {
+                const cfg = getCategoryCfg(svc.category);
+                const CatIcon = cfg.icon;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: `${cfg.color}12`,
+                      border: `1px solid ${cfg.color}30`,
+                      borderRadius: 8, padding: '6px 12px',
+                    }}
+                  >
+                    <CatIcon size={13} style={{ color: cfg.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: cfg.color, fontWeight: 600 }}>{svc.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {car.included_services_cost > 0 && (
+              <p style={{ fontSize: 11, color: '#6b7280', marginTop: 10 }}>
+                Estimated add-on value: <span style={{ color: '#60a5fa', fontWeight: 600 }}>RM {Number(car.included_services_cost).toLocaleString()}</span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── details section ── */}
         <section className="cdp-details">

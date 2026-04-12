@@ -3941,6 +3941,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     if (activeTab === "design") return DesignPanel();
     if (activeTab === "brand") return BrandPanel();
     if (activeTab === "badges") return BadgesPanel();
+
     if (activeTab === "ai") return AIPanel();
     if (activeTab === "library") return LibraryPanel();
   };

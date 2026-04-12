@@ -17,6 +17,7 @@ import ServicesPage from "./ServicesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
+import { getCategoryCfg } from "../utils/serviceCategories";
 import {
   Car,
   PlusCircle,
@@ -4687,6 +4688,7 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  const [svcPopupListing,  setSvcPopupListing]  = useState(null);
   const [notifications,    setNotifications]    = useState([]);
   const [notifOpen,        setNotifOpen]        = useState(false);
   const [pendingStockListing, setPendingStockListing] = useState(null);
@@ -5775,6 +5777,15 @@ export default function DashboardPage() {
                                   {/* Status */}
                                   <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
                                     <StatusBadge listing={l} />
+                                    {Array.isArray(l.included_services) && l.included_services.length > 0 && (
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        <Tag style={{ width: 9, height: 9 }} />
+                                        {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -5828,6 +5839,15 @@ export default function DashboardPage() {
                               {l.state && <span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span>}
                               <span style={{ fontSize: 11, color: '#6b7280' }}>{fmtDate(l.created_at)}</span>
                               <AgeBadge createdAt={l.created_at} />
+                              {Array.isArray(l.included_services) && l.included_services.length > 0 && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer' }}
+                                >
+                                  <Tag style={{ width: 9, height: 9 }} />
+                                  {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -5916,6 +5936,62 @@ export default function DashboardPage() {
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
         />
+      )}
+
+      {/* ── Services popup ── */}
+      {svcPopupListing && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+          style={{ background: 'rgba(0,0,0,0.78)' }}
+          onClick={() => setSvcPopupListing(null)}
+        >
+          <div
+            className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm overflow-hidden"
+            style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white text-sm">Included Services</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {svcPopupListing.brand} {svcPopupListing.model} {svcPopupListing.variant || ''}
+                </p>
+              </div>
+              <button onClick={() => setSvcPopupListing(null)} className="text-gray-500 hover:text-white p-1 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Services list */}
+            <div className="p-4 space-y-2 max-h-72 overflow-y-auto">
+              {(svcPopupListing.included_services || []).map((svc, i) => {
+                const cfg = getCategoryCfg(svc.category);
+                const CatIcon = cfg.icon;
+                return (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{svc.name}</p>
+                      <p className="text-xs text-gray-500">{cfg.label}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-white whitespace-nowrap">
+                      RM {Number(svc.selling_price || 0).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Total footer */}
+            {svcPopupListing.included_services_cost > 0 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-blue-500/5">
+                <span className="text-xs text-gray-400 font-medium">Total value</span>
+                <span className="text-sm font-bold text-blue-400">
+                  RM {Number(svcPopupListing.included_services_cost).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Delete modal ── */}
