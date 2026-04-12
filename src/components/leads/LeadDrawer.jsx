@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
-  Pencil, Check, ChevronRight, Send, Search, AlertTriangle, FileText,
-  Plus, Package,
+  Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
+  AlertTriangle, FileText, Plus, Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
@@ -97,6 +97,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [dealAddons, setDealAddons]         = useState([]);
   const [catalogueProducts, setCatalogueProducts] = useState([]);
   const [addonsLoading, setAddonsLoading]   = useState(false);
+  const [addonsOpen, setAddonsOpen]         = useState(false);
   const [showAttach, setShowAttach]         = useState(false);
   const [addonForm, setAddonForm]           = useState({ product_id: '', sold_price: '', notes: '' });
   const [attachSaving, setAttachSaving]     = useState(false);
@@ -693,103 +694,119 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
           <Divider />
 
-          {/* ── Add-ons / Services ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <SLabel>Add-ons / Services</SLabel>
-            {!showAttach && (
-              <button
-                onClick={() => { setShowAttach(true); setAddonForm({ product_id: '', sold_price: '', notes: '' }); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#ef4444', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
-              >
-                <Plus style={{ width: 11, height: 11 }} />Attach
-              </button>
-            )}
-          </div>
-
-          {addonsLoading ? (
-            <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>Loading…</p>
-          ) : (
-            <>
-              {/* Attach inline panel */}
-              {showAttach && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Attach Add-on</p>
-                  {catalogueProducts.length === 0 ? (
-                    <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>No active products configured. Set them up in Settings → Services & Add-ons.</p>
-                  ) : (
-                    <>
-                      <select
-                        value={addonForm.product_id}
-                        onChange={e => {
-                          const sel = catalogueProducts.find(p => p.id === e.target.value);
-                          setAddonForm(f => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price }));
-                        }}
-                        style={{ ...inp, marginBottom: 6, appearance: 'none' }}
-                        className="ld-inp"
-                      >
-                        <option value="">— Select product —</option>
-                        {catalogueProducts.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString()}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        value={addonForm.sold_price}
-                        onChange={e => setAddonForm(f => ({ ...f, sold_price: e.target.value }))}
-                        placeholder="Sold price (RM)"
-                        style={{ ...inp, marginBottom: 6 }}
-                        className="ld-inp"
-                        min="0"
-                      />
-                      <input
-                        value={addonForm.notes}
-                        onChange={e => setAddonForm(f => ({ ...f, notes: e.target.value }))}
-                        placeholder="Notes (optional)"
-                        style={{ ...inp, marginBottom: 8 }}
-                        className="ld-inp"
-                      />
-                    </>
-                  )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                    {catalogueProducts.length > 0 && (
-                      <button
-                        onClick={handleAttachAddon}
-                        disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
-                        style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}
-                      >
-                        {attachSaving ? 'Adding…' : 'Add'}
-                      </button>
-                    )}
-                  </div>
-                </div>
+          {/* ── Add-ons / Services (collapsible) ── */}
+          <button
+            onClick={() => setAddonsOpen(v => !v)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', marginBottom: addonsOpen ? 0 : 0 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package style={{ width: 13, height: 13, color: '#6b7280' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: addonsOpen ? '#e5e7eb' : '#9ca3af' }}>
+                Add-ons {!addonsLoading && `(${dealAddons.length})`}
+              </span>
+              {!addonsLoading && dealAddons.length > 0 && (
+                <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
+                  · RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
+                </span>
               )}
+            </div>
+            {addonsOpen
+              ? <ChevronUp style={{ width: 13, height: 13, color: '#4b5563' }} />
+              : <ChevronDown style={{ width: 13, height: 13, color: '#4b5563' }} />}
+          </button>
 
-              {/* Attached list */}
-              {dealAddons.length === 0 && !showAttach ? (
-                <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>No add-ons attached yet.</p>
-              ) : dealAddons.length > 0 ? (
-                <div style={{ marginBottom: 8 }}>
-                  {dealAddons.map(a => (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 10px', marginBottom: 4, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                        <Package style={{ width: 12, height: 12, color: '#6b7280', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
+          {addonsOpen && (
+            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '12px', marginBottom: 0 }}>
+              {addonsLoading ? (
+                <p style={{ fontSize: 12, color: '#4b5563' }}>Loading…</p>
+              ) : (
+                <>
+                  {/* Attached list */}
+                  {dealAddons.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      {dealAddons.map(a => (
+                        <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 10px', marginBottom: 3, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
+                          <span style={{ fontSize: 12, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
+                          <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#4b5563', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
+                            <X style={{ width: 12, height: 12 }} />
+                          </button>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
+                          Total add-ons: RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
-                      <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#4b5563', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
-                        <X style={{ width: 12, height: 12 }} />
-                      </button>
                     </div>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 10px 0', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
-                      Add-ons total: RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-            </>
+                  )}
+
+                  {/* Attach button */}
+                  {!showAttach && (
+                    <button
+                      onClick={() => { setShowAttach(true); setAddonForm({ product_id: '', sold_price: '', notes: '' }); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#ef4444', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
+                    >
+                      <Plus style={{ width: 12, height: 12 }} />Attach Add-on
+                    </button>
+                  )}
+
+                  {/* Inline attach form */}
+                  {showAttach && (
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12 }}>
+                      {catalogueProducts.length === 0 ? (
+                        <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>No active products configured. Add them in Services & Add-ons.</p>
+                      ) : (
+                        <>
+                          <select
+                            value={addonForm.product_id}
+                            onChange={e => {
+                              const sel = catalogueProducts.find(p => p.id === e.target.value);
+                              setAddonForm(f => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price }));
+                            }}
+                            style={{ ...inp, marginBottom: 6, appearance: 'none' }}
+                            className="ld-inp"
+                          >
+                            <option value="">— Select product —</option>
+                            {catalogueProducts.map(p => (
+                              <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString()}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            value={addonForm.sold_price}
+                            onChange={e => setAddonForm(f => ({ ...f, sold_price: e.target.value }))}
+                            placeholder="Sold price (RM)"
+                            style={{ ...inp, marginBottom: 6 }}
+                            className="ld-inp"
+                            min="0"
+                          />
+                          <input
+                            value={addonForm.notes}
+                            onChange={e => setAddonForm(f => ({ ...f, notes: e.target.value }))}
+                            placeholder="Notes (optional)"
+                            style={{ ...inp, marginBottom: 8 }}
+                            className="ld-inp"
+                          />
+                        </>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        {catalogueProducts.length > 0 && (
+                          <button
+                            onClick={handleAttachAddon}
+                            disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
+                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}
+                          >
+                            {attachSaving ? 'Adding…' : 'Add'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           <Divider />

@@ -13,6 +13,7 @@ import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import RevOpsPage from "./RevOpsPage";
+import ServicesPage from "./ServicesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -81,6 +82,7 @@ import {
   Banknote,
   Printer,
   CheckSquare,
+  Wrench,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -5142,7 +5144,8 @@ export default function DashboardPage() {
     enquiries: { title: "Enquiries", sub: "WhatsApp & inbound leads" },
     bookings: { title: "Bookings", sub: "Appointments & test drives" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
-    revops: { title: "RevOps", sub: "Revenue operations & deal health" },
+    revops:    { title: "RevOps",    sub: "Revenue operations & deal health" },
+    services:  { title: "Services",  sub: "Add-ons & product catalogue" },
   };
 
   const NAV = [
@@ -5156,7 +5159,8 @@ export default function DashboardPage() {
     { id: "enquiries", Icon: MessageSquare, label: "Enquiries" },
     { id: "bookings", Icon: Calendar, label: "Bookings" },
     { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops", Icon: BarChart3, label: "RevOps" },
+    { id: "revops",   Icon: BarChart3, label: "RevOps" },
+    { id: "services", Icon: Wrench,   label: "Services & Add-ons" },
   ];
 
   const STAT_CARDS = [
@@ -5878,6 +5882,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "revops" && userId && (
             <RevOpsPage userId={userId} />
+          )}
+          {activeTab === "services" && userId && (
+            <ServicesPage userId={userId} />
           )}
         </div>
       </main>
