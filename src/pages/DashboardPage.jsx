@@ -12,6 +12,7 @@ import TikTokStudioV3 from "../components/TikTokStudioV3";
 import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
+import RevOpsPage from "./RevOpsPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -39,6 +40,7 @@ import {
   Tag,
   Flame,
   BarChart2,
+  BarChart3,
   Send,
   Bot,
   ChevronRight,
@@ -321,6 +323,259 @@ function SettingsField({ label, hint, children }) {
         {hint && <span className="text-xs text-gray-600">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+// ─── ProductsCatalogue ────────────────────────────────────────────────────────
+const PRODUCT_CATEGORIES = [
+  { value: 'protection',   label: 'Protection Film' },
+  { value: 'window_tint',  label: 'Window Tint' },
+  { value: 'warranty',     label: 'Extended Warranty' },
+  { value: 'insurance',    label: 'Insurance' },
+  { value: 'road_tax',     label: 'Road Tax' },
+  { value: 'service',      label: 'Service Package' },
+  { value: 'accessories',  label: 'Accessories' },
+  { value: 'other',        label: 'Other' },
+];
+
+const PRODUCT_SEEDS = [
+  { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
+  { name: 'Window Tint',           category: 'window_tint', selling_price: 350, cost_price: 150 },
+  { name: 'Extended Warranty 1yr', category: 'warranty',    selling_price: 600, cost_price: 250 },
+  { name: 'Insurance Referral',    category: 'insurance',   selling_price: 200, cost_price: 0   },
+];
+
+const EMPTY_PRODUCT_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true };
+
+function marginColor(sell, cost) {
+  if (!sell) return '#6b7280';
+  const pct = ((sell - cost) / sell) * 100;
+  if (pct >= 40) return '#4ade80';
+  if (pct >= 20) return '#fbbf24';
+  return '#f87171';
+}
+
+function ProductsCatalogue({ dealerId }) {
+  const [products, setProducts]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [open, setOpen]           = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
+  const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
+  const [saving, setSaving]       = useState(false);
+
+  const fetchProducts = async () => {
+    if (!dealerId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('dealer_products')
+      .select('*')
+      .eq('dealer_id', dealerId)
+      .order('created_at', { ascending: false });
+    setProducts(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchProducts(); }, [dealerId]);
+
+  const openAdd = () => { setForm(EMPTY_PRODUCT_FORM); setEditTarget(null); setShowModal(true); };
+  const openEdit = (p) => { setForm({ name: p.name, category: p.category, cost_price: p.cost_price ?? '', selling_price: p.selling_price, description: p.description || '', is_active: p.is_active }); setEditTarget(p); setShowModal(true); };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.selling_price) { toast.error('Name and selling price are required'); return; }
+    setSaving(true);
+    const payload = {
+      dealer_id:     dealerId,
+      name:          form.name.trim(),
+      category:      form.category,
+      cost_price:    Number(form.cost_price) || 0,
+      selling_price: Number(form.selling_price),
+      description:   form.description.trim() || null,
+      is_active:     form.is_active,
+      updated_at:    new Date().toISOString(),
+    };
+    try {
+      if (editTarget) {
+        await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
+      } else {
+        await supabase.from('dealer_products').insert(payload);
+      }
+      await fetchProducts();
+      setShowModal(false);
+      toast.success(editTarget ? 'Product updated' : 'Product added');
+    } catch { toast.error('Save failed'); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    await supabase.from('dealer_products').delete().eq('id', id);
+    setProducts(p => p.filter(x => x.id !== id));
+    toast.success('Deleted');
+  };
+
+  const handleToggleActive = async (p) => {
+    await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
+  };
+
+  const seedProduct = async (seed) => {
+    const payload = { dealer_id: dealerId, ...seed, description: null, is_active: true };
+    await supabase.from('dealer_products').insert(payload);
+    await fetchProducts();
+    toast.success(`"${seed.name}" added`);
+  };
+
+  const catLabel = (v) => PRODUCT_CATEGORIES.find(c => c.value === v)?.label || v;
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}
+    >
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.025] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}>
+            <Tag className="w-4 h-4 text-red-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-white">Services & Add-ons</p>
+            {!loading && <p className="text-xs text-gray-600 mt-px">{products.length} product{products.length !== 1 ? 's' : ''} configured</p>}
+          </div>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
+      </button>
+
+      {open && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-5 py-3">
+            <p className="text-xs text-gray-500">Products your dealership sells as add-ons</p>
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
+            >
+              <PlusCircle className="w-3 h-3" />Add Product
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="px-5 pb-5 space-y-2">
+              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="px-5 pb-5">
+              <p className="text-xs text-gray-600 mb-3">Quick-start suggestions:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PRODUCT_SEEDS.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => seedProduct(s)}
+                    className="text-left p-3 rounded-lg border transition-all hover:border-red-600/30 hover:bg-red-600/[0.04]"
+                    style={{ background: 'rgba(255,255,255,0.025)', border: '1px dashed rgba(255,255,255,0.1)' }}
+                  >
+                    <p className="text-xs font-semibold text-white">{s.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">RM {s.selling_price.toLocaleString()} selling</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="px-5 pb-5">
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                {/* Header row */}
+                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                  <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
+                </div>
+                {products.map(p => {
+                  const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
+                  return (
+                    <div key={p.id} className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span className="text-sm text-white font-medium truncate">{p.name}</span>
+                      <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
+                      <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
+                      <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
+                      <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
+                      <button onClick={() => handleToggleActive(p)} className="flex items-center">
+                        {p.is_active
+                          ? <ToggleRight className="w-5 h-5 text-green-400" />
+                          : <ToggleLeft className="w-5 h-5 text-gray-600" />}
+                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Add / Edit Modal ── */}
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Name *</label>
+                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Paint Protection Film" className={iCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
+                <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} className={iCls} style={{ appearance: 'none' }}>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cost Price (RM)</label>
+                  <input type="number" value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Selling Price (RM) *</label>
+                  <input type="number" value={form.selling_price} onChange={e => setForm(p => ({ ...p, selling_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
+                </div>
+              </div>
+              {form.selling_price && (
+                <p className="text-xs" style={{ color: marginColor(Number(form.selling_price), Number(form.cost_price) || 0) }}>
+                  Margin: {(((Number(form.selling_price) - (Number(form.cost_price) || 0)) / Number(form.selling_price)) * 100).toFixed(1)}%
+                </p>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={2} className={taCls} />
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-400">Active</span>
+                <button onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))} className="flex items-center">
+                  {form.is_active ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-600" />}
+                </button>
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mt-1"
+                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', opacity: saving ? 0.7 : 1 }}
+              >
+                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1117,7 +1372,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
       </SettingsSection>
 
-      {/* ── 6. Danger Zone ── */}
+      {/* ── 6. Services & Add-ons ── */}
+      <ProductsCatalogue dealerId={profile?.id} />
+
+      {/* ── 7. Danger Zone ── */}
       <div
         className="rounded-xl overflow-hidden"
         style={{
@@ -4884,6 +5142,7 @@ export default function DashboardPage() {
     enquiries: { title: "Enquiries", sub: "WhatsApp & inbound leads" },
     bookings: { title: "Bookings", sub: "Appointments & test drives" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
+    revops: { title: "RevOps", sub: "Revenue operations & deal health" },
   };
 
   const NAV = [
@@ -4897,6 +5156,7 @@ export default function DashboardPage() {
     { id: "enquiries", Icon: MessageSquare, label: "Enquiries" },
     { id: "bookings", Icon: Calendar, label: "Bookings" },
     { id: "documents", Icon: FileText, label: "Documents" },
+    { id: "revops", Icon: BarChart3, label: "RevOps" },
   ];
 
   const STAT_CARDS = [
@@ -5615,6 +5875,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} />
+          )}
+          {activeTab === "revops" && userId && (
+            <RevOpsPage userId={userId} />
           )}
         </div>
       </main>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, Send, Search, AlertTriangle, FileText,
+  Plus, Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
@@ -92,6 +93,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [logging, setLogging]         = useState(false);
   const [focusedInp, setFocusedInp]   = useState(null);
 
+  // Add-ons state
+  const [dealAddons, setDealAddons]         = useState([]);
+  const [catalogueProducts, setCatalogueProducts] = useState([]);
+  const [addonsLoading, setAddonsLoading]   = useState(false);
+  const [showAttach, setShowAttach]         = useState(false);
+  const [addonForm, setAddonForm]           = useState({ product_id: '', sold_price: '', notes: '' });
+  const [attachSaving, setAttachSaving]     = useState(false);
+
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
 
@@ -109,6 +118,48 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  // Fetch catalogue & attached add-ons
+  useEffect(() => {
+    if (!lead?.id || !lead?.dealer_id) return;
+    const fetch = async () => {
+      setAddonsLoading(true);
+      const [catRes, dealRes] = await Promise.all([
+        supabase.from('dealer_products').select('id, name, category, selling_price').eq('dealer_id', lead.dealer_id).eq('is_active', true).order('name'),
+        supabase.from('deal_products').select('id, sold_price, notes, product_id, dealer_products(name, category)').eq('lead_id', lead.id),
+      ]);
+      setCatalogueProducts(catRes.data || []);
+      setDealAddons(dealRes.data || []);
+      setAddonsLoading(false);
+    };
+    fetch();
+  }, [lead?.id, lead?.dealer_id]);
+
+  const handleAttachAddon = async () => {
+    if (!addonForm.product_id || !addonForm.sold_price) { return; }
+    setAttachSaving(true);
+    try {
+      const { data } = await supabase.from('deal_products').insert({
+        dealer_id:  lead.dealer_id,
+        lead_id:    lead.id,
+        listing_id: lead.car_listing_id || null,
+        product_id: addonForm.product_id,
+        sold_price: Number(addonForm.sold_price),
+        notes:      addonForm.notes.trim() || null,
+      }).select('id, sold_price, notes, product_id, dealer_products(name, category)').single();
+      if (data) setDealAddons(p => [...p, data]);
+      setAddonForm({ product_id: '', sold_price: '', notes: '' });
+      setShowAttach(false);
+      toast.success('Add-on attached');
+    } catch { toast.error('Failed to attach add-on'); }
+    setAttachSaving(false);
+  };
+
+  const handleRemoveAddon = async (id) => {
+    await supabase.from('deal_products').delete().eq('id', id);
+    setDealAddons(p => p.filter(a => a.id !== id));
+    toast.success('Removed');
+  };
 
   if (!lead) return null;
 
@@ -639,6 +690,107 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             style={{ ...inp, resize: 'vertical', minHeight: 80 }}
             className="ld-inp"
           />
+
+          <Divider />
+
+          {/* ── Add-ons / Services ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <SLabel>Add-ons / Services</SLabel>
+            {!showAttach && (
+              <button
+                onClick={() => { setShowAttach(true); setAddonForm({ product_id: '', sold_price: '', notes: '' }); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#ef4444', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
+              >
+                <Plus style={{ width: 11, height: 11 }} />Attach
+              </button>
+            )}
+          </div>
+
+          {addonsLoading ? (
+            <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>Loading…</p>
+          ) : (
+            <>
+              {/* Attach inline panel */}
+              {showAttach && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Attach Add-on</p>
+                  {catalogueProducts.length === 0 ? (
+                    <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>No active products configured. Set them up in Settings → Services & Add-ons.</p>
+                  ) : (
+                    <>
+                      <select
+                        value={addonForm.product_id}
+                        onChange={e => {
+                          const sel = catalogueProducts.find(p => p.id === e.target.value);
+                          setAddonForm(f => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price }));
+                        }}
+                        style={{ ...inp, marginBottom: 6, appearance: 'none' }}
+                        className="ld-inp"
+                      >
+                        <option value="">— Select product —</option>
+                        {catalogueProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString()}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        value={addonForm.sold_price}
+                        onChange={e => setAddonForm(f => ({ ...f, sold_price: e.target.value }))}
+                        placeholder="Sold price (RM)"
+                        style={{ ...inp, marginBottom: 6 }}
+                        className="ld-inp"
+                        min="0"
+                      />
+                      <input
+                        value={addonForm.notes}
+                        onChange={e => setAddonForm(f => ({ ...f, notes: e.target.value }))}
+                        placeholder="Notes (optional)"
+                        style={{ ...inp, marginBottom: 8 }}
+                        className="ld-inp"
+                      />
+                    </>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    {catalogueProducts.length > 0 && (
+                      <button
+                        onClick={handleAttachAddon}
+                        disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
+                        style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}
+                      >
+                        {attachSaving ? 'Adding…' : 'Add'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Attached list */}
+              {dealAddons.length === 0 && !showAttach ? (
+                <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>No add-ons attached yet.</p>
+              ) : dealAddons.length > 0 ? (
+                <div style={{ marginBottom: 8 }}>
+                  {dealAddons.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 10px', marginBottom: 4, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                        <Package style={{ width: 12, height: 12, color: '#6b7280', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
+                      <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#4b5563', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
+                        <X style={{ width: 12, height: 12 }} />
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 10px 0', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
+                      Add-ons total: RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
 
           <Divider />
 
