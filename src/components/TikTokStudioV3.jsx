@@ -2558,6 +2558,61 @@ export default function TikTokStudioV3({ listing, onClose }) {
     setDownloading(false);
   }, [total, toBlob, theme, listing]);
 
+  // ── Save / load design ───────────────────────────────────────────────────
+  const saveDesign = useCallback(async () => {
+    // Generate a small thumbnail from the current background canvas
+    let thumb = null;
+    try {
+      const thumbCanvas = document.createElement("canvas");
+      thumbCanvas.width = 108;
+      thumbCanvas.height = 192;
+      await renderBackground(thumbCanvas, slide, theme, font, 108, 192);
+      thumb = thumbCanvas.toDataURL("image/jpeg", 0.6);
+    } catch {}
+
+    const name =
+      designName.trim() ||
+      `${listing?.brand || "Design"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    const entry = {
+      id: uid(),
+      name,
+      thumb,
+      theme: { ...theme },
+      font,
+      elements: JSON.parse(JSON.stringify(slide?.elements || [])),
+      format: canvasFormat,
+      savedAt: Date.now(),
+    };
+    const updated = [entry, ...savedDesigns].slice(0, 24);
+    setSavedDesigns(updated);
+    localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    setDesignName("");
+  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing]);
+
+  const loadDesign = useCallback((d) => {
+    setTheme(d.theme);
+    setFont(d.font);
+    if (d.format) setCanvasFormat(d.format);
+    if (d.elements?.length) {
+      setSlides((ss) =>
+        ss.map((s) => ({
+          ...s,
+          elements: d.elements.map((e) => ({ ...e, id: uid() })),
+        })),
+      );
+    }
+    setActiveTab("slide");
+  }, []);
+
+  const deleteDesign = useCallback(
+    (id) => {
+      const updated = savedDesigns.filter((d) => d.id !== id);
+      setSavedDesigns(updated);
+      localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
+    },
+    [savedDesigns],
+  );
+
   if (!slide) return null;
 
   // ── Tab panels ────────────────────────────────────────────────────────────
@@ -3670,61 +3725,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
         </button>
       </div>
     </div>
-  );
-
-  // ── Save / load design ───────────────────────────────────────────────────
-  const saveDesign = useCallback(async () => {
-    // Generate a small thumbnail from the current background canvas
-    let thumb = null;
-    try {
-      const thumbCanvas = document.createElement("canvas");
-      thumbCanvas.width = 108;
-      thumbCanvas.height = 192;
-      await renderBackground(thumbCanvas, slide, theme, font, 108, 192);
-      thumb = thumbCanvas.toDataURL("image/jpeg", 0.6);
-    } catch {}
-
-    const name =
-      designName.trim() ||
-      `${listing?.brand || "Design"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    const entry = {
-      id: uid(),
-      name,
-      thumb,
-      theme: { ...theme },
-      font,
-      elements: JSON.parse(JSON.stringify(slide?.elements || [])),
-      format: canvasFormat,
-      savedAt: Date.now(),
-    };
-    const updated = [entry, ...savedDesigns].slice(0, 24);
-    setSavedDesigns(updated);
-    localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
-    setDesignName("");
-  }, [slide, theme, font, canvasFormat, savedDesigns, designName, listing]);
-
-  const loadDesign = useCallback((d) => {
-    setTheme(d.theme);
-    setFont(d.font);
-    if (d.format) setCanvasFormat(d.format);
-    if (d.elements?.length) {
-      setSlides((ss) =>
-        ss.map((s) => ({
-          ...s,
-          elements: d.elements.map((e) => ({ ...e, id: uid() })),
-        })),
-      );
-    }
-    setActiveTab("slide");
-  }, []);
-
-  const deleteDesign = useCallback(
-    (id) => {
-      const updated = savedDesigns.filter((d) => d.id !== id);
-      setSavedDesigns(updated);
-      localStorage.setItem("ttsv3_designs", JSON.stringify(updated));
-    },
-    [savedDesigns],
   );
 
   // ── Tab bar + routing ────────────────────────────────────────────────────
