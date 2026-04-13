@@ -208,7 +208,22 @@ export default function CarDetailPage() {
         error = res.error;
       }
       if (error || !carData) { setNotFound(true); setLoading(false); return; }
-      setCar(carData);
+      // Cross-reference included_services with dealer_products.is_active
+      // (works for authenticated dealers; anonymous users get [] from RLS → show all)
+      let visibleServices = carData.included_services || [];
+      if (carData.dealer_id && visibleServices.length > 0) {
+        const { data: activeProducts } = await supabase
+          .from('dealer_products')
+          .select('id, is_active')
+          .eq('dealer_id', carData.dealer_id);
+        if (activeProducts && activeProducts.length > 0) {
+          const activeIds = new Set(activeProducts.filter(p => p.is_active !== false).map(p => p.id));
+          visibleServices = visibleServices.filter(s => !s.id || activeIds.has(s.id));
+        }
+        // If activeProducts === [] (RLS/anon block) we fall through and show all
+      }
+      setCar({ ...carData, included_services: visibleServices });
+
       if (carData.dealer_id) {
         const { data: d } = await supabase
           .from('profiles')

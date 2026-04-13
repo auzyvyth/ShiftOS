@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
@@ -367,16 +368,24 @@ function ProductsCatalogue({ dealerId }) {
   const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
   const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
   const [saving, setSaving]       = useState(false);
+  const [stockCountMap, setStockCountMap] = useState({});
 
   const fetchProducts = async () => {
     if (!dealerId) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('dealer_products')
-      .select('*')
-      .eq('dealer_id', dealerId)
-      .order('created_at', { ascending: false });
+    const [{ data }, { data: stockListings }] = await Promise.all([
+      supabase.from('dealer_products').select('*').eq('dealer_id', dealerId).order('created_at', { ascending: false }),
+      supabase.from('car_listings').select('included_services').eq('dealer_id', dealerId).neq('status', 'sold'),
+    ]);
     setProducts(data || []);
+    // Build per-product stock count
+    const countMap = {};
+    (stockListings || []).forEach(car => {
+      (car.included_services || []).forEach(svc => {
+        if (svc.id) countMap[svc.id] = (countMap[svc.id] || 0) + 1;
+      });
+    });
+    setStockCountMap(countMap);
     setLoading(false);
   };
 
@@ -498,21 +507,31 @@ function ProductsCatalogue({ dealerId }) {
                 </div>
                 {products.map(p => {
                   const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
+                  const stockCount = stockCountMap[p.id] || 0;
                   return (
-                    <div key={p.id} className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <span className="text-sm text-white font-medium truncate">{p.name}</span>
-                      <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
-                      <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
-                      <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
-                      <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
-                      <button onClick={() => handleToggleActive(p)} className="flex items-center">
-                        {p.is_active
-                          ? <ToggleRight className="w-5 h-5 text-green-400" />
-                          : <ToggleLeft className="w-5 h-5 text-gray-600" />}
-                      </button>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px' }}>
+                        <div className="min-w-0">
+                          <span className="text-sm text-white font-medium truncate block">{p.name}</span>
+                          {stockCount > 0 && (
+                            <span className="text-[10px] text-cyan-400/70 font-medium">
+                              In {stockCount} listing{stockCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
+                        <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
+                        <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
+                        <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
+                        <button onClick={() => handleToggleActive(p)} className="flex items-center">
+                          {p.is_active
+                            ? <ToggleRight className="w-5 h-5 text-green-400" />
+                            : <ToggleLeft className="w-5 h-5 text-gray-600" />}
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -3961,12 +3980,18 @@ function StockTab({ userId, listings }) {
 }
 
 // ─── EnquiriesTab ─────────────────────────────────────────────────────────────
+const DEFAULT_ENQUIRY_TEMPLATE = `Hi {{buyer_name}}, thank you for your enquiry about the {{car_name}}! 😊\n\nWe'd love to help you with more details or arrange a viewing. When would be a good time for you?\n\nBest regards,\n{{dealer_name}} — {{dealership}}`;
+
 function EnquiriesTab({ userId, onOpenDoc }) {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [waTemplate, setWaTemplate] = useState(DEFAULT_ENQUIRY_TEMPLATE);
+  const [editedMsg, setEditedMsg] = useState('');
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [dealerProfile, setDealerProfile] = useState(null);
 
   const statusMeta = {
     new:       { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)'  },
@@ -3988,6 +4013,26 @@ function EnquiriesTab({ userId, onOpenDoc }) {
 
   useEffect(() => { if (userId) fetchEnquiries(); }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('profiles').select('full_name, dealership, enquiry_wa_template, whatsapp_number').eq('id', userId).single()
+      .then(({ data }) => {
+        if (data) {
+          setDealerProfile(data);
+          if (data.enquiry_wa_template) setWaTemplate(data.enquiry_wa_template);
+        }
+      });
+  }, [userId]);
+
+  const populateTemplate = (tmpl, enq, dp) => {
+    const listing = enq.listing;
+    return (tmpl || DEFAULT_ENQUIRY_TEMPLATE)
+      .replace(/\{\{buyer_name\}\}/g, enq.buyer_name || 'there')
+      .replace(/\{\{car_name\}\}/g, listing ? `${listing.brand} ${listing.model}` : 'the car')
+      .replace(/\{\{dealer_name\}\}/g, dp?.full_name || '')
+      .replace(/\{\{dealership\}\}/g, dp?.dealership || '');
+  };
+
   const updateStatus = async (id, status) => {
     await supabase.from('whatsapp_enquiries').update({ status }).eq('id', id);
     setEnquiries(p => p.map(e => e.id === id ? { ...e, status } : e));
@@ -4001,6 +4046,29 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     setEnquiries(p => p.map(e => e.id === selected.id ? { ...e, notes } : e));
     setSavingNotes(false);
   };
+
+  const handleWhatsApp = async (enq) => {
+    const phone = (enq.buyer_phone || '').replace(/\D/g, '');
+    if (!phone) return;
+    // Auto-update status to contacted
+    await supabase.from('whatsapp_enquiries').update({ status: 'contacted' }).eq('id', enq.id);
+    setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: 'contacted' } : e));
+    if (selected?.id === enq.id) setSelected(p => ({ ...p, status: 'contacted' }));
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(editedMsg)}`, '_blank');
+  };
+
+  const saveTemplate = async () => {
+    setTemplateSaving(true);
+    await supabase.from('profiles').update({ enquiry_wa_template: editedMsg }).eq('id', userId);
+    setWaTemplate(editedMsg);
+    setTemplateSaving(false);
+    toast.success('Default template saved ✓');
+  };
+
+  // Populate WA message when a new enquiry is selected
+  useEffect(() => {
+    if (selected) setEditedMsg(populateTemplate(waTemplate, selected, dealerProfile));
+  }, [selected?.id, waTemplate, dealerProfile]);
 
   const StatusBadge = ({ status }) => {
     const m = statusMeta[status] || statusMeta.new;
@@ -4070,6 +4138,36 @@ function EnquiriesTab({ userId, onOpenDoc }) {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Add notes about this enquiry..." className={taCls} />
                 <button onClick={saveNotes} disabled={savingNotes} className="mt-2 w-full px-4 py-2 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{savingNotes ? 'Saving...' : 'Save Notes'}</button>
               </div>
+              {/* Follow-up WhatsApp message */}
+              {selected.buyer_phone && (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Follow-up Message</p>
+                  <textarea
+                    value={editedMsg}
+                    onChange={e => setEditedMsg(e.target.value)}
+                    rows={6}
+                    placeholder="WhatsApp message…"
+                    className={taCls}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={() => handleWhatsApp(selected)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 10, color: '#4ade80', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      <MessageCircle style={{ width: 14, height: 14 }} />
+                      WhatsApp {selected.buyer_name?.split(' ')[0] || ''} ↗
+                    </button>
+                    <button
+                      onClick={saveTemplate}
+                      disabled={templateSaving}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#9ca3af', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      <Save style={{ width: 12, height: 12 }} />
+                      {templateSaving ? 'Saving…' : 'Save default'}
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Document shortcuts */}
               {onOpenDoc && (
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -4094,6 +4192,8 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   );
 }
 
+const DEFAULT_BOOKING_TEMPLATE = `Hi {{buyer_name}}, your {{booking_type}} for the {{car_name}} is confirmed for {{booking_date}} at {{booking_time}}. 🎉\n\nPlease arrive on time. See you at {{dealership}}!\n\nReply to reschedule.`;
+
 // ─── BookingsTab ──────────────────────────────────────────────────────────────
 function BookingsTab({ userId, listings, salesmen }) {
   const [bookings, setBookings] = useState([]);
@@ -4102,6 +4202,11 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ buyer_name: '', buyer_phone: '+60', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
   const [addSaving, setAddSaving] = useState(false);
+  const [bkTemplate, setBkTemplate] = useState(DEFAULT_BOOKING_TEMPLATE);
+  const [reminderTarget, setReminderTarget] = useState(null);
+  const [reminderMsg, setReminderMsg] = useState('');
+  const [bkTmplSaving, setBkTmplSaving] = useState(false);
+  const [dealerBkProfile, setDealerBkProfile] = useState(null);
 
   const statusMeta = {
     pending:   { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.3)'  },
@@ -4129,7 +4234,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     const ch = supabase
       .channel('bookings_live_' + userId)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'appointments',
         filter: `dealer_id=eq.${userId}`,
@@ -4137,6 +4242,41 @@ function BookingsTab({ userId, listings, salesmen }) {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('profiles').select('full_name, dealership, booking_wa_template').eq('id', userId).single()
+      .then(({ data }) => {
+        if (data) {
+          setDealerBkProfile(data);
+          if (data.booking_wa_template) setBkTemplate(data.booking_wa_template);
+        }
+      });
+  }, [userId]);
+
+  const populateBkTemplate = (tmpl, booking, car) => {
+    const d = booking.appointment_date ? new Date(booking.appointment_date) : null;
+    return (tmpl || DEFAULT_BOOKING_TEMPLATE)
+      .replace(/\{\{buyer_name\}\}/g, booking.buyer_name || 'there')
+      .replace(/\{\{car_name\}\}/g, car ? `${car.brand} ${car.model}` : 'the vehicle')
+      .replace(/\{\{booking_type\}\}/g, (booking.booking_type || 'appointment').replace('_', ' '))
+      .replace(/\{\{booking_date\}\}/g, d ? d.toLocaleDateString('en-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—')
+      .replace(/\{\{booking_time\}\}/g, d ? d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' }) : '—')
+      .replace(/\{\{dealership\}\}/g, dealerBkProfile?.dealership || '');
+  };
+
+  const openReminder = (booking) => {
+    setReminderTarget(booking);
+    setReminderMsg(populateBkTemplate(bkTemplate, booking, booking.car_listings));
+  };
+
+  const saveBkTemplate = async () => {
+    setBkTmplSaving(true);
+    await supabase.from('profiles').update({ booking_wa_template: reminderMsg }).eq('id', userId);
+    setBkTemplate(reminderMsg);
+    setBkTmplSaving(false);
+    toast.success('Default booking template saved ✓');
+  };
 
   const handleAdd = async () => {
     setAddSaving(true);
@@ -4208,15 +4348,9 @@ function BookingsTab({ userId, listings, salesmen }) {
           <>
             <button onClick={() => updateStatus(b.id, 'completed')} style={{ fontSize: 10, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Done</button>
             <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
-            {b.buyer_phone && (() => {
-              const carLabel = car ? `${car.brand} ${car.model} ${car.year}` : 'the vehicle';
-              const dateStr = b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
-              const typeLabel = (b.booking_type || 'appointment').replace('_', ' ');
-              const msg = `Hi ${b.buyer_name || 'there'}, your ${typeLabel} for ${carLabel} is confirmed on ${dateStr}. Reply to reschedule.`;
-              return (
-                <a key="wa" href={`https://wa.me/${b.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>WA reminder</a>
-              );
-            })()}
+            {b.buyer_phone && (
+              <button key="wa" onClick={() => openReminder(b)} style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Remind</button>
+            )}
           </>
         )}
         {b.status === 'completed' && <span style={{ fontSize: 12, color: '#34d399' }}>✓ Completed</span>}
@@ -4451,34 +4585,137 @@ function BookingsTab({ userId, listings, salesmen }) {
           </div>
         </div>
       )}
+
+      {/* ── Booking Reminder Modal ── */}
+      {reminderTarget && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }} onClick={() => setReminderTarget(null)}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden" style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white text-sm">Send Reminder</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{reminderTarget.buyer_name} · {reminderTarget.buyer_phone}</p>
+              </div>
+              <button onClick={() => setReminderTarget(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <textarea
+                value={reminderMsg}
+                onChange={e => setReminderMsg(e.target.value)}
+                rows={7}
+                className={taCls}
+                placeholder="WhatsApp message…"
+              />
+              <div className="flex gap-2">
+                <a
+                  href={`https://wa.me/${reminderTarget.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(reminderMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={() => setReminderTarget(null)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.3)', color: '#4ade80', textDecoration: 'none' }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Send via WhatsApp ↗
+                </a>
+                <button
+                  onClick={saveBkTemplate}
+                  disabled={bkTmplSaving}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-400 hover:text-white transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {bkTmplSaving ? 'Saving…' : 'Save default'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
-function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
+const EMPTY_GEN_FORM = {
+  doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
+  buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
+  // SA fields
+  sa_name: '', sa_phone: '', sa_ic: '',
+  // Financing fields
+  include_financing: false,
+  loan_amount: '', interest_rate: '', loan_tenure_months: '', monthly_payment: '', financing_bank: '',
+};
+
+function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profile }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showGen, setShowGen] = useState(false);
-  const [genForm, setGenForm] = useState({ doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '', buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '' });
+  const [genForm, setGenForm] = useState({ ...EMPTY_GEN_FORM });
   const [genSaving, setGenSaving] = useState(false);
   const [printDoc, setPrintDoc] = useState(null);
+  const [listingDropOpen, setListingDropOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
 
   const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
 
   // Pre-fill from Enquiries shortcut
   useEffect(() => {
     if (!prefillDocData) return;
+    const prefillListing = prefillDocData.listing_id ? listings.find(l => l.id === prefillDocData.listing_id) || null : null;
+    setSelectedListing(prefillListing);
     setGenForm(p => ({
       ...p,
       doc_type: prefillDocData.doc_type || 'Sales Agreement',
       buyer_name: prefillDocData.buyer_name || '',
       buyer_phone: prefillDocData.buyer_phone || '+60',
       listing_id: prefillDocData.listing_id || '',
+      sale_price: prefillListing?.selling_price ? String(prefillListing.selling_price) : p.sale_price,
+      sa_name: profile?.full_name || '',
+      sa_phone: profile?.whatsapp_number || '',
     }));
     setShowGen(true);
     onClearPrefill?.();
   }, [prefillDocData]);
+
+  // Pre-fill SA name when opening modal
+  useEffect(() => {
+    if (showGen && profile) {
+      setGenForm(p => ({
+        ...p,
+        sa_name: p.sa_name || profile.full_name || '',
+        sa_phone: p.sa_phone || profile.whatsapp_number || '',
+      }));
+    }
+  }, [showGen]);
+
+  const calcMonthly = (amount, rate, months) => {
+    const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
+    if (!a || !r || !m) return '';
+    return ((a + a * (r / 100) * (m / 12)) / m).toFixed(2);
+  };
+
+  const gf = (field, value) => {
+    setGenForm(p => {
+      const next = { ...p, [field]: value };
+      if (['loan_amount', 'interest_rate', 'loan_tenure_months'].includes(field)) {
+        next.monthly_payment = calcMonthly(
+          field === 'loan_amount' ? value : next.loan_amount,
+          field === 'interest_rate' ? value : next.interest_rate,
+          field === 'loan_tenure_months' ? value : next.loan_tenure_months,
+        );
+      }
+      return next;
+    });
+  };
+
+  const handleListingSelect = (listing) => {
+    setSelectedListing(listing);
+    setGenForm(p => ({
+      ...p,
+      listing_id: listing.id,
+      sale_price: listing.selling_price ? String(listing.selling_price) : p.sale_price,
+    }));
+    setListingDropOpen(false);
+  };
 
   const fetchDocs = async () => {
     setLoading(true);
@@ -4495,7 +4732,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
 
   const handleGenerate = async () => {
     setGenSaving(true);
-    const car = listings.find(l => l.id === genForm.listing_id);
+    const car = selectedListing || listings.find(l => l.id === genForm.listing_id) || null;
     try {
       const { data, error } = await supabase.from('dealer_documents').insert({
         dealer_id: userId,
@@ -4509,10 +4746,28 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
         deposit_amount: Number(genForm.deposit_amount) || 0,
         balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
         issued_at: new Date().toISOString(),
-        metadata: { car_label: car ? `${car.brand} ${car.model} ${car.year}` : '' },
+        metadata: {
+          car_label: car ? `${car.year} ${car.brand} ${car.model}` : '',
+          car_colour: car?.colour || '',
+          car_plate: car?.plate_number || '',
+          car_mileage: car?.mileage || '',
+          car_vin: car?.vin_number || '',
+          included_services: car?.included_services || [],
+          sa_name: genForm.sa_name,
+          sa_phone: genForm.sa_phone,
+          sa_ic: genForm.sa_ic,
+          include_financing: genForm.include_financing,
+          loan_amount: genForm.loan_amount,
+          interest_rate: genForm.interest_rate,
+          loan_tenure_months: genForm.loan_tenure_months,
+          monthly_payment: genForm.monthly_payment,
+          financing_bank: genForm.financing_bank,
+        },
       }).select().single();
       if (error) throw error;
       setShowGen(false);
+      setSelectedListing(null);
+      setGenForm({ ...EMPTY_GEN_FORM });
       if (data) setPrintDoc({ ...data, car_listings: car });
       fetchDocs();
     } catch (err) {
@@ -4525,40 +4780,98 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
 
   const renderDocHTML = (doc) => {
     const car = doc.car_listings || {};
-    const carLabel = doc.metadata?.car_label || doc.car_label || (car.brand ? `${car.brand} ${car.model} ${car.year}` : '—');
+    const m = doc.metadata || {};
+    const carLabel = m.car_label || (car.brand ? `${car.year || ''} ${car.brand} ${car.model}` : '—');
+    const carPlate  = m.car_plate  || car.plate_number || '—';
+    const carColour = m.car_colour || car.colour       || '—';
+    const carMileage = m.car_mileage || car.mileage     || null;
+    const carVin    = m.car_vin    || car.vin_number   || '—';
     const issued = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
     const isHandover = doc.doc_type === 'Handover Checklist';
-    const isDeposit = doc.doc_type === 'Deposit Receipt';
+    const isDeposit  = doc.doc_type === 'Deposit Receipt';
+    const isSales    = doc.doc_type === 'Sales Agreement';
+    const services   = m.included_services || [];
+    const saName     = m.sa_name  || '—';
+    const saPhone    = m.sa_phone || '—';
+    const saIc       = m.sa_ic    || '—';
+    const hasFinancing = isSales && m.include_financing && m.loan_amount;
+
+    const row = (label, value) =>
+      `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:180px;">${label}</td><td style="padding:5px 0;font-size:13px;">${value || '—'}</td></tr>`;
+
+    const section = (title, content) =>
+      `<div style="margin-bottom:22px;"><h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:1px solid #e5e5e5;padding-bottom:6px;margin:0 0 10px;">${title}</h3>${content}</div>`;
 
     return `
-      <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:40px;color:#111;background:#fff;">
-        <div style="text-align:center;margin-bottom:32px;border-bottom:2px solid #111;padding-bottom:20px;">
-          <h1 style="font-size:22px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
-          <p style="font-size:13px;color:#555;margin:0;">Date: ${issued}</p>
+      <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
+        <div style="text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #111;">
+          <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
+          <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
         </div>
-        <table style="width:100%;margin-bottom:24px;border-collapse:collapse;">
-          <tr><td style="padding:6px 0;font-size:13px;color:#555;width:180px;">Buyer Name</td><td style="padding:6px 0;font-size:13px;font-weight:600;">${doc.buyer_name || '—'}</td></tr>
-          <tr><td style="padding:6px 0;font-size:13px;color:#555;">IC Number</td><td style="padding:6px 0;font-size:13px;">${doc.buyer_ic || '—'}</td></tr>
-          <tr><td style="padding:6px 0;font-size:13px;color:#555;">Phone</td><td style="padding:6px 0;font-size:13px;">${doc.buyer_phone || '—'}</td></tr>
-          <tr><td style="padding:6px 0;font-size:13px;color:#555;">Address</td><td style="padding:6px 0;font-size:13px;">${doc.buyer_address || '—'}</td></tr>
-        </table>
-        <div style="background:#f9f9f9;border:1px solid #e5e5e5;border-radius:8px;padding:16px;margin-bottom:24px;">
-          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin:0 0 10px;">Vehicle Details</h3>
-          <p style="font-size:15px;font-weight:700;margin:0;">${carLabel}${car.plate_number ? ` (${car.plate_number})` : ''}</p>
-        </div>
-        ${isHandover ? `
-        <div style="margin-bottom:24px;">
-          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#555;margin:0 0 12px;">Handover Checklist</h3>
-          ${['Spare keys','Service booklet','Road tax','Insurance document','Owner manual','Spare tyre','Jack & tools','Accessories agreed'].map(item => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f0f0;"><div style="width:16px;height:16px;border:2px solid #333;border-radius:3px;flex-shrink:0;"></div><span style="font-size:13px;">${item}</span></div>`).join('')}
-        </div>` : `
-        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-          <tr style="border-bottom:2px solid #111;"><th style="text-align:left;padding:8px 0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#555;">Description</th><th style="text-align:right;padding:8px 0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#555;">Amount</th></tr>
-          ${isDeposit ? `<tr><td style="padding:10px 0;font-size:13px;">Deposit for ${carLabel}</td><td style="text-align:right;padding:10px 0;font-size:13px;font-weight:600;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>` : ''}
-          <tr style="border-top:2px solid #111;"><td style="padding:10px 0;font-size:14px;font-weight:700;">${isDeposit ? 'Deposit Paid' : 'Agreed Sale Price'}</td><td style="text-align:right;padding:10px 0;font-size:14px;font-weight:700;">RM ${Number(isDeposit ? doc.deposit_amount : doc.sale_price || 0).toLocaleString()}</td></tr>
-        </table>`}
-        <div style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:40px;">
-          <div><div style="border-top:1px solid #111;padding-top:8px;"><p style="font-size:12px;color:#555;margin:0;">Buyer Signature & Date</p></div></div>
-          <div><div style="border-top:1px solid #111;padding-top:8px;"><p style="font-size:12px;color:#555;margin:0;">Dealer Signature & Date</p></div></div>
+
+        ${section('Vehicle Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Vehicle', `<strong>${carLabel}</strong>`)}
+            ${row('Plate Number', carPlate)}
+            ${row('Colour', carColour)}
+            ${carMileage ? row('Mileage', `${Number(carMileage).toLocaleString()} km`) : ''}
+            ${carVin !== '—' ? row('VIN / Chassis', carVin) : ''}
+          </table>`)}
+
+        ${section('Buyer Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Full Name', doc.buyer_name)}
+            ${row('IC Number', doc.buyer_ic)}
+            ${row('Phone', doc.buyer_phone)}
+            ${row('Address', doc.buyer_address)}
+          </table>`)}
+
+        ${isHandover ? section('Handover Checklist',
+          ['Spare keys','Service booklet','Road tax','Insurance document','Owner manual','Spare tyre','Jack & tools','Accessories agreed']
+            .map(item => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0;"><div style="width:16px;height:16px;border:2px solid #333;border-radius:3px;flex-shrink:0;"></div><span style="font-size:13px;">${item}</span></div>`).join('')
+        ) : section('Financial Summary', `
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid #e5e5e5;"><th style="text-align:left;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Description</th><th style="text-align:right;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Amount</th></tr>
+            ${isDeposit
+              ? `<tr><td style="padding:8px 0;font-size:13px;">Deposit for ${carLabel}</td><td style="text-align:right;font-size:13px;font-weight:600;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>`
+              : `<tr><td style="padding:8px 0;font-size:13px;">Sale Price</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.sale_price||0).toLocaleString()}</td></tr>
+                 <tr><td style="padding:8px 0;font-size:13px;">Deposit Paid</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>
+                 <tr style="border-top:2px solid #111;"><td style="padding:8px 0;font-size:14px;font-weight:700;">Balance Due</td><td style="text-align:right;font-size:14px;font-weight:700;">RM ${Number(doc.balance_amount||0).toLocaleString()}</td></tr>`
+            }
+          </table>`)}
+
+        ${hasFinancing ? section('Financing Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Financing Bank', m.financing_bank)}
+            ${row('Loan Amount', `RM ${Number(m.loan_amount).toLocaleString()}`)}
+            ${row('Interest Rate', `${m.interest_rate}% p.a.`)}
+            ${row('Tenure', `${m.loan_tenure_months} months`)}
+            ${m.monthly_payment ? row('Monthly Payment', `RM ${Number(m.monthly_payment).toLocaleString()}`) : ''}
+          </table>`) : ''}
+
+        ${isSales && services.length > 0 ? section('Included Services / Packages', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${s.name || '—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
+          </table>`) : ''}
+
+        ${isSales ? section('Sales Advisor', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Name', saName)}
+            ${row('Phone', saPhone)}
+            ${saIc !== '—' ? row('IC Number', saIc) : ''}
+          </table>`) : ''}
+
+        <div style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
+          <div style="border-top:1px solid #111;padding-top:8px;">
+            <p style="font-size:12px;color:#555;margin:0 0 2px;">Buyer Signature</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${doc.buyer_name || ''}</p>
+            <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
+          </div>
+          <div style="border-top:1px solid #111;padding-top:8px;">
+            <p style="font-size:12px;color:#555;margin:0 0 2px;">Sales Advisor Signature</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${saName}</p>
+            <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
+          </div>
         </div>
       </div>`;
   };
@@ -4617,12 +4930,80 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
                   {DOC_TYPES.map(t => <option key={t} value={t} style={{ background: '#111118' }}>{t}</option>)}
                 </select>
               </div>
+              {/* Rich Car Listing Selector */}
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <select value={genForm.listing_id} onChange={e => setGenForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  <option value="">Select listing...</option>
-                  {listings.map(l => <option key={l.id} value={l.id} style={{ background: '#111118' }}>{l.brand} {l.model} {l.year}</option>)}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setListingDropOpen(p => !p)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    {selectedListing ? (
+                      <>
+                        {selectedListing.images?.[0] ? (
+                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 1 }}>
+                            {selectedListing.plate_number && <span>{selectedListing.plate_number}</span>}
+                            {selectedListing.colour && <span>{selectedListing.colour}</span>}
+                            {selectedListing.mileage && <span>{Number(selectedListing.mileage).toLocaleString()} km</span>}
+                          </div>
+                        </div>
+                        {selectedListing.selling_price && (
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(selectedListing.selling_price).toLocaleString()}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 13, color: '#6b7280' }}>Select a listing…</span>
+                    )}
+                    <ChevronDown style={{ width: 16, height: 16, color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }} />
+                  </button>
+                  {listingDropOpen && (
+                    <>
+                      <div onClick={() => setListingDropOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, zIndex: 50, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        {listings.length === 0 ? (
+                          <div style={{ padding: '12px 14px', fontSize: 13, color: '#6b7280' }}>No active listings</div>
+                        ) : listings.map(l => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => handleListingSelect(l)}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.1)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif', transition: 'background 0.15s" }}
+                            onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                            onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {l.images?.[0] ? (
+                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
+                              </div>
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
+                              <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
+                                {l.plate_number && <span>{l.plate_number}</span>}
+                                {l.colour && <span>{l.colour}</span>}
+                                {l.mileage && <span>{Number(l.mileage).toLocaleString()} km</span>}
+                              </div>
+                            </div>
+                            {l.selling_price && (
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(l.selling_price).toLocaleString()}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label><input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} /></div>
@@ -4634,6 +5015,44 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill }) {
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
+
+              {/* Sales Advisor Details */}
+              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><input value={genForm.sa_phone} onChange={e => setGenForm(p => ({ ...p, sa_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+                </div>
+                <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
+              </div>
+
+              {/* Financing — Sales Agreement only */}
+              {genForm.doc_type === 'Sales Agreement' && (
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
+                    <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
+                    <span style={{ fontSize: 13, color: '#d1d5db', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
+                  </label>
+                  {genForm.include_financing && (
+                    <div className="space-y-3">
+                      <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Financing Bank</label><input value={genForm.financing_bank} onChange={e => gf('financing_bank', e.target.value)} placeholder="e.g. Maybank, CIMB" className={iCls} /></div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Loan Amount (RM)</label><input type="number" value={genForm.loan_amount} onChange={e => gf('loan_amount', e.target.value)} placeholder="0" className={iCls} /></div>
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Interest Rate (% p.a.)</label><input type="number" step="0.01" value={genForm.interest_rate} onChange={e => gf('interest_rate', e.target.value)} placeholder="3.5" className={iCls} /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Tenure (months)</label><input type="number" value={genForm.loan_tenure_months} onChange={e => gf('loan_tenure_months', e.target.value)} placeholder="84" className={iCls} /></div>
+                        <div>
+                          <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Monthly Payment (RM)</label>
+                          <div style={{ position: 'relative' }}>
+                            <input readOnly value={genForm.monthly_payment ? `RM ${Number(genForm.monthly_payment).toLocaleString()}` : '—'} className={iCls} style={{ color: '#4ade80', background: 'rgba(74,222,128,0.05)', cursor: 'default' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
               <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
@@ -4689,6 +5108,9 @@ export default function DashboardPage() {
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
+  const sidebarBellRef = useRef(null);
+  const [sidebarBellRect, setSidebarBellRect] = useState(null);
+  const closeNotif = () => { setNotifOpen(false); setSidebarBellRect(null); };
   const [notifications,    setNotifications]    = useState([]);
   const [notifOpen,        setNotifOpen]        = useState(false);
   const [pendingStockListing, setPendingStockListing] = useState(null);
@@ -5299,8 +5721,12 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
           </div>
           {/* Bell in sidebar header */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setNotifOpen(p => !p)} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div ref={sidebarBellRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => {
+              const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
+              setSidebarBellRect(notifOpen ? null : rect);
+              setNotifOpen(p => !p);
+            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
               {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#3b82f6', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
@@ -5898,7 +6324,7 @@ export default function DashboardPage() {
             <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />
           )}
           {activeTab === "documents" && (
-            <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} />
+            <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
           )}
           {activeTab === "revops" && userId && (
             <RevOpsPage userId={userId} />
@@ -5936,6 +6362,47 @@ export default function DashboardPage() {
           updatingStatus={updatingStatus}
           getListingAge={getListingAge}
         />
+      )}
+
+      {/* ── Sidebar notification dropdown (portal — escapes overflow-hidden sidebar) ── */}
+      {notifOpen && sidebarBellRect && createPortal(
+        <>
+          <div onClick={closeNotif} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: 'fixed',
+            top: sidebarBellRect.bottom + 8,
+            left: Math.max(8, sidebarBellRect.right - 320),
+            width: 320,
+            maxHeight: 420,
+            overflowY: 'auto',
+            background: '#111118',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+            fontFamily: "'DM Sans', sans-serif",
+            zIndex: 9999,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+              {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+            </div>
+            {notifications.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+            ) : notifications.slice(0, 10).map(n => (
+              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  {!n.is_read && <div style={{ width: 6, height: 6, background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
+                    {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px' }}>{n.body}</p>}
+                    <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
 
       {/* ── Services popup ── */}
