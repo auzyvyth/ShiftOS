@@ -264,7 +264,7 @@ export default function SalesmanPanel() {
     const apptCh = supabase
       .channel("appts_" + userId)
       .on("postgres_changes", {
-        event: "INSERT",
+        event: "*",
         schema: "public",
         table: "appointments",
         filter: `salesman_id=eq.${userId}`,

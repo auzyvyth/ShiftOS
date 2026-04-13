@@ -207,7 +207,7 @@ export default function RevOpsPage({ userId }) {
       // Sold this month
       const { data: soldThisMonth } = await supabase
         .from('car_listings')
-        .select('sold_price, gross_profit')
+        .select('sold_price, gross_profit, purchase_price, recon_cost, included_services_cost')
         .eq('dealer_id', userId)
         .eq('status', 'sold')
         .gte('sold_date', monthStart);
@@ -227,7 +227,13 @@ export default function RevOpsPage({ userId }) {
         .not('status', 'in', '("won","lost")');
 
       const revMTD = (soldThisMonth || []).reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
-      const gpMTD = (soldThisMonth || []).reduce((s, r) => s + (Number(r.gross_profit) || 0), 0);
+      const gpMTD = (soldThisMonth || []).reduce((s, r) => {
+        // Use stored gross_profit if available, otherwise compute including services cost
+        const gp = r.gross_profit != null
+          ? Number(r.gross_profit)
+          : (Number(r.sold_price) || 0) - (Number(r.purchase_price) || 0) - (Number(r.recon_cost) || 0) - (Number(r.included_services_cost) || 0);
+        return s + gp;
+      }, 0);
       const unitsSoldMTD = (soldThisMonth || []).length;
 
       setRevData({
