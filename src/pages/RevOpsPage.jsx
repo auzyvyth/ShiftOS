@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   AlertTriangle,
   TrendingUp,
@@ -9,12 +9,14 @@ import {
   AlertCircle,
   Clock,
   ChevronRight,
-} from 'lucide-react';
-import { supabase } from '../supabaseClient';
+} from "lucide-react";
+import { supabase } from "../supabaseClient";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtRM = (n) =>
-  n == null ? '—' : `RM ${Number(n).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  n == null
+    ? "—"
+    : `RM ${Number(n).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
@@ -27,38 +29,56 @@ const startOfMonth = () => {
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
 };
 
-const thirtyDaysAgo = () =>
-  new Date(Date.now() - 30 * 86400000).toISOString();
+const thirtyDaysAgo = () => new Date(Date.now() - 30 * 86400000).toISOString();
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Skeleton({ h = 'h-8', w = 'w-full' }) {
+function Skeleton({ h = "h-8", w = "w-full" }) {
   return (
     <div
       className={`${h} ${w} rounded-lg animate-pulse`}
-      style={{ background: 'rgba(255,255,255,0.05)' }}
+      style={{ background: "rgba(255,255,255,0.05)" }}
     />
   );
 }
 
-function MetricCard({ label, value, sub, loading, accentColor = '#3b82f6', icon: Icon }) {
+function MetricCard({
+  label,
+  value,
+  sub,
+  loading,
+  accentColor = "#3b82f6",
+  icon: Icon,
+}) {
   return (
     <div
       className="relative flex flex-col gap-1.5 p-4 rounded-lg stat-card"
       style={{
-        background: 'linear-gradient(145deg,rgba(255,255,255,0.032),rgba(255,255,255,0.008))',
-        border: '1px solid rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(12px)',
+        background:
+          "linear-gradient(145deg,rgba(255,255,255,0.032),rgba(255,255,255,0.008))",
+        border: "1px solid rgba(255,255,255,0.06)",
+        backdropFilter: "blur(12px)",
       }}
     >
       <div className="flex items-center justify-between mb-1">
-        <span style={{ fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: "#6b7280",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontWeight: 600,
+          }}
+        >
           {label}
         </span>
         {Icon && (
           <span
             className="flex items-center justify-center w-6 h-6 rounded-md"
-            style={{ background: `${accentColor}18`, border: `1px solid ${accentColor}30` }}
+            style={{
+              background: `${accentColor}18`,
+              border: `1px solid ${accentColor}30`,
+            }}
           >
             <Icon style={{ width: 13, height: 13, color: accentColor }} />
           </span>
@@ -71,16 +91,18 @@ function MetricCard({ label, value, sub, loading, accentColor = '#3b82f6', icon:
           style={{
             fontFamily: "'Bebas Neue',cursive",
             fontSize: 28,
-            letterSpacing: '0.04em',
-            color: '#f8fafc',
+            letterSpacing: "0.04em",
+            color: "#f8fafc",
             lineHeight: 1,
           }}
         >
-          {value ?? '—'}
+          {value ?? "—"}
         </span>
       )}
       {sub && !loading && (
-        <span style={{ fontSize: 11, color: '#4b5563', marginTop: 2 }}>{sub}</span>
+        <span style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>
+          {sub}
+        </span>
       )}
     </div>
   );
@@ -91,14 +113,14 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
     <div
       className="rounded-lg overflow-hidden"
       style={{
-        background: 'rgba(255,255,255,0.022)',
-        border: '1px solid rgba(255,255,255,0.055)',
+        background: "rgba(255,255,255,0.022)",
+        border: "1px solid rgba(255,255,255,0.055)",
       }}
     >
       {title && (
         <div
           className="px-5 py-3.5 flex items-center gap-2"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.048)' }}
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.048)" }}
         >
           <span className="text-sm font-semibold text-white">{title}</span>
         </div>
@@ -121,16 +143,16 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
 function AlertBanner({ type, message, onDismiss }) {
   const styles = {
     red: {
-      bg: 'rgba(220,38,38,0.08)',
-      border: 'rgba(220,38,38,0.22)',
-      icon: '#ef4444',
-      text: '#fca5a5',
+      bg: "rgba(220,38,38,0.08)",
+      border: "rgba(220,38,38,0.22)",
+      icon: "#ef4444",
+      text: "#fca5a5",
     },
     amber: {
-      bg: 'rgba(217,119,6,0.08)',
-      border: 'rgba(217,119,6,0.22)',
-      icon: '#fbbf24',
-      text: '#fde68a',
+      bg: "rgba(217,119,6,0.08)",
+      border: "rgba(217,119,6,0.22)",
+      icon: "#fbbf24",
+      text: "#fde68a",
     },
   };
   const s = styles[type] || styles.amber;
@@ -139,11 +161,29 @@ function AlertBanner({ type, message, onDismiss }) {
       className="flex items-start gap-3 px-4 py-3 rounded-lg"
       style={{ background: s.bg, border: `1px solid ${s.border}` }}
     >
-      <AlertTriangle style={{ width: 15, height: 15, color: s.icon, flexShrink: 0, marginTop: 1 }} />
-      <span style={{ fontSize: 13, color: s.text, flex: 1, lineHeight: 1.5 }}>{message}</span>
+      <AlertTriangle
+        style={{
+          width: 15,
+          height: 15,
+          color: s.icon,
+          flexShrink: 0,
+          marginTop: 1,
+        }}
+      />
+      <span style={{ fontSize: 13, color: s.text, flex: 1, lineHeight: 1.5 }}>
+        {message}
+      </span>
       <button
         onClick={onDismiss}
-        style={{ color: '#6b7280', flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+        style={{
+          color: "#6b7280",
+          flexShrink: 0,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          display: "flex",
+        }}
       >
         <X style={{ width: 13, height: 13 }} />
       </button>
@@ -156,10 +196,10 @@ function SourcePill({ source, count }) {
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
       style={{
-        background: 'rgba(59,130,246,0.1)',
-        border: '1px solid rgba(59,130,246,0.2)',
+        background: "rgba(59,130,246,0.1)",
+        border: "1px solid rgba(59,130,246,0.2)",
         fontSize: 11,
-        color: '#93c5fd',
+        color: "#93c5fd",
         fontWeight: 600,
       }}
     >
@@ -170,8 +210,20 @@ function SourcePill({ source, count }) {
 
 function ResponseTimeDot({ minutes }) {
   if (minutes == null) return null;
-  const color = minutes < 30 ? '#4ade80' : minutes < 120 ? '#fbbf24' : '#f87171';
-  return <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 4 }} />;
+  const color =
+    minutes < 30 ? "#4ade80" : minutes < 120 ? "#fbbf24" : "#f87171";
+  return (
+    <span
+      style={{
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        background: color,
+        display: "inline-block",
+        marginRight: 4,
+      }}
+    />
+  );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -210,32 +262,41 @@ export default function RevOpsPage({ userId }) {
 
       // Sold this month
       const { data: soldThisMonth } = await supabase
-        .from('car_listings')
-        .select('sold_price, gross_profit, purchase_price, recon_cost, included_services_cost')
-        .eq('dealer_id', userId)
-        .eq('status', 'sold')
-        .gte('sold_date', monthStart);
+        .from("car_listings")
+        .select(
+          "sold_price, gross_profit, purchase_price, recon_cost, included_services_cost",
+        )
+        .eq("dealer_id", userId)
+        .eq("status", "sold")
+        .gte("sold_date", monthStart);
 
       // Active listings for stock turn
       const { count: activeCount } = await supabase
-        .from('car_listings')
-        .select('id', { count: 'exact', head: true })
-        .eq('dealer_id', userId)
-        .neq('status', 'sold');
+        .from("car_listings")
+        .select("id", { count: "exact", head: true })
+        .eq("dealer_id", userId)
+        .neq("status", "sold");
 
       // Active leads (pipeline value proxy)
       const { count: activeLeads } = await supabase
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('dealer_id', userId)
-        .not('status', 'in', '("won","lost")');
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("dealer_id", userId)
+        .not("stage", "in", "(closed_won,closed_lost)");
 
-      const revMTD = (soldThisMonth || []).reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
+      const revMTD = (soldThisMonth || []).reduce(
+        (s, r) => s + (Number(r.sold_price) || 0),
+        0,
+      );
       const gpMTD = (soldThisMonth || []).reduce((s, r) => {
         // Use stored gross_profit if available, otherwise compute including services cost
-        const gp = r.gross_profit != null
-          ? Number(r.gross_profit)
-          : (Number(r.sold_price) || 0) - (Number(r.purchase_price) || 0) - (Number(r.recon_cost) || 0) - (Number(r.included_services_cost) || 0);
+        const gp =
+          r.gross_profit != null
+            ? Number(r.gross_profit)
+            : (Number(r.sold_price) || 0) -
+              (Number(r.purchase_price) || 0) -
+              (Number(r.recon_cost) || 0) -
+              (Number(r.included_services_cost) || 0);
         return s + gp;
       }, 0);
       const unitsSoldMTD = (soldThisMonth || []).length;
@@ -260,10 +321,10 @@ export default function RevOpsPage({ userId }) {
       const since = thirtyDaysAgo();
 
       const { data: leads } = await supabase
-        .from('leads')
-        .select('id, status, source, created_at, first_response_at')
-        .eq('dealer_id', userId)
-        .gte('created_at', since);
+        .from("leads")
+        .select("id, stage, source, created_at, first_response_at")
+        .eq("dealer_id", userId)
+        .gte("created_at", since);
 
       const all = leads || [];
       const total = all.length;
@@ -271,7 +332,7 @@ export default function RevOpsPage({ userId }) {
       // Source breakdown — top 3
       const srcMap = {};
       all.forEach((l) => {
-        const src = l.source || 'Unknown';
+        const src = l.source || "Unknown";
         srcMap[src] = (srcMap[src] || 0) + 1;
       });
       const topSources = Object.entries(srcMap)
@@ -279,15 +340,17 @@ export default function RevOpsPage({ userId }) {
         .slice(0, 3);
 
       // Lead → viewing rate: leads where status moved past 'new'
-      const advanced = all.filter((l) => l.status && l.status !== 'new').length;
-      const viewingRate = total > 0 ? Math.round((advanced / total) * 100) : null;
+      const advanced = all.filter((l) => l.stage && l.stage !== "new").length;
+      const viewingRate =
+        total > 0 ? Math.round((advanced / total) * 100) : null;
 
       // Avg response time — only if first_response_at column exists on any row
       let avgResponseMin = null;
       const responded = all.filter((l) => l.first_response_at && l.created_at);
       if (responded.length > 0) {
         const totalMin = responded.reduce((s, l) => {
-          const diff = (new Date(l.first_response_at) - new Date(l.created_at)) / 60000;
+          const diff =
+            (new Date(l.first_response_at) - new Date(l.created_at)) / 60000;
           return s + diff;
         }, 0);
         avgResponseMin = Math.round(totalMin / responded.length);
@@ -306,10 +369,12 @@ export default function RevOpsPage({ userId }) {
     const fetch = async () => {
       setStockLoading(true);
       const { data: units } = await supabase
-        .from('stock_units')
-        .select('id, created_at, brand, model, year, asking_price, status, purchase_date')
-        .eq('dealer_id', userId)
-        .eq('status', 'in_stock');
+        .from("stock_units")
+        .select(
+          "id, created_at, brand, model, year, asking_price, status, purchase_date",
+        )
+        .eq("dealer_id", userId)
+        .eq("status", "in_stock");
 
       const all = units || [];
       const now = Date.now();
@@ -323,8 +388,10 @@ export default function RevOpsPage({ userId }) {
       const avgDays =
         withAge.filter((u) => u.days != null).length > 0
           ? Math.round(
-              withAge.filter((u) => u.days != null).reduce((s, u) => s + u.days, 0) /
-                withAge.filter((u) => u.days != null).length
+              withAge
+                .filter((u) => u.days != null)
+                .reduce((s, u) => s + u.days, 0) /
+                withAge.filter((u) => u.days != null).length,
             )
           : null;
 
@@ -346,36 +413,48 @@ export default function RevOpsPage({ userId }) {
 
       // All deal_products this month
       const { data: addonRows } = await supabase
-        .from('deal_products')
-        .select('id, sold_price, lead_id, product_id, dealer_products(name)')
-        .eq('dealer_id', userId)
-        .gte('created_at', monthStart);
+        .from("deal_products")
+        .select("id, sold_price, lead_id, product_id, dealer_products(name)")
+        .eq("dealer_id", userId)
+        .gte("created_at", monthStart);
 
       // Won leads this month (for attachment rate denominator)
       const { count: wonCount } = await supabase
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('dealer_id', userId)
-        .in('stage', ['won', 'closed_won'])
-        .gte('updated_at', monthStart);
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("dealer_id", userId)
+        .in("stage", ["closed_won", "deposit_taken"])
+        .gte("updated_at", monthStart);
 
       const rows = addonRows || [];
       const totalRevenue = rows.reduce((s, r) => s + Number(r.sold_price), 0);
-      const uniqueLeads  = new Set(rows.filter(r => r.lead_id).map(r => r.lead_id));
-      const avgPerDeal   = uniqueLeads.size > 0 ? Math.round(totalRevenue / uniqueLeads.size) : null;
-      const attachRate   = wonCount > 0 ? Math.round((uniqueLeads.size / wonCount) * 100) : null;
+      const uniqueLeads = new Set(
+        rows.filter((r) => r.lead_id).map((r) => r.lead_id),
+      );
+      const avgPerDeal =
+        uniqueLeads.size > 0
+          ? Math.round(totalRevenue / uniqueLeads.size)
+          : null;
+      const attachRate =
+        wonCount > 0 ? Math.round((uniqueLeads.size / wonCount) * 100) : null;
 
       // Top 3 products by count
       const productCount = {};
-      rows.forEach(r => {
-        const name = r.dealer_products?.name || 'Unknown';
+      rows.forEach((r) => {
+        const name = r.dealer_products?.name || "Unknown";
         productCount[name] = (productCount[name] || 0) + 1;
       });
       const topProducts = Object.entries(productCount)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3);
 
-      setAddonData({ totalRevenue, avgPerDeal, attachRate, topProducts, uniqueLeadCount: uniqueLeads.size });
+      setAddonData({
+        totalRevenue,
+        avgPerDeal,
+        attachRate,
+        topProducts,
+        uniqueLeadCount: uniqueLeads.size,
+      });
       setAddonLoading(false);
     };
     fetch();
@@ -388,25 +467,57 @@ export default function RevOpsPage({ userId }) {
       setTrafficLoading(true);
       const since = thirtyDaysAgo();
 
-      const [{ count: storeVisits }, { count: carViews }, { count: waClicks }, { count: linkVisits }, { data: carViewEvents }] = await Promise.all([
-        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'store_visit').gte('created_at', since),
-        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'car_view').gte('created_at', since),
-        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'whatsapp_click').gte('created_at', since),
-        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'link_visit').gte('created_at', since),
-        supabase.from('analytics_events').select('car_id, car_name').eq('dealer_id', userId).eq('event_type', 'car_view').gte('created_at', since),
+      const [
+        { count: storeVisits },
+        { count: carViews },
+        { count: waClicks },
+        { count: linkVisits },
+        { data: carViewEvents },
+      ] = await Promise.all([
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "store_visit")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "car_view")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "whatsapp_click")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("*", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("event_type", "link_visit")
+          .gte("created_at", since),
+        supabase
+          .from("analytics_events")
+          .select("car_id, car_name")
+          .eq("dealer_id", userId)
+          .eq("event_type", "car_view")
+          .gte("created_at", since),
       ]);
 
       const totalPageVisits = (storeVisits || 0) + (linkVisits || 0);
-      const conversionRate = totalPageVisits > 0
-        ? ((( waClicks || 0) / totalPageVisits) * 100).toFixed(1)
-        : '0.0';
+      const conversionRate =
+        totalPageVisits > 0
+          ? (((waClicks || 0) / totalPageVisits) * 100).toFixed(1)
+          : "0.0";
 
       // Aggregate car views client-side
       const carViewMap = {};
-      (carViewEvents || []).forEach(e => {
+      (carViewEvents || []).forEach((e) => {
         if (!e.car_id) return;
         carViewMap[e.car_id] = {
-          car_name: e.car_name || 'Unknown',
+          car_name: e.car_name || "Unknown",
           views: (carViewMap[e.car_id]?.views || 0) + 1,
         };
       });
@@ -438,22 +549,22 @@ export default function RevOpsPage({ userId }) {
       try {
         const thirtyMinsAgo = new Date(Date.now() - 30 * 60000).toISOString();
         const { data: unresponded, error: respErr } = await supabase
-          .from('leads')
-          .select('id, created_at')
-          .eq('dealer_id', userId)
-          .is('first_response_at', null)
-          .eq('status', 'new')
-          .lt('created_at', thirtyMinsAgo);
+          .from("leads")
+          .select("id, created_at")
+          .eq("dealer_id", userId)
+          .is("first_response_at", null)
+          .eq("stage", "new")
+          .lt("created_at", thirtyMinsAgo);
 
         if (!respErr && unresponded && unresponded.length > 0) {
           const oldest = unresponded.reduce((a, b) =>
-            new Date(a.created_at) < new Date(b.created_at) ? a : b
+            new Date(a.created_at) < new Date(b.created_at) ? a : b,
           );
           const hrs = hoursAgo(oldest.created_at);
           newAlerts.push({
-            id: 'unresponded',
-            type: 'red',
-            message: `${unresponded.length} lead${unresponded.length > 1 ? 's' : ''} haven't been responded to — oldest is ${hrs}h ago`,
+            id: "unresponded",
+            type: "red",
+            message: `${unresponded.length} lead${unresponded.length > 1 ? "s" : ""} haven't been responded to — oldest is ${hrs}h ago`,
           });
         }
       } catch (_) {
@@ -461,19 +572,21 @@ export default function RevOpsPage({ userId }) {
       }
 
       // Alert 2 — Aged stock
-      const fortyfiveDaysAgo = new Date(Date.now() - 45 * 86400000).toISOString();
+      const fortyfiveDaysAgo = new Date(
+        Date.now() - 45 * 86400000,
+      ).toISOString();
       const { count: agedCount } = await supabase
-        .from('stock_units')
-        .select('id', { count: 'exact', head: true })
-        .eq('dealer_id', userId)
-        .eq('status', 'in_stock')
-        .lt('created_at', fortyfiveDaysAgo);
+        .from("stock_units")
+        .select("id", { count: "exact", head: true })
+        .eq("dealer_id", userId)
+        .eq("status", "in_stock")
+        .lt("created_at", fortyfiveDaysAgo);
 
       if (agedCount && agedCount > 0) {
         newAlerts.push({
-          id: 'aged_stock',
-          type: 'amber',
-          message: `${agedCount} unit${agedCount > 1 ? 's' : ''} have been in stock over 45 days — consider a price review`,
+          id: "aged_stock",
+          type: "amber",
+          message: `${agedCount} unit${agedCount > 1 ? "s" : ""} have been in stock over 45 days — consider a price review`,
         });
       }
 
@@ -481,17 +594,17 @@ export default function RevOpsPage({ userId }) {
       const dayOfMonth = new Date().getDate();
       if (dayOfMonth > 7) {
         const { count: salesCount } = await supabase
-          .from('car_listings')
-          .select('id', { count: 'exact', head: true })
-          .eq('dealer_id', userId)
-          .eq('status', 'sold')
-          .gte('sold_date', startOfMonth());
+          .from("car_listings")
+          .select("id", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .eq("status", "sold")
+          .gte("sold_date", startOfMonth());
 
         if (salesCount === 0) {
           newAlerts.push({
-            id: 'no_sales',
-            type: 'amber',
-            message: 'No sales recorded this month yet',
+            id: "no_sales",
+            type: "amber",
+            message: "No sales recorded this month yet",
           });
         }
       }
@@ -518,14 +631,14 @@ export default function RevOpsPage({ userId }) {
           style={{
             fontFamily: "'Bebas Neue',cursive",
             fontSize: 32,
-            letterSpacing: '0.06em',
-            color: '#f8fafc',
+            letterSpacing: "0.06em",
+            color: "#f8fafc",
             lineHeight: 1,
           }}
         >
           Revenue Operations
         </h1>
-        <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>
+        <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
           Your dealership at a glance
         </p>
       </div>
@@ -546,7 +659,16 @@ export default function RevOpsPage({ userId }) {
 
       {/* ── Section 1: Revenue Overview ──────────────────────────────────── */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#4b5563",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            marginBottom: 10,
+          }}
+        >
           Revenue Overview
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -588,32 +710,74 @@ export default function RevOpsPage({ userId }) {
       </div>
 
       {/* ── Section 2: Lead Performance ──────────────────────────────────── */}
-      <SectionCard title="Lead Performance (30d)" loading={leadLoading} skeletonRows={3}>
+      <SectionCard
+        title="Lead Performance (30d)"
+        loading={leadLoading}
+        skeletonRows={3}
+      >
         <div className="grid grid-cols-2 gap-4">
           {/* Total Leads */}
           <div className="flex flex-col gap-1">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
               Total Leads
             </span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>
-              {leadData?.total ?? '—'}
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#f8fafc",
+              }}
+            >
+              {leadData?.total ?? "—"}
             </span>
           </div>
 
           {/* Lead → Viewing Rate */}
           <div className="flex flex-col gap-1">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
               Viewing Rate
             </span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>
-              {leadData?.viewingRate != null ? `${leadData.viewingRate}%` : '—'}
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#f8fafc",
+              }}
+            >
+              {leadData?.viewingRate != null ? `${leadData.viewingRate}%` : "—"}
             </span>
-            <span style={{ fontSize: 11, color: '#4b5563' }}>moved past new</span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              moved past new
+            </span>
           </div>
 
           {/* By Source */}
           <div className="flex flex-col gap-2">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
               Top Sources
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -622,28 +786,51 @@ export default function RevOpsPage({ userId }) {
                   <SourcePill key={src} source={src} count={cnt} />
                 ))
               ) : (
-                <span style={{ fontSize: 12, color: '#4b5563' }}>No data</span>
+                <span style={{ fontSize: 12, color: "#4b5563" }}>No data</span>
               )}
             </div>
           </div>
 
           {/* Avg Response Time */}
           <div className="flex flex-col gap-1">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
               Avg Response
             </span>
             {leadData?.avgResponseMin != null ? (
               <>
                 <div className="flex items-center gap-1">
                   <ResponseTimeDot minutes={leadData.avgResponseMin} />
-                  <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>
+                  <span
+                    style={{
+                      fontFamily: "'Bebas Neue',cursive",
+                      fontSize: 26,
+                      color: "#f8fafc",
+                    }}
+                  >
                     {leadData.avgResponseMin}
                   </span>
-                  <span style={{ fontSize: 12, color: '#6b7280', alignSelf: 'flex-end', paddingBottom: 3 }}>min avg</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#6b7280",
+                      alignSelf: "flex-end",
+                      paddingBottom: 3,
+                    }}
+                  >
+                    min avg
+                  </span>
                 </div>
               </>
             ) : (
-              <span style={{ fontSize: 12, color: '#4b5563' }}>
+              <span style={{ fontSize: 12, color: "#4b5563" }}>
                 {/* TODO: add first_response_at column to leads table to enable this metric */}
                 No data
               </span>
@@ -653,47 +840,181 @@ export default function RevOpsPage({ userId }) {
       </SectionCard>
 
       {/* ── Section 4: Page Traffic (30d) ───────────────────────────────── */}
-      <SectionCard title="Page Traffic (30d)" loading={trafficLoading} skeletonRows={3}>
+      <SectionCard
+        title="Page Traffic (30d)"
+        loading={trafficLoading}
+        skeletonRows={3}
+      >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div className="flex flex-col gap-0.5">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Store Visits</span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>{trafficData?.pageVisits ?? '—'}</span>
-            <span style={{ fontSize: 11, color: '#4b5563' }}>organic + referral</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Car Views</span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>{trafficData?.carViews ?? '—'}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>WA Clicks</span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#4ade80' }}>{trafficData?.waClicks ?? '—'}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Conversion</span>
-            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: Number(trafficData?.conversionRate) >= 3 ? '#4ade80' : '#fbbf24' }}>
-              {trafficData ? `${trafficData.conversionRate}%` : '—'}
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Store Visits
             </span>
-            <span style={{ fontSize: 11, color: '#4b5563' }}>WA / store visit</span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#f8fafc",
+              }}
+            >
+              {trafficData?.pageVisits ?? "—"}
+            </span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              organic + referral
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Car Views
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#f8fafc",
+              }}
+            >
+              {trafficData?.carViews ?? "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              WA Clicks
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color: "#4ade80",
+              }}
+            >
+              {trafficData?.waClicks ?? "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Conversion
+            </span>
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 26,
+                color:
+                  Number(trafficData?.conversionRate) >= 3
+                    ? "#4ade80"
+                    : "#fbbf24",
+              }}
+            >
+              {trafficData ? `${trafficData.conversionRate}%` : "—"}
+            </span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              WA / store visit
+            </span>
           </div>
         </div>
 
         {/* Top cars by views */}
         {trafficData?.topCars?.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, color: '#4b5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 8 }}>Top Viewed Cars</p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#4b5563",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                marginBottom: 8,
+              }}
+            >
+              Top Viewed Cars
+            </p>
             <div className="space-y-1.5">
               {trafficData.topCars.map((c, i) => (
-                <div key={c.car_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span style={{ fontSize: 11, color: '#4b5563', width: 16, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                  <span style={{ fontSize: 13, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.car_name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#93c5fd', flexShrink: 0 }}>{c.views} view{c.views !== 1 ? 's' : ''}</span>
+                <div
+                  key={c.car_id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "6px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#4b5563",
+                      width: 16,
+                      textAlign: "right",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "#e5e7eb",
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.car_name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#93c5fd",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {c.views} view{c.views !== 1 ? "s" : ""}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
         {!trafficLoading && trafficData?.carViews === 0 && (
-          <p style={{ fontSize: 12, color: '#4b5563' }}>No car views recorded in the last 30 days.</p>
+          <p style={{ fontSize: 12, color: "#4b5563" }}>
+            No car views recorded in the last 30 days.
+          </p>
         )}
       </SectionCard>
 
@@ -704,33 +1025,102 @@ export default function RevOpsPage({ userId }) {
             {/* Summary stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               <div className="flex flex-col gap-0.5">
-                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>In Stock</span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 24, color: '#f8fafc' }}>{stockData.total}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Avg Days</span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 24, color: '#f8fafc' }}>
-                  {stockData.avgDays != null ? stockData.avgDays : '—'}
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  In Stock
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: "#f8fafc",
+                  }}
+                >
+                  {stockData.total}
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
-                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Avg Days
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: "#f8fafc",
+                  }}
+                >
+                  {stockData.avgDays != null ? stockData.avgDays : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
                   Aged &gt;45d
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 24, color: stockData.aged45.length > 0 ? '#fbbf24' : '#f8fafc' }}>
+                <span
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: stockData.aged45.length > 0 ? "#fbbf24" : "#f8fafc",
+                  }}
+                >
                   {stockData.aged45.length}
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
-                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
+                >
                   Aged &gt;60d
                 </span>
                 <span
-                  className={stockData.aged60.length > 0 ? 'flex items-center gap-1' : ''}
-                  style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 24, color: stockData.aged60.length > 0 ? '#f87171' : '#f8fafc' }}
+                  className={
+                    stockData.aged60.length > 0 ? "flex items-center gap-1" : ""
+                  }
+                  style={{
+                    fontFamily: "'Bebas Neue',cursive",
+                    fontSize: 24,
+                    color: stockData.aged60.length > 0 ? "#f87171" : "#f8fafc",
+                  }}
                 >
                   {stockData.aged60.length > 0 && (
-                    <AlertCircle style={{ width: 14, height: 14, color: '#f87171', flexShrink: 0 }} />
+                    <AlertCircle
+                      style={{
+                        width: 14,
+                        height: 14,
+                        color: "#f87171",
+                        flexShrink: 0,
+                      }}
+                    />
                   )}
                   {stockData.aged60.length}
                 </span>
@@ -740,53 +1130,97 @@ export default function RevOpsPage({ userId }) {
             {/* Aged units table */}
             {stockData.aged45.length > 0 && (
               <div>
-                <p style={{ fontSize: 11, color: '#4b5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 8 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "#4b5563",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    marginBottom: 8,
+                  }}
+                >
                   Units Aged &gt;45 Days
                 </p>
                 <div
                   className="rounded-lg overflow-hidden"
-                  style={{ border: '1px solid rgba(255,255,255,0.055)' }}
+                  style={{ border: "1px solid rgba(255,255,255,0.055)" }}
                 >
                   {/* Table header */}
                   <div
                     className="grid gap-2 px-3 py-2 hidden sm:grid"
                     style={{
-                      gridTemplateColumns: '1fr 1fr 60px 90px 100px',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      background: 'rgba(255,255,255,0.02)',
+                      gridTemplateColumns: "1fr 1fr 60px 90px 100px",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      background: "rgba(255,255,255,0.02)",
                     }}
                   >
-                    {['Brand', 'Model', 'Year', 'Days', 'Asking'].map((h) => (
-                      <span key={h} style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+                    {["Brand", "Model", "Year", "Days", "Asking"].map((h) => (
+                      <span
+                        key={h}
+                        style={{
+                          fontSize: 10,
+                          color: "#4b5563",
+                          textTransform: "uppercase",
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                        }}
+                      >
                         {h}
                       </span>
                     ))}
                   </div>
                   {stockData.aged45.map((u) => {
                     const isOld60 = u.days > 60;
-                    const borderColor = isOld60 ? '#ef4444' : '#f59e0b';
+                    const borderColor = isOld60 ? "#ef4444" : "#f59e0b";
                     return (
                       <div
                         key={u.id}
                         // TODO: link to stock unit when detail view is available
                         className="grid gap-2 px-3 py-2.5 items-center"
                         style={{
-                          gridTemplateColumns: '1fr 1fr 60px 90px 100px',
+                          gridTemplateColumns: "1fr 1fr 60px 90px 100px",
                           borderLeft: `3px solid ${borderColor}`,
-                          borderBottom: '1px solid rgba(255,255,255,0.04)',
-                          background: 'transparent',
-                          cursor: 'default',
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          background: "transparent",
+                          cursor: "default",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: '#e5e7eb', fontWeight: 500 }}>{u.brand || '—'}</span>
-                        <span style={{ fontSize: 13, color: '#9ca3af' }}>{u.model || '—'}</span>
-                        <span style={{ fontSize: 13, color: '#9ca3af' }}>{u.year || '—'}</span>
-                        <span style={{ fontSize: 13, color: isOld60 ? '#f87171' : '#fbbf24', fontWeight: 600 }}>
-                          <Clock style={{ width: 11, height: 11, display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "#e5e7eb",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {u.brand || "—"}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {u.model || "—"}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {u.year || "—"}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: isOld60 ? "#f87171" : "#fbbf24",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Clock
+                            style={{
+                              width: 11,
+                              height: 11,
+                              display: "inline",
+                              marginRight: 3,
+                              verticalAlign: "middle",
+                            }}
+                          />
                           {u.days}d
                         </span>
-                        <span style={{ fontSize: 12, color: '#6b7280' }}>
-                          {u.asking_price ? fmtRM(u.asking_price) : '—'}
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>
+                          {u.asking_price ? fmtRM(u.asking_price) : "—"}
                         </span>
                       </div>
                     );
@@ -796,7 +1230,14 @@ export default function RevOpsPage({ userId }) {
             )}
 
             {stockData.aged45.length === 0 && (
-              <p style={{ fontSize: 13, color: '#4b5563', textAlign: 'center', padding: '12px 0' }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#4b5563",
+                  textAlign: "center",
+                  padding: "12px 0",
+                }}
+              >
                 No units aged over 45 days
               </p>
             )}
@@ -806,7 +1247,16 @@ export default function RevOpsPage({ userId }) {
 
       {/* ── Section 5: Add-on Revenue (MTD) ──────────────────────────────── */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#4b5563",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            marginBottom: 10,
+          }}
+        >
           Add-on Revenue (MTD)
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -819,19 +1269,41 @@ export default function RevOpsPage({ userId }) {
           />
           <MetricCard
             label="Avg per Deal"
-            value={addonData ? (addonData.avgPerDeal != null ? fmtRM(addonData.avgPerDeal) : '—') : null}
-            sub={addonData ? `${addonData.uniqueLeadCount} deal${addonData.uniqueLeadCount !== 1 ? 's' : ''} with add-ons` : null}
+            value={
+              addonData
+                ? addonData.avgPerDeal != null
+                  ? fmtRM(addonData.avgPerDeal)
+                  : "—"
+                : null
+            }
+            sub={
+              addonData
+                ? `${addonData.uniqueLeadCount} deal${addonData.uniqueLeadCount !== 1 ? "s" : ""} with add-ons`
+                : null
+            }
             loading={addonLoading}
             icon={TrendingUp}
             accentColor="#60a5fa"
           />
           <MetricCard
             label="Attachment Rate"
-            value={addonData ? (addonData.attachRate != null ? `${addonData.attachRate}%` : '—') : null}
+            value={
+              addonData
+                ? addonData.attachRate != null
+                  ? `${addonData.attachRate}%`
+                  : "—"
+                : null
+            }
             sub="of won deals this month"
             loading={addonLoading}
             icon={Users}
-            accentColor={addonData?.attachRate != null ? (addonData.attachRate >= 20 ? '#4ade80' : '#fbbf24') : '#6b7280'}
+            accentColor={
+              addonData?.attachRate != null
+                ? addonData.attachRate >= 20
+                  ? "#4ade80"
+                  : "#fbbf24"
+                : "#6b7280"
+            }
           />
         </div>
 
@@ -839,23 +1311,46 @@ export default function RevOpsPage({ userId }) {
         {!addonLoading && addonData?.topProducts?.length > 0 && (
           <div
             className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.055)' }}
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.055)",
+            }}
           >
-            <span style={{ fontSize: 11, color: '#4b5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Top Products:</span>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#4b5563",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginRight: 4,
+              }}
+            >
+              Top Products:
+            </span>
             {addonData.topProducts.map(([name, count]) => (
               <span
                 key={name}
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
-                style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', fontSize: 11, color: '#c4b5fd', fontWeight: 600 }}
+                style={{
+                  background: "rgba(167,139,250,0.1)",
+                  border: "1px solid rgba(167,139,250,0.2)",
+                  fontSize: 11,
+                  color: "#c4b5fd",
+                  fontWeight: 600,
+                }}
               >
                 {name} × {count}
               </span>
             ))}
           </div>
         )}
-        {!addonLoading && (!addonData || addonData.topProducts?.length === 0) && (
-          <p style={{ fontSize: 12, color: '#4b5563' }}>No add-ons recorded this month.</p>
-        )}
+        {!addonLoading &&
+          (!addonData || addonData.topProducts?.length === 0) && (
+            <p style={{ fontSize: 12, color: "#4b5563" }}>
+              No add-ons recorded this month.
+            </p>
+          )}
       </div>
     </div>
   );
