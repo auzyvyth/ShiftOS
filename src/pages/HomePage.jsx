@@ -31,7 +31,7 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
-import { getOrCreateSessionId } from "../utils/analytics";
+import { getOrCreateSessionId, getSlugFromURL, trackEvent } from "../utils/analytics";
 import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
@@ -225,7 +225,7 @@ const glassCard = {
 const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl, profile } = useSiteProfile();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const ctaCtx = useCTAContext();
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
@@ -241,23 +241,22 @@ const HomePage = () => {
     captureRef();
   }, []);
 
-  // Fire store_visit + page_view events once per session when viewing a dealer's subdomain storefront
+  // Fire store_visit once per session — runs after tenant resolves (null on main site, profile on subdomain)
+  useEffect(() => {
+    if (tenantLoading) return; // wait for useTenant to finish — fires once when loading → false
+    const sessionKey = `sv_fired_${tenant?.id ?? 'main'}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
+    trackEvent(supabase, 'store_visit', {
+      dealer_id: tenant?.id || null,
+      metadata: { source: getSlugFromURL() ? 'salesman_link' : 'organic' },
+    });
+  }, [tenantLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fire page_view for salesman ref links (requires tenant + slug)
   useEffect(() => {
     if (!tenant?.id) return;
-    const sessionKey = `sv_fired_${tenant.id}`;
     const slug = getRef();
-    if (!sessionStorage.getItem(sessionKey)) {
-      sessionStorage.setItem(sessionKey, '1');
-      supabase.from('analytics_events').insert({
-        dealer_id: tenant.id,
-        event_type: 'store_visit',
-        salesman_slug: slug || null,
-        session_id: getOrCreateSessionId(),
-        page_path: window.location.pathname,
-        referrer: document.referrer || null,
-        metadata: { source: slug ? 'salesman_link' : 'organic' },
-      }).then(() => {});
-    }
     if (slug) {
       supabase.from('analytics_events').insert({
         event_type: 'page_view',
