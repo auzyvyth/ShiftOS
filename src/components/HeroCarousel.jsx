@@ -789,7 +789,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
   const metaStats = stats
     .filter((x) => (x.key || x.type)?.toLowerCase() !== "price")
     .slice(0, 3);
-  const phone = (s.whatsapp_number || waNumber || "").replace(/\D/g, "");
+  const phone = (s.whatsapp_number || waNumber || tenant?.whatsapp_number || "").replace(/\D/g, "");
   const waMsg = encodeURIComponent(
     `Hi, I'm interested in the ${s.year || ""} ${s.car_name || "car"}. Can you share more details?`,
   );
