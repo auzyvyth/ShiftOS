@@ -213,12 +213,6 @@ export default function CarDetailPage() {
           .eq('id', carData.dealer_id).maybeSingle();
         setDealer(d);
       }
-      trackEvent(supabase, 'car_view', {
-        car_id: carData.id,
-        car_name: `${carData.brand} ${carData.model} ${carData.year}`,
-        dealer_id: carData.dealer_id,
-        metadata: { colour: carData.colour, price: carData.selling_price },
-      });
       const refSlug = getRef();
       if (refSlug && carData.dealer_id) {
         supabase.from('analytics_events').insert({
@@ -261,6 +255,18 @@ export default function CarDetailPage() {
     }
     load();
   }, [slug]);
+
+  /* ── car_view analytics — fires once per car after data loads ── */
+  useEffect(() => {
+    if (!car) return;
+    trackEvent(supabase, 'car_view', {
+      car_id: car.id,
+      car_name: `${car.brand} ${car.model} ${car.year}`,
+      dealer_id: car.dealer_id,
+      page_path: window.location.pathname,
+      metadata: { price: car.selling_price, colour: car.colour },
+    });
+  }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── auto-slide ── */
   useEffect(() => {
