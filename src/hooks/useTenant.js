@@ -16,18 +16,21 @@ export function getSubdomain() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("tenant")) return params.get("tenant");
   const hostname = window.location.hostname;
-  // Never parse subdomains on local dev
+  // Root domains and local dev → no subdomain, show public marketplace
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    hostname.startsWith("192.168")
+    hostname.startsWith("192.168") ||
+    hostname === "xdrive.my" ||
+    hostname === "www.xdrive.my"
   )
     return null;
-  const stripped = hostname.replace(".xdrive.my", "");
-  const parts = stripped.split(".");
-  const subdomain =
-    hostname.includes(".xdrive.my") && parts[0] !== hostname ? parts[0] : null;
-  return subdomain;
+  // Extract subdomain from <sub>.xdrive.my (e.g. 'fast' from 'fast.xdrive.my')
+  if (hostname.endsWith(".xdrive.my")) {
+    const sub = hostname.slice(0, -".xdrive.my".length);
+    if (sub && !sub.includes(".")) return sub;
+  }
+  return null;
 }
 
 export function isSubdomain() {
