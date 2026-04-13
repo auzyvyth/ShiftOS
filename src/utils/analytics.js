@@ -9,19 +9,25 @@ export function getOrCreateSessionId() {
   return sid;
 }
 
+export function getSlugFromURL() {
+  return new URLSearchParams(window.location.search).get('ref') || null;
+}
+
 /**
  * Fire an analytics event. Always fails silently — analytics must never break a page.
- * Automatically attaches session_id, page_path, and referrer.
+ * Automatically attaches session_id, page_path, referrer, and salesman_slug from URL.
  */
-export async function fireEvent(supabase, payload) {
+export async function trackEvent(supabase, eventType, payload = {}) {
   try {
     await supabase.from('analytics_events').insert({
-      ...payload,
+      event_type: eventType,
       session_id: getOrCreateSessionId(),
       page_path: window.location.pathname,
       referrer: document.referrer || null,
+      salesman_slug: getSlugFromURL(),
+      ...payload,
     });
-  } catch {
-    // Fail silently
+  } catch (e) {
+    console.warn('Analytics error:', e);
   }
 }
