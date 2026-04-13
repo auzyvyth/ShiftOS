@@ -9,6 +9,7 @@ import FinancingCalculator from '../components/FinancingCalculator';
 import CarCard from '../components/CarCard';
 import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 import { captureRef, getRef } from '../utils/refTracking';
+import { trackEvent } from '../utils/analytics';
 
 /* ─── helpers ─── */
 const fmt      = (n) => Number(n).toLocaleString('en-MY');
@@ -23,28 +24,6 @@ const calcMonthly = (price) => {
 function daysAgo(dateStr) {
   if (!dateStr) return null;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-}
-
-function getOrCreateSession() {
-  const key = 'xd_session';
-  let id = sessionStorage.getItem(key);
-  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(key, id); }
-  return id;
-}
-
-function trackEvent(car, eventType) {
-  supabase.from('analytics_events').insert({
-    salesman_slug: getRef() || '',
-    event_type:    eventType,
-    car_id:        car.id,
-    car_name:      `${car.year} ${car.brand} ${car.model}`,
-    session_id:    getOrCreateSession(),
-    dealer_id:     car.dealer_id,
-    page_path:     window.location.pathname,
-    referrer:      document.referrer || null,
-  }).then(({ error }) => {
-    if (error) console.warn('Analytics insert failed:', error.message);
-  });
 }
 
 function parseTags(raw) {
@@ -234,7 +213,12 @@ export default function CarDetailPage() {
           .eq('id', carData.dealer_id).maybeSingle();
         setDealer(d);
       }
-      trackEvent(carData, 'car_view');
+      trackEvent(supabase, 'car_view', {
+        car_id: carData.id,
+        car_name: `${carData.brand} ${carData.model} ${carData.year}`,
+        dealer_id: carData.dealer_id,
+        metadata: { colour: carData.colour, price: carData.selling_price },
+      });
       const refSlug = getRef();
       if (refSlug && carData.dealer_id) {
         supabase.from('analytics_events').insert({
@@ -334,7 +318,12 @@ export default function CarDetailPage() {
 
   async function handleEnquirySubmit() {
     setEnquirySubmitting(true);
-    trackEvent(car, 'whatsapp_click');
+    trackEvent(supabase, 'whatsapp_click', {
+      car_id: car.id,
+      car_name: `${car.brand} ${car.model} ${car.year}`,
+      dealer_id: car.dealer_id,
+      metadata: { source: 'storefront', price: car.selling_price },
+    });
     if (car?.dealer_id) {
       await supabase.from('whatsapp_enquiries').insert({
         dealer_id: car.dealer_id,
