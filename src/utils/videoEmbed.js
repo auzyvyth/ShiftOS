@@ -6,7 +6,9 @@ export function getEmbedUrl(url) {
   if (!url) return null;
 
   // YouTube — youtube.com/watch?v=ID or youtu.be/ID
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+  const ytMatch = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+  );
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
 
   // TikTok — tiktok.com/@user/video/ID
