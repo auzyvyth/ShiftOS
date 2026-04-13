@@ -192,6 +192,10 @@ export default function RevOpsPage({ userId }) {
   const [addonData, setAddonData] = useState(null);
   const [addonLoading, setAddonLoading] = useState(true);
 
+  // ── Analytics / Page Traffic ─────────────────────────────────────────────
+  const [trafficData, setTrafficData] = useState(null);
+  const [trafficLoading, setTrafficLoading] = useState(true);
+
   // ── Alerts ───────────────────────────────────────────────────────────────
   const [alerts, setAlerts] = useState([]);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -373,6 +377,52 @@ export default function RevOpsPage({ userId }) {
 
       setAddonData({ totalRevenue, avgPerDeal, attachRate, topProducts, uniqueLeadCount: uniqueLeads.size });
       setAddonLoading(false);
+    };
+    fetch();
+  }, [userId]);
+
+  // ── Section 4: Page Traffic ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const fetch = async () => {
+      setTrafficLoading(true);
+      const since = thirtyDaysAgo();
+
+      const [{ count: storeVisits }, { count: carViews }, { count: waClicks }, { count: linkVisits }, { data: carViewEvents }] = await Promise.all([
+        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'store_visit').gte('created_at', since),
+        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'car_view').gte('created_at', since),
+        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'whatsapp_click').gte('created_at', since),
+        supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('dealer_id', userId).eq('event_type', 'link_visit').gte('created_at', since),
+        supabase.from('analytics_events').select('car_id, car_name').eq('dealer_id', userId).eq('event_type', 'car_view').gte('created_at', since),
+      ]);
+
+      const totalPageVisits = (storeVisits || 0) + (linkVisits || 0);
+      const conversionRate = totalPageVisits > 0
+        ? ((( waClicks || 0) / totalPageVisits) * 100).toFixed(1)
+        : '0.0';
+
+      // Aggregate car views client-side
+      const carViewMap = {};
+      (carViewEvents || []).forEach(e => {
+        if (!e.car_id) return;
+        carViewMap[e.car_id] = {
+          car_name: e.car_name || 'Unknown',
+          views: (carViewMap[e.car_id]?.views || 0) + 1,
+        };
+      });
+      const topCars = Object.entries(carViewMap)
+        .map(([id, val]) => ({ car_id: id, ...val }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 5);
+
+      setTrafficData({
+        pageVisits: totalPageVisits,
+        carViews: carViews || 0,
+        waClicks: waClicks || 0,
+        conversionRate,
+        topCars,
+      });
+      setTrafficLoading(false);
     };
     fetch();
   }, [userId]);
@@ -600,6 +650,51 @@ export default function RevOpsPage({ userId }) {
             )}
           </div>
         </div>
+      </SectionCard>
+
+      {/* ── Section 4: Page Traffic (30d) ───────────────────────────────── */}
+      <SectionCard title="Page Traffic (30d)" loading={trafficLoading} skeletonRows={3}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Store Visits</span>
+            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>{trafficData?.pageVisits ?? '—'}</span>
+            <span style={{ fontSize: 11, color: '#4b5563' }}>organic + referral</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Car Views</span>
+            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#f8fafc' }}>{trafficData?.carViews ?? '—'}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>WA Clicks</span>
+            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: '#4ade80' }}>{trafficData?.waClicks ?? '—'}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>Conversion</span>
+            <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 26, color: Number(trafficData?.conversionRate) >= 3 ? '#4ade80' : '#fbbf24' }}>
+              {trafficData ? `${trafficData.conversionRate}%` : '—'}
+            </span>
+            <span style={{ fontSize: 11, color: '#4b5563' }}>WA / store visit</span>
+          </div>
+        </div>
+
+        {/* Top cars by views */}
+        {trafficData?.topCars?.length > 0 && (
+          <div>
+            <p style={{ fontSize: 11, color: '#4b5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 8 }}>Top Viewed Cars</p>
+            <div className="space-y-1.5">
+              {trafficData.topCars.map((c, i) => (
+                <div key={c.car_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span style={{ fontSize: 11, color: '#4b5563', width: 16, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.car_name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#93c5fd', flexShrink: 0 }}>{c.views} view{c.views !== 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {!trafficLoading && trafficData?.carViews === 0 && (
+          <p style={{ fontSize: 12, color: '#4b5563' }}>No car views recorded in the last 30 days.</p>
+        )}
       </SectionCard>
 
       {/* ── Section 3: Stock Health ───────────────────────────────────────── */}

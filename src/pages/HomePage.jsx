@@ -31,6 +31,7 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
+import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
@@ -250,6 +251,8 @@ const HomePage = () => {
         dealer_id: tenant.id,
         event_type: 'store_visit',
         salesman_slug: slug || null,
+        page_path: window.location.pathname,
+        referrer: document.referrer || null,
         metadata: { source: slug ? 'salesman_link' : 'organic' },
       }).then(() => {});
     }
@@ -569,6 +572,27 @@ const HomePage = () => {
 
       {/* ══════════ HERO ══════════ */}
       <HeroCarousel siteName={siteName} stock={stock} />
+
+      {/* ══════════ HERO VIDEO ══════════ */}
+      {tenant?.hero_video_enabled && tenant?.hero_video_url && getEmbedUrl(tenant.hero_video_url) && (
+        <section className="sec-pad" style={{ background: '#080C14', paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px', textAlign: 'center' }}>
+            {tenant.hero_video_title && (
+              <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 700, color: '#f3f4f6', marginBottom: 20, fontFamily: "'DM Sans',sans-serif" }}>
+                {tenant.hero_video_title}
+              </h2>
+            )}
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+              <iframe
+                src={getEmbedUrl(tenant.hero_video_url)}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                allowFullScreen
+                title="Dealer video"
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════ HOT DEALS ══════════ */}
       {(hotDeals.length > 0 || loading) && (

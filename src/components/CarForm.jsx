@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Car, MapPin, DollarSign, FileText, Camera, Gauge, Clipboard, ClipboardCheck, ShieldCheck, Globe, Tag, Search, X as XIcon } from 'lucide-react';
 import DamageMap from './DamageMap';
 import { getCategoryCfg } from '../utils/serviceCategories';
+import { getEmbedUrl } from '../utils/videoEmbed';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -27,6 +28,8 @@ const initialListing = {
   // Services
   included_services: [],
   baseReconCost: 0, // recon_cost excluding services (computed at pre-fill)
+  // Video
+  video_url: '',
 };
 
 const CAR_DATA = {
@@ -247,6 +250,16 @@ const inputCls    = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded
 const selectCls   = "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/30 transition-colors appearance-none cursor-pointer";
 const textareaCls = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors resize-none";
 
+function VideoPreview({ url }) {
+  const embedUrl = getEmbedUrl(url);
+  if (!embedUrl) return <p className="text-xs text-yellow-400 mt-1">⚠ Could not parse video URL. Paste a YouTube, TikTok, or Instagram link.</p>;
+  return (
+    <div className="aspect-video w-full max-w-sm rounded-lg overflow-hidden border border-white/10 mt-2">
+      <iframe src={embedUrl} className="w-full h-full" allowFullScreen title="Car video preview" />
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function CarForm({ onCreate, listing, onUpdate }) {
   const [form, setForm]           = useState(initialListing);
@@ -308,6 +321,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         included_services: listing.included_services || [],
         // base recon = total recon minus previously-stored services cost
         baseReconCost: Math.max(0, (listing.recon_cost || 0) - (listing.included_services_cost || 0)),
+        video_url: listing.video_url || '',
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -495,6 +509,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         included_services: form.included_services || [],
         included_services_cost: servicesCost,
         recon_cost: (form.baseReconCost || 0) + servicesCost,
+        video_url: form.video_url || null,
       };
 
       if (listing) {
@@ -1034,6 +1049,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               </div>
             </>
           )}
+          {/* Walkthrough Video */}
+          <div className="space-y-1">
+            <label className="text-sm text-gray-400">Walkthrough Video <span className="text-gray-600">(optional)</span></label>
+            <input
+              type="url"
+              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
+              value={form.video_url || ''}
+              onChange={e => set('video_url', e.target.value)}
+              className={inputCls}
+            />
+            {form.video_url && <VideoPreview url={form.video_url} />}
+          </div>
+
           {form.brand && (
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
               <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">Listing Summary</p>

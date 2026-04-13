@@ -19,6 +19,7 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
+import { getEmbedUrl } from "../utils/videoEmbed";
 import {
   Car,
   PlusCircle,
@@ -673,6 +674,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [sfTestimonials, setSfTestimonials] = useState(() => (profile?.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
   const [sfCta, setSfCta] = useState(() => ({ ...defaultSfCta, ...(profile?.storefront_cta || {}) }));
 
+  // Hero video
+  const [heroVideoEnabled, setHeroVideoEnabled] = useState(profile?.hero_video_enabled || false);
+  const [heroVideoUrl, setHeroVideoUrl] = useState(profile?.hero_video_url || '');
+  const [heroVideoTitle, setHeroVideoTitle] = useState(profile?.hero_video_title || '');
+
   // Sync all form fields whenever the profile prop changes.
   // useState initial values are only read on mount, so without this effect
   // the form would show stale data after a save (onProfileUpdate) or an
@@ -703,6 +709,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
     setSfCta({ ...defaultSfCta, ...(profile.storefront_cta || {}) });
+    setHeroVideoEnabled(profile.hero_video_enabled || false);
+    setHeroVideoUrl(profile.hero_video_url || '');
+    setHeroVideoTitle(profile.hero_video_title || '');
   }, [profile]);
 
   useEffect(() => {
@@ -828,6 +837,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
       announcement_bar: announcementText.trim(),
       announcement_bar_enabled: announcementOn,
       about_text: aboutText.trim(),
+      hero_video_enabled: heroVideoEnabled,
+      hero_video_url: heroVideoUrl.trim() || null,
+      hero_video_title: heroVideoTitle.trim() || null,
     });
 
   const savePassword = async () => {
@@ -1198,6 +1210,61 @@ function SettingsTab({ profile, onProfileUpdate }) {
             {aboutText.length}/500 characters
           </p>
         </SettingsField>
+
+        {/* ── Hero Video ── */}
+        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: heroVideoEnabled ? 12 : 0 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6' }}>Frontpage Video Section</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Show a YouTube / TikTok video on your store's homepage</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHeroVideoEnabled(p => !p)}
+              style={{
+                width: 44, height: 24, borderRadius: 12, flexShrink: 0, cursor: 'pointer', border: 'none',
+                background: heroVideoEnabled ? '#dc2626' : 'rgba(255,255,255,0.1)',
+                position: 'relative', transition: 'background 0.2s',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3, left: heroVideoEnabled ? 23 : 3, width: 18, height: 18,
+                borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+              }} />
+            </button>
+          </div>
+          {heroVideoEnabled && (
+            <div className="space-y-2">
+              <SettingsField label="Video Section Title" hint="e.g. 'See Our Cars in Action'">
+                <input
+                  value={heroVideoTitle}
+                  onChange={e => setHeroVideoTitle(e.target.value)}
+                  placeholder="See Our Cars in Action"
+                  className={iCls}
+                />
+              </SettingsField>
+              <SettingsField label="Video URL" hint="YouTube, TikTok, or Instagram">
+                <input
+                  type="url"
+                  value={heroVideoUrl}
+                  onChange={e => setHeroVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className={iCls}
+                />
+              </SettingsField>
+              {heroVideoUrl && (() => {
+                const embed = getEmbedUrl(heroVideoUrl);
+                return embed
+                  ? (
+                    <div style={{ aspectRatio: '16/9', maxWidth: 360, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginTop: 8 }}>
+                      <iframe src={embed} style={{ width: '100%', height: '100%' }} allowFullScreen title="Video preview" />
+                    </div>
+                  )
+                  : <p style={{ fontSize: 11, color: '#fbbf24', marginTop: 4 }}>⚠ Could not parse URL. Paste a YouTube, TikTok, or Instagram link.</p>;
+              })()}
+            </div>
+          )}
+        </div>
 
         <ErrMsg k="frontpage" />
         <div className="flex justify-end pt-1">
