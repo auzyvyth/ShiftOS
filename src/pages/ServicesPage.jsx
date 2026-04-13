@@ -27,7 +27,7 @@ const SEEDS = [
   { name: 'Insurance Referral',    category: 'insurance',   selling_price: 200,  cost_price: 0    },
 ];
 
-const EMPTY_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true };
+const EMPTY_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true, track_stock: false, stock_qty: 0, low_stock_alert: 3 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtRM = (n) => n == null ? '—' : `RM ${Number(n).toLocaleString('en-MY', { minimumFractionDigits: 0 })}`;
@@ -110,7 +110,7 @@ export default function ServicesPage({ userId }) {
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('dealer_id', userId)
-      .in('stage', ['won', 'closed_won'])
+      .in('stage', ['closed_won', 'deposit_taken'])
       .gte('updated_at', monthStart);
 
     const rows = addonRows || [];
@@ -157,7 +157,7 @@ export default function ServicesPage({ userId }) {
     setPanelOpen(true);
   };
   const openEdit = (p) => {
-    setForm({ name: p.name, category: p.category, cost_price: String(p.cost_price ?? ''), selling_price: String(p.selling_price), description: p.description || '', is_active: p.is_active });
+    setForm({ name: p.name, category: p.category, cost_price: String(p.cost_price ?? ''), selling_price: String(p.selling_price), description: p.description || '', is_active: p.is_active, track_stock: p.track_stock ?? false, stock_qty: p.stock_qty ?? 0, low_stock_alert: p.low_stock_alert ?? 3 });
     setEditTarget(p);
     setPanelOpen(true);
   };
@@ -174,6 +174,9 @@ export default function ServicesPage({ userId }) {
       selling_price: Number(form.selling_price),
       description:   form.description.trim() || null,
       is_active:     form.is_active,
+      track_stock:   form.track_stock,
+      stock_qty:     form.track_stock ? Number(form.stock_qty) || 0 : 0,
+      low_stock_alert: form.track_stock ? Number(form.low_stock_alert) || 3 : 3,
       updated_at:    new Date().toISOString(),
     };
     try {
@@ -288,6 +291,18 @@ export default function ServicesPage({ userId }) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{p.name}</span>
                             <CatBadge category={p.category} />
+                            {p.track_stock && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+                                ...(p.stock_qty === 0
+                                  ? { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }
+                                  : p.stock_qty <= p.low_stock_alert
+                                    ? { background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24' }
+                                    : { background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#4ade80' }),
+                              }}>
+                                {p.stock_qty === 0 ? 'Out of Stock' : p.stock_qty <= p.low_stock_alert ? `Low: ${p.stock_qty} left` : `${p.stock_qty} in stock`}
+                              </span>
+                            )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 11, color: '#4b5563' }}>Cost: {fmtRM(p.cost_price)}</span>
@@ -340,7 +355,7 @@ export default function ServicesPage({ userId }) {
                 <>
                   {/* Big revenue number */}
                   <div style={{ marginBottom: 16 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Add-on Revenue MTD</p>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Add-on Revenue This Month</p>
                     <p style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 32, color: '#f8fafc', lineHeight: 1, margin: 0 }}>
                       {fmtRM(summary?.totalRevenue)}
                     </p>
@@ -356,7 +371,7 @@ export default function ServicesPage({ userId }) {
                       <p style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: '#f8fafc', margin: 0 }}>{summary?.avgPerDeal != null ? fmtRM(summary.avgPerDeal) : '—'}</p>
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px', border: '1px solid rgba(255,255,255,0.06)', gridColumn: '1 / -1' }}>
-                      <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', margin: '0 0 4px' }}>Attachment Rate</p>
+                      <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', margin: '0 0 4px' }}>% Deals With Add-ons</p>
                       <p style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, margin: 0, color: summary?.attachRate != null ? (summary.attachRate >= 20 ? '#4ade80' : '#fbbf24') : '#6b7280' }}>
                         {summary?.attachRate != null ? `${summary.attachRate}%` : '—'}
                       </p>
@@ -512,21 +527,19 @@ export default function ServicesPage({ userId }) {
                     : <ToggleLeft  style={{ width: 26, height: 26, color: '#4b5563' }} />}
                 </button>
               </div>
-            </div>
 
-            {/* Panel footer */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{ width: '100%', padding: '11px', borderRadius: 8, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
-              >
-                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+              {/* Track Stock toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span style={{ fontSize: 13, color: '#9ca3af' }}>Track Stock</span>
+                <button onClick={() => setForm(p => ({ ...p, track_stock: !p.track_stock }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  {form.track_stock
+                    ? <ToggleRight style={{ width: 26, height: 26, color: '#38bdf8' }} />
+                    : <ToggleLeft  style={{ width: 26, height: 26, color: '#4b5563' }} />}
+                </button>
+              </div>
+
+              {/* Stock qty inputs — only shown when track_stock is on */}
+              {form.track_stock && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#4b5563', t
