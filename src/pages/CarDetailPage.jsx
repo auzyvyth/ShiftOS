@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package } from 'lucide-react';
+import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle } from 'lucide-react';
 import { getCategoryCfg } from '../utils/serviceCategories';
+import { getEmbedUrl } from '../utils/videoEmbed';
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
 import CarCard from '../components/CarCard';
@@ -39,6 +40,8 @@ function trackEvent(car, eventType) {
     car_name:      `${car.year} ${car.brand} ${car.model}`,
     session_id:    getOrCreateSession(),
     dealer_id:     car.dealer_id,
+    page_path:     window.location.pathname,
+    referrer:      document.referrer || null,
   }).then(({ error }) => {
     if (error) console.warn('Analytics insert failed:', error.message);
   });
@@ -973,6 +976,23 @@ export default function CarDetailPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Watch Walkthrough ── */}
+        {car.video_url && getEmbedUrl(car.video_url) && (
+          <div style={{ padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.06)', margin: '0 0 0' }}>
+            <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <PlayCircle size={13} style={{ color: '#ef4444' }} /> Watch Walkthrough
+            </p>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <iframe
+                src={getEmbedUrl(car.video_url)}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                allowFullScreen
+                title={`${car.year} ${car.brand} ${car.model} walkthrough`}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── What's Included ── */}
         {Array.isArray(car.included_services) && car.included_services.length > 0 && (
