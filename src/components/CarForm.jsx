@@ -5,6 +5,7 @@ import { Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Car, MapPin, 
 import DamageMap from './DamageMap';
 import { getCategoryCfg } from '../utils/serviceCategories';
 import { getEmbedUrl } from '../utils/videoEmbed';
+import { useProfile, getDealerIdFromProfile } from '../hooks/useProfile';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -262,6 +263,9 @@ function VideoPreview({ url }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function CarForm({ onCreate, listing, onUpdate }) {
+  const { profile } = useProfile();
+  const dealerId = getDealerIdFromProfile(profile);
+
   const [form, setForm]           = useState(initialListing);
   const [step, setStep]           = useState(1);
   const [uploading, setUploading] = useState(false);
@@ -330,20 +334,18 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
   // Fetch dealer products when picker is first opened
   useEffect(() => {
-    if (!pickerOpen || catalogueLoaded) return;
+    if (!pickerOpen || catalogueLoaded || !dealerId) return;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
       const { data } = await supabase
         .from('dealer_products')
         .select('id, name, category, cost_price, selling_price')
-        .eq('dealer_id', session.user.id)
+        .eq('dealer_id', dealerId)
         .eq('is_active', true)
         .order('name');
       setServiceCatalogue(data || []);
       setCatalogueLoaded(true);
     })();
-  }, [pickerOpen]);
+  }, [pickerOpen, dealerId]);
 
   const addService = (product) => {
     const entry = {
@@ -524,17 +526,16 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         const savedListing = data[0];
         onUpdate(savedListing);
         // Sync services to linked stock_unit
-        if (savedListing?.id) {
-          const { data: { session: s } } = await supabase.auth.getSession();
-          if (s) await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', s.user.id);
+        if (savedListing?.id && dealerId) {
+          await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', dealerId);
         }
       } else {
         // Create mode — insert new record
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) { alert('You must be logged in to publish a listing.'); setUploading(false); return; }
+        if (!dealerId) { alert('Profile not loaded yet — please wait a moment and try again.'); setUploading(false); return; }
+        console.log('[CarForm] insert dealer_id:', dealerId, '| role:', profile?.role);
         const { data, error } = await supabase
           .from('car_listings')
-          .insert([{ dealer_id: session.user.id, ...payload, status: 'active' }])
+          .insert([{ dealer_id: dealerId, ...payload, status: 'active' }])
           .select()
           .single();
         if (error) throw error;
@@ -542,7 +543,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         onCreate(savedListing);
         // Sync services to linked stock_unit (if one is auto-created)
         if (savedListing?.id) {
-          await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', session.user.id);
+          await supabase.from('stock_units').update({ included_services: form.included_services || [] }).eq('listing_id', savedListing.id).eq('dealer_id', dealerId);
         }
         previews.forEach(p => { if (typeof p !== 'string') URL.revokeObjectURL(p); });
         setForm(initialListing); setPreviews([]); setDraggingIndex(null); setDropTargetIndex(null); setStep(1);
