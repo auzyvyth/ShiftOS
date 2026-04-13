@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
+import { trackEvent, getSlugFromURL } from "../utils/analytics";
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -824,14 +825,31 @@ export default function HeroCarousel({ siteName, waNumber }) {
       )}
       <div className="hc-ctas">
         {waHref && (
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
             className="hc-enquire"
+            onClick={() => {
+              // Fire-and-forget — don't block WhatsApp redirect
+              supabase.from('whatsapp_enquiries').insert({
+                dealer_id: s.dealer_id || tenant?.id || null,
+                listing_id: s.car_listing_id || null,
+                buyer_name: null,
+                buyer_phone: null,
+                buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
+                source: 'hero_carousel',
+                status: 'new',
+                ref_slug: getSlugFromURL(),
+              }).catch(console.warn);
+              trackEvent(supabase, 'whatsapp_click', {
+                car_id: s.car_listing_id || null,
+                car_name: s.car_name || null,
+                dealer_id: s.dealer_id || tenant?.id || null,
+                metadata: { source: 'hero_carousel' },
+              }).catch(console.warn);
+              window.open(waHref, '_blank', 'noopener,noreferrer');
+            }}
           >
             Enquire Now <ArrowRight size={12} />
-          </a>
+          </button>
         )}
         {s.car_listing_id && (
           <Link

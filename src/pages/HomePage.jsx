@@ -31,6 +31,7 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
+import { getOrCreateSessionId } from "../utils/analytics";
 import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
@@ -251,6 +252,7 @@ const HomePage = () => {
         dealer_id: tenant.id,
         event_type: 'store_visit',
         salesman_slug: slug || null,
+        session_id: getOrCreateSessionId(),
         page_path: window.location.pathname,
         referrer: document.referrer || null,
         metadata: { source: slug ? 'salesman_link' : 'organic' },
