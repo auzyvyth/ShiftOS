@@ -140,7 +140,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!addonForm.product_id || !addonForm.sold_price) { return; }
     setAttachSaving(true);
     try {
-      const { data } = await supabase.from('deal_products').insert({
+      const { data, error } = await supabase.from('deal_products').insert({
         dealer_id:  lead.dealer_id,
         lead_id:    lead.id,
         listing_id: lead.car_listing_id || null,
@@ -148,11 +148,18 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         sold_price: Number(addonForm.sold_price),
         notes:      addonForm.notes.trim() || null,
       }).select('id, sold_price, notes, product_id, dealer_products(name, category)').single();
+      if (error) throw error;
       if (data) setDealAddons(p => [...p, data]);
       setAddonForm({ product_id: '', sold_price: '', notes: '' });
       setShowAttach(false);
       toast.success('Add-on attached');
-    } catch { toast.error('Failed to attach add-on'); }
+    } catch (err) {
+      if (err?.message?.includes('Out of stock')) {
+        toast.error('This product is out of stock');
+      } else {
+        toast.error('Failed to attach add-on');
+      }
+    }
     setAttachSaving(false);
   };
 

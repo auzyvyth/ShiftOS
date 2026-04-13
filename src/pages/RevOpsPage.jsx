@@ -673,14 +673,14 @@ export default function RevOpsPage({ userId }) {
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
-            label="Revenue MTD"
+            label="Revenue This Month"
             value={revData ? fmtRM(revData.revMTD) : null}
             loading={revLoading}
             icon={DollarSign}
             accentColor="#4ade80"
           />
           <MetricCard
-            label="Gross Profit MTD"
+            label="Gross Profit This Month"
             value={revData ? fmtRM(revData.gpMTD) : null}
             loading={revLoading}
             icon={TrendingUp}
@@ -1257,11 +1257,11 @@ export default function RevOpsPage({ userId }) {
             marginBottom: 10,
           }}
         >
-          Add-on Revenue (MTD)
+          Add-on Revenue This Month
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <MetricCard
-            label="Add-on Revenue MTD"
+            label="Add-on Revenue This Month"
             value={addonData ? fmtRM(addonData.totalRevenue) : null}
             loading={addonLoading}
             icon={Package}
@@ -1286,7 +1286,7 @@ export default function RevOpsPage({ userId }) {
             accentColor="#60a5fa"
           />
           <MetricCard
-            label="Attachment Rate"
+            label="% Deals With Add-ons"
             value={
               addonData
                 ? addonData.attachRate != null
