@@ -828,23 +828,31 @@ export default function HeroCarousel({ siteName, waNumber }) {
           <button
             className="hc-enquire"
             onClick={() => {
-              // Fire-and-forget — don't block WhatsApp redirect
-              supabase.from('whatsapp_enquiries').insert({
-                dealer_id: s.dealer_id || tenant?.id || null,
-                listing_id: s.car_listing_id || null,
-                buyer_name: null,
-                buyer_phone: null,
-                buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
-                source: 'hero_carousel',
-                status: 'new',
-                ref_slug: getSlugFromURL(),
-              }).catch(console.warn);
-              trackEvent(supabase, 'whatsapp_click', {
-                car_id: s.car_listing_id || null,
-                car_name: s.car_name || null,
-                dealer_id: s.dealer_id || tenant?.id || null,
-                metadata: { source: 'hero_carousel' },
-              }).catch(console.warn);
+              // Fire-and-forget IIFEs — never block the WhatsApp redirect
+              (async () => {
+                try {
+                  await supabase.from('whatsapp_enquiries').insert({
+                    dealer_id: s.dealer_id || tenant?.id || null,
+                    listing_id: s.car_listing_id || null,
+                    buyer_name: null,
+                    buyer_phone: null,
+                    buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
+                    source: 'hero_carousel',
+                    status: 'new',
+                    ref_slug: getSlugFromURL(),
+                  });
+                } catch (e) { console.warn(e); }
+              })();
+              (async () => {
+                try {
+                  await trackEvent(supabase, 'whatsapp_click', {
+                    car_id: s.car_listing_id || null,
+                    car_name: s.car_name || null,
+                    dealer_id: s.dealer_id || tenant?.id || null,
+                    metadata: { source: 'hero_carousel' },
+                  });
+                } catch (e) { console.warn(e); }
+              })();
               window.open(waHref, '_blank', 'noopener,noreferrer');
             }}
           >
