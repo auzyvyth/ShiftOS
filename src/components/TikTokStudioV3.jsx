@@ -6,6 +6,13 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "../supabaseClient";
+import { useLayerEditor } from "../hooks/useLayerEditor";
+import LayerCanvas, {
+  LayerToolbar,
+  LayerStack,
+  LayerPropertiesPanel,
+  renderLayersToCanvas,
+} from "./studio/LayerCanvas";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
@@ -1791,6 +1798,18 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [isMobile, setIsMobile] = useState(false);
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
+  const [uploadedImages, setUploadedImages] = useState([]);
+
+  // ── Layer editor (shape/image layers per-slide) ──────────────────────────
+  const {
+    layers, selectedIds: layerSelectedIds,
+    setLayers, addLayer, updateLayer, commitHistory: commitLayerHistory,
+    deleteLayer, duplicateLayer, reorderLayers, shiftZ,
+    selectLayer, clearSelection: clearLayerSelection,
+    undo: undoLayer, redo: redoLayer,
+    canUndo: canUndoLayer, canRedo: canRedoLayer,
+  } = useLayerEditor([]);
+
   const [savedDesigns, setSavedDesigns] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("ttsv3_designs") || "[]");
@@ -1866,6 +1885,18 @@ export default function TikTokStudioV3({ listing, onClose }) {
     [slide, selectedId],
   );
   const aiAtLimit = aiUsage.count >= AI_LIMIT;
+
+  // Sync layer editor when active slide changes (each slide stores its own layers)
+  useEffect(() => {
+    setLayers(slides[active]?.layers || []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  // Persist layers back to the slide whenever they change
+  useEffect(() => {
+    setSlides(ss => ss.map((s, i) => i === active ? { ...s, layers } : s));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers]);
 
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2501,6 +2532,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     async (idx) => {
       const c = document.createElement("canvas");
       await renderToCanvas(c, slides[idx], theme, font, CW, CH);
+      await renderLayersToCanvas(c, slides[idx]?.layers || [], CW, CH);
       return new Promise((res) => c.toBlob(res, "image/jpeg", 0.93));
     },
     [slides, theme, font, CW, CH],
@@ -3733,6 +3765,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     { id: "design", label: "Design", icon: "◎" },
     { id: "brand", label: "Brand", icon: "✺" },
     { id: "badges", label: "Badges", icon: "⬟" },
+    { id: "layers", label: "Layers", icon: "▣" },
     { id: "ai", label: "AI", icon: "⚡" },
     { id: "library", label: "Library", icon: "🗂" },
   ];
@@ -3936,12 +3969,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
     </div>
   );
 
+  const LayersPanel = () => (
+    <LayerPropertiesPanel
+      layer={layers.find(l => layerSelectedIds.includes(l.id)) || null}
+      onUpdate={(id, patch) => updateLayer(id, patch)}
+      onCommit={commitLayerHistory}
+      onDelete={deleteLayer}
+      onDuplicate={duplicateLayer}
+    />
+  );
+
   const renderTab = () => {
     if (activeTab === "slide") return SlidePanel();
     if (activeTab === "design") return DesignPanel();
     if (activeTab === "brand") return BrandPanel();
     if (activeTab === "badges") return BadgesPanel();
-
+    if (activeTab === "layers") return LayersPanel();
     if (activeTab === "ai") return AIPanel();
     if (activeTab === "library") return LibraryPanel();
   };
@@ -3999,6 +4042,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     onDeselectAll: () => {
       setSelectedId(null);
       setEditingId(null);
+      clearLayerSelection();
     },
     onStartDrag,
     onStartResize,
@@ -4673,6 +4717,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
             </div>
           </div>
 
+          {/* ── LAYER TOOLBAR (44px vertical strip) ─────────────── */}
+          <LayerToolbar
+            canUndo={canUndoLayer}
+            canRedo={canRedoLayer}
+            onUndo={undoLayer}
+            onRedo={redoLayer}
+            onAddShape={(type) => {
+              addLayer(type);
+              setActiveTab("layers");
+            }}
+            onAddImage={(src) => {
+              addLayer("image", { src });
+              setActiveTab("layers");
+            }}
+          />
+
           {/* ── CANVAS CENTER AREA ───────────────────────────────── */}
           <div
             style={{
@@ -4721,6 +4781,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     borderRadius: 4,
                     flexShrink: 0,
                     lineHeight: 0,
+                    position: "relative",
                   }}
                 >
                   <CanvasPreview
@@ -4728,6 +4789,21 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     scale={scale}
                     canvasW={CW}
                     canvasH={CH}
+                  />
+                  <LayerCanvas
+                    layers={layers}
+                    selectedIds={layerSelectedIds}
+                    scale={scale}
+                    canvasW={CW}
+                    canvasH={CH}
+                    onSelectLayer={(id, multi) => {
+                      selectLayer(id, multi);
+                      setActiveTab("layers");
+                    }}
+                    onClearSelection={clearLayerSelection}
+                    onUpdateLayer={updateLayer}
+                    onCommitHistory={commitLayerHistory}
+                    onDeleteLayer={deleteLayer}
                   />
                 </div>
               )}
@@ -4803,6 +4879,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 {active + 1} / {total}
               </div>
             </div>
+
+            {/* ── LAYER STACK (above film strip) ───────────────── */}
+            <LayerStack
+              layers={layers}
+              selectedIds={layerSelectedIds}
+              onSelectLayer={selectLayer}
+              onUpdateLayer={updateLayer}
+              onDeleteLayer={deleteLayer}
+              onDuplicateLayer={duplicateLayer}
+              onShiftZ={shiftZ}
+            />
 
             {/* ── FILM STRIP (bottom) ──────────────────────────── */}
             <div

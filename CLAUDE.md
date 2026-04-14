@@ -3,6 +3,11 @@
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
 
+## Commands
+- `npm run dev` — start dev server (port 3000)
+- `npm run build` — production build
+- `npm run lint` — ESLint (quiet)
+
 ## Supabase project
 Project ID: lemdkdizdlcirhbzqlos
 
@@ -23,15 +28,19 @@ Project ID: lemdkdizdlcirhbzqlos
 - src/components/HeroCarousel.jsx — homepage hero
 - src/components/CarForm.jsx — multi-step listing form (8 steps; step 6 has Included Services)
 - src/components/leads/LeadDrawer.jsx — right-side lead detail panel (collapsible add-ons section)
+- src/hooks/useProfile.js — logged-in user's own profile row; exports useProfile() + getDealerIdFromProfile(profile)
+- src/hooks/useTenant.js — subdomain/tenant detection; exports getSubdomain(), isSubdomain(), useTenant()
 - src/hooks/useRoleRedirect.js — role-based routing hook
 - src/hooks/useSiteProfile.js — dealer profile context
 - src/utils/serviceCategories.js — shared icon/color/label map for service categories
 
 ## Roles
-owner/superadmin → /dashboard
+owner / superadmin / dealer → /dashboard
 salesman → /salesman
 admin → /admin
-accountant → /accounts
+manager → /manager
+accountant → /accountant
+fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
@@ -40,6 +49,7 @@ listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documen
 car_listings (dealer_id, assigned_to, status, commission_amount, sold_at, included_services JSONB, included_services_cost numeric)
 stock_units (dealer_id, listing_id, purchase_price, recon_cost, status, included_services JSONB)
 profiles (role, slug, dealership, site_name, whatsapp_number, brand_color)
+  ↳ manager/admin rows also have dealer_id (FK to profiles.id of their parent dealer)
 appointments (dealer_id, salesman_id, car_listing_id, appointment_date)
 analytics_events (dealer_id, salesman_slug, event_type, car_id)
 leads (dealer_id, salesman_id, stage, source, …)
@@ -52,9 +62,13 @@ Usage: import { getCategoryCfg } from '../utils/serviceCategories'
 Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label: string }
 
 ## Multi-tenancy
-All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', userId)
+All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', dealerId)
 Public car_listings SELECT is open (for XDrive marketplace)
-Always use profile?.id — never user.id directly (CarForm exception: uses session.user.id internally)
+Never use session.user.id / user.id in queries — always derive via getDealerIdFromProfile(profile):
+  - manager or admin role → profile.dealer_id
+  - superadmin / dealer / owner role → profile.id
+Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
+  Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
