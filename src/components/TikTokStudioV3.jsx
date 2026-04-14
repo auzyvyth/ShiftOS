@@ -6,6 +6,50 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "../supabaseClient";
+import {
+  Undo2,
+  Redo2,
+  Download,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Copy,
+  Trash2,
+  Eye,
+  EyeOff,
+  Lock,
+  Unlock,
+  Square,
+  Circle,
+  Triangle,
+  ImagePlus,
+  Layers,
+  Sliders,
+  Palette,
+  Type,
+  Star,
+  Zap,
+  BookMarked,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Italic,
+  MoveUp,
+  MoveDown,
+  RotateCcw,
+  FlipHorizontal,
+  SlidersHorizontal,
+  Sparkles,
+  Film,
+  LayoutTemplate,
+  Brush,
+  Tag,
+  Library,
+  Smartphone,
+  Monitor,
+} from "lucide-react";
 import { useLayerEditor } from "../hooks/useLayerEditor";
 import LayerCanvas, {
   LayerToolbar,
@@ -21,10 +65,34 @@ const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const AI_LIMIT = 100;
 
 const FORMATS = [
-  { id: "9:16", label: "TikTok / Reels", w: 1080, h: 1920, icon: "📱" },
-  { id: "1:1", label: "Square Post", w: 1080, h: 1080, icon: "⬜" },
-  { id: "4:5", label: "Portrait Feed", w: 1080, h: 1350, icon: "📸" },
-  { id: "16:9", label: "YouTube / FB", w: 1920, h: 1080, icon: "🖥" },
+  {
+    id: "9:16",
+    label: "TikTok / Reels",
+    w: 1080,
+    h: 1920,
+    icon: <Smartphone size={13} />,
+  },
+  {
+    id: "1:1",
+    label: "Square Post",
+    w: 1080,
+    h: 1080,
+    icon: <Square size={13} />,
+  },
+  {
+    id: "4:5",
+    label: "Portrait Feed",
+    w: 1080,
+    h: 1350,
+    icon: <ImagePlus size={13} />,
+  },
+  {
+    id: "16:9",
+    label: "YouTube / FB",
+    w: 1920,
+    h: 1080,
+    icon: <Monitor size={13} />,
+  },
 ];
 
 const SUGGESTION_POOL = [
@@ -1324,9 +1392,9 @@ function CanvasPreview({
         width: W,
         height: H,
         overflow: "hidden",
+        borderRadius: 4,
         userSelect: "none",
         flexShrink: 0,
-        // Checkerboard behind canvas so transparency is obvious
         background: "#0a0d14",
       }}
     >
@@ -1442,8 +1510,8 @@ const FilmThumb = React.memo(function FilmThumb({
         borderRadius: 5,
         overflow: "hidden",
         cursor: "pointer",
-        background: "#111827",
-        border: `2px solid ${active ? "#dc2626" : "rgba(255,255,255,0.07)"}`,
+        background: "#e5e7eb",
+        border: `2px solid ${active ? "#dc2626" : "#d1d5db"}`,
         transition: "border-color 0.15s",
       }}
     >
@@ -1616,19 +1684,13 @@ function ColorRow({ label, value, onChange }) {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "9px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        borderBottom: "1px solid #f3f4f6",
       }}
     >
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-        {label}
-      </span>
+      <span style={{ fontSize: 12, color: "#374151" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.2)",
-            fontFamily: "monospace",
-          }}
+          style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}
         >
           {value}
         </span>
@@ -1639,7 +1701,7 @@ function ColorRow({ label, value, onChange }) {
           style={{
             width: 30,
             height: 30,
-            border: "none",
+            border: "1px solid #e5e7eb",
             borderRadius: 8,
             cursor: "pointer",
             padding: 2,
@@ -1661,16 +1723,8 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
           marginBottom: 5,
         }}
       >
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.6)",
-            fontWeight: 600,
-          }}
-        >
+        <span style={{ fontSize: 12, color: "#374151" }}>{label}</span>
+        <span style={{ fontSize: 12, color: "#111827", fontWeight: 600 }}>
           {fmt ? fmt(value) : value}
         </span>
       </div>
@@ -1703,7 +1757,7 @@ function Toggle({ value, onChange, label }) {
           width: 36,
           height: 20,
           borderRadius: 999,
-          background: value ? "#dc2626" : "rgba(255,255,255,0.08)",
+          background: value ? "#dc2626" : "#d1d5db",
           position: "relative",
           transition: "background 0.2s",
           flexShrink: 0,
@@ -1722,9 +1776,7 @@ function Toggle({ value, onChange, label }) {
           }}
         />
       </div>
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-        {label}
-      </span>
+      <span style={{ fontSize: 12, color: "#6b7280" }}>{label}</span>
     </label>
   );
 }
@@ -1737,10 +1789,10 @@ function SectionHead({ label }) {
         fontWeight: 700,
         letterSpacing: "0.13em",
         textTransform: "uppercase",
-        color: "rgba(255,255,255,0.18)",
+        color: "#9ca3af",
         margin: "18px 0 9px",
         paddingBottom: 6,
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        borderBottom: "1px solid #f3f4f6",
       }}
     >
       {label}
@@ -1757,17 +1809,17 @@ function PInput({ value, onChange, placeholder }) {
       style={{
         width: "100%",
         padding: "9px 12px",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "#f9fafb",
+        border: "1px solid #e5e7eb",
         borderRadius: 10,
-        color: "#fff",
+        color: "#111827",
         fontFamily: "'DM Sans',sans-serif",
         fontSize: 12,
         outline: "none",
         boxSizing: "border-box",
       }}
-      onFocus={(e) => (e.target.style.borderColor = "rgba(220,38,38,0.45)")}
-      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+      onFocus={(e) => (e.target.style.borderColor = "#dc2626")}
+      onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
     />
   );
 }
@@ -1802,12 +1854,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Layer editor (shape/image layers per-slide) ──────────────────────────
   const {
-    layers, selectedIds: layerSelectedIds,
-    setLayers, addLayer, updateLayer, commitHistory: commitLayerHistory,
-    deleteLayer, duplicateLayer, reorderLayers, shiftZ,
-    selectLayer, clearSelection: clearLayerSelection,
-    undo: undoLayer, redo: redoLayer,
-    canUndo: canUndoLayer, canRedo: canRedoLayer,
+    layers,
+    selectedIds: layerSelectedIds,
+    setLayers,
+    addLayer,
+    updateLayer,
+    commitHistory: commitLayerHistory,
+    deleteLayer,
+    duplicateLayer,
+    reorderLayers,
+    shiftZ,
+    selectLayer,
+    clearSelection: clearLayerSelection,
+    undo: undoLayer,
+    redo: redoLayer,
+    canUndo: canUndoLayer,
+    canRedo: canRedoLayer,
   } = useLayerEditor([]);
 
   const [savedDesigns, setSavedDesigns] = useState(() => {
@@ -1889,13 +1951,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // Sync layer editor when active slide changes (each slide stores its own layers)
   useEffect(() => {
     setLayers(slides[active]?.layers || []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // Persist layers back to the slide whenever they change
   useEffect(() => {
-    setSlides(ss => ss.map((s, i) => i === active ? { ...s, layers } : s));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSlides((ss) => ss.map((s, i) => (i === active ? { ...s, layers } : s)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers]);
 
   // ── Init ─────────────────────────────────────────────────────────────────
@@ -3761,13 +3823,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Tab bar + routing ────────────────────────────────────────────────────
   const TABS = [
-    { id: "slide", label: "Slides", icon: "⊞" },
-    { id: "design", label: "Design", icon: "◎" },
-    { id: "brand", label: "Brand", icon: "✺" },
-    { id: "badges", label: "Badges", icon: "⬟" },
-    { id: "layers", label: "Layers", icon: "▣" },
-    { id: "ai", label: "AI", icon: "⚡" },
-    { id: "library", label: "Library", icon: "🗂" },
+    { id: "slide", label: "Slides", icon: <LayoutTemplate size={16} /> },
+    { id: "design", label: "Design", icon: <Palette size={16} /> },
+    { id: "brand", label: "Brand", icon: <Brush size={16} /> },
+    { id: "badges", label: "Badges", icon: <Tag size={16} /> },
+    { id: "layers", label: "Layers", icon: <Layers size={16} /> },
+    { id: "ai", label: "AI", icon: <Zap size={16} /> },
+    { id: "library", label: "Library", icon: <Library size={16} /> },
   ];
 
   // ── Library Panel ────────────────────────────────────────────────────────
@@ -3971,7 +4033,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   const LayersPanel = () => (
     <LayerPropertiesPanel
-      layer={layers.find(l => layerSelectedIds.includes(l.id)) || null}
+      layer={layers.find((l) => layerSelectedIds.includes(l.id)) || null}
       onUpdate={(id, patch) => updateLayer(id, patch)}
       onCommit={commitLayerHistory}
       onDelete={deleteLayer}
@@ -3994,7 +4056,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     <div
       style={{
         display: "flex",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid #e5e7eb",
         flexShrink: 0,
       }}
     >
@@ -4004,21 +4066,24 @@ export default function TikTokStudioV3({ listing, onClose }) {
           onClick={() => setActiveTab(t.id)}
           style={{
             flex: 1,
-            padding: "10px 4px",
+            padding: "8px 2px",
             border: "none",
             fontFamily: "'DM Sans',sans-serif",
-            borderBottom: `2px solid ${
-              activeTab === t.id ? "#dc2626" : "transparent"
-            }`,
+            borderBottom: `2px solid ${activeTab === t.id ? "#dc2626" : "transparent"}`,
             background: "transparent",
-            color: activeTab === t.id ? "#dc2626" : "rgba(255,255,255,0.32)",
+            color: activeTab === t.id ? "#dc2626" : "#6b7280",
             cursor: "pointer",
-            fontSize: 11,
+            fontSize: 9,
             fontWeight: 600,
             transition: "all 0.15s",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
           }}
         >
-          {t.label}
+          <span>{t.icon}</span>
+          <span>{t.label}</span>
         </button>
       ))}
     </div>
@@ -4070,7 +4135,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "#080C14",
+          background: "#f4f5f7",
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
@@ -4084,8 +4149,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 12px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid #e5e7eb",
             flexShrink: 0,
+            background: "#ffffff",
           }}
         >
           <span
@@ -4093,64 +4159,61 @@ export default function TikTokStudioV3({ listing, onClose }) {
               fontFamily: "'Bebas Neue',sans-serif",
               fontSize: 18,
               letterSpacing: "0.05em",
-              color: "#fff",
+              color: "#111827",
             }}
           >
             TT STUDIO V3
           </span>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            <button
-              onClick={undo}
-              disabled={historyIdx.current <= 0}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 6,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "transparent",
-                color:
-                  historyIdx.current > 0
-                    ? "rgba(255,255,255,0.6)"
-                    : "rgba(255,255,255,0.15)",
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-            >
-              ↩
-            </button>
-            <button
-              onClick={redo}
-              disabled={historyIdx.current >= history.current.length - 1}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 6,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "transparent",
-                color:
-                  historyIdx.current < history.current.length - 1
-                    ? "rgba(255,255,255,0.6)"
-                    : "rgba(255,255,255,0.15)",
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-            >
-              ↪
-            </button>
+            {[
+              {
+                fn: undo,
+                dis: historyIdx.current <= 0,
+                icon: <Undo2 size={12} />,
+              },
+              {
+                fn: redo,
+                dis: historyIdx.current >= history.current.length - 1,
+                icon: <Redo2 size={12} />,
+              },
+            ].map(({ fn, dis, icon }, i) => (
+              <button
+                key={i}
+                onClick={fn}
+                disabled={dis}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 6,
+                  border: "1px solid #e5e7eb",
+                  background: "transparent",
+                  color: dis ? "#d1d5db" : "#374151",
+                  cursor: dis ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {icon}
+              </button>
+            ))}
             <button
               onClick={() => saveSingle(active)}
               style={{
                 padding: "5px 10px",
                 borderRadius: 7,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "transparent",
-                color: "rgba(255,255,255,0.7)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#374151",
                 cursor: "pointer",
                 fontSize: 10,
                 fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
               }}
             >
-              ↓
+              <Download size={11} /> Save
             </button>
             <button
               onClick={saveAll}
@@ -4174,13 +4237,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.05)",
-                color: "#fff",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#6b7280",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              ✕
+              <X size={14} />
             </button>
           </div>
         </div>
@@ -4194,8 +4260,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             padding: "6px 12px",
             overflowX: "auto",
             flexShrink: 0,
-            borderBottom: "1px solid rgba(255,255,255,0.04)",
-            background: "rgba(0,0,0,0.2)",
+            borderBottom: "1px solid #e5e7eb",
+            background: "#f0f1f4",
           }}
         >
           {slides.map((s, i) => (
@@ -4218,14 +4284,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
               height: 64,
               flexShrink: 0,
               borderRadius: 6,
-              border: "1px dashed rgba(255,255,255,0.14)",
+              border: "1px dashed #fca5a5",
               background: "transparent",
-              color: "rgba(255,255,255,0.3)",
+              color: "#dc2626",
               cursor: "pointer",
-              fontSize: 18,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            +
+            <Plus size={18} />
           </button>
         </div>
 
@@ -4343,12 +4411,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 right: 0,
                 bottom: 0,
                 width: 270,
-                background: "#0d1117",
-                borderLeft: "1px solid rgba(255,255,255,0.06)",
+                background: "#ffffff",
+                borderLeft: "1px solid #e5e7eb",
                 display: "flex",
                 flexDirection: "column",
                 zIndex: 25,
                 overflowY: "hidden",
+                transition: "transform 0.2s ease",
               }}
             >
               {tabBar}
@@ -4363,8 +4432,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
         <div
           style={{
             padding: "8px 12px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(8,12,20,0.97)",
+            borderTop: "1px solid #e5e7eb",
+            background: "#ffffff",
             display: "flex",
             gap: 6,
             flexShrink: 0,
@@ -4379,13 +4448,19 @@ export default function TikTokStudioV3({ listing, onClose }) {
             style={{
               flex: 1,
               padding: "9px 12px",
-              background: "rgba(0,0,0,0.4)",
-              border: "1px solid rgba(220,38,38,0.18)",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
               borderRadius: 8,
-              color: "#fff",
+              color: "#111827",
               fontFamily: "'DM Sans',sans-serif",
               fontSize: 12,
               outline: "none",
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "#dc2626";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "#e5e7eb";
             }}
           />
           <button
@@ -4431,9 +4506,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           zIndex: 9999,
           borderRadius: 16,
           overflow: "hidden",
-          background: "#080C14",
-          boxShadow:
-            "0 32px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.07)",
+          background: "#f4f5f7",
+          boxShadow: "0 32px 100px rgba(0,0,0,0.5), 0 0 0 1px #e5e7eb",
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
@@ -4447,9 +4521,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid #e5e7eb",
             flexShrink: 0,
-            background: "#0a0d14",
+            background: "#ffffff",
           }}
         >
           {/* Left: logo */}
@@ -4459,7 +4533,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: 19,
                 letterSpacing: "0.06em",
-                color: "#fff",
+                color: "#111827",
               }}
             >
               TIKTOK STUDIO
@@ -4480,11 +4554,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <span
               style={{
                 fontSize: 9,
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.35)",
+                background: "#f3f4f6",
+                color: "#6b7280",
                 padding: "2px 8px",
                 borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid #e5e7eb",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
               }}
             >
               {currentFormat.icon} {canvasFormat} · {total} slide
@@ -4494,55 +4571,48 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
           {/* Center: undo/redo */}
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <button
-              onClick={undo}
-              disabled={historyIdx.current <= 0}
-              title="Undo (Ctrl+Z)"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 7,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "transparent",
-                color:
-                  historyIdx.current > 0
-                    ? "rgba(255,255,255,0.6)"
-                    : "rgba(255,255,255,0.15)",
-                cursor: historyIdx.current > 0 ? "pointer" : "default",
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              ↩
-            </button>
-            <button
-              onClick={redo}
-              disabled={historyIdx.current >= history.current.length - 1}
-              title="Redo (Ctrl+Y)"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 7,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "transparent",
-                color:
-                  historyIdx.current < history.current.length - 1
-                    ? "rgba(255,255,255,0.6)"
-                    : "rgba(255,255,255,0.15)",
-                cursor:
-                  historyIdx.current < history.current.length - 1
-                    ? "pointer"
-                    : "default",
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              ↪
-            </button>
+            {[
+              {
+                fn: undo,
+                dis: historyIdx.current <= 0,
+                icon: <Undo2 size={14} />,
+                title: "Undo (Ctrl+Z)",
+              },
+              {
+                fn: redo,
+                dis: historyIdx.current >= history.current.length - 1,
+                icon: <Redo2 size={14} />,
+                title: "Redo (Ctrl+Y)",
+              },
+            ].map(({ fn, dis, icon, title }) => (
+              <button
+                key={title}
+                onClick={fn}
+                disabled={dis}
+                title={title}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 7,
+                  border: "1px solid #e5e7eb",
+                  background: "transparent",
+                  color: dis ? "#d1d5db" : "#374151",
+                  cursor: dis ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!dis) e.currentTarget.style.background = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {icon}
+              </button>
+            ))}
           </div>
 
           {/* Right: actions */}
@@ -4553,15 +4623,25 @@ export default function TikTokStudioV3({ listing, onClose }) {
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "transparent",
-                color: "rgba(255,255,255,0.65)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#374151",
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#e5e7eb";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#f3f4f6";
               }}
             >
-              ↓ Save slide
+              <Download size={13} /> Save slide
             </button>
             <button
               onClick={saveAll}
@@ -4575,9 +4655,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 cursor: downloading ? "wait" : "pointer",
                 fontSize: 12,
                 fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              {downloading ? "Exporting…" : "Export all"}
+              <Download size={13} /> {downloading ? "Exporting…" : "Export all"}
             </button>
             <button
               onClick={onClose}
@@ -4585,17 +4668,23 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.04)",
-                color: "rgba(255,255,255,0.6)",
+                border: "1px solid #e5e7eb",
+                background: "#f3f4f6",
+                color: "#6b7280",
                 cursor: "pointer",
-                fontSize: 14,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#e5e7eb";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#f3f4f6";
               }}
             >
-              ✕
+              <X size={14} />
             </button>
           </div>
         </div>
@@ -4608,8 +4697,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           <div
             style={{
               width: 54,
-              background: "#0a0d14",
-              borderRight: "1px solid rgba(255,255,255,0.05)",
+              background: "#ffffff",
+              borderRight: "1px solid #e5e7eb",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -4631,10 +4720,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     height: 52,
                     borderRadius: 10,
                     border: "none",
-                    background: isActive
-                      ? "rgba(220,38,38,0.12)"
-                      : "transparent",
-                    color: isActive ? "#dc2626" : "rgba(255,255,255,0.35)",
+                    background: isActive ? "#fef2f2" : "transparent",
+                    color: isActive ? "#dc2626" : "#6b7280",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -4644,8 +4731,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     position: "relative",
                     transition: "all 0.15s",
                   }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = "#f9fafb";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive)
+                      e.currentTarget.style.background = "transparent";
+                  }}
                 >
-                  {/* Active indicator — left edge accent */}
                   {isActive && (
                     <div
                       style={{
@@ -4660,7 +4753,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                       }}
                     />
                   )}
-                  <span style={{ fontSize: 17, lineHeight: 1 }}>{t.icon}</span>
+                  <span style={{ lineHeight: 1 }}>{t.icon}</span>
                   <span
                     style={{
                       fontSize: 8,
@@ -4680,8 +4773,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           <div
             style={{
               width: 280,
-              background: "#0d1117",
-              borderRight: "1px solid rgba(255,255,255,0.05)",
+              background: "#ffffff",
+              borderRight: "1px solid #e5e7eb",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -4695,7 +4788,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 display: "flex",
                 alignItems: "center",
                 padding: "0 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid #f3f4f6",
                 flexShrink: 0,
               }}
             >
@@ -4703,7 +4796,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "rgba(255,255,255,0.3)",
+                  color: "#9ca3af",
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
                 }}
@@ -4740,7 +4833,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              background: "#111827",
+              background: "#1a1d27",
               minWidth: 0,
             }}
           >
@@ -4895,8 +4988,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <div
               style={{
                 height: 102,
-                background: "#0a0d14",
-                borderTop: "1px solid rgba(255,255,255,0.05)",
+                background: "#f0f1f4",
+                borderTop: "1px solid #e5e7eb",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -4927,20 +5020,19 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   height: 78,
                   flexShrink: 0,
                   borderRadius: 5,
-                  border: "1px dashed rgba(255,255,255,0.1)",
+                  border: "1px dashed #d1d5db",
                   background: "transparent",
-                  color: "rgba(255,255,255,0.2)",
+                  color: "#9ca3af",
                   cursor: "pointer",
-                  fontSize: 11,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 2,
+                  gap: 3,
                 }}
               >
-                <span style={{ fontSize: 16 }}>⧉</span>
-                <span style={{ fontSize: 7, opacity: 0.6 }}>DUP</span>
+                <Copy size={14} />
+                <span style={{ fontSize: 7 }}>DUP</span>
               </button>
               {/* Add new slide */}
               <button
@@ -4951,17 +5043,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   height: 78,
                   flexShrink: 0,
                   borderRadius: 5,
-                  border: "1px dashed rgba(220,38,38,0.25)",
+                  border: "1px dashed #fca5a5",
                   background: "transparent",
-                  color: "rgba(220,38,38,0.45)",
+                  color: "#dc2626",
                   cursor: "pointer",
-                  fontSize: 22,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                +
+                <Plus size={20} />
               </button>
             </div>
           </div>
