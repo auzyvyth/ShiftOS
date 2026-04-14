@@ -18,6 +18,7 @@ export function makeLayer(type, overrides = {}) {
     zIndex: 0,
     locked: false, visible: true, opacity: 100,
     blendMode: 'normal',
+    filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0, opacity: 100, hue: 0, sepia: 0, preset: null },
   };
   if (type === 'circle')   return { ...base, fill: '#3b82f6', width: 25, height: 25, borderRadius: 50, ...overrides };
   if (type === 'triangle') return { ...base, fill: '#f59e0b', width: 30, height: 25, ...overrides };
