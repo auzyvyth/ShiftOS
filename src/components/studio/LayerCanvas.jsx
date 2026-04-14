@@ -157,7 +157,7 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
       transform: `rotate(${layer.rotation || 0}deg)`, transformOrigin: 'center center',
       pointerEvents: 'none', zIndex: 50,
     }}>
-      <div style={{ position: 'absolute', inset: 0, border: '1.5px solid #dc2626',
+      <div style={{ position: 'absolute', inset: 0, border: '1.5px solid #3b82f6',
         pointerEvents: 'none', boxSizing: 'border-box' }} />
 
       {HANDLES.map(hk => (
@@ -166,7 +166,7 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
           onTouchStart={e => { e.stopPropagation(); onHandleTouchStart(e, hk); }}
           style={{
             position: 'absolute', left: handlePos[hk][0], top: handlePos[hk][1],
-            width: hs, height: hs, background: '#fff', border: '1.5px solid #dc2626',
+            width: hs, height: hs, background: '#fff', border: '1.5px solid #3b82f6',
             borderRadius: 2, cursor: CURSOR[hk], pointerEvents: 'auto', zIndex: 51,
             touchAction: 'none',
           }} />
@@ -178,12 +178,12 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
         onTouchStart={e => { e.stopPropagation(); onRotateTouchStart(e); }}
         style={{
           position: 'absolute', left: w/2-hs/2, top: -ROTATE_OFFSET-hs/2,
-          width: hs, height: hs, background: '#dc2626', borderRadius: '50%',
+          width: hs, height: hs, background: '#3b82f6', borderRadius: '50%',
           cursor: 'crosshair', pointerEvents: 'auto', zIndex: 51, touchAction: 'none',
         }} title="Rotate" />
       <div style={{
         position: 'absolute', left: w/2-0.5, top: -ROTATE_OFFSET,
-        width: 1, height: ROTATE_OFFSET, background: 'rgba(220,38,38,0.5)',
+        width: 1, height: ROTATE_OFFSET, background: 'rgba(59,130,246,0.5)',
         pointerEvents: 'none',
       }} />
 
@@ -194,7 +194,7 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
           position: 'absolute', right: -10, top: -10, width: 18, height: 18,
           background: '#ef4444', borderRadius: '50%', cursor: 'pointer',
           pointerEvents: 'auto', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 51,
+          justifyContent: 'center', zIndex: 51, touchAction: 'none',
         }}>
         <Trash2 size={9} color="#fff" />
       </div>
@@ -207,9 +207,9 @@ function SnapGuides({ snapH, snapV, w, h }) {
   return (
     <>
       {snapH && <div style={{ position:'absolute', left:0, top:'50%', width:'100%', height:1,
-        background:'#dc2626', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateY(-50%)' }} />}
+        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateY(-50%)' }} />}
       {snapV && <div style={{ position:'absolute', left:'50%', top:0, width:1, height:'100%',
-        background:'#dc2626', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateX(-50%)' }} />}
+        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateX(-50%)' }} />}
     </>
   );
 }
@@ -413,12 +413,10 @@ export default function LayerCanvas({
     };
   };
 
-  // ── Touch move / end via container listener (passive:false) ──────────────
+  // ── Touch move / end via document listeners (passive:false) ─────────────
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
     const onTouchMove = e => {
+      if (!dragRef.current && !pinchRef.current) return;
       if (e.touches.length === 1 && dragRef.current) {
         e.preventDefault();
         applyMove(e.touches[0].clientX, e.touches[0].clientY);
@@ -436,11 +434,11 @@ export default function LayerCanvas({
     };
     const onTouchEnd = () => endInteraction();
 
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
     return () => {
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
     };
   }, [applyMove, endInteraction, onUpdateLayer]);
 
@@ -449,18 +447,12 @@ export default function LayerCanvas({
   return (
     <div
       ref={containerRef}
-      onMouseDown={e => {
-        // Click on empty space → deselect layers
-        if (e.target === containerRef.current) {
-          onClearSelection?.();
-        }
-      }}
       style={{
         position: 'absolute', top: 0, left: 0,
         width: '100%', height: '100%',
         overflow: 'hidden',
-        pointerEvents: 'all',
-        zIndex: 5,
+        pointerEvents: 'none',
+        zIndex: 20,
       }}
     >
       {layers.map(layer => (
@@ -512,14 +504,14 @@ export function LayerToolbar({ onAddShape, onAddImage, canUndo, canRedo, onUndo,
       disabled={disabled}
       style={{
         width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: disabled ? 'transparent' : '#f3f4f6',
-        border: '1px solid #e5e7eb', borderRadius: 7,
-        color: disabled ? '#d1d5db' : '#374151',
+        background: disabled ? 'transparent' : 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7,
+        color: disabled ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.6)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background 0.15s, color 0.15s',
       }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#e5e7eb'; }}
-      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = '#f3f4f6'; }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
     >
       {content}
     </button>
@@ -528,10 +520,10 @@ export function LayerToolbar({ onAddShape, onAddImage, canUndo, canRedo, onUndo,
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      padding: '6px 5px', borderRight: '1px solid #e5e7eb', background: '#ffffff',
+      padding: '6px 5px', borderRight: '1px solid rgba(255,255,255,0.07)', background: '#1a2035',
       flexShrink: 0, width: 44,
     }}>
-      <div style={{ fontSize: 7, color: '#9ca3af', textTransform: 'uppercase',
+      <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
         letterSpacing: '0.08em', marginBottom: 4, textAlign: 'center', lineHeight: 1 }}>
         Layers
       </div>
@@ -545,7 +537,7 @@ export function LayerToolbar({ onAddShape, onAddImage, canUndo, canRedo, onUndo,
           if (f) onAddImage(URL.createObjectURL(f));
           e.target.value = '';
         }} />
-      <div style={{ width: '100%', height: 1, background: '#e5e7eb', margin: '4px 0' }} />
+      <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
       {btn(<Undo2 size={13} />, 'Undo', onUndo, !canUndo)}
       {btn(<Redo2 size={13} />, 'Redo', onRedo, !canRedo)}
     </div>
@@ -562,10 +554,10 @@ export function LayerStack({
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px',
-      borderTop: '1px solid #e5e7eb', background: '#f8f9fb',
+      borderTop: '1px solid rgba(255,255,255,0.06)', background: '#141a28',
       overflowX: 'auto', flexShrink: 0, minHeight: 40,
     }}>
-      <span style={{ fontSize: 9, color: '#9ca3af', textTransform: 'uppercase',
+      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
         letterSpacing: '0.08em', flexShrink: 0 }}>Layers:</span>
 
       {[...layers].reverse().map(layer => {
@@ -575,9 +567,9 @@ export function LayerStack({
             style={{
               display: 'flex', alignItems: 'center', gap: 3,
               padding: '3px 7px', borderRadius: 5, cursor: 'pointer', flexShrink: 0,
-              background: sel ? '#fef2f2' : '#f3f4f6',
-              border: `1px solid ${sel ? '#fca5a5' : '#e5e7eb'}`,
-              fontSize: 10, color: sel ? '#dc2626' : '#374151',
+              background: sel ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${sel ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.07)'}`,
+              fontSize: 10, color: sel ? '#60a5fa' : 'rgba(255,255,255,0.6)',
               transition: 'all 0.1s',
             }}>
             <span onClick={e => { e.stopPropagation(); onUpdateLayer(layer.id, { visible: !layer.visible }); }}
@@ -614,7 +606,7 @@ export function LayerStack({
 function PropRow({ label, children }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 9, color: '#9ca3af', textTransform: 'uppercase',
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase',
         letterSpacing: '0.08em', marginBottom: 4 }}>{label}</div>
       {children}
     </div>
@@ -625,11 +617,11 @@ function LColorInput({ value, onChange }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <input type="color" value={value} onChange={e => onChange(e.target.value)}
-        style={{ width: 28, height: 28, border: '1px solid #e5e7eb', background: 'none',
+        style={{ width: 28, height: 28, border: '1px solid rgba(255,255,255,0.1)', background: 'none',
           borderRadius: 6, cursor: 'pointer', padding: 2 }} />
       <input type="text" value={value} onChange={e => onChange(e.target.value)}
-        style={{ flex: 1, background: '#f9fafb', border: '1px solid #e5e7eb',
-          borderRadius: 6, padding: '4px 8px', color: '#111827', fontSize: 11,
+        style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6, padding: '4px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
           fontFamily: 'monospace', outline: 'none' }} />
     </div>
   );
@@ -639,12 +631,12 @@ function LSlider({ label, value, min, max, step = 1, onChange, fmt }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-        <span style={{ fontSize: 10, color: '#6b7280' }}>{label}</span>
-        <span style={{ fontSize: 10, color: '#374151', fontWeight: 600 }}>{fmt ? fmt(value) : value}</span>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>{label}</span>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{fmt ? fmt(value) : value}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#dc2626' }} />
+        style={{ width: '100%', accentColor: '#3b82f6' }} />
     </div>
   );
 }
@@ -653,17 +645,17 @@ function LNumInput({ value, onChange, min, max }) {
   return (
     <input type="number" value={Math.round(value * 10) / 10} min={min} max={max}
       onChange={e => onChange(Number(e.target.value))}
-      style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb',
-        borderRadius: 6, padding: '4px 6px', color: '#111827', fontSize: 11,
+      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 6, padding: '4px 6px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
         outline: 'none', boxSizing: 'border-box' }} />
   );
 }
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: 9, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase',
+    <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
       letterSpacing: '0.1em', margin: '12px 0 8px', paddingBottom: 4,
-      borderBottom: '1px solid #f3f4f6' }}>
+      borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
       {children}
     </div>
   );
@@ -672,7 +664,7 @@ function SectionLabel({ children }) {
 export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDuplicate }) {
   if (!layer) {
     return (
-      <div style={{ padding: 16, color: '#9ca3af', fontSize: 11, textAlign: 'center' }}>
+      <div style={{ padding: 16, color: 'rgba(255,255,255,0.3)', fontSize: 11, textAlign: 'center' }}>
         Select a layer to edit its properties
       </div>
     );
@@ -696,20 +688,20 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 12, padding: '4px 0' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626',
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa',
           textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           ▣ {layer.label || layer.type}
         </span>
         <div style={{ display: 'flex', gap: 5 }}>
           <button onClick={() => onDuplicate?.(layer.id)}
-            style={{ padding: '3px 8px', fontSize: 9, background: '#f3f4f6',
-              border: '1px solid #e5e7eb', borderRadius: 5, color: '#374151', cursor: 'pointer',
+            style={{ padding: '3px 8px', fontSize: 9, background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 3 }}>
             <Copy size={10} /> Copy
           </button>
           <button onClick={() => onDelete?.(layer.id)}
-            style={{ padding: '3px 8px', fontSize: 9, background: '#fef2f2',
-              border: '1px solid #fca5a5', borderRadius: 5, color: '#ef4444', cursor: 'pointer',
+            style={{ padding: '3px 8px', fontSize: 9, background: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 5, color: '#f87171', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 3 }}>
             <Trash2 size={10} /> Delete
           </button>
@@ -720,8 +712,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       <PropRow label="Label">
         <input value={layer.label || ''} onChange={e => u({ label: e.target.value })}
           onBlur={() => onCommit?.()}
-          style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb',
-            borderRadius: 6, padding: '5px 8px', color: '#111827', fontSize: 11,
+          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
             outline: 'none', boxSizing: 'border-box' }} />
       </PropRow>
 
@@ -763,8 +755,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
           <PropRow label="URL">
             <input value={layer.src || ''} placeholder="https://…"
               onChange={e => u({ src: e.target.value })} onBlur={() => onCommit?.()}
-              style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb',
-                borderRadius: 6, padding: '5px 8px', color: '#111827', fontSize: 11,
+              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
                 outline: 'none', boxSizing: 'border-box' }} />
           </PropRow>
           <PropRow label="Fit">
@@ -802,9 +794,9 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
           <button key={name} onClick={() => applyPreset(name)}
             style={{
               padding: '5px 4px', fontSize: 9, fontWeight: 600, borderRadius: 6,
-              border: `1px solid ${f.preset === name ? '#dc2626' : '#e5e7eb'}`,
-              background: f.preset === name ? '#fef2f2' : '#f3f4f6',
-              color: f.preset === name ? '#dc2626' : '#374151',
+              border: `1px solid ${f.preset === name ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              background: f.preset === name ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.04)',
+              color: f.preset === name ? '#60a5fa' : 'rgba(255,255,255,0.55)',
               cursor: 'pointer', textTransform: 'capitalize',
             }}>
             {name}
@@ -813,8 +805,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       </div>
 
       {/* Filter preview strip */}
-      <div style={{ marginBottom: 10, fontSize: 9, color: '#9ca3af',
-        background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6,
+      <div style={{ marginBottom: 10, fontSize: 9, color: 'rgba(255,255,255,0.3)',
+        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6,
         padding: '4px 8px', fontFamily: 'monospace', overflow: 'hidden',
         whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
         {filterStr}
@@ -837,8 +829,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
 
       <button onClick={() => uc({ filters: { ...FILTER_DEFAULTS } })}
         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
-          fontSize: 10, background: '#f3f4f6', border: '1px solid #e5e7eb',
-          borderRadius: 6, color: '#6b7280', cursor: 'pointer', marginTop: 4 }}>
+          fontSize: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6, color: 'rgba(255,255,255,0.45)', cursor: 'pointer', marginTop: 4 }}>
         <RotateCcw size={11} /> Reset filters
       </button>
 
@@ -846,8 +838,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       <SectionLabel>Layer</SectionLabel>
       <PropRow label="Blend Mode">
         <select value={layer.blendMode || 'normal'} onChange={e => uc({ blendMode: e.target.value })}
-          style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb',
-            borderRadius: 6, padding: '5px 8px', color: '#111827', fontSize: 11, outline: 'none' }}>
+          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
           {['normal','multiply','screen','overlay','darken','lighten',
             'color-dodge','color-burn','hard-light','soft-light',
             'difference','exclusion','hue','saturation','color','luminosity'].map(m => (
@@ -858,7 +850,7 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
         {[['locked', 'Locked'], ['visible', 'Visible']].map(([key, lbl]) => (
           <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 5,
-            fontSize: 10, color: '#6b7280', cursor: 'pointer' }}>
+            fontSize: 10, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
             <input type="checkbox"
               checked={key === 'visible' ? layer.visible !== false : !!layer[key]}
               onChange={e => uc(key === 'visible' ? { visible: e.target.checked } : { [key]: e.target.checked })} />
@@ -922,20 +914,4 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         ctx.strokeStyle = hexToRgba(layer.borderColor || '#ffffff', layer.borderOpacity ?? 100);
         ctx.lineWidth = layer.borderWidth;
         if (layer.borderStyle === 'dashed') ctx.setLineDash([layer.borderWidth * 3, layer.borderWidth * 2]);
-        else if (layer.borderStyle === 'dotted') ctx.setLineDash([layer.borderWidth, layer.borderWidth * 1.5]);
-        ctx.stroke(); ctx.setLineDash([]);
-      }
-    }
-    ctx.restore();
-  }
-}
-
-const _imgCache = new Map();
-function _loadImg(src) {
-  if (_imgCache.has(src)) return _imgCache.get(src);
-  const p = new Promise((res, rej) => {
-    const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => res(img); img.onerror = rej; img.src = src;
-  });
-  _imgCache.set(src, p); return p;
-}
+        else if (layer.borderStyle === 'dotted') ctx.setLine
