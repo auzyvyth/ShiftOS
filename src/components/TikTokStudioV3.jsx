@@ -119,7 +119,7 @@ if (
   s.id = "ttsv3-styles";
   s.textContent = `
     @keyframes ttsv3-spin { to { transform: rotate(360deg); } }
-    @keyframes ttsv3-highlight { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 0 4px rgba(220,38,38,0.7); } }
+    @keyframes ttsv3-highlight { 0%,100%{ box-shadow:none; } 40%{ box-shadow:0 0 0 4px rgba(37,99,235,0.7); } }
   `;
   document.head.appendChild(s);
 }
@@ -1000,7 +1000,7 @@ function SelectionOverlay({
     width: H,
     height: H,
     background: "#ffffff",
-    border: "1.5px solid #dc2626",
+    border: "1.5px solid #2563eb",
     borderRadius: 2,
     boxSizing: "border-box",
     boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
@@ -1092,13 +1092,13 @@ function SelectionOverlay({
             height: H + 2,
             borderRadius: "50%",
             background: "#fff",
-            border: "1.5px solid #dc2626",
+            border: "1.5px solid #2563eb",
             boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 9,
-            color: "#dc2626",
+            color: "#2563eb",
             lineHeight: 1,
             fontWeight: 700,
           }}
@@ -1222,14 +1222,14 @@ function MiniBtn({ children, onClick, active, danger, title }) {
         borderRadius: 5,
         cursor: "pointer",
         background: active
-          ? "rgba(220,38,38,0.2)"
+          ? "rgba(37,99,235,0.2)"
           : danger
-            ? "rgba(239,68,68,0.1)"
+            ? "rgba(37,99,235,0.08)"
             : "transparent",
         color: danger
           ? "#f87171"
           : active
-            ? "#dc2626"
+            ? "#60a5fa"
             : "rgba(255,255,255,0.6)",
         display: "flex",
         alignItems: "center",
@@ -1287,7 +1287,7 @@ function InlineEditor({ el, scale, onCommit, onCancel }) {
           color: el.color,
           fontFamily: "inherit",
           background: "rgba(0,0,0,0.8)",
-          border: "2px solid #dc2626",
+          border: "2px solid #2563eb",
           borderRadius: 4,
           padding: 4,
           outline: "none",
@@ -1431,8 +1431,8 @@ function CanvasPreview({
                 width: 36 * scale,
                 height: 36 * scale,
                 margin: "0 auto 10px",
-                border: `${3 * scale}px solid rgba(220,38,38,0.3)`,
-                borderTop: `${3 * scale}px solid #dc2626`,
+                border: `${3 * scale}px solid rgba(37,99,235,0.3)`,
+                borderTop: `${3 * scale}px solid #2563eb`,
                 borderRadius: "50%",
                 animation: "ttsv3-spin 0.8s linear infinite",
               }}
@@ -1510,8 +1510,8 @@ const FilmThumb = React.memo(function FilmThumb({
         borderRadius: 5,
         overflow: "hidden",
         cursor: "pointer",
-        background: "#e5e7eb",
-        border: `2px solid ${active ? "#dc2626" : "#d1d5db"}`,
+        background: "#1e2130",
+        border: `2px solid ${active ? "#2563eb" : "rgba(255,255,255,0.1)"}`,
         transition: "border-color 0.15s",
       }}
     >
@@ -1644,7 +1644,7 @@ function ImagePicker({ images, current, onSelect, onClose }) {
               overflow: "hidden",
               cursor: "pointer",
               border:
-                current === url ? "2px solid #dc2626" : "2px solid transparent",
+                current === url ? "2px solid #2563eb" : "2px solid transparent",
             }}
           >
             <img
@@ -1684,13 +1684,13 @@ function ColorRow({ label, value, onChange }) {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "9px 0",
-        borderBottom: "1px solid #f3f4f6",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}
     >
-      <span style={{ fontSize: 12, color: "#374151" }}>{label}</span>
+      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}
+          style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}
         >
           {value}
         </span>
@@ -1701,7 +1701,7 @@ function ColorRow({ label, value, onChange }) {
           style={{
             width: 30,
             height: 30,
-            border: "1px solid #e5e7eb",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 8,
             cursor: "pointer",
             padding: 2,
@@ -1723,8 +1723,8 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
           marginBottom: 5,
         }}
       >
-        <span style={{ fontSize: 12, color: "#374151" }}>{label}</span>
-        <span style={{ fontSize: 12, color: "#111827", fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{label}</span>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
           {fmt ? fmt(value) : value}
         </span>
       </div>
@@ -1735,7 +1735,7 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#dc2626" }}
+        style={{ width: "100%", accentColor: "#2563eb" }}
       />
     </div>
   );
@@ -1757,7 +1757,7 @@ function Toggle({ value, onChange, label }) {
           width: 36,
           height: 20,
           borderRadius: 999,
-          background: value ? "#dc2626" : "#d1d5db",
+          background: value ? "#2563eb" : "rgba(255,255,255,0.12)",
           position: "relative",
           transition: "background 0.2s",
           flexShrink: 0,
@@ -1776,7 +1776,7 @@ function Toggle({ value, onChange, label }) {
           }}
         />
       </div>
-      <span style={{ fontSize: 12, color: "#6b7280" }}>{label}</span>
+      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{label}</span>
     </label>
   );
 }
@@ -1789,10 +1789,10 @@ function SectionHead({ label }) {
         fontWeight: 700,
         letterSpacing: "0.13em",
         textTransform: "uppercase",
-        color: "#9ca3af",
+        color: "rgba(255,255,255,0.3)",
         margin: "18px 0 9px",
         paddingBottom: 6,
-        borderBottom: "1px solid #f3f4f6",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}
     >
       {label}
@@ -1809,17 +1809,17 @@ function PInput({ value, onChange, placeholder }) {
       style={{
         width: "100%",
         padding: "9px 12px",
-        background: "#f9fafb",
-        border: "1px solid #e5e7eb",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: 10,
-        color: "#111827",
+        color: "rgba(255,255,255,0.9)",
         fontFamily: "'DM Sans',sans-serif",
         fontSize: 12,
         outline: "none",
         boxSizing: "border-box",
       }}
-      onFocus={(e) => (e.target.style.borderColor = "#dc2626")}
-      onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+      onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
+      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
     />
   );
 }
@@ -2205,12 +2205,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Drag / Resize / Rotate ───────────────────────────────────────────────
   const onStartDrag = useCallback(
     (e, id) => {
-      if (id !== selectedId) {
-        setSelectedId(id);
-        return;
-      }
+      setSelectedId(id);
       const el = slide?.elements?.find((el) => el.id === id);
-      if (!el) return;
+      if (!el || el.locked) return;
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
       dragging.current = {
@@ -2222,7 +2219,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       };
       e.preventDefault();
     },
-    [selectedId, slide],
+    [slide],
   );
 
   const onStartResize = useCallback(
@@ -2736,7 +2733,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             style={{
               fontSize: 10,
               fontWeight: 700,
-              color: "#dc2626",
+              color: "#60a5fa",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
             }}
@@ -2886,10 +2883,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 flex: 1,
                 padding: "5px 3px",
                 borderRadius: 6,
-                border: `1px solid ${selectedEl.fontWeight === w ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+                border: `1px solid ${selectedEl.fontWeight === w ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
                 background:
                   selectedEl.fontWeight === w
-                    ? "rgba(220,38,38,0.1)"
+                    ? "rgba(37,99,235,0.1)"
                     : "transparent",
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 9,
@@ -2911,10 +2908,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 flex: 1,
                 padding: "5px 4px",
                 borderRadius: 6,
-                border: `1px solid ${selectedEl.align === a ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+                border: `1px solid ${selectedEl.align === a ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
                 background:
                   selectedEl.align === a
-                    ? "rgba(220,38,38,0.1)"
+                    ? "rgba(37,99,235,0.1)"
                     : "transparent",
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 10,
@@ -2938,14 +2935,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
               flex: 1,
               padding: "6px 4px",
               borderRadius: 6,
-              border: `1px solid ${selectedEl.fontStyle === "italic" ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+              border: `1px solid ${selectedEl.fontStyle === "italic" ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
               background:
                 selectedEl.fontStyle === "italic"
-                  ? "rgba(220,38,38,0.1)"
+                  ? "rgba(37,99,235,0.1)"
                   : "transparent",
               color:
                 selectedEl.fontStyle === "italic"
-                  ? "#dc2626"
+                  ? "#60a5fa"
                   : "rgba(255,255,255,0.5)",
               fontSize: 11,
               cursor: "pointer",
@@ -2962,11 +2959,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
               flex: 1,
               padding: "6px 4px",
               borderRadius: 6,
-              border: `1px solid ${selectedEl.shadow ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+              border: `1px solid ${selectedEl.shadow ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
               background: selectedEl.shadow
-                ? "rgba(220,38,38,0.1)"
+                ? "rgba(37,99,235,0.1)"
                 : "transparent",
-              color: selectedEl.shadow ? "#dc2626" : "rgba(255,255,255,0.5)",
+              color: selectedEl.shadow ? "#60a5fa" : "rgba(255,255,255,0.5)",
               fontSize: 11,
               cursor: "pointer",
             }}
@@ -3019,13 +3016,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
               cursor: "pointer",
               border: `1px solid ${
                 slide.template === t.id
-                  ? "rgba(220,38,38,0.5)"
+                  ? "rgba(37,99,235,0.5)"
                   : "rgba(255,255,255,0.07)"
               }`,
               background:
-                slide.template === t.id ? "rgba(220,38,38,0.1)" : "transparent",
+                slide.template === t.id ? "rgba(37,99,235,0.1)" : "transparent",
               color:
-                slide.template === t.id ? "#dc2626" : "rgba(255,255,255,0.45)",
+                slide.template === t.id ? "#60a5fa" : "rgba(255,255,255,0.45)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -3053,11 +3050,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
               cursor: "pointer",
               background:
                 selectedId === el.id
-                  ? "rgba(220,38,38,0.08)"
+                  ? "rgba(37,99,235,0.08)"
                   : "rgba(255,255,255,0.025)",
               border: `1px solid ${
                 selectedId === el.id
-                  ? "rgba(220,38,38,0.28)"
+                  ? "rgba(37,99,235,0.28)"
                   : "rgba(255,255,255,0.05)"
               }`,
             }}
@@ -3103,7 +3100,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   border: "none",
                   cursor: "pointer",
                   fontSize: 11,
-                  color: el.locked ? "#dc2626" : "rgba(255,255,255,0.25)",
+                  color: el.locked ? "#3b82f6" : "rgba(255,255,255,0.25)",
                 }}
               >
                 {el.locked ? "🔒" : "🔓"}
@@ -3135,9 +3132,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               flex: 1,
               padding: "8px 0",
               borderRadius: 8,
-              border: "1px dashed rgba(220,38,38,0.2)",
+              border: "1px dashed rgba(37,99,235,0.2)",
               background: "transparent",
-              color: "rgba(220,38,38,0.5)",
+              color: "rgba(37,99,235,0.5)",
               cursor: "pointer",
               fontSize: 11,
             }}
@@ -3172,12 +3169,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
               cursor: "pointer",
               border: `1px solid ${
                 canvasFormat === f.id
-                  ? "rgba(220,38,38,0.5)"
+                  ? "rgba(37,99,235,0.5)"
                   : "rgba(255,255,255,0.07)"
               }`,
               background:
                 canvasFormat === f.id
-                  ? "rgba(220,38,38,0.1)"
+                  ? "rgba(37,99,235,0.1)"
                   : "rgba(255,255,255,0.02)",
               display: "flex",
               alignItems: "center",
@@ -3352,9 +3349,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 cursor: "pointer",
                 fontSize: 9,
                 border: `1px solid ${
-                  active2 ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.07)"
+                  active2 ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.07)"
                 }`,
-                background: active2 ? "rgba(220,38,38,0.08)" : "transparent",
+                background: active2 ? "rgba(37,99,235,0.08)" : "transparent",
                 color: active2 ? "#dc2626" : "rgba(255,255,255,0.4)",
               }}
             >
@@ -3411,7 +3408,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               }`,
               background:
                 theme.watermarkPos === p
-                  ? "rgba(220,38,38,0.08)"
+                  ? "rgba(37,99,235,0.08)"
                   : "transparent",
               color: "rgba(255,255,255,0.4)",
             }}
@@ -3547,7 +3544,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: "#dc2626",
+              color: "#60a5fa",
               textTransform: "uppercase",
               letterSpacing: "0.06em",
             }}
@@ -3664,7 +3661,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             style={{
               padding: "4px 9px",
               borderRadius: 999,
-              border: "1px solid rgba(220,38,38,0.2)",
+              border: "1px solid rgba(37,99,235,0.2)",
               background: "transparent",
               color: "rgba(220,38,38,0.65)",
               fontSize: 9,
@@ -3752,7 +3749,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     : "rgba(255,255,255,0.07)"
                 }`,
                 background:
-                  language === l ? "rgba(220,38,38,0.1)" : "transparent",
+                  language === l ? "rgba(37,99,235,0.1)" : "transparent",
                 color: language === l ? "#dc2626" : "rgba(255,255,255,0.35)",
               }}
             >
@@ -3808,7 +3805,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             marginTop: 8,
             borderRadius: 9,
             border: "none",
-            background: "rgba(220,38,38,0.75)",
+            background: "rgba(37,99,235,0.85)",
             color: "#fff",
             fontWeight: 700,
             cursor: applyingCmd ? "wait" : "pointer",
@@ -3862,7 +3859,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           padding: "10px 0",
           borderRadius: 9,
           border: "none",
-          background: "#dc2626",
+          background: "#2563eb",
           color: "#fff",
           fontWeight: 700,
           cursor: "pointer",
@@ -3994,9 +3991,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     style={{
                       padding: "4px 8px",
                       borderRadius: 6,
-                      border: "1px solid rgba(220,38,38,0.3)",
-                      background: "rgba(220,38,38,0.1)",
-                      color: "#dc2626",
+                      border: "1px solid rgba(37,99,235,0.3)",
+                      background: "rgba(37,99,235,0.1)",
+                      color: "#60a5fa",
                       cursor: "pointer",
                       fontSize: 9,
                       fontWeight: 700,
@@ -4056,8 +4053,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
     <div
       style={{
         display: "flex",
-        borderBottom: "1px solid #e5e7eb",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
         flexShrink: 0,
+        background: "#1e2130",
       }}
     >
       {TABS.map((t) => (
@@ -4069,9 +4067,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             padding: "8px 2px",
             border: "none",
             fontFamily: "'DM Sans',sans-serif",
-            borderBottom: `2px solid ${activeTab === t.id ? "#dc2626" : "transparent"}`,
+            borderBottom: `2px solid ${activeTab === t.id ? "#2563eb" : "transparent"}`,
             background: "transparent",
-            color: activeTab === t.id ? "#dc2626" : "#6b7280",
+            color: activeTab === t.id ? "#60a5fa" : "rgba(255,255,255,0.35)",
             cursor: "pointer",
             fontSize: 9,
             fontWeight: 600,
@@ -4135,7 +4133,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "#f4f5f7",
+          background: "#131620",
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
@@ -4149,9 +4147,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 12px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
             flexShrink: 0,
-            background: "#ffffff",
+            background: "#1e2130",
           }}
         >
           <span
@@ -4159,7 +4157,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               fontFamily: "'Bebas Neue',sans-serif",
               fontSize: 18,
               letterSpacing: "0.05em",
-              color: "#111827",
+              color: "rgba(255,255,255,0.9)",
             }}
           >
             TT STUDIO V3
@@ -4185,9 +4183,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   width: 26,
                   height: 26,
                   borderRadius: 6,
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid rgba(255,255,255,0.08)",
                   background: "transparent",
-                  color: dis ? "#d1d5db" : "#374151",
+                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)",
                   cursor: dis ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -4202,9 +4200,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               style={{
                 padding: "5px 10px",
                 borderRadius: 7,
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#374151",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.75)",
                 cursor: "pointer",
                 fontSize: 10,
                 fontWeight: 600,
@@ -4222,7 +4220,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 padding: "5px 12px",
                 borderRadius: 7,
                 border: "none",
-                background: "#dc2626",
+                background: "#2563eb",
                 color: "#fff",
                 cursor: "pointer",
                 fontSize: 11,
@@ -4237,9 +4235,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#6b7280",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.5)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -4260,8 +4258,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             padding: "6px 12px",
             overflowX: "auto",
             flexShrink: 0,
-            borderBottom: "1px solid #e5e7eb",
-            background: "#f0f1f4",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            background: "#141a28",
           }}
         >
           {slides.map((s, i) => (
@@ -4284,9 +4282,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               height: 64,
               flexShrink: 0,
               borderRadius: 6,
-              border: "1px dashed #fca5a5",
+              border: "1px dashed rgba(37,99,235,0.4)",
               background: "transparent",
-              color: "#dc2626",
+              color: "#3b82f6",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -4411,8 +4409,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 right: 0,
                 bottom: 0,
                 width: 270,
-                background: "#ffffff",
-                borderLeft: "1px solid #e5e7eb",
+                background: "#1e2130",
+                borderLeft: "1px solid rgba(255,255,255,0.07)",
                 display: "flex",
                 flexDirection: "column",
                 zIndex: 25,
@@ -4432,8 +4430,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
         <div
           style={{
             padding: "8px 12px",
-            borderTop: "1px solid #e5e7eb",
-            background: "#ffffff",
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            background: "#1e2130",
             display: "flex",
             gap: 6,
             flexShrink: 0,
@@ -4448,19 +4446,19 @@ export default function TikTokStudioV3({ listing, onClose }) {
             style={{
               flex: 1,
               padding: "9px 12px",
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 8,
-              color: "#111827",
+              color: "rgba(255,255,255,0.9)",
               fontFamily: "'DM Sans',sans-serif",
               fontSize: 12,
               outline: "none",
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = "#dc2626";
+              e.target.style.borderColor = "#2563eb";
             }}
             onBlur={(e) => {
-              e.target.style.borderColor = "#e5e7eb";
+              e.target.style.borderColor = "rgba(255,255,255,0.08)";
             }}
           />
           <button
@@ -4470,7 +4468,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               padding: "9px 14px",
               borderRadius: 8,
               border: "none",
-              background: "#dc2626",
+              background: "#2563eb",
               color: "#fff",
               cursor: "pointer",
               fontSize: 12,
@@ -4506,8 +4504,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           zIndex: 9999,
           borderRadius: 16,
           overflow: "hidden",
-          background: "#f4f5f7",
-          boxShadow: "0 32px 100px rgba(0,0,0,0.5), 0 0 0 1px #e5e7eb",
+          background: "#131620",
+          boxShadow: "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
@@ -4521,9 +4519,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 16px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
             flexShrink: 0,
-            background: "#ffffff",
+            background: "#1e2130",
           }}
         >
           {/* Left: logo */}
@@ -4533,7 +4531,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: 19,
                 letterSpacing: "0.06em",
-                color: "#111827",
+                color: "rgba(255,255,255,0.9)",
               }}
             >
               TIKTOK STUDIO
@@ -4541,7 +4539,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <span
               style={{
                 fontSize: 8,
-                background: "#dc2626",
+                background: "#2563eb",
                 color: "#fff",
                 padding: "2px 6px",
                 borderRadius: 999,
@@ -4554,11 +4552,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <span
               style={{
                 fontSize: 9,
-                background: "#f3f4f6",
-                color: "#6b7280",
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.4)",
                 padding: "2px 8px",
                 borderRadius: 999,
-                border: "1px solid #e5e7eb",
+                border: "1px solid rgba(255,255,255,0.08)",
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
@@ -4594,9 +4592,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   width: 30,
                   height: 30,
                   borderRadius: 7,
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid rgba(255,255,255,0.08)",
                   background: "transparent",
-                  color: dis ? "#d1d5db" : "#374151",
+                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.65)",
                   cursor: dis ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -4604,7 +4602,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   transition: "background 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!dis) e.currentTarget.style.background = "#f3f4f6";
+                  if (!dis) e.currentTarget.style.background = "rgba(255,255,255,0.07)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "transparent";
@@ -4623,9 +4621,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#374151",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.75)",
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 500,
@@ -4635,10 +4633,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 transition: "background 0.15s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#e5e7eb";
+                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#f3f4f6";
+                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
               }}
             >
               <Download size={13} /> Save slide
@@ -4650,7 +4648,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 padding: "6px 16px",
                 borderRadius: 8,
                 border: "none",
-                background: "#dc2626",
+                background: "#2563eb",
                 color: "#fff",
                 cursor: downloading ? "wait" : "pointer",
                 fontSize: 12,
@@ -4668,9 +4666,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                color: "#6b7280",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.5)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -4678,10 +4676,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 transition: "background 0.15s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#e5e7eb";
+                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#f3f4f6";
+                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
               }}
             >
               <X size={14} />
@@ -4697,8 +4695,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           <div
             style={{
               width: 54,
-              background: "#ffffff",
-              borderRight: "1px solid #e5e7eb",
+              background: "#1e2130",
+              borderRight: "1px solid rgba(255,255,255,0.06)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -4720,8 +4718,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     height: 52,
                     borderRadius: 10,
                     border: "none",
-                    background: isActive ? "#fef2f2" : "transparent",
-                    color: isActive ? "#dc2626" : "#6b7280",
+                    background: isActive ? "#1a2a4a" : "transparent",
+                    color: isActive ? "#60a5fa" : "rgba(255,255,255,0.35)",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -4732,7 +4730,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     transition: "all 0.15s",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.background = "#f9fafb";
+                    if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive)
@@ -4749,7 +4747,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                         width: 3,
                         height: 24,
                         borderRadius: "0 3px 3px 0",
-                        background: "#dc2626",
+                        background: "#2563eb",
                       }}
                     />
                   )}
@@ -4773,8 +4771,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           <div
             style={{
               width: 280,
-              background: "#ffffff",
-              borderRight: "1px solid #e5e7eb",
+              background: "#1e2130",
+              borderRight: "1px solid rgba(255,255,255,0.06)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -4788,7 +4786,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 display: "flex",
                 alignItems: "center",
                 padding: "0 16px",
-                borderBottom: "1px solid #f3f4f6",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
                 flexShrink: 0,
               }}
             >
@@ -4796,7 +4794,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "#9ca3af",
+                  color: "rgba(255,255,255,0.25)",
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
                 }}
@@ -4875,6 +4873,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     flexShrink: 0,
                     lineHeight: 0,
                     position: "relative",
+                    overflow: "hidden",
                   }}
                 >
                   <CanvasPreview
@@ -4988,8 +4987,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <div
               style={{
                 height: 102,
-                background: "#f0f1f4",
-                borderTop: "1px solid #e5e7eb",
+                background: "#141a28",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -5020,9 +5019,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   height: 78,
                   flexShrink: 0,
                   borderRadius: 5,
-                  border: "1px dashed #d1d5db",
+                  border: "1px dashed rgba(255,255,255,0.12)",
                   background: "transparent",
-                  color: "#9ca3af",
+                  color: "rgba(255,255,255,0.3)",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -5043,9 +5042,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   height: 78,
                   flexShrink: 0,
                   borderRadius: 5,
-                  border: "1px dashed #fca5a5",
+                  border: "1px dashed rgba(37,99,235,0.4)",
                   background: "transparent",
-                  color: "#dc2626",
+                  color: "#3b82f6",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
