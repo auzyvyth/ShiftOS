@@ -914,4 +914,20 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         ctx.strokeStyle = hexToRgba(layer.borderColor || '#ffffff', layer.borderOpacity ?? 100);
         ctx.lineWidth = layer.borderWidth;
         if (layer.borderStyle === 'dashed') ctx.setLineDash([layer.borderWidth * 3, layer.borderWidth * 2]);
-        else if (layer.borderStyle === 'dotted') ctx.setLine
+        else if (layer.borderStyle === 'dotted') ctx.setLineDash([layer.borderWidth, layer.borderWidth * 1.5]);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+const _imgCache = new Map();
+function _loadImg(src) {
+  if (_imgCache.has(src)) return _imgCache.get(src);
+  const p = new Promise((res, rej) => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => res(img); img.onerror = rej; img.src = src;
+  });
+  _imgCache.set(src, p); return p;
+}
