@@ -1387,6 +1387,12 @@ function CanvasPreview({
     <div
       ref={combinedRef}
       onClick={onDeselectAll}
+      onTouchEnd={e => {
+        // Issue 5: Tap on empty canvas background deselects layers on mobile
+        if (e.target === e.currentTarget || e.target.tagName === 'CANVAS') {
+          onDeselectAll();
+        }
+      }}
       style={{
         position: "relative",
         width: W,
@@ -1396,6 +1402,7 @@ function CanvasPreview({
         userSelect: "none",
         flexShrink: 0,
         background: "#0a0d14",
+        isolation: "isolate",   // Issue 3: explicit stacking context for z-order
       }}
     >
       {/* ── Background canvas: pixel-perfect match to export ── */}
@@ -1687,10 +1694,16 @@ function ColorRow({ label, value, onChange }) {
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}
     >
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{label}</span>
+      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+        {label}
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}
+          style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.3)",
+            fontFamily: "monospace",
+          }}
         >
           {value}
         </span>
@@ -1723,8 +1736,16 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
           marginBottom: 5,
         }}
       >
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{label}</span>
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: 12,
+            color: "rgba(255,255,255,0.9)",
+            fontWeight: 600,
+          }}
+        >
           {fmt ? fmt(value) : value}
         </span>
       </div>
@@ -1776,7 +1797,9 @@ function Toggle({ value, onChange, label }) {
           }}
         />
       </div>
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{label}</span>
+      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+        {label}
+      </span>
     </label>
   );
 }
@@ -1959,6 +1982,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
     setSlides((ss) => ss.map((s, i) => (i === active ? { ...s, layers } : s)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers]);
+
+  // Issue 1: Lock viewport zoom while studio is open (prevents browser pinch-zoom)
+  useEffect(() => {
+    const meta = document.querySelector('meta[name=viewport]');
+    const original = meta?.getAttribute('content');
+    meta?.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+    return () => { if (original) meta?.setAttribute('content', original); };
+  }, []);
 
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -4125,7 +4156,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   if (isMobile) {
     const mobScale = Math.min(
       ((window.innerWidth - 20) * 0.9) / CW,
-      (window.innerHeight - 100 - 150) / CH,   // extra 40px for shape toolbar
+      (window.innerHeight - 100 - 150) / CH, // extra 40px for shape toolbar
     );
     return (
       <div
@@ -4185,7 +4216,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   borderRadius: 6,
                   border: "1px solid rgba(255,255,255,0.08)",
                   background: "transparent",
-                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)",
+                  color: dis
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(255,255,255,0.6)",
                   cursor: dis ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -4296,46 +4329,136 @@ export default function TikTokStudioV3({ listing, onClose }) {
         </div>
 
         {/* Mobile shape toolbar */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5, padding: "4px 10px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#1a2035",
-          flexShrink: 0, overflowX: "auto",
-        }}>
-          <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textTransform: "uppercase",
-            letterSpacing: "0.08em", flexShrink: 0 }}>Add:</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            background: "#1a2035",
+            flexShrink: 0,
+            overflowX: "auto",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 8,
+              color: "rgba(255,255,255,0.3)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              flexShrink: 0,
+            }}
+          >
+            Add:
+          </span>
           {[
-            ["▭", "Rect",     () => { addLayer("rect");     setActiveTab("layers"); }],
-            ["◯", "Circle",   () => { addLayer("circle");   setActiveTab("layers"); }],
-            ["△", "Triangle", () => { addLayer("triangle"); setActiveTab("layers"); }],
-            ["T", "Text",     () => { addLayer("text");     setActiveTab("layers"); }],
+            [
+              "▭",
+              "Rect",
+              () => {
+                addLayer("rect");
+                setActiveTab("layers");
+              },
+            ],
+            [
+              "◯",
+              "Circle",
+              () => {
+                addLayer("circle");
+                setActiveTab("layers");
+              },
+            ],
+            [
+              "△",
+              "Triangle",
+              () => {
+                addLayer("triangle");
+                setActiveTab("layers");
+              },
+            ],
+            [
+              "T",
+              "Text",
+              () => {
+                addLayer("text");
+                setActiveTab("layers");
+              },
+            ],
           ].map(([icon, lbl, fn]) => (
-            <button key={lbl} onClick={fn} style={{
-              display: "flex", alignItems: "center", gap: 3, padding: "4px 9px",
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 6, color: "rgba(255,255,255,0.65)", cursor: "pointer",
-              fontSize: 11, fontWeight: 600, flexShrink: 0,
-            }}>{icon} {lbl}</button>
+            <button
+              key={lbl}
+              onClick={fn}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+                padding: "4px 9px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 6,
+                color: "rgba(255,255,255,0.65)",
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {icon} {lbl}
+            </button>
           ))}
-          <label style={{
-            display: "flex", alignItems: "center", gap: 3, padding: "4px 9px",
-            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 6, color: "rgba(255,255,255,0.65)", cursor: "pointer",
-            fontSize: 11, fontWeight: 600, flexShrink: 0,
-          }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              padding: "4px 9px",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 6,
+              color: "rgba(255,255,255,0.65)",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
             🖼 Image
-            <input type="file" accept="image/*" style={{ display: "none" }}
-              onChange={e => {
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) { addLayer("image", { src: URL.createObjectURL(f) }); setActiveTab("layers"); }
+                if (f) {
+                  addLayer("image", { src: URL.createObjectURL(f) });
+                  setActiveTab("layers");
+                }
                 e.target.value = "";
-              }} />
+              }}
+            />
           </label>
           <div style={{ flex: 1 }} />
           {layers.length > 0 && (
-            <button onClick={() => { setSidebarOpen(true); setActiveTab("layers"); }} style={{
-              padding: "4px 9px", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
-              borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontSize: 11, fontWeight: 600, flexShrink: 0,
-            }}>{layers.length} layer{layers.length > 1 ? "s" : ""}</button>
+            <button
+              onClick={() => {
+                setSidebarOpen(true);
+                setActiveTab("layers");
+              }}
+              style={{
+                padding: "4px 9px",
+                background: "rgba(59,130,246,0.12)",
+                border: "1px solid rgba(59,130,246,0.3)",
+                borderRadius: 6,
+                color: "#60a5fa",
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {layers.length} layer{layers.length > 1 ? "s" : ""}
+            </button>
           )}
         </div>
 
@@ -4366,15 +4489,18 @@ export default function TikTokStudioV3({ listing, onClose }) {
               />
             </div>
           ) : (
-            <div style={{
-              position: "relative",
-              width: CW * mobScale,
-              height: CH * mobScale,
-              flexShrink: 0,
-              overflow: "hidden",
-              borderRadius: 4,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
-            }}>
+            <div
+              style={{
+                position: "relative",
+                width: CW * mobScale,
+                height: CH * mobScale,
+                flexShrink: 0,
+                overflow: "hidden",
+                borderRadius: 4,
+                boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
+                isolation: "isolate",
+              }}
+            >
               <CanvasPreview
                 {...previewProps}
                 scale={mobScale}
@@ -4575,7 +4701,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           borderRadius: 16,
           overflow: "hidden",
           background: "#131620",
-          boxShadow: "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
+          boxShadow:
+            "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
@@ -4664,7 +4791,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   borderRadius: 7,
                   border: "1px solid rgba(255,255,255,0.08)",
                   background: "transparent",
-                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.65)",
+                  color: dis
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(255,255,255,0.65)",
                   cursor: dis ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -4672,7 +4801,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   transition: "background 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!dis) e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+                  if (!dis)
+                    e.currentTarget.style.background = "rgba(255,255,255,0.07)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "transparent";
@@ -4800,7 +4930,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     transition: "all 0.15s",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                    if (!isActive)
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.06)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive)
@@ -4944,6 +5076,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     lineHeight: 0,
                     position: "relative",
                     overflow: "hidden",
+                    isolation: "isolate",   // Issue 3: stacking context for z-order
                     width: CW * scale,
                     height: CH * scale,
                   }}

@@ -14,8 +14,9 @@ export function makeLayer(type, overrides = {}) {
     borderColor: '#ffffff', borderWidth: 0, borderOpacity: 100,
     borderStyle: 'solid', borderRadius: 0,
     src: null, objectFit: 'cover',
-    text: '', fontSize: 24, fontWeight: 'bold', textColor: '#ffffff', textAlign: 'center',
-    zIndex: 0,
+    text: '', fontSize: 24, fontWeight: 'bold', fontStyle: 'normal',
+    fontFamily: 'DM Sans', textColor: '#ffffff', textAlign: 'center', textVerticalAlign: 'center',
+    zIndex: 20,   // default above template content (template sits at z=10 in CanvasPreview)
     locked: false, visible: true, opacity: 100,
     blendMode: 'normal',
     filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0, opacity: 100, hue: 0, sepia: 0, preset: null },
@@ -52,7 +53,9 @@ function reducer(state, action) {
     }
 
     case 'ADD': {
-      const layer = { ...action.layer, zIndex: state.layers.length };
+      // Preserve the zIndex from makeLayer (default 20 = above template).
+      // Only set it if not already specified.
+      const layer = { ...action.layer, zIndex: action.layer.zIndex ?? 20 };
       const layers = [...state.layers, layer];
       return { ...state, layers, selectedIds: [layer.id],
         history: pushHist(state.history, state.historyIdx, layers), historyIdx: Math.min(state.historyIdx + 1, MAX_HISTORY - 1) };
@@ -73,7 +76,8 @@ function reducer(state, action) {
 
     case 'DELETE': {
       const ids = new Set(action.ids);
-      const layers = state.layers.filter(l => !ids.has(l.id)).map((l, i) => ({ ...l, zIndex: i }));
+      // Preserve each layer's explicit zIndex on delete — do not re-number.
+      const layers = state.layers.filter(l => !ids.has(l.id));
       const history = pushHist(state.history, state.historyIdx, layers);
       return { ...state, layers, selectedIds: [], history, historyIdx: history.length - 1 };
     }
@@ -82,14 +86,15 @@ function reducer(state, action) {
       const src = state.layers.find(l => l.id === action.id);
       if (!src) return state;
       const dup = { ...snap(src), id: nanoid(8), x: src.x + 3, y: src.y + 3,
-        label: src.label + ' copy', zIndex: state.layers.length };
+        label: src.label + ' copy', zIndex: (src.zIndex ?? 20) + 1 };
       const layers = [...state.layers, dup];
       const history = pushHist(state.history, state.historyIdx, layers);
       return { ...state, layers, selectedIds: [dup.id], history, historyIdx: history.length - 1 };
     }
 
     case 'REORDER': {
-      const layers = action.layers.map((l, i) => ({ ...l, zIndex: i }));
+      // Preserve explicit zIndex — reorder just changes array order for the LayerStack display.
+      const layers = action.layers;
       const history = pushHist(state.history, state.historyIdx, layers);
       return { ...state, layers, history, historyIdx: history.length - 1 };
     }
