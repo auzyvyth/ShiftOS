@@ -1,7 +1,7 @@
 /**
  * LayerCanvas — Canva-style layer editor overlay for TikTok Studio V3
- * v2: fixed drag (useRef + document listeners), touch + pinch, filters,
- *     overflow:hidden containment, light-chrome UI.
+ * v3: pinch-zoom prevention, full z-order control, font-family on text,
+ *     tap-away deselect, text overflow clipping, background layer support.
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -10,13 +10,17 @@ import {
   Square, Circle, Triangle, ImagePlus, Type,
   Undo2, Redo2, MoveUp, MoveDown, RotateCcw,
   AlignLeft, AlignCenter, AlignRight,
+  ChevronsUp, ChevronsDown, ChevronUp, ChevronDown,
 } from 'lucide-react';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const HANDLE_SIZE = 9;
+const HANDLE_SIZE   = 9;
 const ROTATE_OFFSET = 22;
 const SNAP_THRESHOLD = 2;       // % of dimension
-const ROTATION_SNAP = 15;       // degrees
+const ROTATION_SNAP  = 15;       // degrees
+const Z_ABOVE_TEMPLATE = 20;    // default z for new layers (above slide at z=10)
+const Z_BELOW_TEMPLATE = 5;     // z for "Send to Back" (below slide elements at z=10)
+const Z_FRONT = 99;
 
 const FILTER_DEFAULTS = {
   brightness: 100, contrast: 100, saturation: 100,
@@ -31,6 +35,11 @@ const FILTER_PRESETS = {
   warm:  { brightness: 105, contrast: 100, saturation: 110, hue: 15,  sepia: 10 },
   cool:  { brightness: 100, contrast: 105, saturation: 90,  hue: 200, sepia: 0  },
 };
+
+const TEXT_FONTS = [
+  'DM Sans', 'Inter', 'Montserrat', 'Oswald', 'Bebas Neue',
+  'Roboto', 'Poppins', 'Lato',
+];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -50,8 +59,41 @@ function buildFilterStr(f = {}) {
   return `brightness(${ff.brightness}%) contrast(${ff.contrast}%) saturate(${ff.saturation}%) blur(${ff.blur}px) hue-rotate(${ff.hue}deg) sepia(${ff.sepia}%)`;
 }
 
+// ─── Text content renderer (shared by LayerDiv and canvas export) ──────────────
+function TextContent({ layer }) {
+  const justifyContent =
+    layer.textAlign === 'left'  ? 'flex-start' :
+    layer.textAlign === 'right' ? 'flex-end'   : 'center';
+  const alignItems =
+    layer.textVerticalAlign === 'top'    ? 'flex-start' :
+    layer.textVerticalAlign === 'bottom' ? 'flex-end'   : 'center';
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, overflow: 'hidden',   // CLIP text to shape bounds
+      display: 'flex', alignItems, justifyContent,
+      padding: '4px 6px', boxSizing: 'border-box',
+      pointerEvents: 'none',
+    }}>
+      <span style={{
+        fontFamily: layer.fontFamily || 'DM Sans',
+        fontSize: `${layer.fontSize || 24}px`,
+        fontWeight: layer.fontWeight || 'bold',
+        fontStyle: layer.fontStyle === 'italic' ? 'italic' : 'normal',
+        color: layer.textColor || '#ffffff',
+        textAlign: layer.textAlign || 'center',
+        wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+        maxWidth: '100%', lineHeight: 1.25,
+        userSelect: 'none',
+      }}>
+        {layer.text || (layer.type === 'text' ? 'Text' : '')}
+      </span>
+    </div>
+  );
+}
+
 // ─── Layer shape renderer (CSS-based) ─────────────────────────────────────────
-function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
+function LayerDiv({ layer, onMouseDown, onTouchStart, onTouchMove, onTouchEnd }) {
   const f = { ...FILTER_DEFAULTS, ...layer.filters };
   const filterStr = buildFilterStr(f);
 
@@ -59,17 +101,13 @@ function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
     borderWidth: layer.borderWidth || 0,
     borderStyle: layer.borderStyle || 'solid',
     borderColor: hexToRgba(layer.borderColor || '#ffffff', layer.borderOpacity ?? 100),
-    borderRadius: layer.type === 'circle' ? '50%'
-      : layer.type === 'image' ? `${layer.borderRadius || 0}%`
-      : `${layer.borderRadius || 0}%`,
+    borderRadius: layer.type === 'circle' ? '50%' : `${layer.borderRadius || 0}%`,
   };
 
   const base = {
     position: 'absolute',
-    left: `${layer.x}%`,
-    top: `${layer.y}%`,
-    width: `${layer.width}%`,
-    height: `${layer.height}%`,
+    left: `${layer.x}%`, top: `${layer.y}%`,
+    width: `${layer.width}%`, height: `${layer.height}%`,
     transform: `rotate(${layer.rotation || 0}deg)`,
     transformOrigin: 'center center',
     filter: filterStr,
@@ -77,16 +115,18 @@ function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
     mixBlendMode: layer.blendMode || 'normal',
     pointerEvents: layer.locked ? 'none' : 'auto',
     cursor: 'move',
-    zIndex: (layer.zIndex ?? 0) + 1,
+    zIndex: layer.zIndex ?? Z_ABOVE_TEMPLATE,
     boxSizing: 'border-box',
     userSelect: 'none',
     visibility: layer.visible === false ? 'hidden' : 'visible',
     touchAction: 'none',
   };
 
+  const handlers = { onMouseDown, onTouchStart, onTouchMove, onTouchEnd };
+
   if (layer.type === 'image') {
     return (
-      <div style={base} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
+      <div style={base} {...handlers}>
         {layer.src ? (
           <img src={layer.src} alt="" draggable={false} style={{
             width: '100%', height: '100%', objectFit: layer.objectFit || 'cover',
@@ -106,65 +146,46 @@ function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
   if (layer.type === 'triangle') {
     return (
       <div style={{
-        ...base,
+        ...base, overflow: 'hidden',
         background: hexToRgba(layer.fill || '#f59e0b', layer.fillOpacity ?? 100),
         clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-        ...borderStyle,
-      }} onMouseDown={onMouseDown} onTouchStart={onTouchStart} />
-    );
-  }
-
-  // text layer: transparent bg, text only
-  if (layer.type === 'text') {
-    return (
-      <div style={{ ...base, background: 'transparent' }} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center',
-          justifyContent: layer.textAlign === 'left' ? 'flex-start' : layer.textAlign === 'right' ? 'flex-end' : 'center',
-          padding: '4px 6px', fontSize: `${layer.fontSize || 24}px`,
-          fontWeight: layer.fontWeight || 'bold',
-          color: layer.textColor || '#ffffff', overflow: 'hidden',
-          pointerEvents: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          lineHeight: 1.25,
-        }}>{layer.text || 'Text'}</div>
+      }} {...handlers}>
+        {layer.text && <TextContent layer={layer} />}
       </div>
     );
   }
 
+  if (layer.type === 'text') {
+    return (
+      <div style={{ ...base, background: 'transparent', overflow: 'hidden' }} {...handlers}>
+        <TextContent layer={layer} />
+      </div>
+    );
+  }
+
+  // rect / circle (default)
   return (
     <div style={{
-      ...base,
+      ...base, overflow: 'hidden',
       background: hexToRgba(layer.fill || '#e63946', layer.fillOpacity ?? 100),
       ...borderStyle,
-    }} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
-      {layer.text && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center',
-          justifyContent: layer.textAlign === 'left' ? 'flex-start' : layer.textAlign === 'right' ? 'flex-end' : 'center',
-          padding: '4px 6px', fontSize: `${layer.fontSize || 24}px`,
-          fontWeight: layer.fontWeight || 'bold',
-          color: layer.textColor || '#ffffff', overflow: 'hidden',
-          pointerEvents: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          lineHeight: 1.25,
-        }}>{layer.text}</div>
-      )}
+    }} {...handlers}>
+      {layer.text && <TextContent layer={layer} />}
     </div>
   );
 }
 
 // ─── Selection overlay ─────────────────────────────────────────────────────────
 const HANDLES = ['nw','n','ne','e','se','s','sw','w'];
-const CURSOR  = { nw:'nwse-resize',n:'ns-resize',ne:'nesw-resize',e:'ew-resize',
-                   se:'nwse-resize',s:'ns-resize',sw:'nesw-resize',w:'ew-resize' };
+const CURSOR  = { nw:'nwse-resize', n:'ns-resize', ne:'nesw-resize', e:'ew-resize',
+                   se:'nwse-resize', s:'ns-resize', sw:'nesw-resize', w:'ew-resize' };
 
 function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHandleTouchStart,
                         onRotateMouseDown, onRotateTouchStart, onDelete }) {
   const hs = HANDLE_SIZE;
   const x = (layer.x / 100) * containerW;
   const y = (layer.y / 100) * containerH;
-  const w = (layer.width / 100) * containerW;
+  const w = (layer.width  / 100) * containerW;
   const h = (layer.height / 100) * containerH;
 
   const handlePos = {
@@ -176,7 +197,7 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
     <div style={{
       position: 'absolute', left: x, top: y, width: w, height: h,
       transform: `rotate(${layer.rotation || 0}deg)`, transformOrigin: 'center center',
-      pointerEvents: 'none', zIndex: 50,
+      pointerEvents: 'none', zIndex: 200,   // always on top
     }}>
       <div style={{ position: 'absolute', inset: 0, border: '1.5px solid #3b82f6',
         pointerEvents: 'none', boxSizing: 'border-box' }} />
@@ -184,11 +205,11 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
       {HANDLES.map(hk => (
         <div key={hk}
           onMouseDown={e => { e.stopPropagation(); onHandleMouseDown(e, hk); }}
-          onTouchStart={e => { e.stopPropagation(); onHandleTouchStart(e, hk); }}
+          onTouchStart={e => { e.stopPropagation(); e.preventDefault(); onHandleTouchStart(e, hk); }}
           style={{
             position: 'absolute', left: handlePos[hk][0], top: handlePos[hk][1],
             width: hs, height: hs, background: '#fff', border: '1.5px solid #3b82f6',
-            borderRadius: 2, cursor: CURSOR[hk], pointerEvents: 'auto', zIndex: 51,
+            borderRadius: 2, cursor: CURSOR[hk], pointerEvents: 'auto', zIndex: 201,
             touchAction: 'none',
           }} />
       ))}
@@ -196,41 +217,45 @@ function SelectionBox({ layer, containerW, containerH, onHandleMouseDown, onHand
       {/* Rotate handle */}
       <div
         onMouseDown={e => { e.stopPropagation(); onRotateMouseDown(e); }}
-        onTouchStart={e => { e.stopPropagation(); onRotateTouchStart(e); }}
+        onTouchStart={e => { e.stopPropagation(); e.preventDefault(); onRotateTouchStart(e); }}
         style={{
           position: 'absolute', left: w/2-hs/2, top: -ROTATE_OFFSET-hs/2,
-          width: hs, height: hs, background: '#3b82f6', borderRadius: '50%',
-          cursor: 'crosshair', pointerEvents: 'auto', zIndex: 51, touchAction: 'none',
-        }} title="Rotate" />
+          width: hs*1.5, height: hs*1.5, background: '#3b82f6', borderRadius: '50%',
+          cursor: 'crosshair', pointerEvents: 'auto', zIndex: 201, touchAction: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} title="Rotate">
+        <RotateCcw size={8} color="#fff" />
+      </div>
       <div style={{
         position: 'absolute', left: w/2-0.5, top: -ROTATE_OFFSET,
         width: 1, height: ROTATE_OFFSET, background: 'rgba(59,130,246,0.5)',
         pointerEvents: 'none',
       }} />
 
-      {/* Delete */}
+      {/* Delete — larger touch target on mobile */}
       <div
         onMouseDown={e => { e.stopPropagation(); onDelete(); }}
+        onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
         style={{
-          position: 'absolute', right: -10, top: -10, width: 18, height: 18,
+          position: 'absolute', right: -12, top: -12, width: 22, height: 22,
           background: '#ef4444', borderRadius: '50%', cursor: 'pointer',
           pointerEvents: 'auto', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 51, touchAction: 'none',
+          justifyContent: 'center', zIndex: 201, touchAction: 'none',
         }}>
-        <Trash2 size={9} color="#fff" />
+        <Trash2 size={10} color="#fff" />
       </div>
     </div>
   );
 }
 
 // ─── Snap guides ───────────────────────────────────────────────────────────────
-function SnapGuides({ snapH, snapV, w, h }) {
+function SnapGuides({ snapH, snapV }) {
   return (
     <>
       {snapH && <div style={{ position:'absolute', left:0, top:'50%', width:'100%', height:1,
-        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateY(-50%)' }} />}
+        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:210, transform:'translateY(-50%)' }} />}
       {snapV && <div style={{ position:'absolute', left:'50%', top:0, width:1, height:'100%',
-        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:60, transform:'translateX(-50%)' }} />}
+        background:'#3b82f6', opacity:0.8, pointerEvents:'none', zIndex:210, transform:'translateX(-50%)' }} />}
     </>
   );
 }
@@ -243,7 +268,7 @@ function Tooltip({ text, x, y }) {
       position: 'absolute', left: x + 12, top: y + 12,
       background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: 10,
       padding: '3px 7px', borderRadius: 4, pointerEvents: 'none',
-      zIndex: 70, whiteSpace: 'nowrap',
+      zIndex: 220, whiteSpace: 'nowrap',
     }}>{text}</div>
   );
 }
@@ -254,8 +279,8 @@ export default function LayerCanvas({
   onSelectLayer, onClearSelection, onUpdateLayer, onCommitHistory, onDeleteLayer,
 }) {
   const containerRef = useRef(null);
-  const dragRef      = useRef(null);   // { type:'drag'|'resize'|'rotate', id, ... }
-  const pinchRef     = useRef(null);   // { id, startDist, origW, origH }
+  const dragRef      = useRef(null);
+  const pinchRef     = useRef(null);
 
   const [snapH, setSnapH]           = useState(false);
   const [snapV, setSnapV]           = useState(false);
@@ -265,7 +290,20 @@ export default function LayerCanvas({
   const cW = (canvasW || 1080) * scale;
   const cH = (canvasH || 1920) * scale;
 
-  const getRect = () => containerRef.current?.getBoundingClientRect() || { left:0,top:0,width:1,height:1 };
+  const getRect = () => containerRef.current?.getBoundingClientRect() || { left:0, top:0, width:1, height:1 };
+
+  // ── Issue 1: Block browser pinch-zoom inside canvas ───────────────────────
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const prevent = e => { if (e.touches.length >= 2) e.preventDefault(); };
+    el.addEventListener('touchstart', prevent, { passive: false });
+    el.addEventListener('touchmove',  prevent, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', prevent);
+      el.removeEventListener('touchmove',  prevent);
+    };
+  }, []);
 
   // ── Mouse drag logic ──────────────────────────────────────────────────────
   const handleDragStart = (e, layerId) => {
@@ -302,7 +340,7 @@ export default function LayerCanvas({
     const layer = layers.find(l => l.id === layerId);
     if (!layer) return;
     const rect = getRect();
-    const cx = rect.left + ((layer.x + layer.width / 2) / 100) * cW;
+    const cx = rect.left + ((layer.x + layer.width  / 2) / 100) * cW;
     const cy = rect.top  + ((layer.y + layer.height / 2) / 100) * cH;
     dragRef.current = {
       type: 'rotate', id: layerId,
@@ -355,7 +393,7 @@ export default function LayerCanvas({
   }, [cW, cH, onUpdateLayer]);
 
   const endInteraction = useCallback(() => {
-    if (!dragRef.current) return;
+    if (!dragRef.current && !pinchRef.current) return;
     dragRef.current = null;
     pinchRef.current = null;
     setSnapH(false); setSnapV(false);
@@ -375,11 +413,11 @@ export default function LayerCanvas({
     };
   }, [applyMove, endInteraction]);
 
-  // ── Touch handlers ────────────────────────────────────────────────────────
+  // ── Issue 2: Touch handlers (start — single & pinch) ─────────────────────
   const handleTouchStart = (e, layerId) => {
+    e.stopPropagation();
     if (e.touches.length === 1) {
       e.preventDefault();
-      e.stopPropagation();
       const layer = layers.find(l => l.id === layerId);
       if (!layer || layer.locked) return;
       const t = e.touches[0];
@@ -392,6 +430,7 @@ export default function LayerCanvas({
       };
       setTooltipPos({ x: t.clientX - rect.left, y: t.clientY - rect.top });
     } else if (e.touches.length === 2) {
+      e.preventDefault();
       const layer = layers.find(l => l.id === layerId);
       if (!layer) return;
       const dist = Math.hypot(
@@ -424,7 +463,7 @@ export default function LayerCanvas({
     if (!layer) return;
     const rect = getRect();
     const t = e.touches[0];
-    const cx = rect.left + ((layer.x + layer.width / 2) / 100) * cW;
+    const cx = rect.left + ((layer.x + layer.width  / 2) / 100) * cW;
     const cy = rect.top  + ((layer.y + layer.height / 2) / 100) * cH;
     dragRef.current = {
       type: 'rotate', id: layerId,
@@ -434,7 +473,7 @@ export default function LayerCanvas({
     };
   };
 
-  // ── Touch move / end via document listeners (passive:false) ─────────────
+  // ── Touch move / end — document level, passive: false ────────────────────
   useEffect(() => {
     const onTouchMove = e => {
       if (!dragRef.current && !pinchRef.current) return;
@@ -448,24 +487,26 @@ export default function LayerCanvas({
           e.touches[0].clientY - e.touches[1].clientY,
         );
         const sc = dist / pinchRef.current.startDist;
-        const nw = clamp(pinchRef.current.origW * sc, 5, 100);
-        const nh = clamp(pinchRef.current.origH * sc, 5, 100);
+        const nw = clamp(pinchRef.current.origW * sc, 5, 95);
+        const nh = clamp(pinchRef.current.origH * sc, 5, 95);
         onUpdateLayer(pinchRef.current.id, { width: nw, height: nh }, true);
       }
     };
     const onTouchEnd = () => endInteraction();
-
     document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchend',  onTouchEnd);
     return () => {
       document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchend',  onTouchEnd);
     };
   }, [applyMove, endInteraction, onUpdateLayer]);
 
   const selectedLayer = layers.find(l => selectedIds.includes(l.id));
 
   return (
+    // Issue 3: No explicit zIndex on container — children's z-indices participate
+    // directly in the outer wrapper's stacking context, allowing layers with z < 10
+    // to appear below the slide template (which renders at z=10 inside CanvasPreview).
     <div
       ref={containerRef}
       style={{
@@ -473,7 +514,7 @@ export default function LayerCanvas({
         width: '100%', height: '100%',
         overflow: 'hidden',
         pointerEvents: 'none',
-        zIndex: 20,
+        // zIndex intentionally omitted — see Issue 3 note above
       }}
     >
       {layers.map(layer => (
@@ -487,6 +528,7 @@ export default function LayerCanvas({
             onSelectLayer?.(layer.id, e.shiftKey || e.metaKey);
             handleDragStart(e, layer.id);
           }}
+          // Issue 5 & 6: stopPropagation prevents canvas background from deselecting
           onTouchStart={e => {
             e.stopPropagation();
             onSelectLayer?.(layer.id);
@@ -508,7 +550,7 @@ export default function LayerCanvas({
         />
       )}
 
-      <SnapGuides snapH={snapH} snapV={snapV} w={cW} h={cH} />
+      <SnapGuides snapH={snapH} snapV={snapV} />
       {tooltip && <Tooltip text={tooltip} x={tooltipPos.x} y={tooltipPos.y} />}
     </div>
   );
@@ -548,11 +590,11 @@ export function LayerToolbar({ onAddShape, onAddImage, canUndo, canRedo, onUndo,
         letterSpacing: '0.08em', marginBottom: 4, textAlign: 'center', lineHeight: 1 }}>
         Layers
       </div>
-      {btn(<Square size={14} />, 'Add Rectangle', () => onAddShape('rect'))}
-      {btn(<Circle size={14} />, 'Add Circle', () => onAddShape('circle'))}
-      {btn(<Triangle size={14} />, 'Add Triangle', () => onAddShape('triangle'))}
-      {btn(<Type size={14} />, 'Add Text', () => onAddShape('text'))}
-      {btn(<ImagePlus size={14} />, 'Add Image', () => inputRef.current?.click())}
+      {btn(<Square size={14} />,   'Add Rectangle', () => onAddShape('rect'))}
+      {btn(<Circle size={14} />,   'Add Circle',    () => onAddShape('circle'))}
+      {btn(<Triangle size={14} />, 'Add Triangle',  () => onAddShape('triangle'))}
+      {btn(<Type size={14} />,     'Add Text',      () => onAddShape('text'))}
+      {btn(<ImagePlus size={14} />, 'Add Image',    () => inputRef.current?.click())}
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={e => {
           const f = e.target.files?.[0];
@@ -683,6 +725,11 @@ function SectionLabel({ children }) {
   );
 }
 
+const selectStyle = {
+  width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none',
+};
+
 export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDuplicate }) {
   if (!layer) {
     return (
@@ -696,14 +743,13 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
   const uc = patch => { onUpdate(layer.id, patch); onCommit?.(); };
 
   const f = { ...FILTER_DEFAULTS, ...layer.filters };
-
   const applyPreset = name => {
     const preset = FILTER_PRESETS[name];
     if (!preset) return;
     uc({ filters: { ...f, ...preset, preset: name } });
   };
 
-  const filterStr = buildFilterStr(f);
+  const curZ = layer.zIndex ?? Z_ABOVE_TEMPLATE;
 
   return (
     <div style={{ overflowY: 'auto', paddingBottom: 16 }}>
@@ -739,11 +785,35 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
             outline: 'none', boxSizing: 'border-box' }} />
       </PropRow>
 
+      {/* Issue 3: Z-Order controls */}
+      <SectionLabel>Z-Order</SectionLabel>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+        {[
+          [<ChevronsUp size={11}/>,   'Front',   () => uc({ zIndex: Z_FRONT })],
+          [<ChevronUp size={11}/>,    'Fwd +1',  () => uc({ zIndex: clamp(curZ + 1, 1, 199) })],
+          [<ChevronDown size={11}/>,  'Back -1', () => uc({ zIndex: clamp(curZ - 1, 1, 199) })],
+          [<ChevronsDown size={11}/>, 'Behind',  () => uc({ zIndex: Z_BELOW_TEMPLATE })],
+        ].map(([icon, label, fn]) => (
+          <button key={label} onClick={fn} style={{
+            flex: 1, minWidth: 54, padding: '5px 2px', fontSize: 9, fontWeight: 600,
+            borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: 3,
+            background: label === 'Behind' ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${label === 'Behind' ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            color: label === 'Behind' ? '#fbbf24' : 'rgba(255,255,255,0.55)',
+          }}>{icon} {label}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginBottom: 8 }}>
+        z={curZ} · template at z=10 · "Behind" puts layer below template
+      </div>
+
+      {/* Transform */}
       <SectionLabel>Transform</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
         {[['X %', layer.x, v => u({ x: v }), 0, 100],
           ['Y %', layer.y, v => u({ y: v }), 0, 100],
-          ['W %', layer.width, v => u({ width: v }), 1, 100],
+          ['W %', layer.width,  v => u({ width:  v }), 1, 100],
           ['H %', layer.height, v => u({ height: v }), 1, 100]].map(([lbl, val, fn, lo, hi]) => (
           <div key={lbl}>
             <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 3 }}>{lbl}</div>
@@ -754,8 +824,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
       <LSlider label="Rotation" value={layer.rotation || 0} min={-180} max={180}
         onChange={v => u({ rotation: v })} fmt={v => `${v}°`} />
 
-      {/* Fill */}
-      {layer.type !== 'image' && (
+      {/* Fill — not for text or image */}
+      {layer.type !== 'image' && layer.type !== 'text' && (
         <>
           <SectionLabel>Fill</SectionLabel>
           <PropRow label="Color">
@@ -783,8 +853,7 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
           </PropRow>
           <PropRow label="Fit">
             <select value={layer.objectFit || 'cover'} onChange={e => uc({ objectFit: e.target.value })}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
+              style={selectStyle}>
               {['cover','contain','fill','none'].map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </PropRow>
@@ -793,8 +862,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
         </>
       )}
 
-      {/* Text */}
-      {(layer.type === 'text' || layer.type === 'rect' || layer.type === 'circle') && (
+      {/* Issue 4: Text — full controls for text/rect/circle/triangle */}
+      {(layer.type === 'text' || layer.type === 'rect' || layer.type === 'circle' || layer.type === 'triangle') && (
         <>
           <SectionLabel>Text</SectionLabel>
           <PropRow label="Content">
@@ -804,31 +873,70 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
                 borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
                 outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
           </PropRow>
+
+          {/* Font family */}
+          <PropRow label="Font">
+            <select value={layer.fontFamily || 'DM Sans'} onChange={e => u({ fontFamily: e.target.value })}
+              style={selectStyle}>
+              {TEXT_FONTS.map(f => <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>)}
+            </select>
+          </PropRow>
+
           <LSlider label="Font Size" value={layer.fontSize || 24} min={8} max={200}
             onChange={v => u({ fontSize: v })} fmt={v => `${v}px`} />
+
           <PropRow label="Color">
             <LColorInput value={layer.textColor || '#ffffff'} onChange={v => u({ textColor: v })} />
           </PropRow>
-          <PropRow label="Align">
-            <div style={{ display: 'flex', gap: 5 }}>
-              {[['left','left'],['center','center'],['right','right']].map(([val, lbl]) => (
+
+          {/* Align + Bold/Italic in one row */}
+          <PropRow label="Style">
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[
+                [<AlignLeft size={11}/>,   'left'],
+                [<AlignCenter size={11}/>, 'center'],
+                [<AlignRight size={11}/>,  'right'],
+              ].map(([icon, val]) => (
                 <button key={val} onClick={() => u({ textAlign: val })}
                   style={{ flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 10,
                     background: (layer.textAlign || 'center') === val ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
                     border: `1px solid ${(layer.textAlign || 'center') === val ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
                     color: (layer.textAlign || 'center') === val ? '#60a5fa' : 'rgba(255,255,255,0.5)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {val === 'left' ? <AlignLeft size={11}/> : val === 'center' ? <AlignCenter size={11}/> : <AlignRight size={11}/>}
+                  {icon}
+                </button>
+              ))}
+              <button onClick={() => u({ fontWeight: layer.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  background: layer.fontWeight === 'bold' ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${layer.fontWeight === 'bold' ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                  color: layer.fontWeight === 'bold' ? '#60a5fa' : 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                B
+              </button>
+              <button onClick={() => u({ fontStyle: layer.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                style={{ flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontStyle: 'italic', fontWeight: 600,
+                  background: layer.fontStyle === 'italic' ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${layer.fontStyle === 'italic' ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                  color: layer.fontStyle === 'italic' ? '#60a5fa' : 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                I
+              </button>
+            </div>
+          </PropRow>
+
+          {/* Vertical align */}
+          <PropRow label="Vertical">
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['top','Top'],['center','Mid'],['bottom','Bot']].map(([val, lbl]) => (
+                <button key={val} onClick={() => u({ textVerticalAlign: val })}
+                  style={{ flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 9,
+                    background: (layer.textVerticalAlign || 'center') === val ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${(layer.textVerticalAlign || 'center') === val ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    color: (layer.textVerticalAlign || 'center') === val ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer', fontWeight: 600 }}>
+                  {lbl}
                 </button>
               ))}
             </div>
-          </PropRow>
-          <PropRow label="Weight">
-            <select value={layer.fontWeight || 'bold'} onChange={e => u({ fontWeight: e.target.value })}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
-              {['normal','500','600','bold','800','900'].map(w => <option key={w} value={w}>{w}</option>)}
-            </select>
           </PropRow>
         </>
       )}
@@ -847,10 +955,8 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
         </>
       )}
 
-      {/* ── Filters ── */}
+      {/* Filters */}
       <SectionLabel>Filters</SectionLabel>
-
-      {/* Preset grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: 10 }}>
         {Object.keys(FILTER_PRESETS).map(name => (
           <button key={name} onClick={() => applyPreset(name)}
@@ -865,30 +971,20 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
           </button>
         ))}
       </div>
-
-      {/* Filter preview strip */}
-      <div style={{ marginBottom: 10, fontSize: 9, color: 'rgba(255,255,255,0.3)',
-        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6,
-        padding: '4px 8px', fontFamily: 'monospace', overflow: 'hidden',
-        whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-        {filterStr}
-      </div>
-
       <LSlider label="Brightness" value={f.brightness} min={0} max={200}
         onChange={v => u({ filters: { ...f, brightness: v, preset: null } })} fmt={v => `${v}%`} />
-      <LSlider label="Contrast" value={f.contrast} min={0} max={200}
-        onChange={v => u({ filters: { ...f, contrast: v, preset: null } })} fmt={v => `${v}%`} />
+      <LSlider label="Contrast"   value={f.contrast}   min={0} max={200}
+        onChange={v => u({ filters: { ...f, contrast:   v, preset: null } })} fmt={v => `${v}%`} />
       <LSlider label="Saturation" value={f.saturation} min={0} max={200}
         onChange={v => u({ filters: { ...f, saturation: v, preset: null } })} fmt={v => `${v}%`} />
-      <LSlider label="Blur" value={f.blur} min={0} max={20}
-        onChange={v => u({ filters: { ...f, blur: v, preset: null } })} fmt={v => `${v}px`} />
-      <LSlider label="Opacity" value={f.opacity} min={0} max={100}
-        onChange={v => u({ filters: { ...f, opacity: v, preset: null } })} fmt={v => `${v}%`} />
-      <LSlider label="Hue Rotate" value={f.hue} min={0} max={360}
-        onChange={v => u({ filters: { ...f, hue: v, preset: null } })} fmt={v => `${v}°`} />
-      <LSlider label="Sepia" value={f.sepia} min={0} max={100}
-        onChange={v => u({ filters: { ...f, sepia: v, preset: null } })} fmt={v => `${v}%`} />
-
+      <LSlider label="Blur"       value={f.blur}       min={0} max={20}
+        onChange={v => u({ filters: { ...f, blur:       v, preset: null } })} fmt={v => `${v}px`} />
+      <LSlider label="Opacity"    value={f.opacity}    min={0} max={100}
+        onChange={v => u({ filters: { ...f, opacity:    v, preset: null } })} fmt={v => `${v}%`} />
+      <LSlider label="Hue Rotate" value={f.hue}        min={0} max={360}
+        onChange={v => u({ filters: { ...f, hue:        v, preset: null } })} fmt={v => `${v}°`} />
+      <LSlider label="Sepia"      value={f.sepia}      min={0} max={100}
+        onChange={v => u({ filters: { ...f, sepia:      v, preset: null } })} fmt={v => `${v}%`} />
       <button onClick={() => uc({ filters: { ...FILTER_DEFAULTS } })}
         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
           fontSize: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
@@ -896,12 +992,11 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
         <RotateCcw size={11} /> Reset filters
       </button>
 
-      {/* Blend / layer */}
+      {/* Layer */}
       <SectionLabel>Layer</SectionLabel>
       <PropRow label="Blend Mode">
         <select value={layer.blendMode || 'normal'} onChange={e => uc({ blendMode: e.target.value })}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
+          style={selectStyle}>
           {['normal','multiply','screen','overlay','darken','lighten',
             'color-dodge','color-burn','hard-light','soft-light',
             'difference','exclusion','hue','saturation','color','luminosity'].map(m => (
@@ -910,7 +1005,7 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
         </select>
       </PropRow>
       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-        {[['locked', 'Locked'], ['visible', 'Visible']].map(([key, lbl]) => (
+        {[['locked','Locked'],['visible','Visible']].map(([key, lbl]) => (
           <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 5,
             fontSize: 10, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
             <input type="checkbox"
@@ -929,7 +1024,10 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
   if (!layers?.length) return;
   const ctx = canvas.getContext('2d');
 
-  for (const layer of layers) {
+  // Sort by zIndex so low-z layers paint first
+  const sorted = [...layers].sort((a, b) => (a.zIndex ?? Z_ABOVE_TEMPLATE) - (b.zIndex ?? Z_ABOVE_TEMPLATE));
+
+  for (const layer of sorted) {
     if (layer.visible === false) continue;
     const x = (layer.x / 100) * CW;
     const y = (layer.y / 100) * CH;
@@ -939,12 +1037,9 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
     ctx.save();
     ctx.globalAlpha = ((layer.filters?.opacity ?? 100)) / 100;
     ctx.globalCompositeOperation = layer.blendMode || 'source-over';
-
-    // Apply CSS-equivalent filter
     const f = { ...FILTER_DEFAULTS, ...layer.filters };
     ctx.filter = buildFilterStr(f);
 
-    // Rotate around centre
     const cx = x + w / 2, cy = y + h / 2;
     ctx.translate(cx, cy);
     ctx.rotate(deg2rad(layer.rotation || 0));
@@ -953,7 +1048,7 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
     if (layer.type === 'image' && layer.src) {
       try {
         const img = await _loadImg(layer.src);
-        const rr = layer.type === 'circle' ? w / 2 : ((layer.borderRadius || 0) / 100) * Math.min(w, h);
+        const rr = ((layer.borderRadius || 0) / 100) * Math.min(w, h);
         ctx.beginPath(); ctx.roundRect(x, y, w, h, rr); ctx.clip();
         const sc = layer.objectFit === 'contain'
           ? Math.min(w / img.naturalWidth, h / img.naturalHeight)
@@ -961,11 +1056,23 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         const sw = img.naturalWidth * sc, sh = img.naturalHeight * sc;
         ctx.drawImage(img, x + (w - sw) / 2, y + (h - sh) / 2, sw, sh);
       } catch {}
+
     } else if (layer.type === 'triangle') {
       ctx.beginPath(); ctx.moveTo(x + w/2, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath();
-      const ff = hexToRgba(layer.fill || '#f59e0b', layer.fillOpacity ?? 100);
-      ctx.fillStyle = ff; ctx.fill();
-    } else if (layer.type !== 'image') {
+      ctx.fillStyle = hexToRgba(layer.fill || '#f59e0b', layer.fillOpacity ?? 100);
+      ctx.fill();
+
+    } else if (layer.type === 'text') {
+      // Text-only layer
+      ctx.font = `${layer.fontStyle === 'italic' ? 'italic ' : ''}${layer.fontWeight || 'bold'} ${layer.fontSize || 24}px "${layer.fontFamily || 'DM Sans'}", sans-serif`;
+      ctx.fillStyle = layer.textColor || '#ffffff';
+      ctx.textAlign  = layer.textAlign  || 'center';
+      ctx.textBaseline = 'middle';
+      const tx = layer.textAlign === 'left' ? x + 6 : layer.textAlign === 'right' ? x + w - 6 : x + w / 2;
+      ctx.fillText(layer.text || 'Text', tx, y + h / 2);
+
+    } else {
+      // rect / circle
       const rr = layer.type === 'circle'
         ? Math.min(w, h) / 2
         : ((layer.borderRadius || 0) / 100) * Math.min(w, h);
@@ -978,6 +1085,17 @@ export async function renderLayersToCanvas(canvas, layers, CW, CH) {
         if (layer.borderStyle === 'dashed') ctx.setLineDash([layer.borderWidth * 3, layer.borderWidth * 2]);
         else if (layer.borderStyle === 'dotted') ctx.setLineDash([layer.borderWidth, layer.borderWidth * 1.5]);
         ctx.stroke(); ctx.setLineDash([]);
+      }
+      if (layer.text) {
+        ctx.save();
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, rr); ctx.clip();
+        ctx.font = `${layer.fontStyle === 'italic' ? 'italic ' : ''}${layer.fontWeight || 'bold'} ${layer.fontSize || 24}px "${layer.fontFamily || 'DM Sans'}", sans-serif`;
+        ctx.fillStyle = layer.textColor || '#ffffff';
+        ctx.textAlign  = layer.textAlign  || 'center';
+        ctx.textBaseline = 'middle';
+        const tx = layer.textAlign === 'left' ? x + 6 : layer.textAlign === 'right' ? x + w - 6 : x + w / 2;
+        ctx.fillText(layer.text, tx, y + h / 2);
+        ctx.restore();
       }
     }
     ctx.restore();
