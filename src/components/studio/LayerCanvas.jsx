@@ -7,8 +7,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   Eye, EyeOff, Lock, Unlock, Trash2, Copy,
-  Square, Circle, Triangle, ImagePlus,
+  Square, Circle, Triangle, ImagePlus, Type,
   Undo2, Redo2, MoveUp, MoveDown, RotateCcw,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -113,6 +114,24 @@ function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
     );
   }
 
+  // text layer: transparent bg, text only
+  if (layer.type === 'text') {
+    return (
+      <div style={{ ...base, background: 'transparent' }} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex',
+          alignItems: 'center',
+          justifyContent: layer.textAlign === 'left' ? 'flex-start' : layer.textAlign === 'right' ? 'flex-end' : 'center',
+          padding: '4px 6px', fontSize: `${layer.fontSize || 24}px`,
+          fontWeight: layer.fontWeight || 'bold',
+          color: layer.textColor || '#ffffff', overflow: 'hidden',
+          pointerEvents: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          lineHeight: 1.25,
+        }}>{layer.text || 'Text'}</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       ...base,
@@ -122,11 +141,13 @@ function LayerDiv({ layer, isSelected, onMouseDown, onTouchStart }) {
       {layer.text && (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center', justifyContent: layer.textAlign || 'center',
-          padding: '4px 6px', fontSize: layer.fontSize || 24,
+          alignItems: 'center',
+          justifyContent: layer.textAlign === 'left' ? 'flex-start' : layer.textAlign === 'right' ? 'flex-end' : 'center',
+          padding: '4px 6px', fontSize: `${layer.fontSize || 24}px`,
           fontWeight: layer.fontWeight || 'bold',
           color: layer.textColor || '#ffffff', overflow: 'hidden',
           pointerEvents: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          lineHeight: 1.25,
         }}>{layer.text}</div>
       )}
     </div>
@@ -530,6 +551,7 @@ export function LayerToolbar({ onAddShape, onAddImage, canUndo, canRedo, onUndo,
       {btn(<Square size={14} />, 'Add Rectangle', () => onAddShape('rect'))}
       {btn(<Circle size={14} />, 'Add Circle', () => onAddShape('circle'))}
       {btn(<Triangle size={14} />, 'Add Triangle', () => onAddShape('triangle'))}
+      {btn(<Type size={14} />, 'Add Text', () => onAddShape('text'))}
       {btn(<ImagePlus size={14} />, 'Add Image', () => inputRef.current?.click())}
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={e => {
@@ -761,13 +783,53 @@ export function LayerPropertiesPanel({ layer, onUpdate, onCommit, onDelete, onDu
           </PropRow>
           <PropRow label="Fit">
             <select value={layer.objectFit || 'cover'} onChange={e => uc({ objectFit: e.target.value })}
-              style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb',
-                borderRadius: 6, padding: '5px 8px', color: '#111827', fontSize: 11, outline: 'none' }}>
+              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
               {['cover','contain','fill','none'].map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </PropRow>
           <LSlider label="Corner Radius" value={layer.borderRadius || 0} min={0} max={50}
             onChange={v => u({ borderRadius: v })} fmt={v => `${v}%`} />
+        </>
+      )}
+
+      {/* Text */}
+      {(layer.type === 'text' || layer.type === 'rect' || layer.type === 'circle') && (
+        <>
+          <SectionLabel>Text</SectionLabel>
+          <PropRow label="Content">
+            <textarea value={layer.text || ''} onChange={e => u({ text: e.target.value })} onBlur={() => onCommit?.()}
+              rows={3} placeholder="Enter text…"
+              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11,
+                outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          </PropRow>
+          <LSlider label="Font Size" value={layer.fontSize || 24} min={8} max={200}
+            onChange={v => u({ fontSize: v })} fmt={v => `${v}px`} />
+          <PropRow label="Color">
+            <LColorInput value={layer.textColor || '#ffffff'} onChange={v => u({ textColor: v })} />
+          </PropRow>
+          <PropRow label="Align">
+            <div style={{ display: 'flex', gap: 5 }}>
+              {[['left','left'],['center','center'],['right','right']].map(([val, lbl]) => (
+                <button key={val} onClick={() => u({ textAlign: val })}
+                  style={{ flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 10,
+                    background: (layer.textAlign || 'center') === val ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${(layer.textAlign || 'center') === val ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    color: (layer.textAlign || 'center') === val ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {val === 'left' ? <AlignLeft size={11}/> : val === 'center' ? <AlignCenter size={11}/> : <AlignRight size={11}/>}
+                </button>
+              ))}
+            </div>
+          </PropRow>
+          <PropRow label="Weight">
+            <select value={layer.fontWeight || 'bold'} onChange={e => u({ fontWeight: e.target.value })}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none' }}>
+              {['normal','500','600','bold','800','900'].map(w => <option key={w} value={w}>{w}</option>)}
+            </select>
+          </PropRow>
         </>
       )}
 
