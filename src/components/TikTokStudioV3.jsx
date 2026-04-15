@@ -95,6 +95,17 @@ const FORMATS = [
   },
 ];
 
+// Compute the largest display size that fits within (maxW × maxH) for a given aspect ratio
+function computeDisplaySize(aspectRatio, maxW, maxH) {
+  let w = maxW;
+  let h = maxW / aspectRatio;
+  if (h > maxH) {
+    h = maxH;
+    w = maxH * aspectRatio;
+  }
+  return { displayW: Math.floor(w), displayH: Math.floor(h) };
+}
+
 const SUGGESTION_POOL = [
   "make price bigger",
   "center the hook",
@@ -1870,8 +1881,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [hookText, setHookText] = useState("");
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [scale, setScale] = useState(0.3);
   const [isMobile, setIsMobile] = useState(false);
+  // Measured size of the desktop canvas workspace div (excluding padding)
+  const [desktopWrapperSize, setDesktopWrapperSize] = useState({ w: 800, h: 600 });
+  const desktopWrapperRef = useRef(null);
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -1920,6 +1933,15 @@ export default function TikTokStudioV3({ listing, onClose }) {
     FORMATS.find((f) => f.id === canvasFormat) || FORMATS[0];
   const CW = currentFormat.w;
   const CH = currentFormat.h;
+
+  // ── Desktop: fit canvas to measured workspace, accounting for 24px padding each side
+  const { displayW, displayH } = computeDisplaySize(
+    CW / CH,
+    Math.max(desktopWrapperSize.w - 48, 80),
+    Math.max(desktopWrapperSize.h - 48, 80),
+  );
+  // scale factor used by element rendering (CanvasPreview, LayerCanvas, etc.)
+  const scale = CW > 0 ? displayW / CW : 0.3;
 
   // ── Undo / Redo ──────────────────────────────────────────────────────────
   const history = useRef([]);
@@ -2033,32 +2055,28 @@ export default function TikTokStudioV3({ listing, onClose }) {
     ensureFont("dm");
   }, [listing, rawImages, features]);
 
-  // ── Scale (uses CW/CH) ───────────────────────────────────────────────────
+  // ── Mobile detection ─────────────────────────────────────────────────────
   useEffect(() => {
-    const calc = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      setIsMobile(vw < 768);
-      if (vw < 768) {
-        setScale(Math.min(((vw - 20) * 0.9) / CW, (vh - 210) / CH, 1));
-      } else {
-        // popup inset(28) + icon(54) + panel(280) + side-padding(56)
-        const usableW = vw - 28 - 54 - 280 - 56;
-        // popup inset(28) + header(48) + filmstrip(102) + top+bottom padding(52)
-        const usableH = vh - 28 - 48 - 102 - 52;
-        setScale(
-          Math.min(
-            Math.max(usableW, 100) / CW,
-            Math.max(usableH, 100) / CH,
-            0.98,
-          ),
-        );
-      }
-    };
-    calc();
-    window.addEventListener("resize", calc);
-    return () => window.removeEventListener("resize", calc);
-  }, [CW, CH]);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // ── Desktop canvas workspace: measure available size via ResizeObserver ───
+  useEffect(() => {
+    const el = desktopWrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      setDesktopWrapperSize({ w: width, h: height });
+    });
+    ro.observe(el);
+    // Initial measurement
+    const r = el.getBoundingClientRect();
+    setDesktopWrapperSize({ w: r.width, h: r.height });
+    return () => ro.disconnect();
+  }, []);
 
   // ── Format change → rescale element positions ────────────────────────────
   useEffect(() => {
@@ -4155,10 +4173,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Mobile layout ────────────────────────────────────────────────────────
   if (isMobile) {
-    const mobScale = Math.min(
-      ((window.innerWidth - 20) * 0.9) / CW,
-      (window.innerHeight - 100 - 150) / CH, // extra 40px for shape toolbar
+    // Fit canvas to available mobile screen space
+    // Header 46 + film strip ~78 + shape toolbar ~48 + bottom padding ~30 = ~202px
+    const { displayW: mobW, displayH: mobH } = computeDisplaySize(
+      CW / CH,
+      window.innerWidth - 20,
+      window.innerHeight - 202,
     );
+    const mobScale = CW > 0 ? mobW / CW : 0.3;
     return (
       <div
         style={{
@@ -4478,8 +4500,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <div
               style={{
                 position: "relative",
-                width: CW * mobScale,
-                height: CH * mobScale,
+                width: mobW,
+                height: mobH,
               }}
             >
               <ImagePicker
@@ -4493,8 +4515,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
             <div
               style={{
                 position: "relative",
-                width: CW * mobScale,
-                height: CH * mobScale,
+                width: mobW,
+                height: mobH,
                 flexShrink: 0,
                 overflow: "hidden",
                 borderRadius: 4,
@@ -5038,8 +5060,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               minWidth: 0,
             }}
           >
-            {/* Canvas workspace */}
+            {/* Canvas workspace — ref measures available space for scale-to-fit */}
             <div
+              ref={desktopWrapperRef}
               style={{
                 flex: 1,
                 display: "flex",
@@ -5054,8 +5077,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 <div
                   style={{
                     position: "relative",
-                    width: CW * scale,
-                    height: CH * scale,
+                    width: displayW,
+                    height: displayH,
                     borderRadius: 8,
                     overflow: "hidden",
                   }}
@@ -5077,9 +5100,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     lineHeight: 0,
                     position: "relative",
                     overflow: "hidden",
-                    isolation: "isolate",   // Issue 3: stacking context for z-order
-                    width: CW * scale,
-                    height: CH * scale,
+                    isolation: "isolate",
+                    width: displayW,
+                    height: displayH,
                   }}
                 >
                   <CanvasPreview
