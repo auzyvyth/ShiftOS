@@ -1402,7 +1402,8 @@ function CanvasPreview({
         userSelect: "none",
         flexShrink: 0,
         background: "#0a0d14",
-        isolation: "isolate",   // Issue 3: explicit stacking context for z-order
+        isolation: "isolate",
+        zIndex: 10,   // Fix 2: template sits at z=10; user layers at z<10 go behind, z>10 in front
       }}
     >
       {/* ── Background canvas: pixel-perfect match to export ── */}
