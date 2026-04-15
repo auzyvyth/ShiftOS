@@ -60,7 +60,7 @@ function buildFilterStr(f = {}) {
 }
 
 // ─── Text content renderer (shared by LayerDiv and canvas export) ──────────────
-function TextContent({ layer }) {
+function TextContent({ layer, scale = 1 }) {
   const justifyContent =
     layer.textAlign === 'left'  ? 'flex-start' :
     layer.textAlign === 'right' ? 'flex-end'   : 'center';
@@ -68,16 +68,19 @@ function TextContent({ layer }) {
     layer.textVerticalAlign === 'top'    ? 'flex-start' :
     layer.textVerticalAlign === 'bottom' ? 'flex-end'   : 'center';
 
+  // Scale font size to match the display canvas scale so text doesn't overflow on mobile
+  const displayFontSize = Math.round((layer.fontSize || 24) * scale);
+
   return (
     <div style={{
       position: 'absolute', inset: 0, overflow: 'hidden',   // CLIP text to shape bounds
       display: 'flex', alignItems, justifyContent,
-      padding: '4px 6px', boxSizing: 'border-box',
+      padding: `${Math.round(4 * scale)}px ${Math.round(6 * scale)}px`, boxSizing: 'border-box',
       pointerEvents: 'none',
     }}>
       <span style={{
         fontFamily: layer.fontFamily || 'DM Sans',
-        fontSize: `${layer.fontSize || 24}px`,
+        fontSize: `${displayFontSize}px`,
         fontWeight: layer.fontWeight || 'bold',
         fontStyle: layer.fontStyle === 'italic' ? 'italic' : 'normal',
         color: layer.textColor || '#ffffff',
@@ -93,7 +96,7 @@ function TextContent({ layer }) {
 }
 
 // ─── Layer shape renderer (CSS-based) ─────────────────────────────────────────
-function LayerDiv({ layer, onMouseDown, onTouchStart, onTouchMove, onTouchEnd }) {
+function LayerDiv({ layer, scale, onMouseDown, onTouchStart, onTouchMove, onTouchEnd }) {
   const f = { ...FILTER_DEFAULTS, ...layer.filters };
   const filterStr = buildFilterStr(f);
 
@@ -150,7 +153,7 @@ function LayerDiv({ layer, onMouseDown, onTouchStart, onTouchMove, onTouchEnd })
         background: hexToRgba(layer.fill || '#f59e0b', layer.fillOpacity ?? 100),
         clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
       }} {...handlers}>
-        {layer.text && <TextContent layer={layer} />}
+        {layer.text && <TextContent layer={layer} scale={scale} />}
       </div>
     );
   }
@@ -158,7 +161,7 @@ function LayerDiv({ layer, onMouseDown, onTouchStart, onTouchMove, onTouchEnd })
   if (layer.type === 'text') {
     return (
       <div style={{ ...base, background: 'transparent', overflow: 'hidden' }} {...handlers}>
-        <TextContent layer={layer} />
+        <TextContent layer={layer} scale={scale} />
       </div>
     );
   }
@@ -170,7 +173,7 @@ function LayerDiv({ layer, onMouseDown, onTouchStart, onTouchMove, onTouchEnd })
       background: hexToRgba(layer.fill || '#e63946', layer.fillOpacity ?? 100),
       ...borderStyle,
     }} {...handlers}>
-      {layer.text && <TextContent layer={layer} />}
+      {layer.text && <TextContent layer={layer} scale={scale} />}
     </div>
   );
 }
@@ -504,31 +507,32 @@ export default function LayerCanvas({
   const selectedLayer = layers.find(l => selectedIds.includes(l.id));
 
   return (
-    // Issue 3: No explicit zIndex on container — children's z-indices participate
-    // directly in the outer wrapper's stacking context, allowing layers with z < 10
-    // to appear below the slide template (which renders at z=10 inside CanvasPreview).
+    // No zIndex on container — LayerDiv z-indices participate directly in the outer
+    // stacking context (outer wrapper uses isolation:isolate + overflow:hidden).
+    // CanvasPreview renders at zIndex:10; layers with z<10 appear behind the template,
+    // layers with z>10 appear in front.
     <div
       ref={containerRef}
       style={{
         position: 'absolute', top: 0, left: 0,
         width: '100%', height: '100%',
-        overflow: 'hidden',
         pointerEvents: 'none',
-        // zIndex intentionally omitted — see Issue 3 note above
+        // No overflow:hidden here — outer wrapper clips the canvas area.
+        // No zIndex — children's z-indices compete in the outer stacking context.
       }}
     >
       {layers.map(layer => (
         <LayerDiv
           key={layer.id}
           layer={layer}
-          isSelected={selectedIds.includes(layer.id)}
+          scale={scale}
           onMouseDown={e => {
             e.preventDefault();
             e.stopPropagation();
             onSelectLayer?.(layer.id, e.shiftKey || e.metaKey);
             handleDragStart(e, layer.id);
           }}
-          // Issue 5 & 6: stopPropagation prevents canvas background from deselecting
+          // stopPropagation on touchStart so touch on layer doesn't bubble to canvas bg
           onTouchStart={e => {
             e.stopPropagation();
             onSelectLayer?.(layer.id);
@@ -647,6 +651,9 @@ export function LayerStack({
             <span style={{ maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {layer.label || layer.type}
             </span>
+            {(layer.zIndex ?? 20) < 10 && (
+              <span title="Behind template" style={{ fontSize: 8, color: '#fbbf24', flexShrink: 0 }}>bg</span>
+            )}
             <span onClick={e => { e.stopPropagation(); onShiftZ(layer.id, 'up'); }}
               style={{ cursor: 'pointer', opacity: 0.5, display:'flex' }} title="Bring forward">
               <MoveUp size={9} />
