@@ -4512,24 +4512,32 @@ export default function TikTokStudioV3({ listing, onClose }) {
               />
             </div>
           ) : (
+            // Sizing anchor — no overflow so handles can escape the frame edge
             <div
               style={{
                 position: "relative",
                 width: mobW,
                 height: mobH,
                 flexShrink: 0,
-                overflow: "hidden",
                 borderRadius: 4,
                 boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
                 isolation: "isolate",
               }}
             >
-              <CanvasPreview
-                {...previewProps}
-                scale={mobScale}
-                canvasW={CW}
-                canvasH={CH}
-              />
+              {/* Content clip — clips template + layer fills */}
+              <div style={{
+                position: "absolute", inset: 0,
+                overflow: "hidden",
+                borderRadius: 4,
+                zIndex: 0,
+              }}>
+                <CanvasPreview
+                  {...previewProps}
+                  scale={mobScale}
+                  canvasW={CW}
+                  canvasH={CH}
+                />
+              </div>
               <LayerCanvas
                 layers={layers}
                 selectedIds={layerSelectedIds}
@@ -5091,26 +5099,33 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   />
                 </div>
               ) : (
+                // Sizing anchor — NO overflow so resize handles can escape the frame edge.
                 <div
                   style={{
-                    boxShadow:
-                      "0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
-                    borderRadius: 4,
-                    flexShrink: 0,
-                    lineHeight: 0,
                     position: "relative",
-                    overflow: "hidden",
-                    isolation: "isolate",
                     width: displayW,
                     height: displayH,
+                    flexShrink: 0,
+                    borderRadius: 4,
+                    boxShadow: "0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
+                    isolation: "isolate",
                   }}
                 >
-                  <CanvasPreview
-                    {...previewProps}
-                    scale={scale}
-                    canvasW={CW}
-                    canvasH={CH}
-                  />
+                  {/* Content clip — clips template + layer fills to the canvas boundary */}
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    overflow: "hidden",
+                    borderRadius: 4,
+                    zIndex: 0,
+                  }}>
+                    <CanvasPreview
+                      {...previewProps}
+                      scale={scale}
+                      canvasW={CW}
+                      canvasH={CH}
+                    />
+                  </div>
+                  {/* LayerCanvas: DIV 1 (fills, clipped) + DIV 2 (handles, overflow visible) */}
                   <LayerCanvas
                     layers={layers}
                     selectedIds={layerSelectedIds}

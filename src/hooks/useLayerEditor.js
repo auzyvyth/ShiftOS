@@ -62,7 +62,18 @@ function reducer(state, action) {
     }
 
     case 'UPDATE': {
-      const layers = state.layers.map(l => l.id === action.id ? { ...l, ...action.patch } : l);
+      const layers = state.layers.map(l => {
+        if (l.id !== action.id) return l;
+        const next = { ...l, ...action.patch };
+        // Clamp geometry so layers can't escape the 0–100 % canvas coordinate space.
+        if ('x' in action.patch || 'y' in action.patch || 'width' in action.patch || 'height' in action.patch) {
+          next.width  = Math.max(5,  Math.min(95, next.width  ?? l.width));
+          next.height = Math.max(5,  Math.min(95, next.height ?? l.height));
+          next.x      = Math.max(0,  Math.min(100 - next.width,  next.x ?? l.x));
+          next.y      = Math.max(0,  Math.min(100 - next.height, next.y ?? l.y));
+        }
+        return next;
+      });
       if (action.silent) return { ...state, layers };
       return { ...state, layers,
         history: pushHist(state.history, state.historyIdx, layers), historyIdx: Math.min(state.historyIdx + 1, MAX_HISTORY - 1) };
