@@ -23,6 +23,9 @@ export function makeLayer(type, overrides = {}) {
   if (type === 'circle')   return { ...base, fill: '#3b82f6', width: 25, height: 25, borderRadius: 50, ...overrides };
   if (type === 'triangle') return { ...base, fill: '#f59e0b', width: 30, height: 25, ...overrides };
   if (type === 'image')    return { ...base, fill: 'transparent', fillOpacity: 0, borderWidth: 0, ...overrides };
+  if (type === 'text')     return { ...base, fill: 'transparent', fillOpacity: 0, borderWidth: 0,
+    text: 'Text', fontSize: 36, fontWeight: 'bold', textColor: '#ffffff', textAlign: 'center',
+    label: 'Text', width: 50, height: 15, ...overrides };
   return { ...base, ...overrides };
 }
 

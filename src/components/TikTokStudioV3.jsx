@@ -4125,7 +4125,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   if (isMobile) {
     const mobScale = Math.min(
       ((window.innerWidth - 20) * 0.9) / CW,
-      (window.innerHeight - 100 - 110) / CH,
+      (window.innerHeight - 100 - 150) / CH,   // extra 40px for shape toolbar
     );
     return (
       <div
@@ -4295,6 +4295,50 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </button>
         </div>
 
+        {/* Mobile shape toolbar */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 5, padding: "4px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#1a2035",
+          flexShrink: 0, overflowX: "auto",
+        }}>
+          <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", flexShrink: 0 }}>Add:</span>
+          {[
+            ["▭", "Rect",     () => { addLayer("rect");     setActiveTab("layers"); }],
+            ["◯", "Circle",   () => { addLayer("circle");   setActiveTab("layers"); }],
+            ["△", "Triangle", () => { addLayer("triangle"); setActiveTab("layers"); }],
+            ["T", "Text",     () => { addLayer("text");     setActiveTab("layers"); }],
+          ].map(([icon, lbl, fn]) => (
+            <button key={lbl} onClick={fn} style={{
+              display: "flex", alignItems: "center", gap: 3, padding: "4px 9px",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 6, color: "rgba(255,255,255,0.65)", cursor: "pointer",
+              fontSize: 11, fontWeight: 600, flexShrink: 0,
+            }}>{icon} {lbl}</button>
+          ))}
+          <label style={{
+            display: "flex", alignItems: "center", gap: 3, padding: "4px 9px",
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 6, color: "rgba(255,255,255,0.65)", cursor: "pointer",
+            fontSize: 11, fontWeight: 600, flexShrink: 0,
+          }}>
+            🖼 Image
+            <input type="file" accept="image/*" style={{ display: "none" }}
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) { addLayer("image", { src: URL.createObjectURL(f) }); setActiveTab("layers"); }
+                e.target.value = "";
+              }} />
+          </label>
+          <div style={{ flex: 1 }} />
+          {layers.length > 0 && (
+            <button onClick={() => { setSidebarOpen(true); setActiveTab("layers"); }} style={{
+              padding: "4px 9px", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
+              borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontSize: 11, fontWeight: 600, flexShrink: 0,
+            }}>{layers.length} layer{layers.length > 1 ? "s" : ""}</button>
+          )}
+        </div>
+
         {/* Canvas preview area — full width, dominant */}
         <div
           style={{
@@ -4322,12 +4366,38 @@ export default function TikTokStudioV3({ listing, onClose }) {
               />
             </div>
           ) : (
-            <CanvasPreview
-              {...previewProps}
-              scale={mobScale}
-              canvasW={CW}
-              canvasH={CH}
-            />
+            <div style={{
+              position: "relative",
+              width: CW * mobScale,
+              height: CH * mobScale,
+              flexShrink: 0,
+              overflow: "hidden",
+              borderRadius: 4,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
+            }}>
+              <CanvasPreview
+                {...previewProps}
+                scale={mobScale}
+                canvasW={CW}
+                canvasH={CH}
+              />
+              <LayerCanvas
+                layers={layers}
+                selectedIds={layerSelectedIds}
+                scale={mobScale}
+                canvasW={CW}
+                canvasH={CH}
+                onSelectLayer={(id) => {
+                  selectLayer(id);
+                  setSidebarOpen(true);
+                  setActiveTab("layers");
+                }}
+                onClearSelection={clearLayerSelection}
+                onUpdateLayer={updateLayer}
+                onCommitHistory={commitLayerHistory}
+                onDeleteLayer={deleteLayer}
+              />
+            </div>
           )}
 
           {/* Sidebar toggle button — floats over canvas */}
@@ -4874,6 +4944,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     lineHeight: 0,
                     position: "relative",
                     overflow: "hidden",
+                    width: CW * scale,
+                    height: CH * scale,
                   }}
                 >
                   <CanvasPreview
