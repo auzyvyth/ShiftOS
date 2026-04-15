@@ -507,55 +507,67 @@ export default function LayerCanvas({
   const selectedLayer = layers.find(l => selectedIds.includes(l.id));
 
   return (
-    // No zIndex on container — LayerDiv z-indices participate directly in the outer
-    // stacking context (outer wrapper uses isolation:isolate + overflow:hidden).
-    // CanvasPreview renders at zIndex:10; layers with z<10 appear behind the template,
-    // layers with z>10 appear in front.
-    <div
-      ref={containerRef}
-      style={{
-        position: 'absolute', top: 0, left: 0,
-        width: '100%', height: '100%',
+    // Outer wrapper: no overflow, no zIndex — just a full-size anchor so both children
+    // share the same inset:0 reference point.
+    <div style={{
+      position: 'absolute', top: 0, left: 0,
+      width: '100%', height: '100%',
+      pointerEvents: 'none',
+    }}>
+
+      {/* ── DIV 1: content clip — layer fills stay inside the canvas boundary ── */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        overflow: 'hidden',   // clips layer fills to frame edge
         pointerEvents: 'none',
-        // No overflow:hidden here — outer wrapper clips the canvas area.
-        // No zIndex — children's z-indices compete in the outer stacking context.
-      }}
-    >
-      {layers.map(layer => (
-        <LayerDiv
-          key={layer.id}
-          layer={layer}
-          scale={scale}
-          onMouseDown={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            onSelectLayer?.(layer.id, e.shiftKey || e.metaKey);
-            handleDragStart(e, layer.id);
-          }}
-          // stopPropagation on touchStart so touch on layer doesn't bubble to canvas bg
-          onTouchStart={e => {
-            e.stopPropagation();
-            onSelectLayer?.(layer.id);
-            handleTouchStart(e, layer.id);
-          }}
-        />
-      ))}
+        zIndex: 0,
+      }}>
+        {layers.map(layer => (
+          <LayerDiv
+            key={layer.id}
+            layer={layer}
+            scale={scale}
+            onMouseDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelectLayer?.(layer.id, e.shiftKey || e.metaKey);
+              handleDragStart(e, layer.id);
+            }}
+            onTouchStart={e => {
+              e.stopPropagation();
+              onSelectLayer?.(layer.id);
+              handleTouchStart(e, layer.id);
+            }}
+          />
+        ))}
+      </div>
 
-      {selectedLayer && !selectedLayer.locked && (
-        <SelectionBox
-          layer={selectedLayer}
-          containerW={cW}
-          containerH={cH}
-          onHandleMouseDown={(e, hk) => handleResizeStart(e, selectedLayer.id, hk)}
-          onHandleTouchStart={(e, hk) => handleResizeTouchStart(e, selectedLayer.id, hk)}
-          onRotateMouseDown={e => handleRotateStart(e, selectedLayer.id)}
-          onRotateTouchStart={e => handleRotateTouchStart(e, selectedLayer.id)}
-          onDelete={() => onDeleteLayer?.(selectedLayer.id)}
-        />
-      )}
+      {/* ── DIV 2: handle overlay — overflow visible so handles escape the frame ── */}
+      <div
+        ref={containerRef}
+        style={{
+          position: 'absolute', inset: 0,
+          overflow: 'visible',  // handles CAN escape the canvas boundary
+          pointerEvents: 'none',
+          zIndex: 200,
+        }}
+      >
+        {selectedLayer && !selectedLayer.locked && (
+          <SelectionBox
+            layer={selectedLayer}
+            containerW={cW}
+            containerH={cH}
+            onHandleMouseDown={(e, hk) => handleResizeStart(e, selectedLayer.id, hk)}
+            onHandleTouchStart={(e, hk) => handleResizeTouchStart(e, selectedLayer.id, hk)}
+            onRotateMouseDown={e => handleRotateStart(e, selectedLayer.id)}
+            onRotateTouchStart={e => handleRotateTouchStart(e, selectedLayer.id)}
+            onDelete={() => onDeleteLayer?.(selectedLayer.id)}
+          />
+        )}
+        <SnapGuides snapH={snapH} snapV={snapV} />
+        {tooltip && <Tooltip text={tooltip} x={tooltipPos.x} y={tooltipPos.y} />}
+      </div>
 
-      <SnapGuides snapH={snapH} snapV={snapV} />
-      {tooltip && <Tooltip text={tooltip} x={tooltipPos.x} y={tooltipPos.y} />}
     </div>
   );
 }
