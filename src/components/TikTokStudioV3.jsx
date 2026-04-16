@@ -1453,6 +1453,8 @@ function CanvasPreview({
     theme.watermarkText,
     theme.watermarkOpacity,
     theme.watermarkPos,
+    // bgAdjust — stringify so any slider change triggers re-render
+    JSON.stringify(slide.bgAdjust),
   ]);
 
   return (
