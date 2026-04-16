@@ -870,14 +870,14 @@ async function renderToCanvas(
     ctx.translate(el.x, el.y);
     ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
     ctx.font = `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px ${elFont2}`;
-    // Background fill
+    // Background fill — box starts at 0 (matching HTML div left edge at el.x)
+    const pad2 = 10;
     if (el.bgColor) {
       const tw2 = ctx.measureText(el.content || "").width;
-      const pad2 = 10;
       ctx.fillStyle = el.bgColor;
       ctx.beginPath();
       ctx.roundRect(
-        -pad2,
+        0,
         0,
         tw2 + pad2 * 2,
         (el.fontSize || 32) * 1.3,
@@ -891,9 +891,12 @@ async function renderToCanvas(
       ctx.shadowBlur = 8;
       ctx.shadowOffsetY = 2;
     }
-    ctx.textAlign = el.align || "left";
+    // Always left-align: HTML whiteSpace:nowrap div always renders text at el.x
+    // regardless of textAlign setting — match that behaviour here.
+    ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(el.content || "", 0, 0);
+    const textX = el.bgColor ? pad2 : 0;
+    ctx.fillText(el.content || "", textX, 0);
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -901,7 +904,7 @@ async function renderToCanvas(
       ctx.shadowColor = "rgba(0,0,0,0.9)";
       ctx.shadowBlur = 2;
       ctx.shadowOffsetY = 1;
-      ctx.fillText(el.content || "", 0, 0);
+      ctx.fillText(el.content || "", textX, 0);
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
@@ -2342,7 +2345,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Drag / Resize / Rotate ───────────────────────────────────────────────
   const onStartDrag = useCallback(
-    (e, id) => {
+    (e, id, dragScale) => {
       setSelectedId(id);
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el || el.locked) return;
@@ -2354,6 +2357,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         startY: cy,
         origX: el.x,
         origY: el.y,
+        dragScale,
       };
       e.preventDefault();
     },
@@ -2361,11 +2365,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
   );
 
   const onStartResize = useCallback(
-    (e, id, handle) => {
+    (e, id, handle, dragScale) => {
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el) return;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
-      resizing.current = { id, handle, startY: cy, origFontSize: el.fontSize };
+      resizing.current = { id, handle, startY: cy, origFontSize: el.fontSize, dragScale };
       e.preventDefault();
       e.stopPropagation();
     },
@@ -2411,19 +2415,21 @@ export default function TikTokStudioV3({ listing, onClose }) {
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
 
       if (dragging.current) {
-        const { id, startX, startY, origX, origY } = dragging.current;
+        const { id, startX, startY, origX, origY, dragScale } = dragging.current;
+        const s = dragScale || scale;
         updateElement(id, {
-          x: Math.max(0, Math.min(CW, origX + (cx - startX) / scale)),
-          y: Math.max(0, Math.min(CH, origY + (cy - startY) / scale)),
+          x: Math.max(0, Math.min(CW, origX + (cx - startX) / s)),
+          y: Math.max(0, Math.min(CH, origY + (cy - startY) / s)),
         });
       }
       if (resizing.current) {
-        const { id, startY, origFontSize } = resizing.current;
+        const { id, startY, origFontSize, dragScale } = resizing.current;
+        const s = dragScale || scale;
         updateElement(id, {
           fontSize: Math.round(
             Math.max(
               16,
-              Math.min(200, origFontSize + ((cy - startY) / scale) * 0.5),
+              Math.min(200, origFontSize + ((cy - startY) / s) * 0.5),
             ),
           ),
         });
@@ -5074,7 +5080,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                           highlighted={(highlightIds || []).includes(el.id)}
                           fontStack={fontObj.stack}
                           onSelect={mobOnSelectElement}
-                          onStartDrag={onStartDrag}
+                          onStartDrag={(e, id) => onStartDrag(e, id, mobScale)}
                           onDoubleClick={(id) => setEditingId(id)}
                         />
                       )}
@@ -5086,7 +5092,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                       elId={selectedId}
                       el={selectedEl}
                       canvasInnerRef={canvasInnerRef}
-                      onStartResize={onStartResize}
+                      onStartResize={(e, id, handle) => onStartResize(e, id, handle, mobScale)}
                       onStartRotate={onStartRotate}
                       onUpdate={updateSelectedElement}
                       onDuplicate={duplicateSelected}
@@ -5684,7 +5690,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                                           highlighted={(highlightIds || []).includes(el.id)}
                                           fontStack={fontObj.stack}
                                           onSelect={previewProps.onSelectElement}
-                                          onStartDrag={onStartDrag}
+                                          onStartDrag={(e, id) => onStartDrag(e, id, slideScale)}
                                           onDoubleClick={(id) => setEditingId(id)}
                                         />
                                       )}
@@ -5696,7 +5702,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                                       elId={selectedId}
                                       el={selectedEl}
                                       canvasInnerRef={canvasInnerRef}
-                                      onStartResize={onStartResize}
+                                      onStartResize={(e, id, handle) => onStartResize(e, id, handle, slideScale)}
                                       onStartRotate={onStartRotate}
                                       onUpdate={updateSelectedElement}
                                       onDuplicate={duplicateSelected}
