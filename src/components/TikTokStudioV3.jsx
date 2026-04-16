@@ -1947,6 +1947,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [language, setLanguage] = useState("en");
   const [hookText, setHookText] = useState("");
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [removeBgError, setRemoveBgError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sheetPanel, setSheetPanel] = useState(null); // mobile bottom sheet
@@ -2733,6 +2735,46 @@ export default function TikTokStudioV3({ listing, onClose }) {
     });
     setActive(idx + 1);
   }, []);
+
+  // ── Remove Background ────────────────────────────────────────────────────
+  const removeBg = useCallback(async () => {
+    const url = slide?.imageUrl;
+    if (!url) return;
+    const apiKey = import.meta.env.VITE_REMOVEBG_API_KEY;
+    if (!apiKey) return;
+    setRemovingBg(true);
+    setRemoveBgError(null);
+    try {
+      // Fetch the image as a blob (handles both relative and CORS-friendly URLs)
+      const imgResp = await fetch(url);
+      const imgBlob = await imgResp.blob();
+      const form = new FormData();
+      form.append("image_file", imgBlob, "image.jpg");
+      form.append("size", "auto");
+      const resp = await fetch("https://api.remove.bg/v1.0/removebg", {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey },
+        body: form,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err?.errors?.[0]?.title || `remove.bg error ${resp.status}`);
+      }
+      const resultBlob = await resp.blob();
+      const resultUrl = URL.createObjectURL(resultBlob);
+      // Store original so user can restore
+      patchSlide({ originalImageUrl: url, imageUrl: resultUrl });
+    } catch (e) {
+      setRemoveBgError(e.message);
+    } finally {
+      setRemovingBg(false);
+    }
+  }, [slide?.imageUrl, patchSlide]);
+
+  const restoreBg = useCallback(() => {
+    if (!slide?.originalImageUrl) return;
+    patchSlide({ imageUrl: slide.originalImageUrl, originalImageUrl: null });
+  }, [slide?.originalImageUrl, patchSlide]);
 
   // ── Export ───────────────────────────────────────────────────────────────
   const exportName = (idx) => {
@@ -4124,6 +4166,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Tab bar + routing ────────────────────────────────────────────────────
   const TABS = [
     { id: "slide", label: "Slides", icon: <LayoutTemplate size={16} /> },
+    { id: "photo", label: "Photo", icon: <ImagePlus size={16} /> },
     { id: "design", label: "Design", icon: <Palette size={16} /> },
     { id: "brand", label: "Brand", icon: <Brush size={16} /> },
     { id: "badges", label: "Badges", icon: <Tag size={16} /> },
@@ -4349,6 +4392,19 @@ export default function TikTokStudioV3({ listing, onClose }) {
     if (activeTab === "layers") return LayersPanel();
     if (activeTab === "ai") return AIPanel();
     if (activeTab === "library") return LibraryPanel();
+    if (activeTab === "photo") return (
+      <BgAdjustPanel
+        adj={slide?.bgAdjust || {}}
+        onPatch={(p) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...p } })}
+        onChangeBg={() => setShowImagePicker(true)}
+        imageUrl={slide?.imageUrl}
+        originalImageUrl={slide?.originalImageUrl}
+        onRemoveBg={removeBg}
+        onRestoreBg={restoreBg}
+        removingBg={removingBg}
+        removeBgError={removeBgError}
+      />
+    );
   };
 
   // tabBar used only in mobile sidebar
@@ -4426,7 +4482,53 @@ export default function TikTokStudioV3({ listing, onClose }) {
   };
 
   // ── BgAdjustPanel ────────────────────────────────────────────────────────
-  function BgAdjustPanel({ adj, onPatch, onChangeBg }) {
+  // Custom slider — pointer events so drag works on both touch and mouse
+  function DragSlider({ min, max, step, value, onChange }) {
+    const trackRef = useRef(null);
+    const dragging = useRef(false);
+    const pct = ((value - min) / (max - min)) * 100;
+
+    const valueFromPointer = (e) => {
+      const rect = trackRef.current.getBoundingClientRect();
+      const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
+      const ratio = Math.max(0, Math.min(1, x / rect.width));
+      const raw = min + ratio * (max - min);
+      const snapped = Math.round(raw / step) * step;
+      return parseFloat(Math.max(min, Math.min(max, snapped)).toFixed(4));
+    };
+
+    const onPointerDown = (e) => {
+      e.preventDefault();
+      dragging.current = true;
+      trackRef.current.setPointerCapture(e.pointerId);
+      onChange(valueFromPointer(e));
+    };
+    const onPointerMove = (e) => {
+      if (!dragging.current) return;
+      e.preventDefault();
+      onChange(valueFromPointer(e));
+    };
+    const onPointerUp = () => { dragging.current = false; };
+
+    return (
+      <div
+        ref={trackRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={{ position: "relative", height: 28, cursor: "pointer", touchAction: "none", userSelect: "none" }}
+      >
+        {/* Track */}
+        <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 3, marginTop: -1.5, borderRadius: 999, background: "rgba(255,255,255,0.1)" }} />
+        {/* Fill */}
+        <div style={{ position: "absolute", top: "50%", left: 0, width: pct + "%", height: 3, marginTop: -1.5, borderRadius: 999, background: "#2563eb" }} />
+        {/* Thumb */}
+        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 16, height: 16, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.4)", border: "2px solid #2563eb" }} />
+      </div>
+    );
+  }
+
+  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError }) {
     const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
     const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
     const sliders = [
@@ -4437,11 +4539,14 @@ export default function TikTokStudioV3({ listing, onClose }) {
       { key: "blur",       label: "Blur",       min: 0, max: 20, step: 0.5, fmt: (v) => v + "px" },
       { key: "vignette",   label: "Vignette",   min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
     ];
+    const bgRemoved = !!originalImageUrl;
+    const REMOVEBG_KEY = import.meta.env.VITE_REMOVEBG_API_KEY;
     return (
       <div style={{ padding: "10px 16px 18px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        {/* Header row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Photo</span>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 5 }}>
             <button onClick={() => onPatch({ brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 })}
               style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.45)", cursor: "pointer" }}>
               Reset
@@ -4452,18 +4557,41 @@ export default function TikTokStudioV3({ listing, onClose }) {
             </button>
           </div>
         </div>
-        {sliders.map(({ key, label, min, max, step, fmt }) => (
-          <div key={key} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{label}</span>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>
-                {fmt ? fmt(a[key]) : a[key]}
-              </span>
+
+        {/* Remove BG card */}
+        {imageUrl && (
+          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)", margin: 0 }}>Remove Background</p>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>
+                  {bgRemoved ? "Background removed — place on any scene" : REMOVEBG_KEY ? "Powered by remove.bg" : "Add VITE_REMOVEBG_API_KEY to .env"}
+                </p>
+              </div>
+              {bgRemoved ? (
+                <button onClick={onRestoreBg}
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  Restore
+                </button>
+              ) : (
+                <button onClick={onRemoveBg} disabled={!REMOVEBG_KEY || removingBg}
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "none", background: REMOVEBG_KEY ? (removingBg ? "rgba(37,99,235,0.5)" : "#2563eb") : "rgba(255,255,255,0.06)", color: !REMOVEBG_KEY ? "rgba(255,255,255,0.3)" : "#fff", cursor: REMOVEBG_KEY && !removingBg ? "pointer" : "default", fontWeight: 700, whiteSpace: "nowrap", minWidth: 76, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                  {removingBg ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⏳</span> Removing…</> : "✂️ Remove BG"}
+                </button>
+              )}
             </div>
-            <input type="range" min={min} max={max} step={step} value={a[key]}
-              onChange={e => onPatch({ [key]: parseFloat(e.target.value) })}
-              style={{ width: "100%", accentColor: "#2563eb", height: 3, touchAction: "none" }}
-            />
+            {removeBgError && <p style={{ fontSize: 10, color: "#f87171", marginTop: 6, marginBottom: 0 }}>{removeBgError}</p>}
+          </div>
+        )}
+
+        {/* Adjustment sliders */}
+        {sliders.map(({ key, label, min, max, step, fmt }) => (
+          <div key={key} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{label}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>{fmt(a[key])}</span>
+            </div>
+            <DragSlider min={min} max={max} step={step} value={a[key]} onChange={v => onPatch({ [key]: v })} />
           </div>
         ))}
       </div>
@@ -4530,7 +4658,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         );
       }
       if (sheetPanel === "photo") {
-        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} />;
+        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} />;
       }
       if (sheetPanel === "shapes") {
         return (
