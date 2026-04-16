@@ -514,6 +514,7 @@ function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
     whatsapp: whatsapp || "",
     monthly: calcMonthly(price),
     elements: buildDefaultElements(listing, DEFAULT_THEME, dealerName),
+    bgAdjust: { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 },
   });
 
   if (!images.length) return [makeSlide(null, "hype")];
@@ -684,10 +685,28 @@ async function renderBackground(
         dx = (W - dw) / 2;
         dy = 0;
       }
+      const adj = slide.bgAdjust || {};
+      const br = adj.brightness ?? 1;
+      const co = adj.contrast ?? 1;
+      const sa = adj.saturation ?? 1;
+      const wa = adj.warmth ?? 0;
+      const bl = adj.blur ?? 0;
       ctx.globalAlpha = 1.0;
-      ctx.filter = "none";
+      ctx.filter = `brightness(${br}) contrast(${co}) saturate(${sa}) sepia(${wa * 0.6})${bl > 0 ? ` blur(${bl}px)` : ""}`;
       ctx.drawImage(img, dx, dy, dw, dh);
       ctx.restore();
+
+      // Vignette overlay
+      const vg = adj.vignette ?? 0;
+      if (vg > 0) {
+        const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.15, W / 2, H * 0.5, H * 0.72);
+        vig.addColorStop(0, "rgba(0,0,0,0)");
+        vig.addColorStop(1, `rgba(0,0,0,${(vg * 0.85).toFixed(2)})`);
+        ctx.save();
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
     }
   }
 
@@ -2654,6 +2673,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       whatsapp: slide?.whatsapp || "",
       monthly: calcMonthly(listing?.selling_price),
       elements: buildDefaultElements(listing, theme, slide?.dealerName || ""),
+      bgAdjust: { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 },
     };
     setSlides((ss) => {
       const newSlides = [...ss, s];
@@ -4403,6 +4423,51 @@ export default function TikTokStudioV3({ listing, onClose }) {
     onDeleteSelected: deleteSelected,
   };
 
+  // ── BgAdjustPanel ────────────────────────────────────────────────────────
+  function BgAdjustPanel({ adj, onPatch, onChangeBg }) {
+    const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
+    const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
+    const sliders = [
+      { key: "brightness", label: "Brightness", min: 0, max: 2, step: 0.01, fmt: signed },
+      { key: "contrast",   label: "Contrast",   min: 0, max: 2, step: 0.01, fmt: signed },
+      { key: "saturation", label: "Saturation", min: 0, max: 2, step: 0.01, fmt: signed },
+      { key: "warmth",     label: "Warmth",     min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
+      { key: "blur",       label: "Blur",       min: 0, max: 20, step: 0.5, fmt: (v) => v + "px" },
+      { key: "vignette",   label: "Vignette",   min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
+    ];
+    return (
+      <div style={{ padding: "10px 16px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Photo</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => onPatch({ brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 })}
+              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.45)", cursor: "pointer" }}>
+              Reset
+            </button>
+            <button onClick={onChangeBg}
+              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <ImagePlus size={11} /> Change
+            </button>
+          </div>
+        </div>
+        {sliders.map(({ key, label, min, max, step, fmt }) => (
+          <div key={key} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{label}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>
+                {fmt ? fmt(a[key]) : a[key]}
+              </span>
+            </div>
+            <input type="range" min={min} max={max} step={step} value={a[key]}
+              onChange={e => onPatch({ [key]: parseFloat(e.target.value) })}
+              style={{ width: "100%", accentColor: "#2563eb", height: 3 }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   // ── Mobile layout ────────────────────────────────────────────────────────
   if (isMobile) {
     const HEADER_H = 46;
@@ -4418,6 +4483,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     const mobSelectedLayer = layers.find((l) => layerSelectedIds.includes(l.id)) || null;
     const hasTextSel = !!(selectedId && selectedEl);
     const hasLayerSel = layerSelectedIds.length > 0;
+    const patchBg = (patch) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...patch } });
 
     const toggleSheet = (id) => setSheetPanel((p) => (p === id ? null : id));
 
@@ -4462,28 +4528,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         );
       }
       if (sheetPanel === "photo") {
-        return (
-          <div style={{ padding: "12px 16px 16px" }}>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
-              Slide photo
-            </p>
-            <button
-              onClick={() => { setShowImagePicker(true); setSheetPanel(null); }}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px dashed rgba(255,255,255,0.14)",
-                borderRadius: 10,
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              📷 Change photo
-            </button>
-          </div>
-        );
+        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} />;
       }
       if (sheetPanel === "shapes") {
         return (
