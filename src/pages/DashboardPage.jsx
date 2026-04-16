@@ -3600,7 +3600,7 @@ function ListingDetailDrawer({
 
                 {/* TikTok */}
                 <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />TikTok Studio
+                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
