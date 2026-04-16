@@ -4649,7 +4649,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
           overflow: "hidden",
-          touchAction: "none",
+          touchAction: "pan-y",
         }}
         onTouchMove={e => { if (e.touches.length > 1) e.preventDefault(); }}
       >
@@ -4794,19 +4794,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
           ><Plus size={13} /></button>
         </div>
 
-        {/* Canvas — flex:1, shrinks when sheet opens */}
+        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved */}
         <div
           style={{
             flex: 1,
             minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            position: "relative",
-            touchAction: "none",
           }}
         >
+          {/* inner wrapper: centered when space allows, scrollable when compressed */}
+          <div style={{ margin: "auto", padding: "8px 0", flexShrink: 0, position: "relative" }}>
           {showImagePicker ? (
             <div style={{ position: "relative", width: mobW, height: mobH }}>
               <ImagePicker
@@ -4919,6 +4922,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               </div>
             </div>
           )}
+          </div>{/* end inner wrapper */}
         </div>
 
         {/* Sheet — in flow, pushes canvas up when open */}
