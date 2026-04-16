@@ -5546,204 +5546,235 @@ export default function TikTokStudioV3({ listing, onClose }) {
               onShiftZ={shiftZ}
             />
 
-            {/* Scrollable slides list */}
+            {/* Single-slide view with prev/next navigation */}
             {(() => {
-              const slideW = Math.min(Math.round((Math.max(desktopWrapperSize.w, 200) - 48) * 0.62), 500);
-              const slideH = Math.round(slideW * CH / CW);
+              const HEADER_ROW = 32;
+              const NAV_ROW = 44;
+              const V_PAD = 24;
+              const availW = Math.max(desktopWrapperSize.w - 48, 80);
+              const availH = Math.max(desktopWrapperSize.h - HEADER_ROW - NAV_ROW - V_PAD, 80);
+              const { displayW: slideW, displayH: slideH } = computeDisplaySize(CW / CH, availW, availH);
               const slideScale = CW > 0 ? slideW / CW : 0.3;
+              const btnBase = {
+                width: 26, height: 26, borderRadius: 6, border: "none",
+                background: "transparent", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "background 0.15s, color 0.15s",
+              };
               return (
-                <div
-                  style={{
-                    flex: 1,
-                    overflowY: "auto",
-                    padding: "28px 0 48px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 28,
-                  }}
-                >
-                  {slides.map((s, i) => {
-                    const isActive = i === active;
-                    return (
-                      <div key={s.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: slideW }}>
-                        {/* Slide header */}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: isActive ? "#60a5fa" : "rgba(255,255,255,0.32)", fontWeight: 600, letterSpacing: "0.04em" }}>
-                            Slide {i + 1}
-                          </span>
-                          <div style={{ display: "flex", gap: 2 }}>
-                            {[
-                              { icon: <MoveUp size={12} />, fn: () => moveSlide(i, -1), dis: i === 0, title: "Move up" },
-                              { icon: <MoveDown size={12} />, fn: () => moveSlide(i, 1), dis: i === total - 1, title: "Move down" },
-                              { icon: <Copy size={12} />, fn: () => duplicateSlideAt(i), dis: false, title: "Duplicate" },
-                              { icon: <Trash2 size={12} />, fn: () => removeSlide(i), dis: total <= 1, title: "Delete" },
-                            ].map(({ icon, fn, dis, title }) => (
-                              <button
-                                key={title}
-                                onClick={fn}
-                                disabled={dis}
-                                title={title}
-                                style={{
-                                  width: 22, height: 22, borderRadius: 5, border: "none",
-                                  background: "transparent",
-                                  color: dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)",
-                                  cursor: dis ? "default" : "pointer",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  transition: "background 0.15s, color 0.15s",
-                                }}
-                                onMouseEnter={e => { if (!dis) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)"; }}
-                              >
-                                {icon}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Slide canvas */}
-                        <div
-                          onClick={!isActive ? () => { setActive(i); setSelectedId(null); } : undefined}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px 12px" }}>
+                  {/* Header: label + slide controls */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: slideW, marginBottom: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 600, letterSpacing: "0.05em" }}>
+                      SLIDE {active + 1} / {total}
+                    </span>
+                    <div style={{ display: "flex", gap: 2 }}>
+                      {[
+                        { icon: <MoveUp size={12} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move up" },
+                        { icon: <MoveDown size={12} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move down" },
+                        { icon: <Copy size={12} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate" },
+                        { icon: <Trash2 size={12} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete" },
+                      ].map(({ icon, fn, dis, title }) => (
+                        <button
+                          key={title}
+                          onClick={fn}
+                          disabled={dis}
+                          title={title}
                           style={{
-                            position: "relative",
-                            width: slideW,
-                            height: slideH,
-                            borderRadius: 6,
-                            flexShrink: 0,
-                            boxShadow: isActive
-                              ? "0 0 0 2px #2563eb, 0 8px 32px rgba(0,0,0,0.6)"
-                              : "0 4px 20px rgba(0,0,0,0.5)",
-                            cursor: isActive ? "default" : "pointer",
-                            isolation: "isolate",
-                            transition: "box-shadow 0.15s",
+                            ...btnBase,
+                            color: dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)",
+                            cursor: dis ? "default" : "pointer",
+                          }}
+                          onMouseEnter={e => { if (!dis) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)"; }}
+                        >
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Active slide canvas */}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: slideW,
+                      height: slideH,
+                      borderRadius: 8,
+                      flexShrink: 0,
+                      boxShadow: "0 0 0 2px #2563eb, 0 8px 32px rgba(0,0,0,0.6)",
+                      isolation: "isolate",
+                    }}
+                  >
+                    <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 8, zIndex: 0 }}>
+                      <CanvasPreview
+                        {...previewProps}
+                        slide={slide}
+                        scale={slideScale}
+                        canvasW={CW}
+                        canvasH={CH}
+                        hideInteractive
+                      />
+                    </div>
+
+                    {showImagePicker && (
+                      <div style={{ position: "absolute", inset: 0, borderRadius: 8, overflow: "hidden", zIndex: 30 }}>
+                        <ImagePicker
+                          images={rawImages}
+                          current={slide.imageUrl}
+                          onSelect={(url) => patchSlide({ imageUrl: url })}
+                          onClose={() => setShowImagePicker(false)}
+                        />
+                      </div>
+                    )}
+
+                    {!showImagePicker && (
+                      <>
+                        <LayerCanvas
+                          layers={layers}
+                          selectedIds={layerSelectedIds}
+                          scale={slideScale}
+                          canvasW={CW}
+                          canvasH={CH}
+                          onSelectLayer={(id, multi) => {
+                            selectLayer(id, multi);
+                            setSelectedId(null);
+                            setActiveTab("layers");
+                          }}
+                          onClearSelection={clearLayerSelection}
+                          onUpdateLayer={updateLayer}
+                          onCommitHistory={commitLayerHistory}
+                          onDeleteLayer={deleteLayer}
+                        />
+                        <div
+                          ref={canvasInnerRef}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            zIndex: 25,
+                            overflow: "hidden",
+                            borderRadius: 8,
+                            pointerEvents: "none",
                           }}
                         >
-                          {/* Content clip */}
-                          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 6, zIndex: 0 }}>
-                            <CanvasPreview
-                              {...previewProps}
-                              slide={s}
-                              scale={slideScale}
-                              canvasW={CW}
-                              canvasH={CH}
-                              hideInteractive
-                            />
-                          </div>
-
-                          {/* Active slide: image picker */}
-                          {isActive && showImagePicker && (
-                            <div style={{ position: "absolute", inset: 0, borderRadius: 6, overflow: "hidden", zIndex: 30 }}>
-                              <ImagePicker
-                                images={rawImages}
-                                current={slide.imageUrl}
-                                onSelect={(url) => patchSlide({ imageUrl: url })}
-                                onClose={() => setShowImagePicker(false)}
+                          {(slide.elements || [])
+                            .filter((el) => el.id !== "watermark")
+                            .map((el) => (
+                              <div key={el.id} style={{ pointerEvents: "auto" }}>
+                                {editingId === el.id ? (
+                                  <InlineEditor
+                                    el={el}
+                                    scale={slideScale}
+                                    onCommit={(v) => onCommitEdit(el.id, v)}
+                                    onCancel={() => setEditingId(null)}
+                                  />
+                                ) : (
+                                  <CanvasElement
+                                    el={el}
+                                    scale={slideScale}
+                                    highlighted={(highlightIds || []).includes(el.id)}
+                                    fontStack={fontObj.stack}
+                                    onSelect={previewProps.onSelectElement}
+                                    onStartDrag={(e, id) => onStartDrag(e, id, slideScale)}
+                                    onDoubleClick={(id) => setEditingId(id)}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+                            <div style={{ pointerEvents: "auto" }}>
+                              <SelectionOverlay
+                                elId={selectedId}
+                                el={selectedEl}
+                                canvasInnerRef={canvasInnerRef}
+                                onStartResize={(e, id, handle) => onStartResize(e, id, handle, slideScale)}
+                                onStartRotate={onStartRotate}
+                                onUpdate={updateSelectedElement}
+                                onDuplicate={duplicateSelected}
+                                onDelete={deleteSelected}
                               />
                             </div>
                           )}
-
-                          {/* Active slide: layer canvas + interactive elements */}
-                          {isActive && !showImagePicker && (
-                            <>
-                              <LayerCanvas
-                                layers={layers}
-                                selectedIds={layerSelectedIds}
-                                scale={slideScale}
-                                canvasW={CW}
-                                canvasH={CH}
-                                onSelectLayer={(id, multi) => {
-                                  selectLayer(id, multi);
-                                  setSelectedId(null);
-                                  setActiveTab("layers");
-                                }}
-                                onClearSelection={clearLayerSelection}
-                                onUpdateLayer={updateLayer}
-                                onCommitHistory={commitLayerHistory}
-                                onDeleteLayer={deleteLayer}
-                              />
-                              <div
-                                ref={canvasInnerRef}
-                                style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  zIndex: 25,
-                                  overflow: "hidden",
-                                  borderRadius: 6,
-                                  pointerEvents: "none",
-                                }}
-                              >
-                                {(slide.elements || [])
-                                  .filter((el) => el.id !== "watermark")
-                                  .map((el) => (
-                                    <div key={el.id} style={{ pointerEvents: "auto" }}>
-                                      {editingId === el.id ? (
-                                        <InlineEditor
-                                          el={el}
-                                          scale={slideScale}
-                                          onCommit={(v) => onCommitEdit(el.id, v)}
-                                          onCancel={() => setEditingId(null)}
-                                        />
-                                      ) : (
-                                        <CanvasElement
-                                          el={el}
-                                          scale={slideScale}
-                                          highlighted={(highlightIds || []).includes(el.id)}
-                                          fontStack={fontObj.stack}
-                                          onSelect={previewProps.onSelectElement}
-                                          onStartDrag={(e, id) => onStartDrag(e, id, slideScale)}
-                                          onDoubleClick={(id) => setEditingId(id)}
-                                        />
-                                      )}
-                                    </div>
-                                  ))}
-                                {selectedEl && selectedId && !editingId && !selectedEl.locked && (
-                                  <div style={{ pointerEvents: "auto" }}>
-                                    <SelectionOverlay
-                                      elId={selectedId}
-                                      el={selectedEl}
-                                      canvasInnerRef={canvasInnerRef}
-                                      onStartResize={(e, id, handle) => onStartResize(e, id, handle, slideScale)}
-                                      onStartRotate={onStartRotate}
-                                      onUpdate={updateSelectedElement}
-                                      onDuplicate={duplicateSelected}
-                                      onDelete={deleteSelected}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      </>
+                    )}
+                  </div>
 
-                  {/* Add slide */}
-                  <button
-                    onClick={addSlide}
-                    title="Add slide"
-                    style={{
-                      width: slideW,
-                      height: 44,
-                      borderRadius: 8,
-                      border: "1px dashed rgba(37,99,235,0.35)",
-                      background: "transparent",
-                      color: "#3b82f6",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      fontFamily: "'DM Sans',sans-serif",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(37,99,235,0.07)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <Plus size={15} /> Add slide
-                  </button>
+                  {/* Navigation row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexShrink: 0 }}>
+                    <button
+                      onClick={() => { setActive(Math.max(0, active - 1)); setSelectedId(null); }}
+                      disabled={active === 0}
+                      title="Previous slide"
+                      style={{
+                        ...btnBase,
+                        width: 30, height: 30,
+                        color: active === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)",
+                        cursor: active === 0 ? "default" : "pointer",
+                      }}
+                      onMouseEnter={e => { if (active > 0) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"; }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Slide dots */}
+                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                      {slides.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setActive(i); setSelectedId(null); }}
+                          title={`Slide ${i + 1}`}
+                          style={{
+                            width: i === active ? 18 : 6,
+                            height: 6,
+                            borderRadius: 3,
+                            border: "none",
+                            background: i === active ? "#2563eb" : "rgba(255,255,255,0.2)",
+                            cursor: "pointer",
+                            padding: 0,
+                            transition: "width 0.15s, background 0.15s",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => { setActive(Math.min(total - 1, active + 1)); setSelectedId(null); }}
+                      disabled={active === total - 1}
+                      title="Next slide"
+                      style={{
+                        ...btnBase,
+                        width: 30, height: 30,
+                        color: active === total - 1 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)",
+                        cursor: active === total - 1 ? "default" : "pointer",
+                      }}
+                      onMouseEnter={e => { if (active < total - 1) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === total - 1 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"; }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+
+                    <button
+                      onClick={addSlide}
+                      title="Add slide"
+                      style={{
+                        height: 28, borderRadius: 6,
+                        border: "1px solid rgba(37,99,235,0.35)",
+                        background: "transparent", color: "#3b82f6",
+                        cursor: "pointer", display: "flex", alignItems: "center",
+                        gap: 4, fontSize: 11, fontWeight: 600,
+                        fontFamily: "'DM Sans',sans-serif",
+                        padding: "0 10px",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(37,99,235,0.1)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
                 </div>
               );
             })()}
