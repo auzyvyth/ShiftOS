@@ -5228,7 +5228,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 color: "rgba(255,255,255,0.9)",
               }}
             >
-              TIKTOK STUDIO
+              SHIFTOS STUDIO
             </span>
             <span
               style={{
