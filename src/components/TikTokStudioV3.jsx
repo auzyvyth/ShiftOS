@@ -2064,8 +2064,18 @@ export default function TikTokStudioV3({ listing, onClose }) {
       "content",
       "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
     );
+    // Prevent pinch-zoom and page scroll while studio is open
+    const blockTouch = (e) => { if (e.touches.length > 1) e.preventDefault(); };
+    const blockWheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
+    document.addEventListener("touchmove", blockTouch, { passive: false });
+    document.addEventListener("wheel", blockWheel, { passive: false });
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       if (original) meta?.setAttribute("content", original);
+      document.removeEventListener("touchmove", blockTouch);
+      document.removeEventListener("wheel", blockWheel);
+      document.body.style.overflow = prevOverflow;
     };
   }, []);
 
@@ -4396,7 +4406,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Mobile layout ────────────────────────────────────────────────────────
   if (isMobile) {
     const HEADER_H = 46;
-    const STRIP_H = 78;
+    const STRIP_H = 36;
     const DOCK_H = 52;
     const { displayW: mobW, displayH: mobH } = computeDisplaySize(
       CW / CH,
@@ -4426,6 +4436,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         ? [{ id: "layer", icon: <Layers size={17} />, label: "Shape" }]
         : []),
       { id: "shapes", icon: <Square size={17} />, label: "Add" },
+      { id: "components", icon: <Sliders size={17} />, label: "Layers" },
       { id: "photo", icon: <ImagePlus size={17} />, label: "Photo" },
       { id: "ai", icon: <Zap size={17} />, label: "AI" },
     ];
@@ -4542,6 +4553,47 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </div>
         );
       }
+      if (sheetPanel === "components") {
+        const allEls = (slide?.elements || []).filter(el => el.id !== "watermark");
+        return (
+          <div style={{ padding: "10px 14px 16px" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Components</p>
+            {allEls.length === 0 && layers.length === 0 && (
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "12px 0" }}>No components</p>
+            )}
+            {allEls.map(el => (
+              <div key={el.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>
+                  <Type size={11} style={{ display: "inline", marginRight: 4, opacity: 0.5 }} />
+                  {el.content?.slice(0, 20) || el.type}
+                </span>
+                <button
+                  onClick={() => updateElement(el.id, { locked: !el.locked })}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: el.locked ? "#f87171" : "rgba(255,255,255,0.3)", padding: 4 }}
+                  title={el.locked ? "Unlock" : "Lock"}
+                >
+                  {el.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                </button>
+              </div>
+            ))}
+            {layers.map(l => (
+              <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>
+                  <Square size={11} style={{ display: "inline", marginRight: 4, opacity: 0.5 }} />
+                  {l.label || l.type}
+                </span>
+                <button
+                  onClick={() => updateLayer(l.id, { locked: !l.locked })}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: l.locked ? "#f87171" : "rgba(255,255,255,0.3)", padding: 4 }}
+                  title={l.locked ? "Unlock" : "Lock"}
+                >
+                  {l.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      }
       if (sheetPanel === "ai") {
         return (
           <div style={{ padding: "12px 16px 16px", display: "flex", gap: 8 }}>
@@ -4597,7 +4649,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
           overflow: "hidden",
+          touchAction: "none",
         }}
+        onTouchMove={e => { if (e.touches.length > 1) e.preventDefault(); }}
       >
         {/* Header */}
         <div
@@ -4701,59 +4755,56 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </div>
         </div>
 
-        {/* Film strip */}
+        {/* Slide numbers strip */}
         <div
           style={{
             height: STRIP_H,
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
+            gap: 5,
+            padding: "0 12px",
             overflowX: "auto",
             flexShrink: 0,
             borderBottom: "1px solid rgba(255,255,255,0.07)",
             background: "#141a28",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {slides.map((s, i) => (
-            <FilmThumb
+            <button
               key={s.id}
-              slide={s}
-              idx={i}
-              active={i === active}
-              onSelect={(i) => { setActive(i); setSelectedId(null); }}
-              onDelete={removeSlide}
-            />
+              onClick={() => { setActive(i); setSelectedId(null); }}
+              style={{
+                minWidth: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                border: i === active ? "2px solid #2563eb" : "1px solid rgba(255,255,255,0.1)",
+                background: i === active ? "#2563eb" : "rgba(255,255,255,0.05)",
+                color: i === active ? "#fff" : "rgba(255,255,255,0.45)",
+                fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "0 7px",
+              }}
+            >{i + 1}</button>
           ))}
           <button
             onClick={addSlide}
             style={{
-              width: 36,
-              height: 64,
-              flexShrink: 0,
-              borderRadius: 6,
+              minWidth: 26, height: 26, borderRadius: 6, flexShrink: 0,
               border: "1px dashed rgba(37,99,235,0.4)",
-              background: "transparent",
-              color: "#3b82f6",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              background: "transparent", color: "#3b82f6",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             }}
-          >
-            <Plus size={18} />
-          </button>
+          ><Plus size={13} /></button>
         </div>
 
-        {/* Canvas — primary focus, takes all remaining space */}
+        {/* Canvas — flex:1, shrinks when sheet opens */}
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             overflow: "hidden",
             position: "relative",
+            touchAction: "none",
           }}
         >
           {showImagePicker ? (
@@ -4786,6 +4837,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   hideInteractive
                 />
               </div>
+              {/* BG image edit button */}
+              <button
+                onClick={() => { setShowImagePicker(true); setSheetPanel(null); }}
+                style={{
+                  position: "absolute", bottom: 8, left: 8, zIndex: 30,
+                  background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 8, color: "#fff", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "4px 8px", fontSize: 10, fontWeight: 600,
+                }}
+              ><ImagePlus size={12} /> BG</button>
               <LayerCanvas
                 layers={layers}
                 selectedIds={layerSelectedIds}
@@ -4857,106 +4919,72 @@ export default function TikTokStudioV3({ listing, onClose }) {
               </div>
             </div>
           )}
-
-          {/* Slide nav arrows */}
-          {active > 0 && (
-            <button
-              onClick={() => setActive((i) => i - 1)}
-              style={{
-                position: "absolute", left: 6, top: "50%",
-                transform: "translateY(-50%)",
-                width: 28, height: 28, borderRadius: "50%",
-                background: "rgba(0,0,0,0.6)", border: "none",
-                color: "#fff", cursor: "pointer", fontSize: 16, zIndex: 20,
-              }}
-            >‹</button>
-          )}
-          {active < total - 1 && (
-            <button
-              onClick={() => setActive((i) => i + 1)}
-              style={{
-                position: "absolute", right: 6, top: "50%",
-                transform: "translateY(-50%)",
-                width: 28, height: 28, borderRadius: "50%",
-                background: "rgba(0,0,0,0.6)", border: "none",
-                color: "#fff", cursor: "pointer", fontSize: 16, zIndex: 20,
-              }}
-            >›</button>
-          )}
         </div>
 
-        {/* Bottom dock + sheet container */}
-        <div style={{ position: "relative", flexShrink: 0, zIndex: 60 }}>
-          {/* Sheet — slides up from above the dock */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: DOCK_H,
-              left: 0,
-              right: 0,
-              maxHeight: "40vh",
-              background: "#1e2130",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "14px 14px 0 0",
-              overflowY: "auto",
-              WebkitOverflowScrolling: "touch",
-              transform: sheetPanel ? "translateY(0)" : "translateY(calc(100% + 4px))",
-              transition: "transform 0.22s ease",
-              zIndex: 1,
-            }}
-          >
+        {/* Sheet — in flow, pushes canvas up when open */}
+        <div
+          style={{
+            maxHeight: sheetPanel ? "40vh" : 0,
+            overflow: "hidden",
+            transition: "max-height 0.22s ease",
+            background: "#1e2130",
+            borderTop: sheetPanel ? "1px solid rgba(255,255,255,0.1)" : "none",
+            borderRadius: "14px 14px 0 0",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ overflowY: "auto", maxHeight: "40vh", WebkitOverflowScrolling: "touch" }}>
             {/* Drag handle — tap to close */}
             <div
               onClick={() => setSheetPanel(null)}
-              style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px", cursor: "pointer", flexShrink: 0 }}
+              style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px", cursor: "pointer" }}
             >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
             </div>
             {sheetBody()}
           </div>
+        </div>
 
-          {/* Dock icons */}
-          <div
-            style={{
-              height: DOCK_H,
-              display: "flex",
-              alignItems: "stretch",
-              background: "#1e2130",
-              borderTop: "1px solid rgba(255,255,255,0.09)",
-              position: "relative",
-              zIndex: 2,
-            }}
-          >
-            {dockItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => toggleSheet(item.id)}
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 3,
-                  border: "none",
-                  borderTop: `2px solid ${sheetPanel === item.id ? "#3b82f6" : "transparent"}`,
-                  background: sheetPanel === item.id ? "rgba(37,99,235,0.1)" : "transparent",
-                  color: sheetPanel === item.id ? "#60a5fa" : "rgba(255,255,255,0.42)",
-                  cursor: "pointer",
-                  fontSize: 8,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  transition: "color 0.15s, background 0.15s",
-                  padding: 0,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
+        {/* Dock icons */}
+        <div
+          style={{
+            height: DOCK_H,
+            display: "flex",
+            alignItems: "stretch",
+            background: "#1e2130",
+            borderTop: "1px solid rgba(255,255,255,0.09)",
+            flexShrink: 0,
+          }}
+        >
+          {dockItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => toggleSheet(item.id)}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 3,
+                border: "none",
+                borderTop: `2px solid ${sheetPanel === item.id ? "#3b82f6" : "transparent"}`,
+                background: sheetPanel === item.id ? "rgba(37,99,235,0.1)" : "transparent",
+                color: sheetPanel === item.id ? "#60a5fa" : "rgba(255,255,255,0.42)",
+                cursor: "pointer",
+                fontSize: 8,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                transition: "color 0.15s, background 0.15s",
+                padding: 0,
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
         </div>
       </div>
     );
