@@ -407,7 +407,7 @@ function buildDefaultElements(listing, theme, dealerName) {
       content: "POV: You just found your dream car 🚗",
       x: 540,
       y: 110,
-      fontSize: 38,
+      fontSize: 56,
       fontWeight: "600",
       color: "#ffffff",
       rotation: 0,
@@ -426,7 +426,7 @@ function buildDefaultElements(listing, theme, dealerName) {
           .trim() || "Your Car",
       x: 60,
       y: 1480,
-      fontSize: 72,
+      fontSize: 96,
       fontWeight: "800",
       color: "#ffffff",
       rotation: 0,
@@ -441,7 +441,7 @@ function buildDefaultElements(listing, theme, dealerName) {
       content: priceStr || "Price on Request",
       x: 60,
       y: 1590,
-      fontSize: 52,
+      fontSize: 80,
       fontWeight: "700",
       color: acc,
       rotation: 0,
@@ -455,8 +455,8 @@ function buildDefaultElements(listing, theme, dealerName) {
       type: "text",
       content: [mileage, trans, fuel].filter(Boolean).join(" · ") || "",
       x: 60,
-      y: 1665,
-      fontSize: 30,
+      y: 1690,
+      fontSize: 44,
       fontWeight: "400",
       color: "rgba(255,255,255,0.65)",
       rotation: 0,
@@ -468,7 +468,7 @@ function buildDefaultElements(listing, theme, dealerName) {
     {
       id: "watermark",
       type: "text",
-      content: dealerName || "XDrive",
+      content: dealerName || "",
       x: 1020,
       y: 72,
       fontSize: 24,
@@ -840,26 +840,31 @@ async function renderToCanvas(
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
 
+    if (!el.content) continue; // skip empty elements
     if (el.type === "badge") {
-      const pad = 16;
+      // Match HTML CanvasElement badge exactly:
+      // box top-left at (el.x, el.y), padding 6px vertical / 14px horizontal
+      const padH = 14;
+      const padV = 6;
       const elFont = el.fontFamily ? el.fontFamily.replace(/'/g, "") : fstack;
-      ctx.font = `${el.fontWeight || "700"} ${el.fontSize || 28}px ${elFont}`;
-      const tw = ctx.measureText(el.content || "").width;
-      const bw = tw + pad * 2;
-      const bh = (el.fontSize || 28) + pad;
-      const br = el.borderRadius !== undefined ? el.borderRadius : bh / 2;
+      const fontSize = el.fontSize || 28;
+      ctx.font = `${el.fontWeight || "700"} ${fontSize}px ${elFont}`;
+      const tw = ctx.measureText(el.content).width;
+      const bw = tw + padH * 2;
+      const bh = Math.round(fontSize * 1.3) + padV * 2;
+      const br = el.borderRadius !== undefined ? el.borderRadius : 999;
       ctx.save();
       ctx.globalAlpha = el.opacity ?? 1;
       ctx.translate(el.x, el.y);
       ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
       ctx.fillStyle = el.bgColor || el.color || "#dc2626";
       ctx.beginPath();
-      ctx.roundRect(-pad, -(el.fontSize || 28) * 0.8, bw, bh, br);
+      ctx.roundRect(0, 0, bw, bh, br);
       ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.fillText(el.content || "", 0, -(el.fontSize || 28) * 0.8 + pad * 0.4);
+      ctx.fillText(el.content, padH, padV);
       ctx.restore();
       continue;
     }
@@ -2323,7 +2328,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       content: "HOT DEAL",
       x: 60,
       y: 200,
-      fontSize: 28,
+      fontSize: 52,
       fontWeight: "700",
       color: "#fff",
       bgColor: theme.accentColor || "#dc2626",
@@ -5057,7 +5062,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   position: "absolute",
                   inset: 0,
                   zIndex: 25,
-                  overflow: "hidden",
+                  overflow: "visible",
+                  clipPath: "inset(0 -9999px -9999px 0)",
                   borderRadius: 4,
                   pointerEvents: "none",
                 }}
@@ -5602,7 +5608,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                       height: slideH,
                       borderRadius: 8,
                       flexShrink: 0,
-                      boxShadow: "0 0 0 2px #2563eb, 0 8px 32px rgba(0,0,0,0.6)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                       isolation: "isolate",
                     }}
                   >
@@ -5652,7 +5658,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
                             position: "absolute",
                             inset: 0,
                             zIndex: 25,
-                            overflow: "hidden",
+                            overflow: "visible",
+                            clipPath: "inset(0 -9999px -9999px 0)",
                             borderRadius: 8,
                             pointerEvents: "none",
                           }}
