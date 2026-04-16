@@ -4387,12 +4387,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
     const toggleSheet = (id) => setSheetPanel((p) => (p === id ? null : id));
 
-    // When tapping a template text element on mobile → open text sheet
     const mobOnSelectElement = (id) => {
       setSelectedId(id);
       setEditingId(null);
       clearLayerSelection();
-      setSheetPanel("text");
     };
 
     // Dock items — context-sensitive
@@ -4773,7 +4771,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 onSelectLayer={(id) => {
                   selectLayer(id);
                   setSelectedId(null);
-                  setSheetPanel("layer");
                 }}
                 onClearSelection={() => {
                   clearLayerSelection();
