@@ -1835,7 +1835,7 @@ function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#2563eb" }}
+        style={{ width: "100%", accentColor: "#2563eb", touchAction: "none" }}
       />
     </div>
   );
@@ -3270,7 +3270,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               onChange={(e) =>
                 updateSelectedElement({ borderRadius: Number(e.target.value) })
               }
-              style={{ width: "100%", accentColor: "#3b82f6" }}
+              style={{ width: "100%", accentColor: "#3b82f6", touchAction: "none" }}
             />
           </div>
         )}
@@ -4462,7 +4462,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             </div>
             <input type="range" min={min} max={max} step={step} value={a[key]}
               onChange={e => onPatch({ [key]: parseFloat(e.target.value) })}
-              style={{ width: "100%", accentColor: "#2563eb", height: 3 }}
+              style={{ width: "100%", accentColor: "#2563eb", height: 3, touchAction: "none" }}
             />
           </div>
         ))}
