@@ -1928,6 +1928,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [sheetPanel, setSheetPanel] = useState(null); // mobile bottom sheet
   // Measured size of the desktop canvas workspace div (excluding padding)
   const [desktopWrapperSize, setDesktopWrapperSize] = useState({
     w: 800,
@@ -4370,14 +4371,199 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // ── Mobile layout ────────────────────────────────────────────────────────
   if (isMobile) {
-    // Fit canvas to available mobile screen space
-    // Header 46 + film strip ~78 + shape toolbar ~48 + bottom padding ~30 = ~202px
+    const HEADER_H = 46;
+    const STRIP_H = 78;
+    const DOCK_H = 52;
     const { displayW: mobW, displayH: mobH } = computeDisplaySize(
       CW / CH,
-      window.innerWidth - 20,
-      window.innerHeight - 202,
+      window.innerWidth - 16,
+      window.innerHeight - HEADER_H - STRIP_H - DOCK_H - 12,
     );
     const mobScale = CW > 0 ? mobW / CW : 0.3;
+
+    const mobSelectedLayer = layers.find((l) => layerSelectedIds.includes(l.id)) || null;
+    const hasTextSel = !!(selectedId && selectedEl);
+    const hasLayerSel = layerSelectedIds.length > 0;
+
+    const toggleSheet = (id) => setSheetPanel((p) => (p === id ? null : id));
+
+    // When tapping a template text element on mobile → open text sheet
+    const mobOnSelectElement = (id) => {
+      setSelectedId(id);
+      setEditingId(null);
+      clearLayerSelection();
+      setSheetPanel("text");
+    };
+
+    // Dock items — context-sensitive
+    const dockItems = [
+      ...(hasTextSel
+        ? [{ id: "text", icon: <Type size={17} />, label: "Text" }]
+        : []),
+      ...(hasLayerSel
+        ? [{ id: "layer", icon: <Layers size={17} />, label: "Shape" }]
+        : []),
+      { id: "shapes", icon: <Square size={17} />, label: "Add" },
+      { id: "photo", icon: <ImagePlus size={17} />, label: "Photo" },
+      { id: "ai", icon: <Zap size={17} />, label: "AI" },
+    ];
+
+    // Bottom sheet content
+    const sheetBody = () => {
+      if (sheetPanel === "text") {
+        const p = ElPropsPanel();
+        if (!p) return null;
+        return <div style={{ padding: "0 14px 16px" }}>{p}</div>;
+      }
+      if (sheetPanel === "layer" && mobSelectedLayer) {
+        return (
+          <div style={{ padding: "0 0 16px" }}>
+            <LayerPropertiesPanel
+              layer={mobSelectedLayer}
+              onUpdate={(id, patch) => updateLayer(id, patch)}
+              onCommit={commitLayerHistory}
+              onDelete={deleteLayer}
+              onDuplicate={duplicateLayer}
+            />
+          </div>
+        );
+      }
+      if (sheetPanel === "photo") {
+        return (
+          <div style={{ padding: "12px 16px 16px" }}>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
+              Slide photo
+            </p>
+            <button
+              onClick={() => { setShowImagePicker(true); setSheetPanel(null); }}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px dashed rgba(255,255,255,0.14)",
+                borderRadius: 10,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              📷 Change photo
+            </button>
+          </div>
+        );
+      }
+      if (sheetPanel === "shapes") {
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 16px" }}>
+            {[
+              ["▭", "Rect", () => { addLayer("rect"); setSheetPanel("layer"); }],
+              ["◯", "Circle", () => { addLayer("circle"); setSheetPanel("layer"); }],
+              ["△", "Triangle", () => { addLayer("triangle"); setSheetPanel("layer"); }],
+              ["T", "Text", () => { addLayer("text"); setSheetPanel("layer"); }],
+            ].map(([icon, lbl, fn]) => (
+              <button
+                key={lbl}
+                onClick={fn}
+                style={{
+                  flex: "1 0 60px",
+                  padding: "12px 6px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 10,
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <span style={{ fontSize: 22 }}>{icon}</span>
+                {lbl}
+              </button>
+            ))}
+            <label
+              style={{
+                flex: "1 0 60px",
+                padding: "12px 6px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 10,
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <span style={{ fontSize: 22 }}>🖼</span>
+              Image
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    addLayer("image", { src: URL.createObjectURL(f) });
+                    setSheetPanel("layer");
+                  }
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+        );
+      }
+      if (sheetPanel === "ai") {
+        return (
+          <div style={{ padding: "12px 16px 16px", display: "flex", gap: 8 }}>
+            <input
+              value={aiCmd}
+              onChange={(e) => setAiCmd(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && runAICommand()}
+              disabled={aiAtLimit}
+              placeholder="AI: make price bigger, red accent…"
+              autoFocus
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8,
+                color: "rgba(255,255,255,0.9)",
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 12,
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={runAICommand}
+              disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: "#2563eb",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {applyingCmd ? "…" : "⚡"}
+            </button>
+          </div>
+        );
+      }
+      return null;
+    };
+
     return (
       <div
         style={{
@@ -4388,12 +4574,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
           display: "flex",
           flexDirection: "column",
           fontFamily: "'DM Sans',sans-serif",
+          overflow: "hidden",
         }}
       >
         {/* Header */}
         <div
           style={{
-            height: 46,
+            height: HEADER_H,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -4415,16 +4602,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </span>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
             {[
-              {
-                fn: undo,
-                dis: historyIdx.current <= 0,
-                icon: <Undo2 size={12} />,
-              },
-              {
-                fn: redo,
-                dis: historyIdx.current >= history.current.length - 1,
-                icon: <Redo2 size={12} />,
-              },
+              { fn: undo, dis: historyIdx.current <= 0, icon: <Undo2 size={12} /> },
+              { fn: redo, dis: historyIdx.current >= history.current.length - 1, icon: <Redo2 size={12} /> },
             ].map(({ fn, dis, icon }, i) => (
               <button
                 key={i}
@@ -4436,9 +4615,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   borderRadius: 6,
                   border: "1px solid rgba(255,255,255,0.08)",
                   background: "transparent",
-                  color: dis
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.6)",
+                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)",
                   cursor: dis ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -4505,6 +4682,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         {/* Film strip */}
         <div
           style={{
+            height: STRIP_H,
             display: "flex",
             alignItems: "center",
             gap: 6,
@@ -4521,10 +4699,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               slide={s}
               idx={i}
               active={i === active}
-              onSelect={(i) => {
-                setActive(i);
-                setSelectedId(null);
-              }}
+              onSelect={(i) => { setActive(i); setSelectedId(null); }}
               onDelete={removeSlide}
             />
           ))}
@@ -4548,141 +4723,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           </button>
         </div>
 
-        {/* Mobile shape toolbar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "4px 10px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "#1a2035",
-            flexShrink: 0,
-            overflowX: "auto",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 8,
-              color: "rgba(255,255,255,0.3)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              flexShrink: 0,
-            }}
-          >
-            Add:
-          </span>
-          {[
-            [
-              "▭",
-              "Rect",
-              () => {
-                addLayer("rect");
-                setActiveTab("layers");
-              },
-            ],
-            [
-              "◯",
-              "Circle",
-              () => {
-                addLayer("circle");
-                setActiveTab("layers");
-              },
-            ],
-            [
-              "△",
-              "Triangle",
-              () => {
-                addLayer("triangle");
-                setActiveTab("layers");
-              },
-            ],
-            [
-              "T",
-              "Text",
-              () => {
-                addLayer("text");
-                setActiveTab("layers");
-              },
-            ],
-          ].map(([icon, lbl, fn]) => (
-            <button
-              key={lbl}
-              onClick={fn}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-                padding: "4px 9px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6,
-                color: "rgba(255,255,255,0.65)",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
-              {icon} {lbl}
-            </button>
-          ))}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              padding: "4px 9px",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 6,
-              color: "rgba(255,255,255,0.65)",
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
-            🖼 Image
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  addLayer("image", { src: URL.createObjectURL(f) });
-                  setActiveTab("layers");
-                }
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <div style={{ flex: 1 }} />
-          {layers.length > 0 && (
-            <button
-              onClick={() => {
-                setSidebarOpen(true);
-                setActiveTab("layers");
-              }}
-              style={{
-                padding: "4px 9px",
-                background: "rgba(59,130,246,0.12)",
-                border: "1px solid rgba(59,130,246,0.3)",
-                borderRadius: 6,
-                color: "#60a5fa",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
-              {layers.length} layer{layers.length > 1 ? "s" : ""}
-            </button>
-          )}
-        </div>
-
-        {/* Canvas preview area — full width, dominant */}
+        {/* Canvas — primary focus, takes all remaining space */}
         <div
           style={{
             flex: 1,
@@ -4694,13 +4735,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
           }}
         >
           {showImagePicker ? (
-            <div
-              style={{
-                position: "relative",
-                width: mobW,
-                height: mobH,
-              }}
-            >
+            <div style={{ position: "relative", width: mobW, height: mobH }}>
               <ImagePicker
                 images={rawImages}
                 current={slide.imageUrl}
@@ -4709,7 +4744,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
               />
             </div>
           ) : (
-            // Sizing anchor — no overflow so handles can escape the frame edge
             <div
               style={{
                 position: "relative",
@@ -4721,16 +4755,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 isolation: "isolate",
               }}
             >
-              {/* Content clip — clips template + layer fills */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  overflow: "hidden",
-                  borderRadius: 4,
-                  zIndex: 0,
-                }}
-              >
+              <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 4, zIndex: 0 }}>
                 <CanvasPreview
                   {...previewProps}
                   scale={mobScale}
@@ -4748,15 +4773,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 onSelectLayer={(id) => {
                   selectLayer(id);
                   setSelectedId(null);
-                  setSidebarOpen(true);
-                  setActiveTab("layers");
+                  setSheetPanel("layer");
                 }}
-                onClearSelection={clearLayerSelection}
+                onClearSelection={() => {
+                  clearLayerSelection();
+                  setSelectedId(null);
+                  setSheetPanel(null);
+                }}
                 onUpdateLayer={updateLayer}
                 onCommitHistory={commitLayerHistory}
                 onDeleteLayer={deleteLayer}
               />
-              {/* Interactive elements + SelectionOverlay — above Konva stage (z=25) */}
               <div
                 ref={canvasInnerRef}
                 style={{
@@ -4785,7 +4812,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                           scale={mobScale}
                           highlighted={(highlightIds || []).includes(el.id)}
                           fontStack={fontObj.stack}
-                          onSelect={previewProps.onSelectElement}
+                          onSelect={mobOnSelectElement}
                           onStartDrag={onStartDrag}
                           onDoubleClick={(id) => setEditingId(id)}
                         />
@@ -4810,153 +4837,105 @@ export default function TikTokStudioV3({ listing, onClose }) {
             </div>
           )}
 
-          {/* Sidebar toggle button — floats over canvas */}
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            style={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              zIndex: 30,
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "rgba(13,17,23,0.9)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 16,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {sidebarOpen ? "✕" : "☰"}
-          </button>
-
-          {/* Prev/Next slide */}
+          {/* Slide nav arrows */}
           {active > 0 && (
             <button
               onClick={() => setActive((i) => i - 1)}
               style={{
-                position: "absolute",
-                left: 6,
-                top: "50%",
+                position: "absolute", left: 6, top: "50%",
                 transform: "translateY(-50%)",
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: "rgba(0,0,0,0.6)",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 16,
-                zIndex: 20,
+                width: 28, height: 28, borderRadius: "50%",
+                background: "rgba(0,0,0,0.6)", border: "none",
+                color: "#fff", cursor: "pointer", fontSize: 16, zIndex: 20,
               }}
-            >
-              ‹
-            </button>
+            >‹</button>
           )}
           {active < total - 1 && (
             <button
               onClick={() => setActive((i) => i + 1)}
               style={{
-                position: "absolute",
-                right: sidebarOpen ? 280 : 6,
-                top: "50%",
+                position: "absolute", right: 6, top: "50%",
                 transform: "translateY(-50%)",
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: "rgba(0,0,0,0.6)",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 16,
-                zIndex: 20,
+                width: 28, height: 28, borderRadius: "50%",
+                background: "rgba(0,0,0,0.6)", border: "none",
+                color: "#fff", cursor: "pointer", fontSize: 16, zIndex: 20,
               }}
-            >
-              ›
-            </button>
-          )}
-
-          {/* SIDEBAR */}
-          {sidebarOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: 270,
-                background: "#1e2130",
-                borderLeft: "1px solid rgba(255,255,255,0.07)",
-                display: "flex",
-                flexDirection: "column",
-                zIndex: 25,
-                overflowY: "hidden",
-                transition: "transform 0.2s ease",
-              }}
-            >
-              {tabBar}
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
-                {renderTab()}
-              </div>
-            </div>
+            >›</button>
           )}
         </div>
 
-        {/* AI bar — always at bottom */}
-        <div
-          style={{
-            padding: "8px 12px",
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-            background: "#1e2130",
-            display: "flex",
-            gap: 6,
-            flexShrink: 0,
-          }}
-        >
-          <input
-            value={aiCmd}
-            onChange={(e) => setAiCmd(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runAICommand()}
-            disabled={aiAtLimit}
-            placeholder="AI: make price bigger, red accent…"
+        {/* Bottom dock + sheet container */}
+        <div style={{ position: "relative", flexShrink: 0, zIndex: 60 }}>
+          {/* Sheet — slides up from above the dock */}
+          <div
             style={{
-              flex: 1,
-              padding: "9px 12px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8,
-              color: "rgba(255,255,255,0.9)",
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 12,
-              outline: "none",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#2563eb";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.08)";
-            }}
-          />
-          <button
-            onClick={runAICommand}
-            disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
-            style={{
-              padding: "9px 14px",
-              borderRadius: 8,
-              border: "none",
-              background: "#2563eb",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 700,
+              position: "absolute",
+              bottom: DOCK_H,
+              left: 0,
+              right: 0,
+              maxHeight: "40vh",
+              background: "#1e2130",
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "14px 14px 0 0",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              transform: sheetPanel ? "translateY(0)" : "translateY(calc(100% + 4px))",
+              transition: "transform 0.22s ease",
+              zIndex: 1,
             }}
           >
-            {applyingCmd ? "…" : "⚡"}
-          </button>
+            {/* Drag handle — tap to close */}
+            <div
+              onClick={() => setSheetPanel(null)}
+              style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px", cursor: "pointer", flexShrink: 0 }}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
+            </div>
+            {sheetBody()}
+          </div>
+
+          {/* Dock icons */}
+          <div
+            style={{
+              height: DOCK_H,
+              display: "flex",
+              alignItems: "stretch",
+              background: "#1e2130",
+              borderTop: "1px solid rgba(255,255,255,0.09)",
+              position: "relative",
+              zIndex: 2,
+            }}
+          >
+            {dockItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => toggleSheet(item.id)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 3,
+                  border: "none",
+                  borderTop: `2px solid ${sheetPanel === item.id ? "#3b82f6" : "transparent"}`,
+                  background: sheetPanel === item.id ? "rgba(37,99,235,0.1)" : "transparent",
+                  color: sheetPanel === item.id ? "#60a5fa" : "rgba(255,255,255,0.42)",
+                  cursor: "pointer",
+                  fontSize: 8,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  transition: "color 0.15s, background 0.15s",
+                  padding: 0,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
