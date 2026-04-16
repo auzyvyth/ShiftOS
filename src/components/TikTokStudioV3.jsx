@@ -634,6 +634,13 @@ async function renderBackground(
   const fstack = fontObj.stack.replace(/'/g, "");
 
   ctx.clearRect(0, 0, W, H);
+
+  // Hard clip — nothing can paint outside the canvas bounds
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, H);
+  ctx.clip();
+
   ctx.fillStyle = theme.bgColor || "#060910";
   ctx.fillRect(0, 0, W, H);
 
@@ -661,23 +668,24 @@ async function renderBackground(
       ctx.drawImage(img, bx, by, bw, bh);
       ctx.restore();
 
-      // Main image — cover fill so photo always fills the entire frame
+      // Main image — CONTAIN so full car is always visible
       ctx.save();
       const ar = img.naturalWidth / img.naturalHeight;
       const car = W / H;
       let dw, dh, dx, dy;
       if (ar > car) {
-        dh = H;
-        dw = H * ar;
-        dx = (W - dw) / 2;
-        dy = 0;
-      } else {
         dw = W;
         dh = W / ar;
         dx = 0;
         dy = (H - dh) / 2;
+      } else {
+        dh = H;
+        dw = H * ar;
+        dx = (W - dw) / 2;
+        dy = 0;
       }
-      ctx.globalAlpha = 0.92;
+      ctx.globalAlpha = 1.0;
+      ctx.filter = "none";
       ctx.drawImage(img, dx, dy, dw, dh);
       ctx.restore();
     }
@@ -770,7 +778,7 @@ async function renderBackground(
   }
 
   // ── Watermark ────────────────────────────────────────────────────────────
-  if (theme.watermarkText) {
+  if (theme.watermarkText && !slide.elements?.find((e) => e.id === "watermark")) {
     ctx.save();
     ctx.globalAlpha = theme.watermarkOpacity ?? 0.14;
     ctx.fillStyle = "#ffffff";
@@ -786,6 +794,9 @@ async function renderBackground(
     );
     ctx.restore();
   }
+
+  // Close the hard clip opened at the top of renderBackground
+  ctx.restore();
 }
 
 // ─── Export: render full slide (background + elements) to HTML5 canvas ────────
@@ -809,21 +820,22 @@ async function renderToCanvas(
 
   for (const el of slide.elements || []) {
     if (!el.visible) continue;
-    if (el.id === "watermark") continue; // already in renderBackground
 
     if (el.type === "badge") {
       const pad = 16;
-      ctx.font = `${el.fontWeight || "700"} ${el.fontSize || 28}px ${fstack}`;
+      const elFont = el.fontFamily ? el.fontFamily.replace(/'/g, "") : fstack;
+      ctx.font = `${el.fontWeight || "700"} ${el.fontSize || 28}px ${elFont}`;
       const tw = ctx.measureText(el.content || "").width;
       const bw = tw + pad * 2;
       const bh = (el.fontSize || 28) + pad;
+      const br = el.borderRadius !== undefined ? el.borderRadius : bh / 2;
       ctx.save();
       ctx.globalAlpha = el.opacity ?? 1;
       ctx.translate(el.x, el.y);
       ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
       ctx.fillStyle = el.bgColor || el.color || "#dc2626";
       ctx.beginPath();
-      ctx.roundRect(-pad, -(el.fontSize || 28) * 0.8, bw, bh, bh / 2);
+      ctx.roundRect(-pad, -(el.fontSize || 28) * 0.8, bw, bh, br);
       ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.textAlign = "left";
@@ -833,12 +845,28 @@ async function renderToCanvas(
       continue;
     }
 
+    const elFont2 = el.fontFamily ? el.fontFamily.replace(/'/g, "") : fstack;
     ctx.save();
     ctx.globalAlpha = el.opacity ?? 1;
     ctx.translate(el.x, el.y);
     ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
+    ctx.font = `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px ${elFont2}`;
+    // Background fill
+    if (el.bgColor) {
+      const tw2 = ctx.measureText(el.content || "").width;
+      const pad2 = 10;
+      ctx.fillStyle = el.bgColor;
+      ctx.beginPath();
+      ctx.roundRect(
+        -pad2,
+        0,
+        tw2 + pad2 * 2,
+        (el.fontSize || 32) * 1.3,
+        6,
+      );
+      ctx.fill();
+    }
     ctx.fillStyle = el.color || "#fff";
-    ctx.font = `${el.fontStyle === "italic" ? "italic " : ""}${el.fontWeight || "400"} ${el.fontSize || 32}px ${fstack}`;
     if (el.shadow) {
       ctx.shadowColor = "rgba(0,0,0,0.85)";
       ctx.shadowBlur = 8;
@@ -849,6 +877,16 @@ async function renderToCanvas(
     ctx.fillText(el.content || "", 0, 0);
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    if (el.shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetY = 1;
+      ctx.fillText(el.content || "", 0, 0);
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+    }
     ctx.restore();
   }
 }
@@ -906,9 +944,9 @@ function CanvasElement({
           color: "#fff",
           fontSize: el.fontSize * scale,
           fontWeight: el.fontWeight,
-          fontFamily: fontStack,
+          fontFamily: el.fontFamily || fontStack,
           padding: `${6 * scale}px ${14 * scale}px`,
-          borderRadius: 999,
+          borderRadius: (el.borderRadius ?? 999) * scale,
           whiteSpace: "nowrap",
           zIndex: 10,
           lineHeight: 1.3,
@@ -930,13 +968,16 @@ function CanvasElement({
         fontStyle: el.fontStyle || "normal",
         color: el.color,
         textAlign: el.align,
-        fontFamily: fontStack,
+        fontFamily: el.fontFamily || fontStack,
         lineHeight: 1.2,
         whiteSpace: "nowrap",
         zIndex: 10,
         textShadow: el.shadow
           ? "0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9)"
           : "none",
+        background: el.bgColor || "transparent",
+        padding: el.bgColor ? `${4 * scale}px ${10 * scale}px` : 0,
+        borderRadius: el.bgColor ? 6 * scale : 0,
       }}
       {...handlers}
     >
@@ -1340,6 +1381,7 @@ function CanvasPreview({
   onDuplicateSelected,
   onDeleteSelected,
   innerRef,
+  hideInteractive = false,
 }) {
   const bgCanvasRef = React.useRef(null);
   const localRef = React.useRef(null);
@@ -1398,9 +1440,9 @@ function CanvasPreview({
     <div
       ref={combinedRef}
       onClick={onDeselectAll}
-      onTouchEnd={e => {
+      onTouchEnd={(e) => {
         // Issue 5: Tap on empty canvas background deselects layers on mobile
-        if (e.target === e.currentTarget || e.target.tagName === 'CANVAS') {
+        if (e.target === e.currentTarget || e.target.tagName === "CANVAS") {
           onDeselectAll();
         }
       }}
@@ -1414,7 +1456,7 @@ function CanvasPreview({
         flexShrink: 0,
         background: "#0a0d14",
         isolation: "isolate",
-        zIndex: 10,   // Fix 2: template sits at z=10; user layers at z<10 go behind, z>10 in front
+        zIndex: 10, // Fix 2: template sits at z=10; user layers at z<10 go behind, z>10 in front
       }}
     >
       {/* ── Background canvas: pixel-perfect match to export ── */}
@@ -1465,46 +1507,50 @@ function CanvasPreview({
         </div>
       )}
 
-      {/* ── Interactive text / badge elements layer ── */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
-        {(slide.elements || [])
-          .filter((el) => el.id !== "watermark")
-          .map((el) => (
-            <React.Fragment key={el.id}>
-              {editingId === el.id ? (
-                <InlineEditor
-                  el={el}
-                  scale={scale}
-                  onCommit={(v) => onCommitEdit(el.id, v)}
-                  onCancel={onCancelEdit}
-                />
-              ) : (
-                <CanvasElement
-                  el={el}
-                  scale={scale}
-                  highlighted={(highlightIds || []).includes(el.id)}
-                  fontStack={fontStack}
-                  onSelect={onSelectElement}
-                  onStartDrag={onStartDrag}
-                  onDoubleClick={onDoubleClickElement}
-                />
-              )}
-            </React.Fragment>
-          ))}
-      </div>
+      {/* ── Interactive text / badge elements layer (skipped when hideInteractive) ── */}
+      {!hideInteractive && (
+        <>
+          <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
+            {(slide.elements || [])
+              .filter((el) => el.id !== "watermark")
+              .map((el) => (
+                <React.Fragment key={el.id}>
+                  {editingId === el.id ? (
+                    <InlineEditor
+                      el={el}
+                      scale={scale}
+                      onCommit={(v) => onCommitEdit(el.id, v)}
+                      onCancel={onCancelEdit}
+                    />
+                  ) : (
+                    <CanvasElement
+                      el={el}
+                      scale={scale}
+                      highlighted={(highlightIds || []).includes(el.id)}
+                      fontStack={fontStack}
+                      onSelect={onSelectElement}
+                      onStartDrag={onStartDrag}
+                      onDoubleClick={onDoubleClickElement}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+          </div>
 
-      {/* ── Selection overlay ── */}
-      {selectedEl && selectedId && !editingId && !selectedEl.locked && (
-        <SelectionOverlay
-          elId={selectedId}
-          el={selectedEl}
-          canvasInnerRef={localRef}
-          onStartResize={onStartResize}
-          onStartRotate={onStartRotate}
-          onUpdate={onUpdateSelected}
-          onDuplicate={onDuplicateSelected}
-          onDelete={onDeleteSelected}
-        />
+          {/* ── Selection overlay ── */}
+          {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+            <SelectionOverlay
+              elId={selectedId}
+              el={selectedEl}
+              canvasInnerRef={localRef}
+              onStartResize={onStartResize}
+              onStartRotate={onStartRotate}
+              onUpdate={onUpdateSelected}
+              onDuplicate={onDuplicateSelected}
+              onDelete={onDeleteSelected}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -1883,7 +1929,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   // Measured size of the desktop canvas workspace div (excluding padding)
-  const [desktopWrapperSize, setDesktopWrapperSize] = useState({ w: 800, h: 600 });
+  const [desktopWrapperSize, setDesktopWrapperSize] = useState({
+    w: 800,
+    h: 600,
+  });
   const desktopWrapperRef = useRef(null);
   const [userId, setUserId] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("9:16");
@@ -2008,10 +2057,15 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // Issue 1: Lock viewport zoom while studio is open (prevents browser pinch-zoom)
   useEffect(() => {
-    const meta = document.querySelector('meta[name=viewport]');
-    const original = meta?.getAttribute('content');
-    meta?.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-    return () => { if (original) meta?.setAttribute('content', original); };
+    const meta = document.querySelector("meta[name=viewport]");
+    const original = meta?.getAttribute("content");
+    meta?.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+    );
+    return () => {
+      if (original) meta?.setAttribute("content", original);
+    };
   }, []);
 
   // ── Init ─────────────────────────────────────────────────────────────────
@@ -2639,6 +2693,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   const toBlob = useCallback(
     async (idx) => {
+      await document.fonts.ready;
       const c = document.createElement("canvas");
       await renderToCanvas(c, slides[idx], theme, font, CW, CH);
       await renderLayersToCanvas(c, slides[idx]?.layers || [], CW, CH);
@@ -3021,6 +3076,147 @@ export default function TikTokStudioV3({ listing, onClose }) {
             Shadow
           </button>
         </div>
+
+        {/* Font family */}
+        <div style={{ marginTop: 8 }}>
+          <p
+            style={{
+              fontSize: 9,
+              color: "rgba(255,255,255,0.3)",
+              marginBottom: 3,
+            }}
+          >
+            Font
+          </p>
+          <select
+            value={selectedEl.fontFamily || ""}
+            onChange={(e) =>
+              updateSelectedElement({ fontFamily: e.target.value })
+            }
+            style={{
+              width: "100%",
+              padding: "5px 8px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 6,
+              color: "rgba(255,255,255,0.8)",
+              fontSize: 11,
+              outline: "none",
+            }}
+          >
+            <option value="">— Template default —</option>
+            {FONTS.map((f) => (
+              <option key={f.id} value={f.stack}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Background color — text elements only */}
+        {selectedEl.type === "text" && (
+          <div style={{ marginTop: 8 }}>
+            <p
+              style={{
+                fontSize: 9,
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 3,
+              }}
+            >
+              Background
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="color"
+                value={selectedEl.bgColor || "#000000"}
+                onChange={(e) =>
+                  updateSelectedElement({ bgColor: e.target.value })
+                }
+                style={{
+                  width: 28,
+                  height: 28,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  padding: 2,
+                }}
+              />
+              <input
+                type="text"
+                value={selectedEl.bgColor || ""}
+                placeholder="none"
+                onChange={(e) =>
+                  updateSelectedElement({ bgColor: e.target.value || null })
+                }
+                style={{
+                  flex: 1,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  color: "rgba(255,255,255,0.8)",
+                  fontSize: 11,
+                  fontFamily: "monospace",
+                  outline: "none",
+                }}
+              />
+              {selectedEl.bgColor && (
+                <button
+                  onClick={() => updateSelectedElement({ bgColor: null })}
+                  style={{
+                    padding: "3px 7px",
+                    fontSize: 10,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 5,
+                    color: "rgba(255,255,255,0.4)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Corner radius — badge elements */}
+        {selectedEl.type === "badge" && (
+          <div style={{ marginTop: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 3,
+              }}
+            >
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
+                Corner Radius
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "rgba(255,255,255,0.8)",
+                  fontWeight: 600,
+                }}
+              >
+                {selectedEl.borderRadius ?? 999}px
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={999}
+              step={1}
+              value={selectedEl.borderRadius ?? 999}
+              onChange={(e) =>
+                updateSelectedElement({ borderRadius: Number(e.target.value) })
+              }
+              style={{ width: "100%", accentColor: "#3b82f6" }}
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -4151,6 +4347,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
     onSelectElement: (id) => {
       setSelectedId(id);
       setEditingId(null);
+      clearLayerSelection();
+      setActiveTab("slide");
     },
     onDeselectAll: () => {
       setSelectedId(null);
@@ -4168,7 +4366,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
     onUpdateSelected: updateSelectedElement,
     onDuplicateSelected: duplicateSelected,
     onDeleteSelected: deleteSelected,
-    innerRef: canvasInnerRef,
   };
 
   // ── Mobile layout ────────────────────────────────────────────────────────
@@ -4525,17 +4722,21 @@ export default function TikTokStudioV3({ listing, onClose }) {
               }}
             >
               {/* Content clip — clips template + layer fills */}
-              <div style={{
-                position: "absolute", inset: 0,
-                overflow: "hidden",
-                borderRadius: 4,
-                zIndex: 0,
-              }}>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  overflow: "hidden",
+                  borderRadius: 4,
+                  zIndex: 0,
+                }}
+              >
                 <CanvasPreview
                   {...previewProps}
                   scale={mobScale}
                   canvasW={CW}
                   canvasH={CH}
+                  hideInteractive
                 />
               </div>
               <LayerCanvas
@@ -4546,6 +4747,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 canvasH={CH}
                 onSelectLayer={(id) => {
                   selectLayer(id);
+                  setSelectedId(null);
                   setSidebarOpen(true);
                   setActiveTab("layers");
                 }}
@@ -4554,6 +4756,57 @@ export default function TikTokStudioV3({ listing, onClose }) {
                 onCommitHistory={commitLayerHistory}
                 onDeleteLayer={deleteLayer}
               />
+              {/* Interactive elements + SelectionOverlay — above Konva stage (z=25) */}
+              <div
+                ref={canvasInnerRef}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  zIndex: 25,
+                  overflow: "hidden",
+                  borderRadius: 4,
+                  pointerEvents: "none",
+                }}
+              >
+                {(slide.elements || [])
+                  .filter((el) => el.id !== "watermark")
+                  .map((el) => (
+                    <div key={el.id} style={{ pointerEvents: "auto" }}>
+                      {editingId === el.id ? (
+                        <InlineEditor
+                          el={el}
+                          scale={mobScale}
+                          onCommit={(v) => onCommitEdit(el.id, v)}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <CanvasElement
+                          el={el}
+                          scale={mobScale}
+                          highlighted={(highlightIds || []).includes(el.id)}
+                          fontStack={fontObj.stack}
+                          onSelect={previewProps.onSelectElement}
+                          onStartDrag={onStartDrag}
+                          onDoubleClick={(id) => setEditingId(id)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+                  <div style={{ pointerEvents: "auto" }}>
+                    <SelectionOverlay
+                      elId={selectedId}
+                      el={selectedEl}
+                      canvasInnerRef={canvasInnerRef}
+                      onStartResize={onStartResize}
+                      onStartRotate={onStartRotate}
+                      onUpdate={updateSelectedElement}
+                      onDuplicate={duplicateSelected}
+                      onDelete={deleteSelected}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -5107,22 +5360,27 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     height: displayH,
                     flexShrink: 0,
                     borderRadius: 4,
-                    boxShadow: "0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
+                    boxShadow:
+                      "0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
                     isolation: "isolate",
                   }}
                 >
                   {/* Content clip — clips template + layer fills to the canvas boundary */}
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    overflow: "hidden",
-                    borderRadius: 4,
-                    zIndex: 0,
-                  }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      overflow: "hidden",
+                      borderRadius: 4,
+                      zIndex: 0,
+                    }}
+                  >
                     <CanvasPreview
                       {...previewProps}
                       scale={scale}
                       canvasW={CW}
                       canvasH={CH}
+                      hideInteractive
                     />
                   </div>
                   {/* LayerCanvas: DIV 1 (fills, clipped) + DIV 2 (handles, overflow visible) */}
@@ -5134,6 +5392,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     canvasH={CH}
                     onSelectLayer={(id, multi) => {
                       selectLayer(id, multi);
+                      setSelectedId(null);
                       setActiveTab("layers");
                     }}
                     onClearSelection={clearLayerSelection}
@@ -5141,6 +5400,57 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     onCommitHistory={commitLayerHistory}
                     onDeleteLayer={deleteLayer}
                   />
+                  {/* Interactive elements + SelectionOverlay — above Konva stage (z=25) */}
+                  <div
+                    ref={canvasInnerRef}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      zIndex: 25,
+                      overflow: "hidden",
+                      borderRadius: 4,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {(slide.elements || [])
+                      .filter((el) => el.id !== "watermark")
+                      .map((el) => (
+                        <div key={el.id} style={{ pointerEvents: "auto" }}>
+                          {editingId === el.id ? (
+                            <InlineEditor
+                              el={el}
+                              scale={scale}
+                              onCommit={(v) => onCommitEdit(el.id, v)}
+                              onCancel={() => setEditingId(null)}
+                            />
+                          ) : (
+                            <CanvasElement
+                              el={el}
+                              scale={scale}
+                              highlighted={(highlightIds || []).includes(el.id)}
+                              fontStack={fontObj.stack}
+                              onSelect={previewProps.onSelectElement}
+                              onStartDrag={onStartDrag}
+                              onDoubleClick={(id) => setEditingId(id)}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+                      <div style={{ pointerEvents: "auto" }}>
+                        <SelectionOverlay
+                          elId={selectedId}
+                          el={selectedEl}
+                          canvasInnerRef={canvasInnerRef}
+                          onStartResize={onStartResize}
+                          onStartRotate={onStartRotate}
+                          onUpdate={updateSelectedElement}
+                          onDuplicate={duplicateSelected}
+                          onDelete={deleteSelected}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
