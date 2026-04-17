@@ -1,67 +1,104 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   DndContext, PointerSensor, useSensor, useSensors,
-  DragOverlay, closestCenter,
+  DragOverlay, closestCenter, useDroppable,
 } from '@dnd-kit/core';
 import { toast } from 'sonner';
-import { Plus, Search, X, Inbox, Filter, Users } from 'lucide-react';
+import { Plus, Search, X, Inbox, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useLeads } from '../hooks/useLeads';
-import LeadColumn from '../components/leads/LeadColumn';
 import LeadCard from '../components/leads/LeadCard';
 import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
-import LeadSourceBadge from '../components/leads/LeadSourceBadge';
 import {
   STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG,
-  getLeadAgeDays, ageTextColor, ageDotColor, avatarGradient, getInitials,
-  formatWhatsAppURL,
+  getLeadAgeDays, avatarGradient, getInitials,
 } from '../lib/leadsHelpers';
 
 const T = {
   btnRed: { background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' },
 };
 
-// ─── Mobile list row ───────────────────────────────────────────────────────────
-function MobileLeadRow({ lead, onOpen }) {
-  const days = getLeadAgeDays(lead.created_at);
-  const dotCls = ageDotColor(days);
-  const txtCls = ageTextColor(days);
-  const car = lead.car_listing;
-  const carLabel = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : null;
-  const cfg = STAGE_CONFIG[lead.stage] || STAGE_CONFIG.new;
+const COLLAPSE_THRESHOLD = 5; // show "show more" only beyond this count
+
+// ─── Stage section ────────────────────────────────────────────────────────────
+function StageSection({ stage, leads, onOpen, onMoveNext, onMovePrev }) {
+  const cfg = STAGE_CONFIG[stage];
+  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const [showAll, setShowAll] = useState(false);
+
+  const visible = showAll ? leads : leads.slice(0, COLLAPSE_THRESHOLD);
+  const hidden  = leads.length - COLLAPSE_THRESHOLD;
 
   return (
-    <button
-      onClick={() => onOpen(lead)}
-      className="w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors hover:bg-white/[0.025]"
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+    <div
+      ref={setNodeRef}
+      style={{
+        background: isOver ? cfg.bg : 'rgba(255,255,255,0.016)',
+        border: `1px solid ${isOver ? cfg.headerBorder : cfg.border}`,
+        borderLeft: `3px solid ${cfg.headerBorder}`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        transition: 'border-color 0.15s, background 0.15s',
+      }}
     >
-      <div
-        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-        style={{ background: avatarGradient(lead.lead_source) }}
-      >
-        {getInitials(lead.buyer_name)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-white truncate">{lead.buyer_name}</p>
-          <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.color}`}
-            style={{ background: cfg.bg }}
-          >
-            {cfg.label}
+      {/* Stage header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '9px 12px',
+        borderBottom: leads.length > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        background: 'rgba(0,0,0,0.15)',
+      }}>
+        <span style={{ fontSize: 14 }}>{cfg.emoji}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: cfg.headerBorder, flex: 1 }}>
+          {cfg.label}
+        </span>
+        {leads.length > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 800, color: cfg.headerBorder,
+            background: cfg.bg, border: `1px solid ${cfg.border}`,
+            borderRadius: 99, padding: '1px 8px',
+          }}>
+            {leads.length}
           </span>
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {carLabel && <p className="text-xs text-gray-500 truncate flex-1">{carLabel}</p>}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
-            <span className={`text-xs ${txtCls}`}>{days === 0 ? 'Today' : `${days}d`}</span>
-          </div>
-        </div>
+        )}
+        {leads.length === 0 && (
+          <span style={{ fontSize: 10, color: '#1f2937' }}>empty</span>
+        )}
       </div>
-    </button>
+
+      {/* Lead rows — responsive grid on desktop */}
+      {leads.length > 0 && (
+        <div style={{ padding: '8px 8px 4px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: 6,
+          }}>
+            {visible.map(lead => (
+              <LeadCard key={lead.id} lead={lead} onOpen={onOpen} onMoveNext={onMoveNext} onMovePrev={onMovePrev} />
+            ))}
+          </div>
+
+          {/* Show more / less */}
+          {leads.length > COLLAPSE_THRESHOLD && (
+            <button
+              type="button"
+              onClick={() => setShowAll(p => !p)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                margin: '6px 4px 4px', padding: '4px 8px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#4b5563', fontSize: 11,
+              }}
+            >
+              <ChevronDown size={11} style={{ transform: showAll ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              {showAll ? 'Show less' : `+${hidden} more`}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -86,40 +123,31 @@ function EmptyState({ onAdd }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function LeadsPage() {
-  const { leads, setLeads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads();
+  const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads();
 
-  const [activeLeadId, setActiveLeadId] = useState(null); // drag overlay
-  const [openLead, setOpenLead]         = useState(null);  // drawer
+  const [activeLeadId, setActiveLeadId] = useState(null);
+  const [openLead, setOpenLead]         = useState(null);
   const [showAdd, setShowAdd]           = useState(false);
   const [search, setSearch]             = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [teamMembers, setTeamMembers]   = useState([]);
 
-  // Load team members for filter + assigning
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Get current dealer's dealership name first
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('dealership')
-        .eq('id', user.id)
-        .single();
+        .from('profiles').select('dealership').eq('id', user.id).single();
       if (!profile?.dealership) return;
-      // Fetch salespeople in the same dealership
       const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'salesman')
-        .eq('dealership', profile.dealership);
+        .from('profiles').select('id, full_name')
+        .eq('role', 'salesman').eq('dealership', profile.dealership);
       setTeamMembers(data || []);
     }
     load();
   }, []);
 
-  // ── Filtered leads ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = leads;
     if (search.trim()) {
@@ -130,12 +158,11 @@ export default function LeadsPage() {
         l.car_listing?.model?.toLowerCase().includes(q)
       );
     }
-    if (filterSource) result = result.filter(l => l.lead_source === filterSource);
+    if (filterSource)   result = result.filter(l => l.lead_source === filterSource);
     if (filterAssigned) result = result.filter(l => l.assigned_to === filterAssigned);
     return result;
   }, [leads, search, filterSource, filterAssigned]);
 
-  // ── Group by stage ──────────────────────────────────────────────────────────
   const byStage = useMemo(() => {
     const map = {};
     STAGE_ORDER.forEach(s => { map[s] = []; });
@@ -143,14 +170,9 @@ export default function LeadsPage() {
     return map;
   }, [filtered]);
 
-  // ── DnD ─────────────────────────────────────────────────────────────────────
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  function handleDragStart({ active }) {
-    setActiveLeadId(active.id);
-  }
+  function handleDragStart({ active }) { setActiveLeadId(active.id); }
 
   async function handleDragEnd({ active, over }) {
     setActiveLeadId(null);
@@ -158,21 +180,14 @@ export default function LeadsPage() {
     const lead = active.data.current?.lead;
     const newStage = over.id;
     if (!lead || lead.stage === newStage) return;
-
     const originalStage = lead.stage;
     optimisticStageChange(lead.id, newStage);
-
-    // Also log activity
     try {
       await updateLeadStage(lead.id, newStage);
-      // Log stage change activity
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('lead_activities').insert({
-        lead_id: lead.id,
-        dealer_id: lead.dealer_id,
-        activity_type: 'stage_changed',
-        from_stage: originalStage,
-        to_stage: newStage,
+        lead_id: lead.id, dealer_id: lead.dealer_id,
+        activity_type: 'stage_changed', from_stage: originalStage, to_stage: newStage,
         created_by: user?.id,
       });
       toast.success('Stage updated');
@@ -185,7 +200,16 @@ export default function LeadsPage() {
   async function handleMoveNext(lead) {
     const idx = STAGE_ORDER.indexOf(lead.stage);
     if (idx < 0 || idx >= STAGE_ORDER.length - 1) return;
-    const newStage = STAGE_ORDER[idx + 1];
+    await moveToStage(lead, STAGE_ORDER[idx + 1]);
+  }
+
+  async function handleMovePrev(lead) {
+    const idx = STAGE_ORDER.indexOf(lead.stage);
+    if (idx <= 0) return;
+    await moveToStage(lead, STAGE_ORDER[idx - 1]);
+  }
+
+  async function moveToStage(lead, newStage) {
     const originalStage = lead.stage;
     optimisticStageChange(lead.id, newStage);
     try {
@@ -199,14 +223,11 @@ export default function LeadsPage() {
 
   async function handleAddLead(payload) {
     const lead = await addLead(payload);
-    // Log "created" activity
     if (lead) {
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('lead_activities').insert({
-        lead_id: lead.id,
-        dealer_id: lead.dealer_id,
-        activity_type: 'created',
-        created_by: user?.id,
+        lead_id: lead.id, dealer_id: lead.dealer_id,
+        activity_type: 'created', created_by: user?.id,
       });
     }
     toast.success('Lead added successfully');
@@ -215,7 +236,6 @@ export default function LeadsPage() {
 
   async function handleUpdateLead(id, patch) {
     const updated = await updateLead(id, patch);
-    // Sync drawer lead state
     if (openLead?.id === id && updated) setOpenLead(updated);
     return updated;
   }
@@ -225,17 +245,14 @@ export default function LeadsPage() {
     if (openLead?.id === id) setOpenLead(null);
   }
 
-  // ── Drag overlay card ───────────────────────────────────────────────────────
   const activeLead = activeLeadId ? leads.find(l => l.id === activeLeadId) : null;
-
   const hasFilters = search || filterSource || filterAssigned;
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: "'DM Sans',sans-serif" }}>
 
       {/* ── Top bar ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3 flex-wrap"
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div>
           <h1 className="text-base font-bold text-white">Leads Pipeline</h1>
@@ -253,38 +270,32 @@ export default function LeadsPage() {
       {/* ── Filter bar ── */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 overflow-x-auto"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        {/* Search */}
-        <div className="relative flex-1 min-w-[160px] max-w-xs">
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none" />
           <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search buyer or car…"
-            className="w-full pl-9 pr-8 py-1.5 text-sm text-white placeholder-gray-600 rounded-lg focus:outline-none focus:border-red-500/40 transition-colors"
+            className="w-full pl-9 pr-8 py-1.5 text-sm text-white placeholder-gray-600 rounded-lg focus:outline-none transition-colors"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
           />
-          {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white"><X className="w-3 h-3" /></button>}
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white">
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        {/* Source filter */}
-        <select
-          value={filterSource}
-          onChange={e => setFilterSource(e.target.value)}
+        <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
           className="text-xs text-gray-400 py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-        >
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <option value="">All Sources</option>
           {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
 
-        {/* Salesperson filter */}
         {teamMembers.length > 0 && (
-          <select
-            value={filterAssigned}
-            onChange={e => setFilterAssigned(e.target.value)}
+          <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
             className="text-xs text-gray-400 py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <option value="">All Salespeople</option>
             {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
           </select>
@@ -298,7 +309,7 @@ export default function LeadsPage() {
         )}
       </div>
 
-      {/* ── Body ── */}
+      {/* ── Pipeline body ── */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-gray-600 text-sm">Loading leads…</p>
@@ -306,63 +317,46 @@ export default function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <>
-          {/* ── Desktop Kanban ── */}
-          <div className="hidden md:flex flex-1 min-h-0 overflow-x-auto px-4 py-4 gap-3 pb-6">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              {STAGE_ORDER.map(stage => (
-                <LeadColumn
-                  key={stage}
-                  stage={stage}
-                  leads={byStage[stage] || []}
-                  onOpenLead={setOpenLead}
-                  onMoveNext={handleMoveNext}
-                />
-              ))}
-
-              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                {activeLead ? (
-                  <div style={{ rotate: '2deg', opacity: 0.92 }}>
-                    <LeadCard lead={activeLead} />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain"
+            style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            {STAGE_ORDER.map(stage => (
+              <StageSection
+                key={stage}
+                stage={stage}
+                leads={byStage[stage] || []}
+                onOpen={setOpenLead}
+                onMoveNext={handleMoveNext}
+                onMovePrev={handleMovePrev}
+              />
+            ))}
           </div>
 
-          {/* ── Mobile list ── */}
-          <div className="md:hidden flex-1 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="text-center text-gray-600 text-sm py-12">No leads match your filters.</p>
-            ) : (
-              filtered
-                .slice()
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .map(lead => (
-                  <MobileLeadRow key={lead.id} lead={lead} onOpen={setOpenLead} />
-                ))
-            )}
-          </div>
-        </>
+          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+            {activeLead ? (
+              <div style={{ rotate: '2deg', opacity: 0.92 }}>
+                <LeadCard lead={activeLead} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
-      {/* ── Lead Drawer ── */}
       {openLead && (
         <LeadDrawer
-          lead={openLead}
-          onClose={() => setOpenLead(null)}
-          onUpdate={handleUpdateLead}
-          onDelete={handleDeleteLead}
+          lead={openLead} onClose={() => setOpenLead(null)}
+          onUpdate={handleUpdateLead} onDelete={handleDeleteLead}
           teamMembers={teamMembers}
         />
       )}
 
-      {/* ── Add Lead Modal ── */}
       {showAdd && (
         <AddLeadModal
           onClose={() => setShowAdd(false)}
