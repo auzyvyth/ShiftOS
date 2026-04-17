@@ -634,20 +634,18 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
         onFocus={() => !disabled && setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && open && filtered.length > 0) {
-            // Select top match and close — stop bubbling so outer handler doesn't also fire
             e.preventDefault();
-            e.stopPropagation();
             onChange(filtered[0]);
             setQuery(filtered[0]);
             setOpen(false);
+            // bubble up so parent handleKeyDown advances to the next field
           } else if (e.key === "Escape") {
             setOpen(false);
           }
-          // Enter when closed: bubble up to outer handler → moves to next field
         }}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       />
       {open && !disabled && (
         <ul className="absolute z-50 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-2xl">
@@ -659,7 +657,7 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
                 setQuery(o);
                 setOpen(false);
               }}
-              className="px-4 py-2.5 text-white hover:bg-red-600/20 hover:text-red-400 cursor-pointer text-sm transition-colors"
+              className="px-4 py-2.5 text-white hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer text-sm transition-colors"
             >
               {o}
             </li>
@@ -683,7 +681,7 @@ function PillSelect({ options, value, onChange }) {
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-red-600 border-red-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500 hover:text-white"}`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
         >
           {opt}
         </button>
@@ -708,11 +706,11 @@ function Field({ label, required, hint, children }) {
 }
 
 const inputCls =
-  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors";
+  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors";
 const selectCls =
-  "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/30 transition-colors appearance-none cursor-pointer";
+  "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors appearance-none cursor-pointer";
 const textareaCls =
-  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors resize-none";
+  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
 function VideoPreview({ url }) {
   const embedUrl = getEmbedUrl(url);
@@ -1064,6 +1062,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       const next = focusable[idx + 1];
       next.focus();
       if (next.select && next.type !== "date" && next.type !== "color") next.select();
+      next.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       // Last field — advance step or submit
       if (canNext() && step < STEPS.length) {
@@ -1258,13 +1257,17 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       ref={formRef}
       onKeyDown={handleKeyDown}
       className="w-full"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
+        backgroundSize: "24px 24px",
+      }}
     >
       {/* Progress */}
       <div className="mb-8">
         <div className="relative h-1 bg-gray-800 rounded-full mb-6">
           <div
-            className="absolute h-1 bg-red-600 rounded-full transition-all duration-500"
+            className="absolute h-1 bg-blue-600 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -1278,7 +1281,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 key={s.id}
                 type="button"
                 onClick={() => done && setStep(s.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${active ? "bg-red-600 text-white" : done ? "bg-gray-800 text-green-400 cursor-pointer hover:bg-gray-700" : "bg-gray-800/50 text-gray-600 cursor-default"}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${active ? "bg-blue-600 text-white" : done ? "bg-gray-800 text-green-400 cursor-pointer hover:bg-gray-700" : "bg-gray-800/50 text-gray-600 cursor-default"}`}
               >
                 {done ? (
                   <Check className="w-3.5 h-3.5" />
@@ -1295,7 +1298,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       {/* Step header */}
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-red-500 font-semibold uppercase tracking-widest mb-1">
+          <p className="text-xs text-blue-500 font-semibold uppercase tracking-widest mb-1">
             Step {step} of {STEPS.length}
           </p>
 
@@ -1425,7 +1428,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     key={cc}
                     type="button"
                     onClick={() => set("engineCc", String(cc))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-red-600 border-red-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500 hover:text-white"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
                   >
                     {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
                     cc
@@ -1534,7 +1537,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             <button
               type="button"
               onClick={() => set("isRecon", !form.isRecon)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-red-600" : "bg-gray-600"}`}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-600"}`}
             >
               <span
                 className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
@@ -1582,7 +1585,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     <button
                       type="button"
                       onClick={() => set("auctionGrade", suggestedGrade)}
-                      className="mt-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                      className="mt-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
                     >
                       Use suggested: {suggestedGrade}
                     </button>
@@ -2044,7 +2047,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             <p className="text-gray-500 text-sm">
               Up to 30 images — JPG, PNG, WEBP
             </p>
-            <p className="text-red-400 text-xs mt-2 font-medium">
+            <p className="text-blue-400 text-xs mt-2 font-medium">
               {form.images.length}/30 selected
             </p>
             <input
@@ -2063,7 +2066,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
                     Sticky Thumbnail Panel
                   </p>
-                  <span className="text-xs font-semibold text-red-400">
+                  <span className="text-xs font-semibold text-blue-400">
                     {form.images.length}/30
                   </span>
                 </div>
@@ -2075,7 +2078,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                         alt="Primary"
                         className="w-full h-full object-cover"
                       />
-                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-red-600 text-white text-[10px] font-semibold">
+                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[10px] font-semibold">
                         #1
                       </span>
                     </div>
@@ -2120,7 +2123,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                       onDragOver={(e) => dragOver(i, e)}
                       onDrop={(e) => drop(i, e)}
                       onDragEnd={dragEnd}
-                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? "border-red-500 ring-2 ring-red-500/30" : "border-gray-700"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
+                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-700"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
                     >
                       <img
                         src={src}
@@ -2134,7 +2137,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                         Drag
                       </span>
                       {i === 0 ? (
-                        <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-red-600 text-white text-[9px] sm:text-[10px] font-semibold">
+                        <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
                           Primary
                         </span>
                       ) : (
@@ -2305,7 +2308,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             type="button"
             onClick={() => canNext() && setStep((s) => s + 1)}
             disabled={!canNext()}
-            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Continue <ChevronRight className="w-4 h-4" />
           </button>
@@ -2314,7 +2317,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             type="button"
             onClick={handleSubmit}
             disabled={uploading || !canNext()}
-            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <>
