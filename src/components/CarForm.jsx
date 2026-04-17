@@ -632,6 +632,19 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
           setOpen(true);
         }}
         onFocus={() => !disabled && setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && open && filtered.length > 0) {
+            // Select top match and close — stop bubbling so outer handler doesn't also fire
+            e.preventDefault();
+            e.stopPropagation();
+            onChange(filtered[0]);
+            setQuery(filtered[0]);
+            setOpen(false);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+          // Enter when closed: bubble up to outer handler → moves to next field
+        }}
         placeholder={placeholder}
         disabled={disabled}
         className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -735,6 +748,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
+  const formRef = useRef(null);
 
   // ── Included services state ──────────────────────────────────────────────
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -1017,6 +1031,49 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     if (photosInputRef.current) photosInputRef.current.value = "";
   };
 
+  // Auto-focus first input whenever step changes
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const el = formRef.current?.querySelector(
+        'input:not([type="file"]):not([type="hidden"]):not([disabled]), select:not([disabled])'
+      );
+      el?.focus();
+    }, 60);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  // Enter key: advance to next field, or next step when all filled
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === "textarea") return; // Enter adds newline in textareas
+    if (tag === "button") return;   // buttons handle their own Enter
+
+    e.preventDefault();
+
+    const container = formRef.current;
+    if (!container) return;
+    const focusable = [
+      ...container.querySelectorAll(
+        'input:not([type="file"]):not([type="hidden"]):not([disabled]), select:not([disabled])'
+      ),
+    ].filter((el) => el.offsetParent !== null);
+
+    const idx = focusable.indexOf(e.target);
+    if (idx >= 0 && idx < focusable.length - 1) {
+      const next = focusable[idx + 1];
+      next.focus();
+      if (next.select && next.type !== "date" && next.type !== "color") next.select();
+    } else {
+      // Last field — advance step or submit
+      if (canNext() && step < STEPS.length) {
+        setStep((s) => s + 1);
+      } else if (canNext() && step === STEPS.length) {
+        handleSubmit();
+      }
+    }
+  };
+
   const canNext = () => {
     if (step === 1) return form.brand && form.model && form.year;
     if (step === 2) return form.bodyType && form.fuelType;
@@ -1198,7 +1255,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
   return (
     <div
-      className="w-full max-w-2xl mx-auto"
+      ref={formRef}
+      onKeyDown={handleKeyDown}
+      className="w-full"
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
       {/* Progress */}
