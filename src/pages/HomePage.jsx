@@ -922,6 +922,19 @@ const HomePage = () => {
                 rel="noopener noreferrer"
                 className="wa-btn-hp"
                 style={waBtn}
+                onClick={() => {
+                  if (tenant?.id) {
+                    supabase.from('whatsapp_enquiries').insert({
+                      dealer_id:     tenant.id,
+                      listing_id:    null,
+                      buyer_name:    null,
+                      buyer_phone:   null,
+                      buyer_message: `General enquiry from homepage CTA`,
+                      source:        'homepage_cta',
+                      status:        'new',
+                    }).then(() => {});
+                  }
+                }}
               >
                 <MessageCircle size={14} />
                 {ctaSecondaryLabel}
