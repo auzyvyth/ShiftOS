@@ -1107,4 +1107,9 @@ export default function AccountantPanel() {
                 </button>
               )}
             </div>
-      
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
