@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Car,
   BarChart2,
@@ -27,15 +27,6 @@ const STYLES = `
     min-height: 100vh;
     color: white;
     position: relative;
-  }
-  .shiftos-page::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: radial-gradient(circle, rgba(220,38,38,0.06) 1px, transparent 1px);
-    background-size: 32px 32px;
   }
   .shiftos-content { position: relative; z-index: 1; }
   .shiftos-glass {
@@ -130,18 +121,18 @@ const STYLES = `
 const PAIN_POINTS = [
   {
     Icon: AlertCircle,
-    title: "Scattered across WhatsApp, Excel, and Mudah",
-    desc: "Managing inventory across five apps means things fall through the cracks every single day.",
+    title: "Siapa close? Siapa cakap je?",
+    desc: "Without real commission and lead tracking, your best salesman gets the same credit as the one who disappeared after lunch.",
   },
   {
     Icon: BarChart2,
-    title: "No idea which salesman is actually performing",
-    desc: "Without referral tracking and commission data, your top performer looks the same as your worst.",
+    title: "Still running stock on Excel?",
+    desc: "No purchase price visibility, no recon tracking, no P&L per unit. You don't actually know which cars made you money.",
   },
   {
     Icon: Video,
-    title: "Listing on TikTok takes hours every week",
-    desc: "Filming, editing, captioning — for every single car. There has to be a better way.",
+    title: "TikTok content eats your whole Sunday",
+    desc: "Filming, editing, captioning — repeat for every car every week. ShiftOS generates branded slides in seconds.",
   },
 ];
 
@@ -179,10 +170,10 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { num: "100%", label: "Malaysian market focused" },
-  { num: "RM 500", label: "per month flat" },
-  { num: "5 min", label: "setup time" },
-  { num: "1", label: "dashboard for everything" },
+  { num: "RM1K", label: "Standard per month" },
+  { num: "RM500", label: "Founder rate" },
+  { num: "5 min", label: "Setup time" },
+  { num: "1", label: "Dashboard for everything" },
 ];
 
 const FOUNDING_FEATURES = [
@@ -212,7 +203,139 @@ export default function ShiftOSPage() {
     s.textContent = STYLES;
     document.head.appendChild(s);
     document.title = "ShiftOS — The Operating System for Malaysian Car Dealers";
-    return () => document.head.removeChild(s);
+
+    // ── Lightning canvas ──────────────────────────────────────────────────────
+    const canvas = document.getElementById("shiftos-bg");
+    if (!canvas) return () => document.head.removeChild(s);
+    const ctx = canvas.getContext("2d");
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+
+    // 28 floating nodes
+    const nodes = Array.from({ length: 28 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6,
+    }));
+
+    const bolts = [];
+
+    // Build a zigzag polyline between two points
+    function makeBolt(ax, ay, bx, by) {
+      const segs = 4 + Math.floor(Math.random() * 5);
+      const pts = [{ x: ax, y: ay }];
+      for (let i = 1; i < segs; i++) {
+        const t = i / segs;
+        const mx = ax + (bx - ax) * t;
+        const my = ay + (by - ay) * t;
+        const perp = { x: -(by - ay), y: bx - ax };
+        const len = Math.sqrt(perp.x ** 2 + perp.y ** 2) || 1;
+        const jitter = (Math.random() - 0.5) * 28;
+        pts.push({ x: mx + (perp.x / len) * jitter, y: my + (perp.y / len) * jitter });
+      }
+      pts.push({ x: bx, y: by });
+      return pts;
+    }
+
+    function drawPoly(pts, alpha, lineWidth) {
+      if (pts.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle = `rgba(220,38,38,${alpha})`;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+
+    // Fire bolts periodically
+    let boltTimer = 0;
+    const scheduleBolt = () => 200 + Math.random() * 300;
+    let nextBolt = scheduleBolt();
+
+    let last = performance.now();
+    let rafId;
+
+    function frame(now) {
+      rafId = requestAnimationFrame(frame);
+      const dt = now - last;
+      last = now;
+
+      // Fill background
+      ctx.fillStyle = "#080C14";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Move nodes + bounce
+      for (const n of nodes) {
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < 0 || n.x > canvas.width)  { n.vx *= -1; n.x = Math.max(0, Math.min(canvas.width, n.x)); }
+        if (n.y < 0 || n.y > canvas.height) { n.vy *= -1; n.y = Math.max(0, Math.min(canvas.height, n.y)); }
+      }
+
+      // Maybe fire 1-2 new bolts
+      boltTimer += dt;
+      if (boltTimer >= nextBolt) {
+        boltTimer = 0;
+        nextBolt = scheduleBolt();
+        const count = Math.random() < 0.4 ? 2 : 1;
+        for (let b = 0; b < count; b++) {
+          const ai = Math.floor(Math.random() * nodes.length);
+          let bi = ai;
+          let attempts = 0;
+          while (bi === ai && attempts++ < 10) bi = Math.floor(Math.random() * nodes.length);
+          const a = nodes[ai], bl = nodes[bi];
+          const dist = Math.hypot(a.x - bl.x, a.y - bl.y);
+          if (dist < 60 || dist > 260) continue;
+          const pts = makeBolt(a.x, a.y, bl.x, bl.y);
+          bolts.push({ pts, life: 1, maxLife: 1 });
+          // 35% branch from midpoint
+          if (Math.random() < 0.35) {
+            const mid = pts[Math.floor(pts.length / 2)];
+            const ci = Math.floor(Math.random() * nodes.length);
+            const c = nodes[ci];
+            const bd = Math.hypot(mid.x - c.x, mid.y - c.y);
+            if (bd > 30 && bd < 180) {
+              bolts.push({ pts: makeBolt(mid.x, mid.y, c.x, c.y), life: 0.8, maxLife: 0.8 });
+            }
+          }
+        }
+      }
+
+      // Draw + age bolts
+      for (let i = bolts.length - 1; i >= 0; i--) {
+        const bolt = bolts[i];
+        bolt.life -= dt / 500;
+        if (bolt.life <= 0) { bolts.splice(i, 1); continue; }
+        const a = bolt.life / bolt.maxLife;
+        // Red glow pass
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = `rgba(220,38,38,${a * 0.6})`;
+        drawPoly(bolt.pts, a * 0.25, 3);
+        ctx.shadowBlur = 0;
+        // Main stroke
+        drawPoly(bolt.pts, a * 0.85, 1);
+        // Endpoint dots
+        const first = bolt.pts[0], last2 = bolt.pts[bolt.pts.length - 1];
+        ctx.beginPath();
+        ctx.arc(first.x, first.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(239,68,68,${a})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(last2.x, last2.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    rafId = requestAnimationFrame(frame);
+
+    return () => {
+      document.head.removeChild(s);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   const scrollTo = (ref) => {
@@ -224,9 +347,7 @@ export default function ShiftOSPage() {
 
   return (
     <div className="shiftos-page">
-      {/* Ambient orbs */}
-      <div style={{ position: "fixed", top: -200, left: -200, width: 600, height: 600, background: "#dc2626", filter: "blur(160px)", opacity: 0.08, borderRadius: "50%", zIndex: 0, pointerEvents: "none" }} />
-      <div style={{ position: "fixed", bottom: -200, right: -200, width: 500, height: 500, background: "#6d28d9", filter: "blur(140px)", opacity: 0.07, borderRadius: "50%", zIndex: 0, pointerEvents: "none" }} />
+      <canvas id="shiftos-bg" style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }} />
 
       <div className="shiftos-content">
 
@@ -265,9 +386,9 @@ export default function ShiftOSPage() {
             </div>
 
             {/* CTA */}
-            <Link to="/login" className="shiftos-btn-red" style={{ fontSize: 13, padding: "8px 16px" }}>
-              Start Free Trial
-            </Link>
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="shiftos-btn-red" style={{ fontSize: 13, padding: "8px 16px" }}>
+              WhatsApp Us
+            </a>
           </div>
         </nav>
 
@@ -275,7 +396,7 @@ export default function ShiftOSPage() {
         <section style={{ maxWidth: 1100, margin: "0 auto", padding: "100px 24px 80px", textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 20, padding: "4px 14px", marginBottom: 28 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
-            <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, letterSpacing: "0.08em" }}>NOW IN BETA · MALAYSIA</span>
+            <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, letterSpacing: "0.08em" }}>LIVE · PENANG · KL · JB</span>
           </div>
 
           <h1
@@ -287,13 +408,13 @@ export default function ShiftOSPage() {
           </h1>
 
           <p style={{ fontSize: 18, fontWeight: 300, color: "#9ca3af", maxWidth: 620, margin: "0 auto 40px", lineHeight: 1.6 }}>
-            Manage your inventory, post to TikTok, send to Telegram, and track your salesmen — all from one dashboard.
+            From stock intake to sold — manage listings, track commissions, book appointments, and close deals faster. Built for Malaysian dealers, not generic SaaS.
           </p>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 40 }}>
-            <Link to="/login" className="shiftos-btn-red" style={{ fontSize: 15, padding: "12px 28px" }}>
-              Get Started Free <ArrowRight size={16} />
-            </Link>
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="shiftos-btn-red" style={{ fontSize: 15, padding: "12px 28px" }}>
+              <MessageCircle size={16} /> WhatsApp Us
+            </a>
             <button
               onClick={() => scrollTo(featuresRef)}
               className="shiftos-btn-ghost"
@@ -388,10 +509,10 @@ export default function ShiftOSPage() {
             <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,168,75,0.3)", borderRadius: 8, padding: 32, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
                 <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, margin: 0 }}>Founding Member</p>
-                <span style={{ fontSize: 10, background: "rgba(212,168,75,0.12)", border: "1px solid rgba(212,168,75,0.3)", borderRadius: 4, padding: "2px 8px", color: "#d4a84b", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>LIMITED — 20 SPOTS</span>
+                <span style={{ fontSize: 10, background: "rgba(212,168,75,0.12)", border: "1px solid rgba(212,168,75,0.3)", borderRadius: 4, padding: "2px 8px", color: "#d4a84b", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>LIMITED — 10 SPOTS</span>
               </div>
-              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1, margin: "12px 0 4px", color: "#d4a84b" }}>RM 999</p>
-              <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>one-time payment · lifetime access</p>
+              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1, margin: "12px 0 4px", color: "#d4a84b" }}>RM 500<span style={{ fontSize: 22, color: "#92600d" }}>/mo</span></p>
+              <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>founder rate · locked in forever</p>
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
                 {FOUNDING_FEATURES.map((f) => (
                   <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#d1d5db", marginBottom: 12 }}>
@@ -400,15 +521,15 @@ export default function ShiftOSPage() {
                   </li>
                 ))}
               </ul>
-              <Link to="/login" className="shiftos-btn-red" style={{ justifyContent: "center", background: "linear-gradient(135deg,#b47828,#92600d)", boxShadow: "0 2px 12px rgba(180,120,40,0.3)" }}>
-                Claim Your Spot
-              </Link>
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="shiftos-btn-red" style={{ justifyContent: "center", background: "linear-gradient(135deg,#b47828,#92600d)", boxShadow: "0 2px 12px rgba(180,120,40,0.3)" }}>
+                WhatsApp to Claim
+              </a>
             </div>
 
-            {/* Monthly */}
+            {/* Monthly Standard */}
             <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 32, display: "flex", flexDirection: "column" }}>
-              <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, marginBottom: 4 }}>Monthly</p>
-              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1, margin: "12px 0 4px", color: "white" }}>RM 500<span style={{ fontSize: 22, color: "#6b7280" }}>/mo</span></p>
+              <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, marginBottom: 4 }}>Monthly Standard</p>
+              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1, margin: "12px 0 4px", color: "white" }}>RM 1,000<span style={{ fontSize: 22, color: "#6b7280" }}>/mo</span></p>
               <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>cancel anytime · no lock-in</p>
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
                 {MONTHLY_FEATURES.map((f) => (
@@ -418,9 +539,9 @@ export default function ShiftOSPage() {
                   </li>
                 ))}
               </ul>
-              <Link to="/login" className="shiftos-btn-red" style={{ justifyContent: "center" }}>
-                Start Free Trial
-              </Link>
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="shiftos-btn-red" style={{ justifyContent: "center" }}>
+                WhatsApp Us
+              </a>
             </div>
           </div>
         </section>
@@ -430,9 +551,9 @@ export default function ShiftOSPage() {
           <div
             style={{ maxWidth: 760, margin: "0 auto", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "60px 40px", textAlign: "center" }}
           >
-            <h2 style={{ fontSize: 30, fontWeight: 700, marginBottom: 12 }}>Ready to run your dealership smarter?</h2>
+            <h2 style={{ fontSize: 30, fontWeight: 700, marginBottom: 12 }}>This isn't a simple app. Come see it first.</h2>
             <p style={{ fontSize: 15, color: "#9ca3af", marginBottom: 36 }}>
-              WhatsApp us and we'll get you set up today — usually takes less than 5 minutes.
+              ShiftOS is built for serious dealers. WhatsApp us for a live walkthrough — we'll show you exactly what it can do for your lot.
             </p>
             <a
               href={waLink}
@@ -469,7 +590,6 @@ export default function ShiftOSPage() {
                 {[
                   { label: "Features",  action: () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }) },
                   { label: "Pricing",   action: () => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }) },
-                  { label: "Login",     href: "/login" },
                   { label: "xdrive.my", href: "/" },
                 ].map(({ label, href, action }) =>
                   href ? (

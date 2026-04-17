@@ -92,7 +92,8 @@ const HC_CSS = `
   /* ── DESKTOP content ── */
   .hc-content {
     position: absolute;
-    bottom: 130px;
+    top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
     z-index: 3;
@@ -101,10 +102,13 @@ const HC_CSS = `
   .hc-content-wrap {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 0 48px;
+    padding: 28% 48px 140px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    justify-content: space-between;
+    gap: 48px;
+    height: 100%;
+    box-sizing: border-box;
   }
 
   .hc-content-row {
@@ -319,8 +323,7 @@ const HC_CSS = `
      TABLET
   ════════════════ */
   @media (max-width:1024px) {
-    .hc-content { bottom:110px; }
-    .hc-content-wrap { padding:0 32px; gap:36px; }
+    .hc-content-wrap { padding:26% 32px 120px; gap:40px; }
     .hc-text { max-width:50%; }
     .hc-glass-card { max-width:46%; max-height:320px; }
     .hc-card-spacer { min-height:260px; max-height:320px; }
