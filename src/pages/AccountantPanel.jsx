@@ -143,7 +143,7 @@ export default function AccountantPanel() {
   const [commRulesLoading, setCommRulesLoading] = useState(false);
   const [newRule, setNewRule] = useState({
     label: "",
-    basis: "gross_profit",
+    basis: "gp",
     rate_type: "percent",
     rate_value: "",
     min_gp: "",
@@ -332,7 +332,7 @@ export default function AccountantPanel() {
     if (data) setCommRules((prev) => [...prev, data]);
     setNewRule({
       label: "",
-      basis: "gross_profit",
+      basis: "gp",
       rate_type: "percent",
       rate_value: "",
       min_gp: "",
@@ -423,7 +423,10 @@ export default function AccountantPanel() {
           expenses_posted: false,
           status: "open",
         },
-        { onConflict: "dealer_id,period_year,period_month", ignoreDuplicates: true },
+        {
+          onConflict: "dealer_id,period_year,period_month",
+          ignoreDuplicates: true,
+        },
       );
 
       const [{ data }, { count: uncostedCount }] = await Promise.all([
@@ -513,7 +516,17 @@ export default function AccountantPanel() {
           .select("category,amount")
           .eq("dealer_id", profile.dealer_id)
           .gte("expense_date", mk + "-01")
-          .lt("expense_date", (() => { const n = new Date(closeMonth.getFullYear(), closeMonth.getMonth() + 1, 1); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-01`; })()),
+          .lt(
+            "expense_date",
+            (() => {
+              const n = new Date(
+                closeMonth.getFullYear(),
+                closeMonth.getMonth() + 1,
+                1,
+              );
+              return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-01`;
+            })(),
+          ),
       ]);
 
     const sold = soldRaw || [];
@@ -1545,7 +1558,7 @@ export default function AccountantPanel() {
                         }
                         style={inp}
                       >
-                        <option value="gross_profit">Gross Profit</option>
+                        <option value="gp">Gross Profit</option>
                         <option value="selling_price">Selling Price</option>
                       </select>
                     </div>
