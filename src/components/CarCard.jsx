@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
-import { trackEvent } from '../lib/analytics';
+import { supabase } from '../supabaseClient';
+import { trackEvent, getSlugFromURL } from '../utils/analytics';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -236,9 +237,23 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             className="wa-cta car-card-wa"
             onClick={e => {
               e.stopPropagation();
-              if (ctxResolved?.type === 'salesman') {
-                trackEvent('whatsapp_click', { carId: car.id, carName: `${year} ${brand} ${model}`, dealerId: car.dealer_id });
-              }
+              // Record enquiry — fire-and-forget, never block navigation
+              supabase.from('whatsapp_enquiries').insert({
+                dealer_id:     car.dealer_id || null,
+                listing_id:    car.id        || null,
+                buyer_name:    null,
+                buyer_phone:   null,
+                buyer_message: waText,
+                source:        'car_card',
+                status:        'new',
+                ref_slug:      getSlugFromURL() || null,
+              }).then(() => {});
+              trackEvent(supabase, 'whatsapp_click', {
+                car_id:    car.id,
+                car_name:  `${year} ${brand} ${model}`,
+                dealer_id: car.dealer_id || null,
+                metadata:  { source: 'car_card' },
+              });
             }}
             style={{
               marginTop:'auto', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
