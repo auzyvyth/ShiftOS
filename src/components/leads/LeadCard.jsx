@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { MessageCircle, ChevronRight, Calendar } from 'lucide-react';
+import { MessageCircle, ChevronUp, ChevronDown, Calendar } from 'lucide-react';
 import LeadSourceBadge from './LeadSourceBadge';
 import {
   getInitials, avatarGradient, getLeadAgeDays,
@@ -18,7 +18,7 @@ function followUpStyle(dateStr) {
   return           { color: '#6b7280',  bg: 'rgba(107,114,128,0.08)',  border: 'rgba(107,114,128,0.18)'  }; // future
 }
 
-export default function LeadCard({ lead, onOpen, onMoveNext }) {
+export default function LeadCard({ lead, onOpen, onMoveNext, onMovePrev }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     data: { lead },
@@ -37,7 +37,9 @@ export default function LeadCard({ lead, onOpen, onMoveNext }) {
   const txtCls  = ageTextColor(days);
   const initials  = getInitials(lead.buyer_name);
   const avatarBg  = avatarGradient(lead.lead_source);
-  const canMoveNext = STAGE_ORDER.indexOf(lead.stage) < STAGE_ORDER.length - 2; // not won/lost
+  const stageIdx    = STAGE_ORDER.indexOf(lead.stage);
+  const canMoveNext = stageIdx < STAGE_ORDER.length - 1;
+  const canMovePrev = stageIdx > 0;
 
   const car      = lead.car_listing;
   const carLabel = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : null;
@@ -132,16 +134,38 @@ export default function LeadCard({ lead, onOpen, onMoveNext }) {
             </div>
           )}
 
-          {canMoveNext && (
+          <div style={{ display: 'flex', gap: 3 }}>
+            <button
+              onClick={e => { e.stopPropagation(); onMovePrev?.(lead); }}
+              disabled={!canMovePrev}
+              style={{
+                width: 22, height: 22, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: canMovePrev ? 'rgba(107,114,128,0.14)' : 'transparent',
+                border: canMovePrev ? '1px solid rgba(107,114,128,0.22)' : '1px solid transparent',
+                cursor: canMovePrev ? 'pointer' : 'default',
+                opacity: canMovePrev ? 1 : 0.2,
+                transition: 'background 0.15s',
+              }}
+              title="Move to previous stage"
+            >
+              <ChevronUp style={{ width: 12, height: 12, color: '#9ca3af' }} />
+            </button>
             <button
               onClick={e => { e.stopPropagation(); onMoveNext?.(lead); }}
-              style={{ width: 22, height: 22, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.2)', opacity: 0, transition: 'opacity 0.15s', cursor: 'pointer' }}
-              className="group-hover:!opacity-100"
+              disabled={!canMoveNext}
+              style={{
+                width: 22, height: 22, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: canMoveNext ? 'rgba(220,38,38,0.12)' : 'transparent',
+                border: canMoveNext ? '1px solid rgba(220,38,38,0.2)' : '1px solid transparent',
+                cursor: canMoveNext ? 'pointer' : 'default',
+                opacity: canMoveNext ? 1 : 0.2,
+                transition: 'background 0.15s',
+              }}
               title="Move to next stage"
             >
-              <ChevronRight style={{ width: 13, height: 13, color: '#f87171' }} />
+              <ChevronDown style={{ width: 12, height: 12, color: '#f87171' }} />
             </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

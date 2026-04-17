@@ -5498,12 +5498,12 @@ export default function DashboardPage() {
   };
 
   const soldCount = listings.filter((l) => l.status === "sold").length;
-  const totalVal = listings.reduce((s, l) => s + (l.selling_price || 0), 0);
+  const totalVal = listings.filter(l => l.status !== 'sold').reduce((s, l) => s + (l.selling_price || 0), 0);
   const hotCount = listings.filter(
     (l) =>
       l.original_price &&
       l.selling_price &&
-      l.selling_price <= l.original_price * 0.97,
+      l.selling_price < l.original_price,
   ).length;
   const soldSpark = bucketByDay(
     listings.filter(l => l.status === 'sold' && l.sold_at).map(l => ({ event_type: 'sold', created_at: l.sold_at })),
@@ -5766,7 +5766,7 @@ export default function DashboardPage() {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-screen overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
@@ -5803,7 +5803,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <nav className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 space-y-px mt-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 space-y-px mt-1">
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
