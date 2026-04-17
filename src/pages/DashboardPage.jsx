@@ -1,16 +1,25 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { createPortal } from 'react-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
+import { Helmet } from "react-helmet";
+import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
-import TikTokGenerator from "../components/TikTokGenerator";
+import TikTokStudioV3 from "../components/TikTokStudioV3";
 import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
+import RevOpsPage from "./RevOpsPage";
+import ServicesPage from "./ServicesPage";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
+import { normalizeMYPhone } from "../utils/phone";
+import { getCategoryCfg } from "../utils/serviceCategories";
+import { getEmbedUrl } from "../utils/videoEmbed";
 import {
   Car,
   PlusCircle,
@@ -35,6 +44,7 @@ import {
   Tag,
   Flame,
   BarChart2,
+  BarChart3,
   Send,
   Bot,
   ChevronRight,
@@ -68,6 +78,14 @@ import {
   ChevronLeft,
   ZoomIn,
   Calculator,
+  Bell,
+  Package,
+  Calendar,
+  FileText,
+  Banknote,
+  Printer,
+  CheckSquare,
+  Wrench,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -75,35 +93,34 @@ const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
-  .grad-red    { background: linear-gradient(135deg,#f87171,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-red    { background: linear-gradient(135deg,#93c5fd,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-blue   { background: linear-gradient(135deg,#60a5fa,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-cyan   { background: linear-gradient(135deg,#67e8f9,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-green  { background: linear-gradient(135deg,#6ee7b7,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-purple { background: linear-gradient(135deg,#d8b4fe,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.45) 35%,rgba(56,189,248,0.28) 65%,transparent); pointer-events:none; z-index:1; }
-  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(220,38,38,0.55) 38%,rgba(56,189,248,0.38) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
+  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; z-index:1; }
+  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(255,255,255,0.07) 38%,rgba(255,255,255,0.04) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
 
   .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
-  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(220,38,38,0.22); }
-  .nav-active { background:linear-gradient(90deg,rgba(220,38,38,0.16),rgba(220,38,38,0.04))!important; border-left:2px solid #dc2626!important; }
+  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(255,255,255,0.1); }
+  .nav-active { background:rgba(220,38,38,0.08)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #dc2626!important; box-shadow:inset 0 1px 0 rgba(220,38,38,0.08),inset 0 -1px 0 rgba(0,0,0,0.1); }
 
   .stat-card { transition:transform 0.18s,box-shadow 0.18s; }
   .stat-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.08); }
 
   .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
-  .data-row:hover { background:rgba(220,38,38,0.025)!important; border-left-color:rgba(220,38,38,0.3); }
+  .data-row:hover { background:rgba(255,255,255,0.025)!important; border-left-color:rgba(255,255,255,0.12); }
 
-  .badge-glow-red  { box-shadow:0 0 6px rgba(248,113,113,0.28); }
-  .badge-glow-cyan { box-shadow:0 0 6px rgba(103,232,249,0.22); }
-  .badge-glow-gold { box-shadow:0 0 6px rgba(251,191,36,0.22); }
 
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
-  .hot-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
 
   .discount-chip { transition:box-shadow 0.15s; }
-  .discount-chip:hover { box-shadow:0 0 10px rgba(220,38,38,0.42); }
+  .discount-chip:hover { box-shadow:0 0 10px rgba(255,255,255,0.08); }
 
   .btn-shimmer { position:relative; overflow:hidden; }
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
@@ -111,44 +128,56 @@ const STYLES = `
 
   .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
 
-  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.065); border-radius:16px; overflow:hidden; }
-  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(220,38,38,0.35) 35%,rgba(56,189,248,0.2) 65%,transparent); pointer-events:none; }
+  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; }
+  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; }
+
+  .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:28px; background:linear-gradient(to left,rgba(8,10,18,0.85),transparent); pointer-events:none; border-radius:0 8px 8px 0; }
+
+  .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
+  .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
+  .glass-pill { background:rgba(255,255,255,0.08); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
+  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
 
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:rgba(220,38,38,0.22); border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(220,38,38,0.42); }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:4px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 `;
 
 const T = {
   card: {
-    position: "relative",
-    background:
-      "linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))",
-    border: "1px solid rgba(255,255,255,0.07)",
+    position: 'relative',
+    background: 'linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.008))',
+    border: '1px solid rgba(255,255,255,0.055)',
+    backdropFilter: 'blur(12px)',
   },
   cardDark: {
-    position: "relative",
-    background: "rgba(255,255,255,0.022)",
-    border: "1px solid rgba(255,255,255,0.065)",
+    position: 'relative',
+    background: 'rgba(8,10,18,0.95)',
+    border: '1px solid rgba(255,255,255,0.055)',
   },
   modal: {
-    position: "relative",
-    background: "rgba(11,11,15,0.98)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    boxShadow: "0 0 0 1px rgba(220,38,38,0.07), 0 32px 64px rgba(0,0,0,0.72)",
+    position: 'relative',
+    background: 'rgba(5,7,14,0.99)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
   },
-  divider: { borderBottom: "1px solid rgba(255,255,255,0.05)" },
+  divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
   btnRed: {
-    background: "linear-gradient(135deg,#dc2626,#b91c1c)",
-    boxShadow: "0 2px 10px rgba(220,38,38,0.28)",
+    background: 'linear-gradient(135deg, rgba(59,130,246,0.9), rgba(29,78,216,0.95))',
+    backdropFilter: 'blur(8px)',
+    boxShadow: '0 2px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.12)',
   },
 };
 
 const iCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all";
 const taCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all resize-none";
+  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -175,14 +204,14 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
   if (d < 15)
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 badge-glow-cyan">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
         <Clock className="w-3 h-3" />
         {d === 0 ? "Today" : `${d}d`}
       </span>
     );
   if (d < 25)
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20 badge-glow-gold">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20">
         <Clock className="w-3 h-3" />
         {d}d
       </span>
@@ -195,21 +224,73 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-400 border border-red-400/20 badge-glow-red">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
   );
 });
 
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+function Sparkline({ data = [], color = '#3b82f6', width = 80, height = 28 }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+  const gradId = `sg-${color.replace('#', '')}`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#${gradId})`} />
+    </svg>
+  );
+}
+
+function bucketByDay(events, eventTypes, days = 14) {
+  const result = Array(days).fill(0);
+  const now = Date.now();
+  events.forEach(e => {
+    if (!eventTypes.includes(e.event_type)) return;
+    const daysAgo = Math.floor((now - new Date(e.created_at)) / 86400000);
+    if (daysAgo < days) result[days - 1 - daysAgo]++;
+  });
+  return result;
+}
+
+function bucketGPByMonth(units, months = 6) {
+  const result = Array(months).fill(0);
+  const now = new Date();
+  units.forEach(u => {
+    if (!u.sold_at || !u.sold_price) return;
+    const d = new Date(u.sold_at);
+    const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    if (monthsAgo >= 0 && monthsAgo < months) {
+      const gp = (u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0);
+      result[months - 1 - monthsAgo] += gp;
+    }
+  });
+  return result;
+}
+
 // ─── Settings Section wrapper ─────────────────────────────────────────────────
 function SettingsSection({
   title,
   subtitle,
   icon: Icon,
-  iconColor = "text-red-400",
-  iconBg = "rgba(220,38,38,0.1)",
-  iconBorder = "rgba(220,38,38,0.18)",
+  iconColor = "text-blue-400",
+  iconBg = "rgba(59,130,246,0.1)",
+  iconBorder = "rgba(59,130,246,0.18)",
   children,
 }) {
   return (
@@ -237,12 +318,283 @@ function SettingsField({ label, hint, children }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
           {label}
         </label>
         {hint && <span className="text-xs text-gray-600">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+// ─── ProductsCatalogue ────────────────────────────────────────────────────────
+const PRODUCT_CATEGORIES = [
+  { value: 'protection',   label: 'Protection Film' },
+  { value: 'window_tint',  label: 'Window Tint' },
+  { value: 'warranty',     label: 'Extended Warranty' },
+  { value: 'insurance',    label: 'Insurance' },
+  { value: 'road_tax',     label: 'Road Tax' },
+  { value: 'service',      label: 'Service Package' },
+  { value: 'accessories',  label: 'Accessories' },
+  { value: 'other',        label: 'Other' },
+];
+
+const PRODUCT_SEEDS = [
+  { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
+  { name: 'Window Tint',           category: 'window_tint', selling_price: 350, cost_price: 150 },
+  { name: 'Extended Warranty 1yr', category: 'warranty',    selling_price: 600, cost_price: 250 },
+  { name: 'Insurance Referral',    category: 'insurance',   selling_price: 200, cost_price: 0   },
+];
+
+const EMPTY_PRODUCT_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true };
+
+function marginColor(sell, cost) {
+  if (!sell) return '#6b7280';
+  const pct = ((sell - cost) / sell) * 100;
+  if (pct >= 40) return '#4ade80';
+  if (pct >= 20) return '#fbbf24';
+  return '#f87171';
+}
+
+function ProductsCatalogue({ dealerId }) {
+  const [products, setProducts]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [open, setOpen]           = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
+  const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
+  const [saving, setSaving]       = useState(false);
+  const [stockCountMap, setStockCountMap] = useState({});
+
+  const fetchProducts = async () => {
+    if (!dealerId) return;
+    setLoading(true);
+    const [{ data }, { data: stockListings }] = await Promise.all([
+      supabase.from('dealer_products').select('*').eq('dealer_id', dealerId).order('created_at', { ascending: false }),
+      supabase.from('car_listings').select('included_services').eq('dealer_id', dealerId).neq('status', 'sold'),
+    ]);
+    setProducts(data || []);
+    // Build per-product stock count
+    const countMap = {};
+    (stockListings || []).forEach(car => {
+      (car.included_services || []).forEach(svc => {
+        if (svc.id) countMap[svc.id] = (countMap[svc.id] || 0) + 1;
+      });
+    });
+    setStockCountMap(countMap);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchProducts(); }, [dealerId]);
+
+  const openAdd = () => { setForm(EMPTY_PRODUCT_FORM); setEditTarget(null); setShowModal(true); };
+  const openEdit = (p) => { setForm({ name: p.name, category: p.category, cost_price: p.cost_price ?? '', selling_price: p.selling_price, description: p.description || '', is_active: p.is_active }); setEditTarget(p); setShowModal(true); };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.selling_price) { toast.error('Name and selling price are required'); return; }
+    setSaving(true);
+    const payload = {
+      dealer_id:     dealerId,
+      name:          form.name.trim(),
+      category:      form.category,
+      cost_price:    Number(form.cost_price) || 0,
+      selling_price: Number(form.selling_price),
+      description:   form.description.trim() || null,
+      is_active:     form.is_active,
+      updated_at:    new Date().toISOString(),
+    };
+    try {
+      if (editTarget) {
+        await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
+      } else {
+        await supabase.from('dealer_products').insert(payload);
+      }
+      await fetchProducts();
+      setShowModal(false);
+      toast.success(editTarget ? 'Product updated' : 'Product added');
+    } catch { toast.error('Save failed'); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    await supabase.from('dealer_products').delete().eq('id', id);
+    setProducts(p => p.filter(x => x.id !== id));
+    toast.success('Deleted');
+  };
+
+  const handleToggleActive = async (p) => {
+    await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
+  };
+
+  const seedProduct = async (seed) => {
+    const payload = { dealer_id: dealerId, ...seed, description: null, is_active: true };
+    await supabase.from('dealer_products').insert(payload);
+    await fetchProducts();
+    toast.success(`"${seed.name}" added`);
+  };
+
+  const catLabel = (v) => PRODUCT_CATEGORIES.find(c => c.value === v)?.label || v;
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)' }}
+    >
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.025] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}>
+            <Tag className="w-4 h-4 text-red-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-white">Services & Add-ons</p>
+            {!loading && <p className="text-xs text-gray-600 mt-px">{products.length} product{products.length !== 1 ? 's' : ''} configured</p>}
+          </div>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
+      </button>
+
+      {open && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-5 py-3">
+            <p className="text-xs text-gray-500">Products your dealership sells as add-ons</p>
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
+            >
+              <PlusCircle className="w-3 h-3" />Add Product
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="px-5 pb-5 space-y-2">
+              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="px-5 pb-5">
+              <p className="text-xs text-gray-600 mb-3">Quick-start suggestions:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PRODUCT_SEEDS.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => seedProduct(s)}
+                    className="text-left p-3 rounded-lg border transition-all hover:border-red-600/30 hover:bg-red-600/[0.04]"
+                    style={{ background: 'rgba(255,255,255,0.025)', border: '1px dashed rgba(255,255,255,0.1)' }}
+                  >
+                    <p className="text-xs font-semibold text-white">{s.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">RM {s.selling_price.toLocaleString()} selling</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="px-5 pb-5">
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                {/* Header row */}
+                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.025)' }}>
+                  <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
+                </div>
+                {products.map(p => {
+                  const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
+                  const stockCount = stockCountMap[p.id] || 0;
+                  return (
+                    <div key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px' }}>
+                        <div className="min-w-0">
+                          <span className="text-sm text-white font-medium truncate block">{p.name}</span>
+                          {stockCount > 0 && (
+                            <span className="text-[10px] text-cyan-400/70 font-medium">
+                              In {stockCount} listing{stockCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
+                        <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
+                        <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
+                        <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
+                        <button onClick={() => handleToggleActive(p)} className="flex items-center">
+                          {p.is_active
+                            ? <ToggleRight className="w-5 h-5 text-green-400" />
+                            : <ToggleLeft className="w-5 h-5 text-gray-600" />}
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Add / Edit Modal ── */}
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Name *</label>
+                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Paint Protection Film" className={iCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
+                <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} className={iCls} style={{ appearance: 'none' }}>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cost Price (RM)</label>
+                  <input type="number" value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Selling Price (RM) *</label>
+                  <input type="number" value={form.selling_price} onChange={e => setForm(p => ({ ...p, selling_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
+                </div>
+              </div>
+              {form.selling_price && (
+                <p className="text-xs" style={{ color: marginColor(Number(form.selling_price), Number(form.cost_price) || 0) }}>
+                  Margin: {(((Number(form.selling_price) - (Number(form.cost_price) || 0)) / Number(form.selling_price)) * 100).toFixed(1)}%
+                </p>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={2} className={taCls} />
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-500">Active</span>
+                <button onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))} className="flex items-center">
+                  {form.is_active ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-600" />}
+                </button>
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mt-1"
+                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', opacity: saving ? 0.7 : 1 }}
+              >
+                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -261,7 +613,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   );
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
-  const [contactPhone, setContactPhone] = useState(profile?.phone || "");
+  const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
   const [tiktok, setTiktok] = useState(profile?.social_tiktok || "");
   const [instagram, setInstagram] = useState(profile?.social_instagram || "");
   const [facebook, setFacebook] = useState(profile?.social_facebook || "");
@@ -318,6 +670,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [sfTestimonials, setSfTestimonials] = useState(() => (profile?.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
   const [sfCta, setSfCta] = useState(() => ({ ...defaultSfCta, ...(profile?.storefront_cta || {}) }));
 
+  // Hero video
+  const [heroVideoEnabled, setHeroVideoEnabled] = useState(profile?.hero_video_enabled || false);
+  const [heroVideoUrl, setHeroVideoUrl] = useState(profile?.hero_video_url || '');
+  const [heroVideoTitle, setHeroVideoTitle] = useState(profile?.hero_video_title || '');
+
   // Sync all form fields whenever the profile prop changes.
   // useState initial values are only read on mount, so without this effect
   // the form would show stale data after a save (onProfileUpdate) or an
@@ -348,6 +705,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setSfHow({ ...defaultSfHow, ...(profile.storefront_how || {}), steps: (profile.storefront_how?.steps || defaultSfHow.steps).map(s => ({...s})) });
     setSfTestimonials((profile.storefront_testimonials || defaultSfTestimonials).map(t => ({...t})));
     setSfCta({ ...defaultSfCta, ...(profile.storefront_cta || {}) });
+    setHeroVideoEnabled(profile.hero_video_enabled || false);
+    setHeroVideoUrl(profile.hero_video_url || '');
+    setHeroVideoTitle(profile.hero_video_title || '');
   }, [profile]);
 
   useEffect(() => {
@@ -416,9 +776,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const saveContact = () =>
     saveSection("contact", {
-      whatsapp_number: whatsapp.trim(),
+      whatsapp_number: whatsapp.trim() ? normalizeMYPhone(whatsapp.trim()) : '',
       email: contactEmail.trim(),
-      phone: contactPhone.trim(),
+      phone: contactPhone.trim() ? normalizeMYPhone(contactPhone.trim()) : '',
       social_tiktok: tiktok.trim(),
       social_instagram: instagram.trim(),
       social_facebook: facebook.trim(),
@@ -473,6 +833,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
       announcement_bar: announcementText.trim(),
       announcement_bar_enabled: announcementOn,
       about_text: aboutText.trim(),
+      hero_video_enabled: heroVideoEnabled,
+      hero_video_url: heroVideoUrl.trim() || null,
+      hero_video_title: heroVideoTitle.trim() || null,
     });
 
   const savePassword = async () => {
@@ -542,7 +905,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const ErrMsg = ({ k }) =>
     errors[k] ? (
-      <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1.5">
+      <p className="text-blue-400 text-xs mt-1.5 flex items-center gap-1.5">
         <AlertTriangle className="w-3 h-3 flex-shrink-0" />
         {errors[k]}
       </p>
@@ -558,14 +921,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
       >
         {/* Change count badge */}
         <div
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? "text-red-400" : changesLeft === 1 ? "text-amber-400" : "text-emerald-400"}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? "text-blue-400" : changesLeft === 1 ? "text-amber-400" : "text-emerald-400"}`}
           style={{
             background: dealershipLocked
-              ? "rgba(220,38,38,0.07)"
+              ? "rgba(59,130,246,0.07)"
               : changesLeft === 1
                 ? "rgba(251,191,36,0.07)"
                 : "rgba(52,211,153,0.07)",
-            border: `1px solid ${dealershipLocked ? "rgba(220,38,38,0.18)" : changesLeft === 1 ? "rgba(251,191,36,0.18)" : "rgba(52,211,153,0.18)"}`,
+            border: `1px solid ${dealershipLocked ? "rgba(59,130,246,0.18)" : changesLeft === 1 ? "rgba(251,191,36,0.18)" : "rgba(52,211,153,0.18)"}`,
           }}
         >
           {dealershipLocked ? (
@@ -620,8 +983,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
                   className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
                 />
               </div>
-              {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
-              {subdomainStatus === 'taken' && <span className="text-xs text-red-400 whitespace-nowrap">⚠ Already taken</span>}
+              {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
+              {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
               {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
             {subdomain !== profile?.subdomain && profile?.subdomain && (
@@ -658,7 +1021,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               value={brandColor}
               onChange={(e) => setBrandColor(e.target.value)}
               placeholder="#c9a84c"
-              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-red-600/50 transition-all font-mono"
+              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
             />
             <div
               className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10"
@@ -783,7 +1146,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
             <button
               onClick={() => setAnnouncementOn((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-red-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-blue-600" : "bg-white/10"}`}
             >
               <span
                 className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${announcementOn ? "left-5" : "left-0.5"}`}
@@ -844,6 +1207,61 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </p>
         </SettingsField>
 
+        {/* ── Hero Video ── */}
+        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: heroVideoEnabled ? 12 : 0 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6' }}>Frontpage Video Section</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Show a YouTube / TikTok video on your store's homepage</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHeroVideoEnabled(p => !p)}
+              style={{
+                width: 44, height: 24, borderRadius: 12, flexShrink: 0, cursor: 'pointer', border: 'none',
+                background: heroVideoEnabled ? '#dc2626' : 'rgba(255,255,255,0.1)',
+                position: 'relative', transition: 'background 0.2s',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3, left: heroVideoEnabled ? 23 : 3, width: 18, height: 18,
+                borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+              }} />
+            </button>
+          </div>
+          {heroVideoEnabled && (
+            <div className="space-y-2">
+              <SettingsField label="Video Section Title" hint="e.g. 'See Our Cars in Action'">
+                <input
+                  value={heroVideoTitle}
+                  onChange={e => setHeroVideoTitle(e.target.value)}
+                  placeholder="See Our Cars in Action"
+                  className={iCls}
+                />
+              </SettingsField>
+              <SettingsField label="Video URL" hint="YouTube, TikTok, or Instagram">
+                <input
+                  type="url"
+                  value={heroVideoUrl}
+                  onChange={e => setHeroVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className={iCls}
+                />
+              </SettingsField>
+              {heroVideoUrl && (() => {
+                const embed = getEmbedUrl(heroVideoUrl);
+                return embed
+                  ? (
+                    <div style={{ aspectRatio: '16/9', maxWidth: 360, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginTop: 8 }}>
+                      <iframe src={embed} style={{ width: '100%', height: '100%' }} allowFullScreen title="Video preview" />
+                    </div>
+                  )
+                  : <p style={{ fontSize: 11, color: '#fbbf24', marginTop: 4 }}>⚠ Could not parse URL. Paste a YouTube, TikTok, or Instagram link.</p>;
+              })()}
+            </div>
+          )}
+        </div>
+
         <ErrMsg k="frontpage" />
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} />
@@ -901,7 +1319,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
             <button
               onClick={() => setTgAutoPost((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-red-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-blue-600" : "bg-white/10"}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${tgAutoPost ? "left-5" : "left-0.5"}`} />
             </button>
@@ -937,8 +1355,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </p>
         </SettingsField>
 
-        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Setup</p>
+        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Setup</p>
           {[
             "Open Telegram → search @BotFather → /newbot",
             "Copy the bot token and paste above",
@@ -985,7 +1403,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         icon={Globe}
       >
         {/* Why section */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Why Choose Us</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Why Choose Us</p>
         <input className={iCls} placeholder="Section title" value={sfWhy.title} onChange={e => setSfWhy(p => ({ ...p, title: e.target.value }))} />
         <div className="mt-3 space-y-3">
           {sfWhy.items.map((item, i) => (
@@ -997,7 +1415,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* How It Works */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">How It Works</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">How It Works</p>
         <input className={iCls} placeholder="Section title" value={sfHow.title} onChange={e => setSfHow(p => ({ ...p, title: e.target.value }))} />
         <div className="mt-3 space-y-3">
           {sfHow.steps.map((step, i) => (
@@ -1009,7 +1427,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* Testimonials */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Testimonials</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">Testimonials</p>
         <div className="space-y-4">
           {sfTestimonials.map((t, i) => (
             <div key={i} className="space-y-2">
@@ -1023,7 +1441,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* CTA */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Call to Action</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">Call to Action</p>
         <div className="space-y-2">
           <input className={iCls} placeholder="CTA title" value={sfCta.title} onChange={e => setSfCta(p => ({ ...p, title: e.target.value }))} />
           <input className={iCls} placeholder="Subtitle" value={sfCta.subtitle} onChange={e => setSfCta(p => ({ ...p, subtitle: e.target.value }))} />
@@ -1039,41 +1457,44 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
       </SettingsSection>
 
-      {/* ── 6. Danger Zone ── */}
+      {/* ── 6. Services & Add-ons ── */}
+      <ProductsCatalogue dealerId={profile?.id} />
+
+      {/* ── 7. Danger Zone ── */}
       <div
         className="rounded-xl overflow-hidden"
         style={{
-          border: "1px solid rgba(220,38,38,0.22)",
-          background: "rgba(220,38,38,0.03)",
+          border: "1px solid rgba(59,130,246,0.22)",
+          background: "rgba(59,130,246,0.03)",
         }}
       >
         <button
           onClick={() => setShowDanger((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-red-500/[0.04] transition-colors"
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-blue-500/[0.04] transition-colors"
         >
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{
-                background: "rgba(220,38,38,0.12)",
-                border: "1px solid rgba(220,38,38,0.22)",
+                background: "rgba(59,130,246,0.12)",
+                border: "1px solid rgba(59,130,246,0.22)",
               }}
             >
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <AlertTriangle className="w-4 h-4 text-blue-400" />
             </div>
-            <p className="text-red-400 text-sm font-semibold">Danger Zone</p>
+            <p className="text-blue-400 text-sm font-semibold">Danger Zone</p>
           </div>
           {showDanger ? (
-            <ChevronUp className="w-4 h-4 text-red-500/50" />
+            <ChevronUp className="w-4 h-4 text-blue-500/50" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-red-500/50" />
+            <ChevronDown className="w-4 h-4 text-blue-500/50" />
           )}
         </button>
 
         {showDanger && (
           <div
             className="px-5 pb-5 space-y-4"
-            style={{ borderTop: "1px solid rgba(220,38,38,0.12)" }}
+            style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}
           >
             <p className="text-gray-500 text-xs pt-4">
               Deleting your account is permanent and cannot be undone. All your
@@ -1091,8 +1512,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
               disabled={deleteConfirm !== "DELETE"}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-30 transition-all"
               style={{
-                background: "linear-gradient(135deg,#dc2626,#991b1b)",
-                border: "1px solid rgba(220,38,38,0.3)",
+                background: "linear-gradient(135deg,#3b82f6,#1e40af)",
+                border: "1px solid rgba(59,130,246,0.3)",
               }}
             >
               Permanently Delete Account
@@ -1155,7 +1576,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
     >
       <div
         className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden"
-        style={T.modal}
+        style={undefined}
       >
         <div
           className="flex items-center justify-between px-5 py-4"
@@ -1187,7 +1608,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
                 RM {cur.toLocaleString()}
               </span>
               {orig && (
-                <span className="text-red-400 text-xs font-medium bg-red-400/10 px-2 py-0.5 rounded-full border border-red-400/20">
+                <span className="text-blue-400 text-xs font-medium bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/20">
                   -{Math.round(((orig - cur) / orig) * 100)}%
                 </span>
               )}
@@ -1210,13 +1631,13 @@ function PriceEditModal({ listing, onClose, onSave }) {
                 }}
                 min="0"
                 autoFocus
-                className="w-full pl-12 pr-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-lg font-semibold focus:outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/15 transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-lg font-semibold focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/15 transition-all"
               />
             </div>
           </div>
           {npv > 0 && npv !== cur && (
             <div
-              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : isUp ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : isHot ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}
+              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : isUp ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : isHot ? "bg-blue-500/10 border-red-500/20 text-blue-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}
             >
               {isReset && (
                 <p className="font-medium">
@@ -1254,14 +1675,14 @@ function PriceEditModal({ listing, onClose, onSave }) {
             </div>
           )}
           {err && (
-            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-blue-400 text-xs bg-blue-500/10 border border-red-500/20 rounded-lg px-3 py-2">
               ⚠ {err}
             </p>
           )}
           <div className="flex gap-3 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
               style={{ border: "1px solid rgba(255,255,255,0.09)" }}
             >
               Cancel
@@ -1297,7 +1718,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
     >
       <div
         className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-        style={T.modal}
+        style={undefined}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -1334,7 +1755,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
             style={{ border: "1px solid rgba(255,255,255,0.08)" }}
           >
             Cancel
@@ -1406,6 +1827,47 @@ function AnalyticsTab({ listings, profile }) {
     (e) => e.event_type === "whatsapp_click",
   ).length;
   const totalCalls = events.filter((e) => e.event_type === "call_click").length;
+  const storeVisits = events.filter((e) => e.event_type === "store_visit").length;
+  const clicksData = bucketByDay(events, ['link_visit', 'car_view']);
+  const waData = bucketByDay(events, ['whatsapp_click']);
+  const enquiriesData = bucketByDay(events, ['whatsapp_click', 'call_click']);
+
+  const buildDailyChart = (evts, days = 30) => {
+    const result = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+      const dayEvents = evts.filter(e => e.created_at?.slice(0, 10) === dateStr);
+      result.push({
+        date: label,
+        clicks:    dayEvents.filter(e => ['link_visit', 'car_view'].includes(e.event_type)).length,
+        whatsapp:  dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
+        calls:     dayEvents.filter(e => e.event_type === 'call_click').length,
+        enquiries: dayEvents.filter(e => ['whatsapp_click', 'call_click'].includes(e.event_type)).length,
+      });
+    }
+    return result;
+  };
+
+  const dailyChart = useMemo(() => buildDailyChart(events), [events]);
+
+  const carStatsMap = useMemo(() => {
+    const map = {};
+    events.forEach(e => {
+      if (!e.car_id) return;
+      if (!map[e.car_id]) map[e.car_id] = { views: 0, leads: 0 };
+      if (['car_view', 'link_visit'].includes(e.event_type)) map[e.car_id].views++;
+      if (['whatsapp_click', 'call_click'].includes(e.event_type)) map[e.car_id].leads++;
+    });
+    Object.values(map).forEach(s => {
+      s.cvr = s.views > 0 ? ((s.leads / s.views) * 100).toFixed(1) + '%' : '—';
+    });
+    return map;
+  }, [events]);
+
   const bySlug = events.reduce((acc, e) => {
     if (!acc[e.salesman_slug])
       acc[e.salesman_slug] = { clicks: 0, enquiries: 0 };
@@ -1508,14 +1970,8 @@ function AnalyticsTab({ listings, profile }) {
       grad: "grad-green",
       icon: <CheckCircle2 className="w-4 h-4" />,
       glow: "rgba(110,231,183,0.14)",
-    },
-    {
-      label: "Hot Deals",
-      val: hot,
-      sub: "≥3% off",
-      grad: hot > 0 ? "grad-red" : "",
-      icon: <Flame className="w-4 h-4" />,
-      glow: hot > 0 ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.03)",
+      spark: Array(14).fill(0),
+      sparkColor: '#34d399',
     },
     {
       label: "Avg. Age",
@@ -1529,104 +1985,135 @@ function AnalyticsTab({ listings, profile }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {kpis.map(({ label, val, sub, grad, icon, glow }) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {kpis.map(({ label, val, sub, grad, icon, glow, spark, sparkColor }) => (
           <div
             key={label}
-            className="stat-card card-top rounded-xl p-4 overflow-hidden"
-            style={T.card}
+            className="stat-card card-top rounded-2xl overflow-hidden glass"
+            style={{ position: 'relative' }}
           >
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: `radial-gradient(circle at 100% 0%, rgba(220,38,38,0.05) 0%, transparent 55%)`,
+                background: `radial-gradient(circle at 100% 0%, rgba(59,130,246,0.05) 0%, transparent 55%)`,
               }}
             />
-            <div className="flex items-center justify-between mb-3 relative">
-              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                {label}
-              </p>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
-              >
-                {icon}
+            {spark && (
+              <div className="relative px-3.5 pt-3">
+                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
               </div>
-            </div>
-            <p
-              className={`text-2xl sm:text-3xl font-black leading-none relative tabular-nums ${grad || "text-white"}`}
-            >
-              {val}
-            </p>
-            <p className="text-xs text-gray-700 mt-1.5 hidden sm:block relative">
-              {sub}
-            </p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            label: "Total Clicks",
-            val: totalClicks,
-            grad: "grad-cyan",
-            glow: "rgba(103,232,249,0.14)",
-            icon: <Eye className="w-4 h-4" />,
-          },
-          {
-            label: "Enquiries",
-            val: totalEnquiries,
-            grad: "grad-gold",
-            glow: "rgba(251,191,36,0.14)",
-            icon: <MessageSquare className="w-4 h-4" />,
-          },
-          {
-            label: "WhatsApp",
-            val: totalWa,
-            grad: "grad-green",
-            glow: "rgba(110,231,183,0.14)",
-            icon: <MessageCircle className="w-4 h-4" />,
-          },
-          {
-            label: "Call Clicks",
-            val: totalCalls,
-            grad: "grad-purple",
-            glow: "rgba(216,180,254,0.14)",
-            icon: <Phone className="w-4 h-4" />,
-          },
-        ].map(({ label, val, grad, glow, icon }) => (
-          <div
-            key={label}
-            className="stat-card card-top rounded-xl p-4 overflow-hidden"
-            style={T.card}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                {label}
-              </p>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: glow }}
-              >
-                {icon}
+            )}
+            <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                  {label}
+                </p>
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
+                >
+                  {icon}
+                </div>
               </div>
-            </div>
-            {eventsLoading ? (
-              <div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
-            ) : (
               <p
-                className={`text-2xl sm:text-3xl font-black leading-none tabular-nums ${grad}`}
+                className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
               >
                 {val}
               </p>
-            )}
+              <p className="text-xs text-gray-700 mt-1.5 hidden sm:block">
+                {sub}
+              </p>
+            </div>
           </div>
         ))}
+      </div>
+      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+        {/* Header + summary pills */}
+        <div className="flex items-center justify-between p-4 flex-wrap gap-3" style={T.divider}>
+          <div>
+            <h2 className="font-semibold text-white text-sm">Engagement Overview</h2>
+            <p className="text-xs text-gray-600 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Clicks',    val: totalClicks,    color: '#67e8f9' },
+              { label: 'Enquiries', val: totalEnquiries, color: '#fbbf24' },
+              { label: 'WhatsApp',  val: totalWa,        color: '#4ade80' },
+              { label: 'Calls',     val: totalCalls,     color: '#c084fc' },
+              { label: 'Visits',    val: storeVisits,    color: '#94a3b8' },
+            ].map(({ label, val, color }) => (
+              <div key={label}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <span className="text-xs text-gray-500">{label}</span>
+                <span className="text-xs font-bold text-white tabular-nums">
+                  {eventsLoading ? '…' : val}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Chart */}
+        <div className="p-4 pt-2">
+          {eventsLoading ? (
+            <div className="flex items-center justify-center h-52 text-gray-600 text-sm">Loading chart…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#6b7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: '#4b5563' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#0f1117',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 8,
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 12,
+                  }}
+                  itemStyle={{ color: '#e5e7eb' }}
+                  labelStyle={{ color: '#9ca3af', marginBottom: 4 }}
+                  cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={6}
+                  wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }}
+                />
+                <Brush
+                  dataKey="date"
+                  height={20}
+                  stroke="rgba(59,130,246,0.3)"
+                  fill="rgba(59,130,246,0.05)"
+                  travellerWidth={6}
+                  startIndex={Math.max(0, dailyChart.length - 14)}
+                />
+                <Line type="monotone" dataKey="clicks"    stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="enquiries" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="whatsapp"  stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="calls"     stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
       {topSalesmen.length > 0 && (
         <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
           <div className="flex items-center gap-2 p-4" style={T.divider}>
-            <BarChart2 className="w-4 h-4 text-red-400" />
+            <BarChart2 className="w-4 h-4 text-blue-400" />
             <p className="font-semibold text-white text-sm">
               Salesman Performance
             </p>
@@ -1713,7 +2200,7 @@ function AnalyticsTab({ listings, profile }) {
                     </p>
                   </div>
                 </div>
-                <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20 badge-glow-gold">
+                <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
                   {getListingAge(l.created_at)}d
                 </span>
               </div>
@@ -1745,8 +2232,8 @@ function AnalyticsTab({ listings, profile }) {
               <thead>
                 <tr
                   style={{
-                    background: "rgba(255,255,255,0.02)",
-                    boxShadow: "inset 0 -1px 0 rgba(220,38,38,0.2)",
+                    background: "rgba(255,255,255,0.025)",
+                    boxShadow: "inset 0 -1px 0 rgba(59,130,246,0.2)",
                   }}
                 >
                   {[
@@ -1800,12 +2287,30 @@ function AnalyticsTab({ listings, profile }) {
                     <td className="px-4 py-3">
                       <AgeBadge createdAt={l.created_at} />
                     </td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">—</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="text-sky-400 font-semibold tabular-nums">
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.views || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.leads || 0) > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.leads || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {(() => {
+                        const cvr = carStatsMap[l.id]?.cvr;
+                        const num = parseFloat(cvr);
+                        return (
+                          <span className={`font-semibold tabular-nums ${num > 5 ? 'text-emerald-400' : num > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
+                            {eventsLoading ? '…' : (cvr || '—')}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold" : "bg-red-400/10 text-red-400 border-red-400/20 badge-glow-red"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20" : "bg-blue-400/10 text-blue-400 border-blue-400/20"}`}
                       >
                         {l.status || "active"}
                       </span>
@@ -1826,12 +2331,12 @@ function AnalyticsTab({ listings, profile }) {
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{
-                background: "rgba(220,38,38,0.1)",
-                border: "1px solid rgba(220,38,38,0.18)",
-                boxShadow: "0 0 12px rgba(220,38,38,0.12)",
+                background: "rgba(59,130,246,0.1)",
+                border: "1px solid rgba(59,130,246,0.18)",
+                boxShadow: "0 0 12px rgba(59,130,246,0.12)",
               }}
             >
-              <Bot className="w-4 h-4 text-red-400" />
+              <Bot className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-left">
               <p className="text-white text-sm font-semibold">
@@ -1858,11 +2363,11 @@ function AnalyticsTab({ listings, profile }) {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                       style={{
-                        background: "rgba(220,38,38,0.12)",
-                        border: "1px solid rgba(220,38,38,0.18)",
+                        background: "rgba(59,130,246,0.12)",
+                        border: "1px solid rgba(59,130,246,0.18)",
                       }}
                     >
-                      <Bot className="w-3 h-3 text-red-400" />
+                      <Bot className="w-3 h-3 text-blue-400" />
                     </div>
                   )}
                   <div
@@ -1871,12 +2376,12 @@ function AnalyticsTab({ listings, profile }) {
                       m.role === "user"
                         ? {
                             background:
-                              "linear-gradient(135deg,#dc2626,#b91c1c)",
-                            boxShadow: "0 2px 8px rgba(220,38,38,0.22)",
+                              "linear-gradient(135deg,#3b82f6,#1d4ed8)",
+                            boxShadow: "0 2px 8px rgba(59,130,246,0.22)",
                           }
                         : {
                             background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }
                     }
                   >
@@ -1889,24 +2394,24 @@ function AnalyticsTab({ listings, profile }) {
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                     style={{
-                      background: "rgba(220,38,38,0.12)",
-                      border: "1px solid rgba(220,38,38,0.18)",
+                      background: "rgba(59,130,246,0.12)",
+                      border: "1px solid rgba(59,130,246,0.18)",
                     }}
                   >
-                    <Bot className="w-3 h-3 text-red-400" />
+                    <Bot className="w-3 h-3 text-blue-400" />
                   </div>
                   <div
                     className="px-3.5 py-3 rounded-2xl rounded-tl-sm"
                     style={{
                       background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
                         <div
                           key={i}
-                          className="w-1.5 h-1.5 bg-red-500/40 rounded-full animate-bounce"
+                          className="w-1.5 h-1.5 bg-blue-500/40 rounded-full animate-bounce"
                           style={{ animationDelay: `${i * 0.15}s` }}
                         />
                       ))}
@@ -1922,10 +2427,10 @@ function AnalyticsTab({ listings, profile }) {
                   <button
                     key={p}
                     onClick={() => setInput(p)}
-                    className="text-xs px-3 py-1.5 rounded-full text-gray-400 hover:text-white transition-all"
+                    className="text-xs px-3 py-1.5 rounded-full text-gray-500 hover:text-white transition-all"
                     style={{
                       background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     {p}
@@ -1955,7 +2460,7 @@ function AnalyticsTab({ listings, profile }) {
                   maxHeight: "120px",
                 }}
                 onFocus={(e) =>
-                  (e.target.style.borderColor = "rgba(220,38,38,0.4)")
+                  (e.target.style.borderColor = "rgba(59,130,246,0.4)")
                 }
                 onBlur={(e) =>
                   (e.target.style.borderColor = "rgba(255,255,255,0.08)")
@@ -1989,9 +2494,11 @@ function TeamTab({ managerDealership, dealerId }) {
   const [copiedId, setCopiedId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [newRole, setNewRole] = useState("salesman");
+  const [teamTab, setTeamTab] = useState("salesman");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+60");
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
   const [teamSoldCount, setTeamSoldCount] = useState(0);
@@ -2053,8 +2560,8 @@ function TeamTab({ managerDealership, dealerId }) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("role", "salesman")
-      .eq("dealership", managerDealership)
+      .in("role", ["salesman","manager","accountant","fi_officer","admin"])
+      .eq("dealer_id", dealerId)
       .order("created_at", { ascending: false });
     if (error) {
       setTeamError(error.message || "Failed to load team.");
@@ -2080,6 +2587,7 @@ function TeamTab({ managerDealership, dealerId }) {
     setTempPw("");
     setAddError("");
     setAddSuccess("");
+    setNewRole("salesman");
   };
 
   const handleAdd = async () => {
@@ -2120,8 +2628,10 @@ function TeamTab({ managerDealership, dealerId }) {
           email: e,
           phone: p,
           dealership: managerDealership,
+          dealer_id: dealerId,
           slug: s,
           password: tempPw,
+          role: newRole,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -2171,13 +2681,28 @@ function TeamTab({ managerDealership, dealerId }) {
     setDeleteConfirmId(null);
   };
 
+  const ROLE_COLORS = {
+    salesman:   '#3b82f6',
+    manager:    '#f97316',
+    accountant: '#22c55e',
+    fi_officer: '#a855f7',
+    admin:      '#94a3b8',
+  };
+  const ROLE_TABS = [
+    { role: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
+    { role: 'manager',    label: 'Managers',    color: '#f97316' },
+    { role: 'accountant', label: 'Accountants', color: '#22c55e' },
+    { role: 'fi_officer', label: 'F&I',         color: '#a855f7' },
+    { role: 'admin',      label: 'Admins',      color: '#94a3b8' },
+  ];
+
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
   const inactiveCount = salespeople.filter((s) => s.is_active === false).length;
   const activeRate = salespeople.length
     ? Math.round((activeCount / salespeople.length) * 100)
     : 0;
   const inputCls =
-    "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+    "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-red-600/10 transition-all";
 
   return (
     <div className="space-y-4">
@@ -2236,6 +2761,44 @@ function TeamTab({ managerDealership, dealerId }) {
             <span className="sm:hidden">Add</span>
           </button>
         </div>
+        {/* Role tabs */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto' }}>
+          {ROLE_TABS.map(({ role, label, color }) => {
+            const count = salespeople.filter(s => s.role === role).length;
+            return (
+              <button
+                key={role}
+                onClick={() => setTeamTab(role)}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'none',
+                  color: teamTab === role ? '#f3f4f6' : '#6b7280',
+                  borderBottom: teamTab === role ? `2px solid ${color}` : '2px solid transparent',
+                  fontFamily: "'DM Sans', sans-serif",
+                  transition: 'color 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+                {label}
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  padding: '1px 7px', borderRadius: 10,
+                  background: teamTab === role ? `${color}18` : 'rgba(255,255,255,0.05)',
+                  color: teamTab === role ? color : '#4b5563',
+                }}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
         {teamError && (
           <div
             className="m-4 rounded-lg px-3 py-2.5 text-amber-300 text-xs"
@@ -2256,11 +2819,11 @@ function TeamTab({ managerDealership, dealerId }) {
             <div
               className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
               style={{
-                background: "rgba(220,38,38,0.07)",
-                border: "1px solid rgba(220,38,38,0.12)",
+                background: "rgba(59,130,246,0.07)",
+                border: "1px solid rgba(59,130,246,0.12)",
               }}
             >
-              <Users className="w-5 h-5 text-red-500/40" />
+              <Users className="w-5 h-5 text-blue-500/40" />
             </div>
             <p className="text-gray-600 text-sm mb-4">
               No salespeople added yet
@@ -2278,8 +2841,17 @@ function TeamTab({ managerDealership, dealerId }) {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {salespeople.map((s) => (
+          <div>
+            {(() => {
+              const filteredTeam = salespeople.filter(s => s.role === teamTab);
+              return (
+                <>
+                  {filteredTeam.length === 0 && (
+                    <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
+                      No {ROLE_TABS.find(t => t.role === teamTab)?.label} yet.
+                    </div>
+                  )}
+                  {filteredTeam.map((s) => (
               <div
                 key={s.id}
                 className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-white/[0.02]"}`}
@@ -2295,7 +2867,7 @@ function TeamTab({ managerDealership, dealerId }) {
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                       style={{
-                        background: "linear-gradient(135deg,#dc2626,#7c3aed)",
+                        background: "linear-gradient(135deg,#3b82f6,#7c3aed)",
                       }}
                     >
                       {(s.full_name || "S")[0].toUpperCase()}
@@ -2303,11 +2875,12 @@ function TeamTab({ managerDealership, dealerId }) {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0 }} />
                       <p className="font-semibold text-white truncate">
                         {s.full_name}
                       </p>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : "bg-white/5 text-gray-500 border-white/8"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : "bg-white/5 text-gray-500 border-white/8"}`}
                       >
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
@@ -2324,10 +2897,10 @@ function TeamTab({ managerDealership, dealerId }) {
                     {s.slug ? (
                       <div className="flex items-center gap-2 mb-3">
                         <div
-                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-400"
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
                           style={{
                             background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.07)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }}
                         >
                           <Link className="w-3 h-3 text-gray-600" />
@@ -2381,7 +2954,7 @@ function TeamTab({ managerDealership, dealerId }) {
                           className="rounded-lg px-2.5 py-2"
                           style={{
                             background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }}
                         >
                           <p
@@ -2417,8 +2990,8 @@ function TeamTab({ managerDealership, dealerId }) {
                     </button>
                     <button
                       onClick={() => setDeleteConfirmId(s.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition-all"
-                      style={{ border: "1px solid rgba(220,38,38,0.18)" }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-blue-500 hover:bg-blue-500/10 transition-all"
+                      style={{ border: "1px solid rgba(59,130,246,0.18)" }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Remove</span>
@@ -2427,6 +3000,9 @@ function TeamTab({ managerDealership, dealerId }) {
                 </div>
               </div>
             ))}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -2437,7 +3013,7 @@ function TeamTab({ managerDealership, dealerId }) {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-            style={T.modal}
+            style={undefined}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -2456,7 +3032,7 @@ function TeamTab({ managerDealership, dealerId }) {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Cancel
@@ -2479,7 +3055,7 @@ function TeamTab({ managerDealership, dealerId }) {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col"
-            style={T.modal}
+            style={undefined}
           >
             <div
               className="flex items-center justify-between px-5 py-4 flex-shrink-0"
@@ -2517,7 +3093,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                     >
                       Done
@@ -2533,6 +3109,40 @@ function TeamTab({ managerDealership, dealerId }) {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Role selector */}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2.5">Select Role</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { role: 'salesman',   label: 'Salesman',    color: '#3b82f6', desc: 'Sells cars, manages leads' },
+                        { role: 'manager',    label: 'Manager',     color: '#f97316', desc: 'Manages sales team' },
+                        { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
+                        { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
+                        { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
+                      ].map(({ role, label, color, desc }) => (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => setNewRole(role)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: 8,
+                            border: `1px solid ${newRole === role ? color : 'rgba(255,255,255,0.08)'}`,
+                            background: newRole === role ? `${color}18` : 'rgba(255,255,255,0.03)',
+                            cursor: 'pointer',
+                            fontFamily: "'DM Sans',sans-serif",
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: newRole === role ? color : '#9ca3af' }}>{label}</span>
+                          </div>
+                          <p style={{ fontSize: 10, color: '#4b5563', margin: '2px 0 0', textAlign: 'left' }}>{desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
@@ -2610,7 +3220,7 @@ function TeamTab({ managerDealership, dealerId }) {
                         value={slug}
                         onChange={(e) => setSlug(slugify(e.target.value))}
                         autoComplete="off"
-                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-red-600/50 transition-colors"
+                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-colors"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -2623,10 +3233,10 @@ function TeamTab({ managerDealership, dealerId }) {
                   </div>
                   {addError && (
                     <div
-                      className="rounded-xl px-3 py-2.5 text-red-400 text-xs"
+                      className="rounded-xl px-3 py-2.5 text-blue-400 text-xs"
                       style={{
-                        background: "rgba(220,38,38,0.07)",
-                        border: "1px solid rgba(220,38,38,0.18)",
+                        background: "rgba(59,130,246,0.07)",
+                        border: "1px solid rgba(59,130,246,0.18)",
                       }}
                     >
                       ⚠ {addError}
@@ -2635,7 +3245,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex gap-3 pt-1">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                     >
                       Cancel
@@ -2666,8 +3276,8 @@ function parseTags(raw) {
   return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
 }
 
-const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
-const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#f87171', crack:'#f43f5e', replaced:'#a78bfa' };
+const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
+const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#93c5fd', crack:'#f43f5e', replaced:'#a78bfa' };
 
 function DrawerDamageMap({ damageMap }) {
   const zones = Array.isArray(damageMap) ? damageMap : [];
@@ -2751,7 +3361,7 @@ function ListingDetailDrawer({
   const monthly = sp > 0 ? Math.round((sp * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12)) : null;
   const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
   const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
-  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#f87171' }[listing.interior_grade] || '#9ca3af';
+  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#93c5fd' }[listing.interior_grade] || '#9ca3af';
   let damageMap = [];
   try { if (listing.damage_map) damageMap = typeof listing.damage_map === 'string' ? JSON.parse(listing.damage_map) : listing.damage_map; } catch {}
   const features = parseTags(listing.features);
@@ -2796,7 +3406,7 @@ function ListingDetailDrawer({
           {/* Close */}
           <button
             onClick={onClose}
-            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </button>
@@ -2804,7 +3414,7 @@ function ListingDetailDrawer({
           {/* Body */}
           <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowY: 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
             {/* LEFT */}
-            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)', overflowY: isMobile ? 'visible' : 'auto' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)', overflowY: isMobile ? 'visible' : 'auto' }}>
 
               {/* Gallery */}
               <div style={{ display: 'flex', gap: 8 }}>
@@ -2814,7 +3424,7 @@ function ListingDetailDrawer({
                     <div
                       key={i}
                       onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(220,38,38,0.6)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                     </div>
@@ -2868,7 +3478,7 @@ function ListingDetailDrawer({
                 {saving > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                    <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
+                    <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
                   </div>
                 )}
                 {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>}
@@ -2892,7 +3502,7 @@ function ListingDetailDrawer({
               </div>
 
               {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
                 {tabs.map(tab => (
                   <button
                     key={tab}
@@ -2948,7 +3558,7 @@ function ListingDetailDrawer({
                       </div>
                       {listing.interior_grade && (
                         <>
-                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.07)' }} />
+                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
                           <div>
                             <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
                             <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
@@ -2975,8 +3585,8 @@ function ListingDetailDrawer({
             </div>
 
             {/* RIGHT */}
-            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
 
                 {/* Edit */}
@@ -2986,11 +3596,11 @@ function ListingDetailDrawer({
 
                 {/* TikTok */}
                 <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />TikTok Studio
+                  <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
-                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                 </button>
 
@@ -3001,7 +3611,7 @@ function ListingDetailDrawer({
                 </button>
 
                 {/* Financing Calculator */}
-                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                 </button>
 
@@ -3019,7 +3629,7 @@ function ListingDetailDrawer({
                       )}
                       {salesmen.map(s => (
                         <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(168,85,247,0.1)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#c084fc' : '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
-                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
                         </button>
@@ -3036,12 +3646,12 @@ function ListingDetailDrawer({
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.25)', color: '#f87171' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
 
                 {/* Metadata */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
                   <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -3108,7 +3718,7 @@ function ListingDetailDrawer({
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
                 <p style={{ color: 'white', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
                 <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
@@ -3132,6 +3742,1405 @@ function ListingDetailDrawer({
         </div>
       )}
     </>
+  );
+}
+
+// ─── StockTab ─────────────────────────────────────────────────────────────────
+function StockTab({ userId, listings }) {
+  const [units, setUnits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '' });
+  const [addSaving, setAddSaving] = useState(false);
+  const [soldTarget, setSoldTarget] = useState(null);
+  const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
+  const [soldSaving, setSoldSaving] = useState(false);
+  const [stockView, setStockView] = useState('available');
+
+  const fetchUnits = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('stock_units')
+      .select('*, car_listings(brand, model, year, plate_number, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status)')
+      .eq('dealer_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
+    setUnits(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (userId) fetchUnits(); }, [userId]);
+
+  const daysInStock = (purchaseDate) => {
+    if (!purchaseDate) return '—';
+    return Math.floor((Date.now() - new Date(purchaseDate)) / 86400000);
+  };
+
+  const grossProfit = (u) => {
+    if (!u.sold_price) return null;
+    return (Number(u.sold_price) || 0) - (Number(u.purchase_price) || 0) - (Number(u.recon_cost) || 0);
+  };
+
+  const now = new Date();
+  const activeUnits = units.filter(u => u.status !== 'sold');
+  const soldUnits = units.filter(u => u.status === 'sold');
+
+  const thisMonth = soldUnits.filter(u => {
+    if (!u.sold_date) return false;
+    const d = new Date(u.sold_date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
+  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.purchase_price) || 0), 0);
+  const avgDays = activeUnits.length
+    ? Math.round(activeUnits.reduce((s, u) => {
+        if (!u.purchase_date) return s;
+        return s + Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000);
+      }, 0) / activeUnits.length)
+    : 0;
+  const agingUnits = activeUnits.filter(u =>
+    u.purchase_date && Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) > 60
+  );
+  const gpSparkData = bucketGPByMonth(units);
+
+  const handleAdd = async () => {
+    setAddSaving(true);
+    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0 });
+    setShowAdd(false);
+    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '' });
+    setAddSaving(false);
+    fetchUnits();
+  };
+
+  const handleMarkSold = async () => {
+    setSoldSaving(true);
+    const soldPrice = parseFloat(soldForm.sold_price);
+    const payload = {
+      status: 'sold',
+      sold_date: soldForm.sold_date || new Date().toISOString().slice(0, 10),
+      sold_price: isNaN(soldPrice) ? 0 : soldPrice,
+    };
+    const { error } = await supabase
+      .from('stock_units')
+      .update(payload)
+      .eq('id', soldTarget.id)
+      .eq('dealer_id', userId);
+    if (error) {
+      console.error('Mark sold error:', error.message);
+      toast.error('Failed to mark as sold: ' + error.message);
+      setSoldSaving(false);
+      return;
+    }
+    setUnits(p => p.map(u => u.id === soldTarget.id ? { ...u, ...payload } : u));
+    setSoldTarget(null);
+    setSoldSaving(false);
+  };
+
+  const statusBadge = (s) => {
+    const map = { in_stock: ['#34d399','rgba(52,211,153,0.12)'], sold: ['#9ca3af','rgba(156,163,175,0.1)'], reserved: ['#fbbf24','rgba(251,191,36,0.12)'] };
+    const [color, bg] = map[s] || ['#9ca3af','rgba(255,255,255,0.05)'];
+    return <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, border: `1px solid ${color}33`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s?.replace('_',' ') || '—'}</span>;
+  };
+
+  const summaryCards = [
+    { label: 'Total Units',          val: activeUnits.length,                  Icon: Package,       glow: 'rgba(103,232,249,0.13)',                                           grad: 'grad-cyan'                                                          },
+    { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      glow: 'rgba(251,191,36,0.13)',                                            grad: 'grad-red'                                                           },
+    { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
+    { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
+    { label: 'Sold This Month',      val: thisMonth.length,                     Icon: CheckCircle2,  glow: 'rgba(110,231,183,0.13)',                                           grad: 'grad-green'                                                         },
+    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.04)', grad: agingUnits.length > 0 ? 'grad-red' : ''              },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
+        {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
+          <div key={label} className="stat-card card-top rounded-2xl overflow-hidden glass" style={{ position: 'relative' }}>
+            {spark && (
+              <div className="px-3.5 pt-3">
+                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
+              </div>
+            )}
+            <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
+              </div>
+              <p className={`text-xl sm:text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl overflow-hidden" style={T.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
+        </div>
+        {/* Available / Sold tab toggle */}
+        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {[
+            { id: 'available', label: 'Available', count: activeUnits.length },
+            { id: 'sold',      label: 'Sold',      count: soldUnits.length   },
+          ].map(({ id, label, count }) => (
+            <button
+              key={id}
+              onClick={() => setStockView(id)}
+              style={{
+                padding: '10px 18px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                background: 'none',
+                color: stockView === id ? '#f3f4f6' : '#6b7280',
+                borderBottom: stockView === id ? '2px solid #3b82f6' : '2px solid transparent',
+                fontFamily: "'DM Sans', sans-serif",
+                transition: 'color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+              }}
+            >
+              {label}
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                padding: '1px 7px',
+                borderRadius: 10,
+                background: stockView === id ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+                color: stockView === id ? '#93c5fd' : '#4b5563',
+              }}>{count}</span>
+            </button>
+          ))}
+        </div>
+        <div className="table-wrap">
+          {loading ? (
+            <p className="text-gray-500 text-sm p-6">Loading...</p>
+          ) : units.length === 0 ? (
+            <p className="text-gray-600 text-sm p-6">No stock units yet.</p>
+          ) : (() => {
+            const displayUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const thStyle = { padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' };
+            return (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {stockView === 'available'
+                      ? ['Car', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayUnits.length === 0 ? (
+                    <tr><td colSpan={8} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
+                  ) : displayUnits.map(u => {
+                    const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
+                    const gp = grossProfit(u);
+                    const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) : 0;
+                    const isAging = u.status === 'in_stock' && days > 60;
+                    return (
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
+                        <td style={{ padding: '12px 14px', minWidth: 140 }}>
+                          {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
+                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
+                        {stockView === 'available' && (
+                          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
+                        )}
+                        <td style={{ padding: '12px 14px', fontSize: 13 }}>
+                          {isAging
+                            ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
+                            : <span style={{ color: '#9ca3af' }}>{u.purchase_date ? `${days}d` : '—'}</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
+                        {stockView === 'available' ? (
+                          <td style={{ padding: '12px 14px' }}>
+                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                          </td>
+                        ) : (
+                          <>
+                            <td style={{ padding: '12px 14px', color: '#34d399', fontSize: 13, whiteSpace: 'nowrap', fontWeight: 600 }}>
+                              RM {Number(u.sold_price || 0).toLocaleString()}
+                            </td>
+                            <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12 }}>
+                              {u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY') : '—'}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Add Stock Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <h3 className="font-semibold text-white">Add Stock Unit</h3>
+              <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto p-5 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
+                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <option value="">Select listing...</option>
+                  {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}{l.plate_number ? ` · ${l.plate_number}` : ''}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Cost (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+              </div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in" className={iCls} /></div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Sold Modal */}
+      {soldTarget && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={undefined}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <h3 className="font-semibold text-white">Mark as Sold</h3>
+              <button onClick={() => setSoldTarget(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Price (RM)</label><input type="number" value={soldForm.sold_price} onChange={e => setSoldForm(p => ({ ...p, sold_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Date</label><input type="date" value={soldForm.sold_date} onChange={e => setSoldForm(p => ({ ...p, sold_date: e.target.value }))} className={iCls} /></div>
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={handleMarkSold} disabled={soldSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{soldSaving ? 'Saving...' : 'Confirm Sale'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── EnquiriesTab ─────────────────────────────────────────────────────────────
+const DEFAULT_ENQUIRY_TEMPLATE = `Hi {{buyer_name}}, thank you for your enquiry about the {{car_name}}! 😊\n\nWe'd love to help you with more details or arrange a viewing. When would be a good time for you?\n\nBest regards,\n{{dealer_name}} — {{dealership}}`;
+
+function EnquiriesTab({ userId, onOpenDoc }) {
+  const [enquiries, setEnquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [waTemplate, setWaTemplate] = useState(DEFAULT_ENQUIRY_TEMPLATE);
+  const [editedMsg, setEditedMsg] = useState('');
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [dealerProfile, setDealerProfile] = useState(null);
+
+  const statusMeta = {
+    new:       { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)'  },
+    contacted: { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.3)'  },
+    qualified: { color: '#34d399', bg: 'rgba(52,211,153,0.12)',  border: 'rgba(52,211,153,0.3)'  },
+    lost:      { color: '#6b7280', bg: 'rgba(107,114,128,0.1)',  border: 'rgba(107,114,128,0.25)' },
+  };
+
+  const fetchEnquiries = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('whatsapp_enquiries')
+      .select(`*, listing:car_listings(brand, model, variant, selling_price)`)
+      .eq('dealer_id', userId)
+      .order('created_at', { ascending: false });
+    setEnquiries(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (userId) fetchEnquiries(); }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('profiles').select('full_name, dealership, enquiry_wa_template, whatsapp_number').eq('id', userId).single()
+      .then(({ data }) => {
+        if (data) {
+          setDealerProfile(data);
+          if (data.enquiry_wa_template) setWaTemplate(data.enquiry_wa_template);
+        }
+      });
+  }, [userId]);
+
+  const populateTemplate = (tmpl, enq, dp) => {
+    const listing = enq.listing;
+    return (tmpl || DEFAULT_ENQUIRY_TEMPLATE)
+      .replace(/\{\{buyer_name\}\}/g, enq.buyer_name || 'there')
+      .replace(/\{\{car_name\}\}/g, listing ? `${listing.brand} ${listing.model}` : 'the car')
+      .replace(/\{\{dealer_name\}\}/g, dp?.full_name || '')
+      .replace(/\{\{dealership\}\}/g, dp?.dealership || '');
+  };
+
+  const updateStatus = async (id, status) => {
+    await supabase.from('whatsapp_enquiries').update({ status }).eq('id', id);
+    setEnquiries(p => p.map(e => e.id === id ? { ...e, status } : e));
+    if (selected?.id === id) setSelected(p => ({ ...p, status }));
+  };
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setSavingNotes(true);
+    await supabase.from('whatsapp_enquiries').update({ notes }).eq('id', selected.id);
+    setEnquiries(p => p.map(e => e.id === selected.id ? { ...e, notes } : e));
+    setSavingNotes(false);
+  };
+
+  const handleWhatsApp = async (enq) => {
+    const phone = (enq.buyer_phone || '').replace(/\D/g, '');
+    if (!phone) return;
+    // Auto-update status to contacted
+    await supabase.from('whatsapp_enquiries').update({ status: 'contacted' }).eq('id', enq.id);
+    setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: 'contacted' } : e));
+    if (selected?.id === enq.id) setSelected(p => ({ ...p, status: 'contacted' }));
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(editedMsg)}`, '_blank');
+  };
+
+  const saveTemplate = async () => {
+    setTemplateSaving(true);
+    await supabase.from('profiles').update({ enquiry_wa_template: editedMsg }).eq('id', userId);
+    setWaTemplate(editedMsg);
+    setTemplateSaving(false);
+    toast.success('Default template saved ✓');
+  };
+
+  // Populate WA message when a new enquiry is selected
+  useEffect(() => {
+    if (selected) setEditedMsg(populateTemplate(waTemplate, selected, dealerProfile));
+  }, [selected?.id, waTemplate, dealerProfile]);
+
+  const StatusBadge = ({ status }) => {
+    const m = statusMeta[status] || statusMeta.new;
+    return <span style={{ fontSize: 10, fontWeight: 700, color: m.color, background: m.bg, border: `1px solid ${m.border}`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{status || 'new'}</span>;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl overflow-hidden" style={T.card}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Enquiries</h2>
+          <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Incoming buyer enquiries from your storefront</p>
+        </div>
+        <div className="table-wrap">
+          {loading ? (
+            <p className="text-gray-500 text-sm p-6">Loading...</p>
+          ) : enquiries.length === 0 ? (
+            <p className="text-gray-600 text-sm p-6">No enquiries yet. They will appear here once buyers contact you through the storefront.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {['Buyer', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {enquiries.map(e => (
+                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || '—')}</td>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <select value={e.status || 'new'} onChange={ev => { ev.stopPropagation(); updateStatus(e.id, ev.target.value); }} style={{ fontSize: 11, fontWeight: 700, background: statusMeta[e.status || 'new']?.bg, color: statusMeta[e.status || 'new']?.color, border: `1px solid ${statusMeta[e.status || 'new']?.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}>
+                        {Object.keys(statusMeta).map(s => <option key={s} value={s} style={{ background: '#111118', color: '#fff' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                      </select>
+                    </td>
+                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{e.created_at ? new Date(e.created_at).toLocaleDateString('en-MY') : '—'}</td>
+                    <td style={{ padding: '12px 14px' }}><button onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>View</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Detail Drawer */}
+      {selected && (
+        <>
+          <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50, width: 360, maxWidth: '90vw', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <h3 style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: 0 }}>Enquiry Detail</h3>
+              <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {[['Buyer', selected.buyer_name], ['Phone', selected.buyer_phone], ['Car', selected.listing ? `${selected.listing.brand} ${selected.listing.model}` : (selected.car_info || '—')], ['Message', selected.buyer_message], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
+                <div key={k} style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{k}</p>
+                  <p style={{ fontSize: 13, color: '#f3f4f6', margin: 0 }}>{v || '—'}</p>
+                </div>
+              ))}
+              <div style={{ marginTop: 16 }}>
+                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Notes</p>
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Add notes about this enquiry..." className={taCls} />
+                <button onClick={saveNotes} disabled={savingNotes} className="mt-2 w-full px-4 py-2 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{savingNotes ? 'Saving...' : 'Save Notes'}</button>
+              </div>
+              {/* Follow-up WhatsApp message */}
+              {selected.buyer_phone && (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Follow-up Message</p>
+                  <textarea
+                    value={editedMsg}
+                    onChange={e => setEditedMsg(e.target.value)}
+                    rows={6}
+                    placeholder="WhatsApp message…"
+                    className={taCls}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={() => handleWhatsApp(selected)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 10, color: '#4ade80', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      <MessageCircle style={{ width: 14, height: 14 }} />
+                      WhatsApp {selected.buyer_name?.split(' ')[0] || ''} ↗
+                    </button>
+                    <button
+                      onClick={saveTemplate}
+                      disabled={templateSaving}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#9ca3af', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      <Save style={{ width: 12, height: 12 }} />
+                      {templateSaving ? 'Saving…' : 'Save default'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* Document shortcuts */}
+              {onOpenDoc && (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Generate Document</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button onClick={() => onOpenDoc({ doc_type: 'Deposit Receipt', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, cursor: 'pointer', color: '#fbbf24', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} />
+                      Generate Deposit Receipt
+                    </button>
+                    <button onClick={() => onOpenDoc({ doc_type: 'Sales Agreement', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, cursor: 'pointer', color: '#60a5fa', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} />
+                      Generate Sales Agreement
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const DEFAULT_BOOKING_TEMPLATE = `Hi {{buyer_name}}, your {{booking_type}} for the {{car_name}} is confirmed for {{booking_date}} at {{booking_time}}. 🎉\n\nPlease arrive on time. See you at {{dealership}}!\n\nReply to reschedule.`;
+
+// ─── BookingsTab ──────────────────────────────────────────────────────────────
+function BookingsTab({ userId, listings, salesmen }) {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('list');
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ buyer_name: '', buyer_phone: '+60', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
+  const [addSaving, setAddSaving] = useState(false);
+  const [bkTemplate, setBkTemplate] = useState(DEFAULT_BOOKING_TEMPLATE);
+  const [reminderTarget, setReminderTarget] = useState(null);
+  const [reminderMsg, setReminderMsg] = useState('');
+  const [bkTmplSaving, setBkTmplSaving] = useState(false);
+  const [dealerBkProfile, setDealerBkProfile] = useState(null);
+
+  const statusMeta = {
+    pending:   { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.3)'  },
+    confirmed: { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)'  },
+    completed: { color: '#34d399', bg: 'rgba(52,211,153,0.12)',  border: 'rgba(52,211,153,0.3)'  },
+    cancelled: { color: '#6b7280', bg: 'rgba(107,114,128,0.1)',  border: 'rgba(107,114,128,0.25)' },
+    no_show:   { color: '#93c5fd', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)'  },
+  };
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*, car_listings(brand, model, year), profiles!salesman_id(full_name)')
+      .eq('dealer_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) console.error('[BookingsTab] fetchBookings error:', error.message, error);
+    setBookings(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    fetchBookings();
+    const ch = supabase
+      .channel('bookings_live_' + userId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointments',
+        filter: `dealer_id=eq.${userId}`,
+      }, () => fetchBookings())
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('profiles').select('full_name, dealership, booking_wa_template').eq('id', userId).single()
+      .then(({ data }) => {
+        if (data) {
+          setDealerBkProfile(data);
+          if (data.booking_wa_template) setBkTemplate(data.booking_wa_template);
+        }
+      });
+  }, [userId]);
+
+  const populateBkTemplate = (tmpl, booking, car) => {
+    const d = booking.appointment_date ? new Date(booking.appointment_date) : null;
+    return (tmpl || DEFAULT_BOOKING_TEMPLATE)
+      .replace(/\{\{buyer_name\}\}/g, booking.buyer_name || 'there')
+      .replace(/\{\{car_name\}\}/g, car ? `${car.brand} ${car.model}` : 'the vehicle')
+      .replace(/\{\{booking_type\}\}/g, (booking.booking_type || 'appointment').replace('_', ' '))
+      .replace(/\{\{booking_date\}\}/g, d ? d.toLocaleDateString('en-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—')
+      .replace(/\{\{booking_time\}\}/g, d ? d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' }) : '—')
+      .replace(/\{\{dealership\}\}/g, dealerBkProfile?.dealership || '');
+  };
+
+  const openReminder = (booking) => {
+    setReminderTarget(booking);
+    setReminderMsg(populateBkTemplate(bkTemplate, booking, booking.car_listings));
+  };
+
+  const saveBkTemplate = async () => {
+    setBkTmplSaving(true);
+    await supabase.from('profiles').update({ booking_wa_template: reminderMsg }).eq('id', userId);
+    setBkTemplate(reminderMsg);
+    setBkTmplSaving(false);
+    toast.success('Default booking template saved ✓');
+  };
+
+  const handleAdd = async () => {
+    setAddSaving(true);
+    try {
+      const { error } = await supabase.from('appointments').insert({
+        dealer_id: userId,
+        salesman_id: addForm.salesman_id || null,
+        car_listing_id: addForm.listing_id || null,
+        appointment_date: addForm.scheduled_at,
+        buyer_name: addForm.buyer_name,
+        buyer_phone: addForm.buyer_phone,
+        notes: addForm.notes,
+        status: 'pending',
+      });
+      if (error) throw error;
+      setShowAdd(false);
+      setAddForm({ buyer_name: '', buyer_phone: '+60', listing_id: '', booking_type: 'test_drive', scheduled_at: '', duration_minutes: 60, salesman_id: '', deposit_amount: '', notes: '' });
+      fetchBookings();
+    } catch (err) {
+      console.error('[BookingsTab] handleAdd error:', err.message, err);
+      toast.error(`Failed to save appointment: ${err.message}`);
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const updateStatus = async (id, status) => {
+    await supabase.from('appointments').update({ status }).eq('id', id);
+    setBookings(p => p.map(b => b.id === id ? { ...b, status } : b));
+  };
+
+  const StatusBadge = ({ status }) => {
+    const m = statusMeta[status] || statusMeta.pending;
+    return <span style={{ fontSize: 10, fontWeight: 700, color: m.color, background: m.bg, border: `1px solid ${m.border}`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{status?.replace('_',' ') || 'pending'}</span>;
+  };
+
+  // Week view: 7 days from today
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i); return d;
+  });
+
+  const todayStr = new Date().toDateString();
+  const todaysBookings = bookings.filter(b =>
+    b.appointment_date && new Date(b.appointment_date).toDateString() === todayStr
+  );
+  const otherBookings = bookings.filter(b =>
+    !b.appointment_date || new Date(b.appointment_date).toDateString() !== todayStr
+  );
+
+  const renderBookingRow = (b) => {
+    const car = b.car_listings;
+    const sm = b.profiles;
+    const isToday = b.appointment_date &&
+      new Date(b.appointment_date).toDateString() === todayStr;
+    const isNew = Date.now() - new Date(b.created_at) < 7200000;
+    const newBadge = isNew ? (
+      <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 800, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.08em', verticalAlign: 'middle' }}>NEW</span>
+    ) : null;
+
+    const actionButtons = (
+      <div className="flex flex-wrap gap-1 items-center">
+        {b.status === 'pending' && (
+          <>
+            <button onClick={() => updateStatus(b.id, 'confirmed')} style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Confirm</button>
+            <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
+          </>
+        )}
+        {b.status === 'confirmed' && (
+          <>
+            <button onClick={() => updateStatus(b.id, 'completed')} style={{ fontSize: 10, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Done</button>
+            <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ fontSize: 10, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
+            {b.buyer_phone && (
+              <button key="wa" onClick={() => openReminder(b)} style={{ fontSize: 10, color: '#4ade80', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Remind</button>
+            )}
+          </>
+        )}
+        {b.status === 'completed' && <span style={{ fontSize: 12, color: '#34d399' }}>✓ Completed</span>}
+        {b.status === 'cancelled' && <span style={{ fontSize: 12, color: '#6b7280' }}>Cancelled</span>}
+      </div>
+    );
+
+    return (
+      <React.Fragment key={b.id}>
+        {/* Mobile card */}
+        <tr className="md:hidden">
+          <td colSpan={7} style={{ padding: '4px 12px' }}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-semibold text-white text-sm">{b.buyer_name || '—'}{newBadge}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{b.buyer_phone || '—'}</p>
+                </div>
+                <StatusBadge status={b.status} />
+              </div>
+              <p className="text-gray-300 text-xs mb-1">{car ? `${car.brand} ${car.model}` : '—'}</p>
+              <p className="text-gray-500 text-xs mb-1">
+                {b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                {sm?.full_name ? ` · ${sm.full_name}` : ''}
+              </p>
+              <div className="mt-3">{actionButtons}</div>
+            </div>
+          </td>
+        </tr>
+        {/* Desktop row */}
+        <tr
+          className="hidden md:table-row"
+          style={{
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            background: isToday ? 'rgba(59,130,246,0.03)' : 'transparent',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
+          onMouseLeave={e => e.currentTarget.style.background = isToday ? 'rgba(59,130,246,0.03)' : 'transparent'}
+        >
+          <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{b.buyer_name || '—'}{newBadge}</td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{b.buyer_phone || '—'}</td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{car ? `${car.brand} ${car.model}` : '—'}</td>
+          <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 12, whiteSpace: 'nowrap' }}>
+            {b.appointment_date ? new Date(b.appointment_date).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+          </td>
+          <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{sm?.full_name || '—'}</td>
+          <td style={{ padding: '12px 14px' }}><StatusBadge status={b.status} /></td>
+          <td style={{ padding: '12px 14px' }}>{actionButtons}</td>
+        </tr>
+      </React.Fragment>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl overflow-hidden" style={T.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 8 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Bookings & Appointments</h2>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
+              {['list', 'week'].map(v => (
+                <button key={v} onClick={() => setView(v)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: view === v ? 'rgba(59,130,246,0.2)' : 'transparent', color: view === v ? '#93c5fd' : '#9ca3af', transition: 'all 0.15s' }}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
+              ))}
+            </div>
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Booking</button>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-gray-500 text-sm p-6">Loading...</p>
+        ) : view === 'list' ? (
+          <>
+            {/* TODAY'S BOOKINGS */}
+            {todaysBookings.length > 0 && (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 20px 8px',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  }}>
+                    <div style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: '#3b82f6',
+                      boxShadow: '0 0 6px rgba(59,130,246,0.8)',
+                      animation: 'hotpulse 1.5s ease-in-out infinite',
+                      flexShrink: 0,
+                    }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                      Today's Bookings
+                    </span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      background: 'rgba(59,130,246,0.12)',
+                      border: '1px solid rgba(59,130,246,0.25)',
+                      color: '#93c5fd',
+                      borderRadius: 20, padding: '1px 8px',
+                    }}>
+                      {todaysBookings.length}
+                    </span>
+                  </div>
+                  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                      <thead className="hidden md:table-header-group">
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                          {['Buyer', 'Phone', 'Car', 'Time', 'Salesman', 'Status', 'Actions'].map(h => (
+                            <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {todaysBookings.map(b => renderBookingRow(b))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* ALL OTHER BOOKINGS */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 20px 8px',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                borderTop: todaysBookings.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                marginTop: todaysBookings.length > 0 ? 8 : 0,
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  All Bookings
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: '#4b5563',
+                  borderRadius: 20, padding: '1px 8px',
+                }}>
+                  {otherBookings.length}
+                </span>
+              </div>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                  <thead className="hidden md:table-header-group">
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      {['Buyer', 'Phone', 'Car', 'Scheduled', 'Salesman', 'Status', 'Actions'].map(h => (
+                        <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {otherBookings.length === 0 && todaysBookings.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>No bookings yet.</td></tr>
+                    ) : otherBookings.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '20px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>No other bookings.</td></tr>
+                    ) : (
+                      otherBookings.map(b => renderBookingRow(b))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+          </>
+        ) : (
+          /* Week calendar view */
+          <div className="table-wrap" style={{ padding: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 8 }}>
+              {weekDays.map(day => {
+                const dayStr = day.toDateString();
+                const dayBookings = bookings.filter(b => b.appointment_date && new Date(b.appointment_date).toDateString() === dayStr);
+                return (
+                  <div key={dayStr} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10, minHeight: 100 }}>
+                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{day.toLocaleDateString('en-MY', { weekday: 'short' })}</p>
+                    <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 600, margin: '0 0 8px' }}>{day.getDate()}</p>
+                    {dayBookings.map(b => (
+                      <div key={b.id} style={{ background: statusMeta[b.status]?.bg || 'rgba(59,130,246,0.1)', border: `1px solid ${statusMeta[b.status]?.border || 'rgba(59,130,246,0.2)'}`, borderRadius: 5, padding: '4px 7px', marginBottom: 4 }}>
+                        <p style={{ fontSize: 10, color: statusMeta[b.status]?.color || '#93c5fd', fontWeight: 600, margin: 0 }}>{new Date(b.appointment_date).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p style={{ fontSize: 11, color: '#f3f4f6', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.buyer_name || '—'}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add Booking Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <h3 className="font-semibold text-white">Add Booking</h3>
+              <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label><input value={addForm.buyer_name} onChange={e => setAddForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Phone</label><input value={addForm.buyer_phone} onChange={e => setAddForm(p => ({ ...p, buyer_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
+                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <option value="">Select listing...</option>
+                  {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Booking Type</label>
+                  <select value={addForm.booking_type} onChange={e => setAddForm(p => ({ ...p, booking_type: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    {['test_drive','viewing','handover','follow_up'].map(t => <option key={t} value={t} style={{ background: '#111118' }}>{t.replace('_',' ')}</option>)}
+                  </select>
+                </div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Duration (min)</label><input type="number" value={addForm.duration_minutes} onChange={e => setAddForm(p => ({ ...p, duration_minutes: e.target.value }))} placeholder="60" className={iCls} /></div>
+              </div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Scheduled At</label><input type="datetime-local" value={addForm.scheduled_at} onChange={e => setAddForm(p => ({ ...p, scheduled_at: e.target.value }))} className={iCls} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Salesman</label>
+                  <select value={addForm.salesman_id} onChange={e => setAddForm(p => ({ ...p, salesman_id: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <option value="">Unassigned</option>
+                    {salesmen.map(s => <option key={s.id} value={s.id} style={{ background: '#111118' }}>{s.full_name}</option>)}
+                  </select>
+                </div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit (RM)</label><input type="number" value={addForm.deposit_amount} onChange={e => setAddForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
+              </div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} className={taCls} /></div>
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Book'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Booking Reminder Modal ── */}
+      {reminderTarget && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }} onClick={() => setReminderTarget(null)}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden" style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white text-sm">Send Reminder</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{reminderTarget.buyer_name} · {reminderTarget.buyer_phone}</p>
+              </div>
+              <button onClick={() => setReminderTarget(null)} className="text-gray-500 hover:text-white p-1 transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <textarea
+                value={reminderMsg}
+                onChange={e => setReminderMsg(e.target.value)}
+                rows={7}
+                className={taCls}
+                placeholder="WhatsApp message…"
+              />
+              <div className="flex gap-2">
+                <a
+                  href={`https://wa.me/${reminderTarget.buyer_phone.replace(/\D/g,'')}?text=${encodeURIComponent(reminderMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={() => setReminderTarget(null)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.3)', color: '#4ade80', textDecoration: 'none' }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Send via WhatsApp ↗
+                </a>
+                <button
+                  onClick={saveBkTemplate}
+                  disabled={bkTmplSaving}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-500 hover:text-white transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {bkTmplSaving ? 'Saving…' : 'Save default'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DocumentsTab ─────────────────────────────────────────────────────────────
+const EMPTY_GEN_FORM = {
+  doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
+  buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
+  // SA fields
+  sa_name: '', sa_phone: '', sa_ic: '',
+  // Financing fields
+  include_financing: false,
+  loan_amount: '', interest_rate: '', loan_tenure_months: '', monthly_payment: '', financing_bank: '',
+};
+
+function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profile }) {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showGen, setShowGen] = useState(false);
+  const [genForm, setGenForm] = useState({ ...EMPTY_GEN_FORM });
+  const [genSaving, setGenSaving] = useState(false);
+  const [printDoc, setPrintDoc] = useState(null);
+  const [listingDropOpen, setListingDropOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
+
+  const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+
+  // Pre-fill from Enquiries shortcut
+  useEffect(() => {
+    if (!prefillDocData) return;
+    const prefillListing = prefillDocData.listing_id ? listings.find(l => l.id === prefillDocData.listing_id) || null : null;
+    setSelectedListing(prefillListing);
+    setGenForm(p => ({
+      ...p,
+      doc_type: prefillDocData.doc_type || 'Sales Agreement',
+      buyer_name: prefillDocData.buyer_name || '',
+      buyer_phone: prefillDocData.buyer_phone || '+60',
+      listing_id: prefillDocData.listing_id || '',
+      sale_price: prefillListing?.selling_price ? String(prefillListing.selling_price) : p.sale_price,
+      sa_name: profile?.full_name || '',
+      sa_phone: profile?.whatsapp_number || '',
+    }));
+    setShowGen(true);
+    onClearPrefill?.();
+  }, [prefillDocData]);
+
+  // Pre-fill SA name when opening modal
+  useEffect(() => {
+    if (showGen && profile) {
+      setGenForm(p => ({
+        ...p,
+        sa_name: p.sa_name || profile.full_name || '',
+        sa_phone: p.sa_phone || profile.whatsapp_number || '',
+      }));
+    }
+  }, [showGen]);
+
+  const calcMonthly = (amount, rate, months) => {
+    const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
+    if (!a || !r || !m) return '';
+    return ((a + a * (r / 100) * (m / 12)) / m).toFixed(2);
+  };
+
+  const gf = (field, value) => {
+    setGenForm(p => {
+      const next = { ...p, [field]: value };
+      if (['loan_amount', 'interest_rate', 'loan_tenure_months'].includes(field)) {
+        next.monthly_payment = calcMonthly(
+          field === 'loan_amount' ? value : next.loan_amount,
+          field === 'interest_rate' ? value : next.interest_rate,
+          field === 'loan_tenure_months' ? value : next.loan_tenure_months,
+        );
+      }
+      return next;
+    });
+  };
+
+  const handleListingSelect = (listing) => {
+    setSelectedListing(listing);
+    setGenForm(p => ({
+      ...p,
+      listing_id: listing.id,
+      sale_price: listing.selling_price ? String(listing.selling_price) : p.sale_price,
+    }));
+    setListingDropOpen(false);
+  };
+
+  const fetchDocs = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('dealer_documents')
+      .select('*, car_listings(brand, model, year, plate_number)')
+      .eq('dealer_id', userId)
+      .order('issued_at', { ascending: false });
+    setDocuments(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (userId) fetchDocs(); }, [userId]);
+
+  const handleGenerate = async () => {
+    setGenSaving(true);
+    const car = selectedListing || listings.find(l => l.id === genForm.listing_id) || null;
+    try {
+      const { data, error } = await supabase.from('dealer_documents').insert({
+        dealer_id: userId,
+        listing_id: genForm.listing_id || null,
+        buyer_name: genForm.buyer_name,
+        buyer_ic: genForm.buyer_ic,
+        buyer_phone: genForm.buyer_phone,
+        buyer_address: genForm.buyer_address,
+        doc_type: genForm.doc_type,
+        sale_price: Number(genForm.sale_price) || 0,
+        deposit_amount: Number(genForm.deposit_amount) || 0,
+        balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
+        issued_at: new Date().toISOString(),
+        metadata: {
+          car_label: car ? `${car.year} ${car.brand} ${car.model}` : '',
+          car_colour: car?.colour || '',
+          car_plate: car?.plate_number || '',
+          car_mileage: car?.mileage || '',
+          car_vin: car?.vin_number || '',
+          included_services: car?.included_services || [],
+          sa_name: genForm.sa_name,
+          sa_phone: genForm.sa_phone,
+          sa_ic: genForm.sa_ic,
+          include_financing: genForm.include_financing,
+          loan_amount: genForm.loan_amount,
+          interest_rate: genForm.interest_rate,
+          loan_tenure_months: genForm.loan_tenure_months,
+          monthly_payment: genForm.monthly_payment,
+          financing_bank: genForm.financing_bank,
+        },
+      }).select().single();
+      if (error) throw error;
+      setShowGen(false);
+      setSelectedListing(null);
+      setGenForm({ ...EMPTY_GEN_FORM });
+      if (data) setPrintDoc({ ...data, car_listings: car });
+      fetchDocs();
+    } catch (err) {
+      console.error('[DocumentsTab] handleGenerate error:', err.message, err);
+      toast.error(`Failed to save document: ${err.message}`);
+    } finally {
+      setGenSaving(false);
+    }
+  };
+
+  const renderDocHTML = (doc) => {
+    const car = doc.car_listings || {};
+    const m = doc.metadata || {};
+    const carLabel = m.car_label || (car.brand ? `${car.year || ''} ${car.brand} ${car.model}` : '—');
+    const carPlate  = m.car_plate  || car.plate_number || '—';
+    const carColour = m.car_colour || car.colour       || '—';
+    const carMileage = m.car_mileage || car.mileage     || null;
+    const carVin    = m.car_vin    || car.vin_number   || '—';
+    const issued = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    const isHandover = doc.doc_type === 'Handover Checklist';
+    const isDeposit  = doc.doc_type === 'Deposit Receipt';
+    const isSales    = doc.doc_type === 'Sales Agreement';
+    const services   = m.included_services || [];
+    const saName     = m.sa_name  || '—';
+    const saPhone    = m.sa_phone || '—';
+    const saIc       = m.sa_ic    || '—';
+    const hasFinancing = isSales && m.include_financing && m.loan_amount;
+
+    const row = (label, value) =>
+      `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:180px;">${label}</td><td style="padding:5px 0;font-size:13px;">${value || '—'}</td></tr>`;
+
+    const section = (title, content) =>
+      `<div style="margin-bottom:22px;"><h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:1px solid #e5e5e5;padding-bottom:6px;margin:0 0 10px;">${title}</h3>${content}</div>`;
+
+    return `
+      <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
+        <div style="text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #111;">
+          <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
+          <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
+        </div>
+
+        ${section('Vehicle Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Vehicle', `<strong>${carLabel}</strong>`)}
+            ${row('Plate Number', carPlate)}
+            ${row('Colour', carColour)}
+            ${carMileage ? row('Mileage', `${Number(carMileage).toLocaleString()} km`) : ''}
+            ${carVin !== '—' ? row('VIN / Chassis', carVin) : ''}
+          </table>`)}
+
+        ${section('Buyer Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Full Name', doc.buyer_name)}
+            ${row('IC Number', doc.buyer_ic)}
+            ${row('Phone', doc.buyer_phone)}
+            ${row('Address', doc.buyer_address)}
+          </table>`)}
+
+        ${isHandover ? section('Handover Checklist',
+          ['Spare keys','Service booklet','Road tax','Insurance document','Owner manual','Spare tyre','Jack & tools','Accessories agreed']
+            .map(item => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0;"><div style="width:16px;height:16px;border:2px solid #333;border-radius:3px;flex-shrink:0;"></div><span style="font-size:13px;">${item}</span></div>`).join('')
+        ) : section('Financial Summary', `
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid #e5e5e5;"><th style="text-align:left;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Description</th><th style="text-align:right;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Amount</th></tr>
+            ${isDeposit
+              ? `<tr><td style="padding:8px 0;font-size:13px;">Deposit for ${carLabel}</td><td style="text-align:right;font-size:13px;font-weight:600;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>`
+              : `<tr><td style="padding:8px 0;font-size:13px;">Sale Price</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.sale_price||0).toLocaleString()}</td></tr>
+                 <tr><td style="padding:8px 0;font-size:13px;">Deposit Paid</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>
+                 <tr style="border-top:2px solid #111;"><td style="padding:8px 0;font-size:14px;font-weight:700;">Balance Due</td><td style="text-align:right;font-size:14px;font-weight:700;">RM ${Number(doc.balance_amount||0).toLocaleString()}</td></tr>`
+            }
+          </table>`)}
+
+        ${hasFinancing ? section('Financing Details', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Financing Bank', m.financing_bank)}
+            ${row('Loan Amount', `RM ${Number(m.loan_amount).toLocaleString()}`)}
+            ${row('Interest Rate', `${m.interest_rate}% p.a.`)}
+            ${row('Tenure', `${m.loan_tenure_months} months`)}
+            ${m.monthly_payment ? row('Monthly Payment', `RM ${Number(m.monthly_payment).toLocaleString()}`) : ''}
+          </table>`) : ''}
+
+        ${isSales && services.length > 0 ? section('Included Services / Packages', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${s.name || '—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
+          </table>`) : ''}
+
+        ${isSales ? section('Sales Advisor', `
+          <table style="width:100%;border-collapse:collapse;">
+            ${row('Name', saName)}
+            ${row('Phone', saPhone)}
+            ${saIc !== '—' ? row('IC Number', saIc) : ''}
+          </table>`) : ''}
+
+        <div style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
+          <div style="border-top:1px solid #111;padding-top:8px;">
+            <p style="font-size:12px;color:#555;margin:0 0 2px;">Buyer Signature</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${doc.buyer_name || ''}</p>
+            <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
+          </div>
+          <div style="border-top:1px solid #111;padding-top:8px;">
+            <p style="font-size:12px;color:#555;margin:0 0 2px;">Sales Advisor Signature</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${saName}</p>
+            <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
+          </div>
+        </div>
+      </div>`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl overflow-hidden" style={T.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Documents</h2>
+          <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
+        </div>
+        <div className="table-wrap">
+          {loading ? (
+            <p className="text-gray-500 text-sm p-6">Loading...</p>
+          ) : documents.length === 0 ? (
+            <p className="text-gray-600 text-sm p-6">No documents generated yet.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {['Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map(doc => (
+                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
+                    <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.car_label || (doc.car_listings ? `${doc.car_listings.brand} ${doc.car_listings.model}` : '—')}</td>
+                    <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}><Printer className="w-3 h-3" />Print</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Generate Modal */}
+      {showGen && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <h3 className="font-semibold text-white">Generate Document</h3>
+              <button onClick={() => setShowGen(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto p-5 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Document Type</label>
+                <select value={genForm.doc_type} onChange={e => setGenForm(p => ({ ...p, doc_type: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  {DOC_TYPES.map(t => <option key={t} value={t} style={{ background: '#111118' }}>{t}</option>)}
+                </select>
+              </div>
+              {/* Rich Car Listing Selector */}
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setListingDropOpen(p => !p)}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    {selectedListing ? (
+                      <>
+                        {selectedListing.images?.[0] ? (
+                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 1 }}>
+                            {selectedListing.plate_number && <span>{selectedListing.plate_number}</span>}
+                            {selectedListing.colour && <span>{selectedListing.colour}</span>}
+                            {selectedListing.mileage && <span>{Number(selectedListing.mileage).toLocaleString()} km</span>}
+                          </div>
+                        </div>
+                        {selectedListing.selling_price && (
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(selectedListing.selling_price).toLocaleString()}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 13, color: '#6b7280' }}>Select a listing…</span>
+                    )}
+                    <ChevronDown style={{ width: 16, height: 16, color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }} />
+                  </button>
+                  {listingDropOpen && (
+                    <>
+                      <div onClick={() => setListingDropOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, zIndex: 50, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        {listings.length === 0 ? (
+                          <div style={{ padding: '12px 14px', fontSize: 13, color: '#6b7280' }}>No active listings</div>
+                        ) : listings.map(l => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => handleListingSelect(l)}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.1)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif', transition: 'background 0.15s" }}
+                            onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                            onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {l.images?.[0] ? (
+                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
+                              </div>
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
+                              <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
+                                {l.plate_number && <span>{l.plate_number}</span>}
+                                {l.colour && <span>{l.colour}</span>}
+                                {l.mileage && <span>{Number(l.mileage).toLocaleString()} km</span>}
+                              </div>
+                            </div>
+                            {l.selling_price && (
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(l.selling_price).toLocaleString()}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label><input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer IC</label><input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><input value={genForm.buyer_phone} onChange={e => setGenForm(p => ({ ...p, buyer_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+              </div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
+
+              {/* Sales Advisor Details */}
+              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><input value={genForm.sa_phone} onChange={e => setGenForm(p => ({ ...p, sa_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+                </div>
+                <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
+              </div>
+
+              {/* Financing — Sales Agreement only */}
+              {genForm.doc_type === 'Sales Agreement' && (
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
+                    <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
+                    <span style={{ fontSize: 13, color: '#d1d5db', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
+                  </label>
+                  {genForm.include_financing && (
+                    <div className="space-y-3">
+                      <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Financing Bank</label><input value={genForm.financing_bank} onChange={e => gf('financing_bank', e.target.value)} placeholder="e.g. Maybank, CIMB" className={iCls} /></div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Loan Amount (RM)</label><input type="number" value={genForm.loan_amount} onChange={e => gf('loan_amount', e.target.value)} placeholder="0" className={iCls} /></div>
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Interest Rate (% p.a.)</label><input type="number" step="0.01" value={genForm.interest_rate} onChange={e => gf('interest_rate', e.target.value)} placeholder="3.5" className={iCls} /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Tenure (months)</label><input type="number" value={genForm.loan_tenure_months} onChange={e => gf('loan_tenure_months', e.target.value)} placeholder="84" className={iCls} /></div>
+                        <div>
+                          <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Monthly Payment (RM)</label>
+                          <div style={{ position: 'relative' }}>
+                            <input readOnly value={genForm.monthly_payment ? `RM ${Number(genForm.monthly_payment).toLocaleString()}` : '—'} className={iCls} style={{ color: '#4ade80', background: 'rgba(74,222,128,0.05)', cursor: 'default' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating...' : 'Generate'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview Modal */}
+      {printDoc && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
+          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ ...T.modal, background: '#fff' }}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${renderDocHTML(printDoc)}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
+                <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderDocHTML(printDoc) }} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -3161,6 +5170,20 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  const [svcPopupListing,  setSvcPopupListing]  = useState(null);
+  const sidebarBellRef = useRef(null);
+  const [sidebarBellRect, setSidebarBellRect] = useState(null);
+  const closeNotif = () => { setNotifOpen(false); setSidebarBellRect(null); };
+  const [notifications,    setNotifications]    = useState([]);
+  const [notifOpen,        setNotifOpen]        = useState(false);
+  const [pendingStockListing, setPendingStockListing] = useState(null);
+  const [pendingStockForm, setPendingStockForm] = useState({ purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '' });
+  const [pendingStockSaving, setPendingStockSaving] = useState(false);
+  const [prefillDocData,   setPrefillDocData]   = useState(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const [onboardingToast,  setOnboardingToast]  = useState(false);
+  const loadedUidRef = useRef(null);
 
   const getStorefrontUrl = () => {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
@@ -3175,12 +5198,37 @@ export default function DashboardPage() {
   }, [profile]);
 
   useEffect(() => {
+    if (sidebarOpen) {
+      const y = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${y}px`;
+      document.body.style.width = '100%';
+    } else {
+      const y = parseInt(document.body.style.top || '0', 10);
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (y) window.scrollTo(0, -y);
+    }
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     let active = true;
 
     // Shared loader — called on first mount AND on every auth state change so
     // switching accounts always loads the correct owner's data.
     const loadSession = async (session) => {
       if (!session) { navigate("/login"); return; }
+      // Block unconfirmed accounts from accessing the dashboard
+      if (!session.user.email_confirmed_at) {
+        navigate("/login?unconfirmed=1", { replace: true });
+        return;
+      }
       const uid = session.user.id;
 
       // Reset to a clean slate before populating for this session.
@@ -3205,6 +5253,7 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
+        loadedUidRef.current = uid;
       } else {
         navigate("/login");
         return;
@@ -3230,10 +5279,15 @@ export default function DashboardPage() {
     // Fast initial load from cached session
     supabase.auth.getSession().then(({ data }) => loadSession(data.session));
 
-    // Re-run the full loader on every auth event so account-switching is safe
+    // Re-run the full loader on every auth event so account-switching is safe.
+    // Guard: skip SIGNED_IN for the same user (fires on tab return / token refresh)
+    // to prevent the app from wiping state and showing the loading/banner again.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "SIGNED_IN") loadSession(session);
+        if (event === "SIGNED_IN") {
+          if (session?.user?.id && session.user.id === loadedUidRef.current) return;
+          loadSession(session);
+        }
         else if (event === "SIGNED_OUT") navigate("/login");
       }
     );
@@ -3273,22 +5327,49 @@ export default function DashboardPage() {
     return () => supabase.removeChannel(ch);
   }, [userId]);
 
+  // ── Notifications realtime ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const reload = () =>
+      supabase.from('dealer_notifications').select('*').eq('dealer_id', userId)
+        .order('created_at', { ascending: false }).limit(20)
+        .then(({ data }) => setNotifications(data || []));
+    reload();
+    const ch = supabase.channel(`notifs_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dealer_notifications', filter: `dealer_id=eq.${userId}` }, reload)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
-    navigate("/login");
+    window.location.href = 'https://xdrive.my/login';
   };
   const handleNew = (l) => {
     setListings((p) => [l, ...p]);
     setActiveTab("listings");
+    // Prompt to add stock purchase details
+    setPendingStockListing(l);
+    setPendingStockForm({ purchase_price: '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: '' });
   };
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSidebarOpen(false);
   };
   const handleDelete = async (id) => {
-    const { error } = await supabase.from("car_listings").delete().eq("id", id);
-    if (!error) setListings((p) => p.filter((l) => l.id !== id));
+    const { error } = await supabase
+      .from("car_listings")
+      .delete()
+      .eq("id", id)
+      .eq("dealer_id", userId);  // explicit RLS guard
+    if (error) {
+      console.error("Delete failed:", error.message);
+      toast.error("Could not delete listing: " + error.message);
+      return;
+    }
+    setListings((p) => p.filter((l) => l.id !== id));
+    if (detailListing?.id === id) setDetailListing(null);
     setDeleteId(null);
   };
   const handleAssign = async (listingId, salesmanId, name) => {
@@ -3418,31 +5499,34 @@ export default function DashboardPage() {
 
   const soldCount = listings.filter((l) => l.status === "sold").length;
   const totalVal = listings.reduce((s, l) => s + (l.selling_price || 0), 0);
-  const avgPrice = listings.length ? Math.round(totalVal / listings.length) : 0;
   const hotCount = listings.filter(
     (l) =>
       l.original_price &&
       l.selling_price &&
       l.selling_price <= l.original_price * 0.97,
   ).length;
+  const soldSpark = bucketByDay(
+    listings.filter(l => l.status === 'sold' && l.sold_at).map(l => ({ event_type: 'sold', created_at: l.sold_at })),
+    ['sold']
+  );
 
   const STATUS = {
     active: {
       label: "Active",
       dot: "bg-emerald-400",
-      cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan",
+      cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
       next: "reserved",
     },
     reserved: {
       label: "Reserved",
       dot: "bg-amber-400",
-      cls: "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold",
+      cls: "bg-amber-400/10 text-amber-400 border-amber-400/20",
       next: "sold",
     },
     sold: {
       label: "Sold",
       dot: "bg-red-400",
-      cls: "bg-red-400/10 text-red-400 border-red-400/20 badge-glow-red",
+      cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
       next: "active",
     },
   };
@@ -3478,7 +5562,12 @@ export default function DashboardPage() {
     return (
       <div
         className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
-        style={{ background: "linear-gradient(135deg,#dc2626,#7c3aed)" }}
+        style={{
+          background: "linear-gradient(135deg, rgba(59,130,246,0.8), rgba(99,102,241,0.8))",
+          backdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+        }}
       >
         {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
       </div>
@@ -3503,7 +5592,7 @@ export default function DashboardPage() {
             RM {sp.toLocaleString()}
           </span>
           <span
-            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-red-500/15 text-red-400 border-red-500/25 hot-glow badge-glow-red" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
+            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-blue-500/15 text-blue-400 border-blue-500/25 blue-glow" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
           >
             {isHot && <Flame className="w-3 h-3" />}−{pct}%
           </span>
@@ -3517,13 +5606,13 @@ export default function DashboardPage() {
 
   const condCls = (c) =>
     ({
-      new: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 badge-glow-cyan",
+      new: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25",
       recon:
-        "bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 badge-glow-cyan",
-      used: "bg-white/[0.06] text-gray-400 border border-white/10",
-    })[c] || "bg-white/[0.06] text-gray-400 border border-white/10";
+        "bg-cyan-500/15 text-cyan-400 border border-cyan-500/25",
+      used: "bg-white/[0.06] text-gray-500 border border-white/10",
+    })[c] || "bg-white/[0.06] text-gray-500 border border-white/10";
 
-  const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#f87171', R:'#ef4444', RA:'#dc2626', 2:'#b91c1c', 1:'#7f1d1d' };
+  const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
@@ -3538,6 +5627,12 @@ export default function DashboardPage() {
       title: "Hero Carousel",
       sub: "Manage your XDrive homepage spotlight — up to 5 slides",
     },
+    stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
+    enquiries: { title: "Enquiries", sub: "WhatsApp & inbound leads" },
+    bookings: { title: "Bookings", sub: "Appointments & test drives" },
+    documents: { title: "Documents", sub: "Sales agreements & receipts" },
+    revops:    { title: "RevOps",    sub: "Revenue operations & deal health" },
+    services:  { title: "Services",  sub: "Add-ons & product catalogue" },
   };
 
   const NAV = [
@@ -3547,6 +5642,12 @@ export default function DashboardPage() {
     { id: "analytics", Icon: BarChart2, label: "Analytics" },
     { id: "team", Icon: Users, label: "Team" },
     { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
+    { id: "stock", Icon: Package, label: "Stock" },
+    { id: "enquiries", Icon: MessageSquare, label: "Enquiries" },
+    { id: "bookings", Icon: Calendar, label: "Bookings" },
+    { id: "documents", Icon: FileText, label: "Documents" },
+    { id: "revops",   Icon: BarChart3, label: "RevOps" },
+    { id: "services", Icon: Wrench,   label: "Services & Add-ons" },
   ];
 
   const STAT_CARDS = [
@@ -3565,6 +5666,8 @@ export default function DashboardPage() {
       grad: "grad-green",
       Icon: CheckCircle2,
       glow: "rgba(110,231,183,0.13)",
+      spark: soldSpark,
+      sparkColor: '#34d399',
     },
     {
       label: "Total Value",
@@ -3573,14 +5676,6 @@ export default function DashboardPage() {
       grad: "grad-purple",
       Icon: DollarSign,
       glow: "rgba(216,180,254,0.13)",
-    },
-    {
-      label: "Avg. Price",
-      val: `RM ${avgPrice.toLocaleString()}`,
-      sub: "Per vehicle",
-      grad: "grad-white",
-      Icon: TrendingUp,
-      glow: "rgba(255,255,255,0.06)",
     },
     {
       label: "Hot Deals",
@@ -3592,23 +5687,74 @@ export default function DashboardPage() {
     },
   ];
 
+  const notifCount = notifications.filter(n => !n.is_read).length;
+  const timeAgo = (iso) => {
+    if (!iso) return '';
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  };
+  const markNotifRead = async (n) => {
+    if (n.is_read) return;
+    await supabase.from('dealer_notifications').update({ is_read: true }).eq('id', n.id);
+    setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+  };
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (!unread.length) return;
+    await supabase.from('dealer_notifications').update({ is_read: true }).in('id', unread);
+    setNotifications(p => p.map(n => ({ ...n, is_read: true })));
+  };
+
+  // ── Onboarding completion check ─────────────────────────────────────────
+  const onboardingItems = profile ? [
+    { label: 'Account created',          done: true },
+    { label: 'Add your first listing',   done: listings.length > 0,         action: () => handleTabChange('listings') },
+    { label: 'Connect Telegram',         done: !!profile.telegram_bot_token, action: () => handleTabChange('settings') },
+    { label: 'Share your storefront',    done: onboardingCopied,             isCopy: true },
+  ] : [];
+  const onboardingDoneCount = onboardingItems.filter(i => i.done).length;
+  const allOnboardingDone   = onboardingDoneCount === onboardingItems.length;
+
+  useEffect(() => {
+    if (!allOnboardingDone || !userId || profile?.onboarding_complete) return;
+    supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
+    setOnboardingDismissed(true);
+    setOnboardingToast(true);
+    setTimeout(() => setOnboardingToast(false), 5000);
+  }, [allOnboardingDone]);
+
+  const copyStorefrontOnboarding = () => {
+    const url = profile?.subdomain ? `https://${profile.subdomain}.xdrive.my` : 'https://xdrive.my';
+    navigator.clipboard.writeText(url).catch(() => {});
+    setOnboardingCopied(true);
+  };
+
+  const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
+
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
       <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#dc2626', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+      <a href="https://wa.me/60174155191" style={{ background: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
     </div>
   );
 
   return (
     <>
+    <Helmet>
+      <meta name="robots" content="noindex, nofollow" />
+    </Helmet>
     <style>{STYLES}</style>
     <div
       className="min-h-screen text-white flex"
       style={{
         fontFamily: "'DM Sans',sans-serif",
         background:
-          "radial-gradient(ellipse 65% 40% at 0% 0%, rgba(220,38,38,0.06) 0%, transparent 55%), #09090b",
+          "radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
+        backgroundSize: "24px 24px, auto, auto",
       }}
     >
       {sidebarOpen && (
@@ -3620,47 +5766,57 @@ export default function DashboardPage() {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-full z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{
-          background: "linear-gradient(155deg,#111118 0%,#0a0a0e 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.055)",
-          boxShadow:
-            "4px 0 28px rgba(0,0,0,0.65), inset -1px 0 0 rgba(220,38,38,0.07)",
-        }}
+        className={`fixed h-screen overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="px-5 py-5 flex items-center gap-3" style={T.divider}>
+        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{
-              background: "linear-gradient(135deg,#dc2626,#7c3aed)",
-              boxShadow:
-                "0 0 18px rgba(220,38,38,0.42), 0 2px 8px rgba(0,0,0,0.5)",
+              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+              boxShadow: "0 0 18px rgba(59,130,246,0.42), 0 2px 8px rgba(0,0,0,0.5)",
             }}
           >
             S
           </div>
-          <div>
-            <p className="font-black tracking-wider text-sm grad-red">
+          <div className="flex-1 min-w-0">
+            <p className="font-black tracking-wider text-sm grad-blue">
               ShiftOS
             </p>
             <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
           </div>
+          {/* Bell in sidebar header */}
+          <div ref={sidebarBellRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => {
+              const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
+              setSidebarBellRect(notifOpen ? null : rect);
+              setNotifOpen(p => !p);
+            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell className="w-4 h-4" />
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#3b82f6', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+            </button>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-px mt-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 space-y-px mt-1">
           {NAV.map(({ id, Icon, label, badge }) => (
             <button
               key={id}
               onClick={() => handleTabChange(id)}
-              className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
             >
               <Icon
-                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-red-400" : ""}`}
+                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-blue-400" : ""}`}
               />
               {label}
               {badge !== undefined && (
                 <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-red-300 bg-red-950/70" : "text-gray-600 bg-white/[0.05]"}`}
+                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-blue-300 bg-blue-950/70" : "text-gray-600 bg-white/[0.05]"}`}
                 >
                   {badge}
                 </span>
@@ -3688,8 +5844,8 @@ export default function DashboardPage() {
 
         {/* ── Sidebar bottom: profile + settings + logout ── */}
         <div
-          className="p-3 space-y-1"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          className="shrink-0 p-3 space-y-1 border-t border-gray-800"
+          style={{}}
         >
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
@@ -3709,11 +5865,14 @@ export default function DashboardPage() {
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
               style={{
-                background: "rgba(220,38,38,0.07)",
-                border: "1px solid rgba(220,38,38,0.13)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
               }}
             >
-              <Building2 className="w-3.5 h-3.5 text-red-500/60 flex-shrink-0" />
+              <Building2 className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
               <p className="text-xs font-semibold text-gray-300 truncate flex-1">
                 {profile.dealership}
               </p>
@@ -3726,14 +5885,14 @@ export default function DashboardPage() {
             className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
           >
             <Settings
-              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-400" : ""}`}
+              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-500" : ""}`}
             />
             Settings
           </button>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-red-400 hover:bg-red-500/[0.06] transition-all"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-white hover:bg-white/[0.04] transition-all"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -3745,54 +5904,178 @@ export default function DashboardPage() {
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
         {/* Mobile topbar */}
         <div
-          className="lg:hidden sticky top-0 z-10 flex items-center gap-3 px-4 py-3 backdrop-blur-xl"
+          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 backdrop-blur-xl"
           style={{
-            background: "rgba(9,9,11,0.92)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-            boxShadow: "0 1px 0 rgba(220,38,38,0.1)",
+            background: 'rgba(5,7,14,0.7)',
+            backdropFilter: 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03)',
           }}
         >
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
+            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
-              className="w-6 h-6 rounded-md flex items-center justify-center font-black text-xs"
-              style={{
-                background: "linear-gradient(135deg,#dc2626,#7c3aed)",
-                boxShadow: "0 0 8px rgba(220,38,38,0.32)",
-              }}
+              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs"
+              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 0 8px rgba(220,38,38,0.3)' }}
             >
               S
             </div>
-            <span className="font-bold text-white text-sm tracking-tight">
-              ShiftOS
-            </span>
+            <span className="font-bold text-white text-xs tracking-tight hidden xs:inline">ShiftOS</span>
           </div>
-          <span className="ml-1 text-gray-600 text-sm">
+          <span className="text-gray-500 text-xs truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
-          <div className="ml-auto">
-            <Avatar />
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setNotifOpen(p => !p)}
+              style={{
+                position: 'relative',
+                background: 'transparent',
+                border: 'none', borderRadius: 8, padding: 6,
+                cursor: 'pointer',
+                color: notifCount > 0 ? '#f3f4f6' : '#6b7280',
+                display: 'flex',
+              }}
+            >
+              <Bell className="w-4 h-4" />
+              {notifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 8, fontWeight: 800, borderRadius: '50%',
+                  width: 14, height: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid #05070e',
+                }}>
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <>
+                <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+                  ) : notifications.slice(0, 10).map(n => (
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)'}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
+                          {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
+                          <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
+          <Avatar />
         </div>
 
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+        {/* ── Onboarding Banner ── */}
+        {showOnboardingBanner && (
+          <div style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+            <div style={{ maxWidth: 900, margin: '0 auto' }}>
+              {/* Header row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
+                    <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOnboardingDismissed(true)}
+                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#ef4444)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              </div>
+
+              {/* Checklist */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {onboardingItems.map((item, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      if (item.isCopy) copyStorefrontOnboarding();
+                      else if (item.action && !item.done) item.action();
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '6px 12px',
+                      background: item.done ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 8,
+                      cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.18)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
+                  >
+                    {item.done
+                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                    }
+                    <span style={{ fontSize: 12, color: item.done ? '#6ee7b7' : '#9ca3af', fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
+                      {item.label}
+                      {item.isCopy && item.done && ' ✓'}
+                      {item.isCopy && !item.done && ' (click to copy)'}
+                    </span>
+                    {!item.done && item.action && <ChevronRight className="w-3 h-3 text-gray-600 flex-shrink-0" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Congrats toast ── */}
+        {onboardingToast && (
+          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#111118', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Setup complete!</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Your storefront is fully configured.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <div className="hidden sm:block mb-4 sm:mb-6">
+            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
               {TITLES[activeTab]?.title}
             </h1>
-            <p className="text-gray-600 text-sm mt-0.5">
+            <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
               {TITLES[activeTab]?.sub}
             </p>
             <div
               className="mt-4 h-px"
               style={{
                 background:
-                  "linear-gradient(90deg,rgba(220,38,38,0.32),rgba(56,189,248,0.18) 38%,transparent 68%)",
+                  "linear-gradient(90deg,rgba(59,130,246,0.4),rgba(99,102,241,0.2) 38%,transparent 65%)",
               }}
             />
           </div>
@@ -3800,56 +6083,63 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow }) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
+                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow, spark, sparkColor }) => (
                   <div
                     key={label}
-                    className="stat-card card-top rounded-xl p-4 overflow-hidden"
-                    style={T.card}
+                    className="stat-card card-top rounded-2xl overflow-hidden glass"
+                    style={{ position: 'relative' }}
                   >
                     <div
                       className="absolute inset-0 pointer-events-none"
                       style={{
                         background:
-                          "radial-gradient(circle at 95% 5%, rgba(220,38,38,0.05) 0%, transparent 50%)",
+                          "radial-gradient(circle at 95% 5%, rgba(59,130,246,0.05) 0%, transparent 50%)",
                       }}
                     />
-                    <div className="flex items-center justify-between mb-3 relative">
-                      <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                        {label}
-                      </p>
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: glow,
-                          boxShadow: `0 0 14px ${glow}`,
-                        }}
-                      >
-                        <Icon className="w-4 h-4 opacity-80" />
+                    {spark && (
+                      <div className="relative px-3.5 pt-3">
+                        <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
                       </div>
+                    )}
+                    <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                          {label}
+                        </p>
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{
+                            background: glow,
+                            boxShadow: `0 0 14px ${glow}`,
+                          }}
+                        >
+                          <Icon className="w-4 h-4 opacity-80" />
+                        </div>
+                      </div>
+                      <p
+                        className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
+                      >
+                        {val}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1 relative truncate">
+                        {sub}
+                      </p>
                     </div>
-                    <p
-                      className={`text-2xl sm:text-3xl font-black leading-none relative tabular-nums ${grad || "text-white"}`}
-                    >
-                      {val}
-                    </p>
-                    <p className="text-xs text-gray-700 mt-2 hidden sm:block relative">
-                      {sub}
-                    </p>
                   </div>
                 ))}
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#991b1b', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+              <div style={{ position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.04, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#dc2626', filter: 'blur(100px)', opacity: 0.03, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
-                <div style={{ position: 'relative', zIndex: 1, background: '#080C14', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
-                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
+                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
                         {filteredListings.length}{searchQuery.trim() && listings.length !== filteredListings.length ? ` of ${listings.length}` : ''}
                       </span>
                     </div>
@@ -3870,7 +6160,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => setActiveTab("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
                         Add Listing
@@ -3882,22 +6172,22 @@ export default function DashboardPage() {
                   <div style={{ padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</div>
                 ) : listings.length === 0 ? (
                   <div style={{ padding: 48, textAlign: 'center' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                      <Car style={{ width: 24, height: 24, color: 'rgba(220,38,38,0.4)' }} />
+                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <Car style={{ width: 24, height: 24, color: 'rgba(59,130,246,0.4)' }} />
                     </div>
                     <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>No listings yet</p>
-                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
+                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
                       Add your first car
                     </button>
                   </div>
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block" style={{ overflowX: 'auto' }}>
-                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
+                    <div className="hidden md:block table-wrap">
+                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.025) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                           <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <tr style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                               {['', 'Vehicle', 'Price', 'Mileage', 'Grade', 'VIN', 'Location', 'Date Added', 'Status'].map((h, i) => (
                                 <th key={i} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
                               ))}
@@ -3918,7 +6208,7 @@ export default function DashboardPage() {
                                   key={l.id}
                                   onClick={() => setDetailListing(l)}
                                   style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s', opacity: isSold ? 0.6 : 1 }}
-                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                 >
                                   {/* Thumbnail */}
@@ -3933,7 +6223,7 @@ export default function DashboardPage() {
                                     <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
                                     <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0' }}>{l.model}</p>
                                     {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{l.variant}</p>}
-                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
+                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
                                   </td>
                                   {/* Price */}
                                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
@@ -3941,7 +6231,7 @@ export default function DashboardPage() {
                                     {pct > 0 && (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                         <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                                        <span style={{ fontSize: 10, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
+                                        <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
                                       </div>
                                     )}
                                   </td>
@@ -3975,10 +6265,17 @@ export default function DashboardPage() {
                                     <span style={{ display: 'block', marginTop: 3 }}><AgeBadge createdAt={l.created_at} /></span>
                                   </td>
                                   {/* Status */}
-                                  <td style={{ padding: '12px 14px' }}>
-                                    <span style={{ background: sCfg.bg, border: `1px solid ${sCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: sCfg.tx, whiteSpace: 'nowrap', textTransform: 'capitalize', display: 'inline-block' }}>
-                                      {l.status || 'active'}
-                                    </span>
+                                  <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                                    <StatusBadge listing={l} />
+                                    {Array.isArray(l.included_services) && l.included_services.length > 0 && (
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        <Tag style={{ width: 9, height: 9 }} />
+                                        {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -4002,7 +6299,7 @@ export default function DashboardPage() {
                             key={l.id}
                             onClick={() => setDetailListing(l)}
                             style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: isSold ? 0.6 : 1, cursor: 'pointer', transition: 'background 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -4017,13 +6314,13 @@ export default function DashboardPage() {
                                     <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
                                     {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}{bt ? ` · ${bt}` : ''}</p>}
                                   </div>
-                                  <span style={{ background: msCfg.bg, border: `1px solid ${msCfg.bd}`, borderRadius: 4, padding: '3px 10px', fontSize: 11, color: msCfg.tx, flexShrink: 0, textTransform: 'capitalize' }}>
-                                    {l.status || 'active'}
+                                  <span onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                                    <StatusBadge listing={l} />
                                   </span>
                                 </div>
                                 <div style={{ marginTop: 6 }}>
                                   <span style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500 }}>RM {sp.toLocaleString()}</span>
-                                  {pct > 0 && <span style={{ fontSize: 11, color: '#fca5a5', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
+                                  {pct > 0 && <span style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
                                 </div>
                               </div>
                             </div>
@@ -4032,6 +6329,15 @@ export default function DashboardPage() {
                               {l.state && <span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span>}
                               <span style={{ fontSize: 11, color: '#6b7280' }}>{fmtDate(l.created_at)}</span>
                               <AgeBadge createdAt={l.created_at} />
+                              {Array.isArray(l.included_services) && l.included_services.length > 0 && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer' }}
+                                >
+                                  <Tag style={{ width: 9, height: 9 }} />
+                                  {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -4072,6 +6378,24 @@ export default function DashboardPage() {
           {activeTab === "hero" && userId && (
             <HeroSlidesPage userId={userId} profile={profile} />
           )}
+          {activeTab === "stock" && userId && (
+            <StockTab userId={userId} listings={listings} />
+          )}
+          {activeTab === "enquiries" && (
+            <EnquiriesTab userId={userId} onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }} />
+          )}
+          {activeTab === "bookings" && (
+            <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />
+          )}
+          {activeTab === "documents" && (
+            <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
+          )}
+          {activeTab === "revops" && userId && (
+            <RevOpsPage userId={userId} />
+          )}
+          {activeTab === "services" && userId && (
+            <ServicesPage userId={userId} />
+          )}
         </div>
       </main>
 
@@ -4104,6 +6428,103 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ── Sidebar notification dropdown (portal — escapes overflow-hidden sidebar) ── */}
+      {notifOpen && sidebarBellRect && createPortal(
+        <>
+          <div onClick={closeNotif} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: 'fixed',
+            top: sidebarBellRect.bottom + 8,
+            left: Math.max(8, sidebarBellRect.right - 320),
+            width: 320,
+            maxHeight: 420,
+            overflowY: 'auto',
+            background: '#111118',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+            fontFamily: "'DM Sans', sans-serif",
+            zIndex: 9999,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+              {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+            </div>
+            {notifications.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+            ) : notifications.slice(0, 10).map(n => (
+              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
+                    {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px' }}>{n.body}</p>}
+                    <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* ── Services popup ── */}
+      {svcPopupListing && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+          style={{ background: 'rgba(0,0,0,0.78)' }}
+          onClick={() => setSvcPopupListing(null)}
+        >
+          <div
+            className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm overflow-hidden"
+            style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white text-sm">Included Services</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {svcPopupListing.brand} {svcPopupListing.model} {svcPopupListing.variant || ''}
+                </p>
+              </div>
+              <button onClick={() => setSvcPopupListing(null)} className="text-gray-500 hover:text-white p-1 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Services list */}
+            <div className="p-4 space-y-2 max-h-72 overflow-y-auto">
+              {(svcPopupListing.included_services || []).map((svc, i) => {
+                const cfg = getCategoryCfg(svc.category);
+                const CatIcon = cfg.icon;
+                return (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{svc.name}</p>
+                      <p className="text-xs text-gray-500">{cfg.label}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-white whitespace-nowrap">
+                      RM {Number(svc.selling_price || 0).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Total footer */}
+            {svcPopupListing.included_services_cost > 0 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-blue-500/5">
+                <span className="text-xs text-gray-500 font-medium">Total value</span>
+                <span className="text-sm font-bold text-blue-400">
+                  RM {Number(svcPopupListing.included_services_cost).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Delete modal ── */}
       {deleteId && (
         <div
@@ -4112,7 +6533,7 @@ export default function DashboardPage() {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md"
-            style={T.modal}
+            style={undefined}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -4128,13 +6549,13 @@ export default function DashboardPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-gray-400 text-sm mb-5">
+            <p className="text-gray-500 text-sm mb-5">
               This will permanently remove the car listing from your inventory.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Cancel
@@ -4183,7 +6604,7 @@ export default function DashboardPage() {
       )}
 
       {tiktokListing && (
-        <TikTokGenerator
+        <TikTokStudioV3
           listing={tiktokListing}
           onClose={() => setTiktokListing(null)}
         />
@@ -4197,7 +6618,7 @@ export default function DashboardPage() {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
-            style={T.modal}
+            style={undefined}
           >
             <div
               className="flex items-center justify-between px-5 py-4 flex-shrink-0"
@@ -4235,6 +6656,88 @@ export default function DashboardPage() {
           onConfirm={handleMarkSold}
           loading={markSoldLoading}
         />
+      )}
+
+      {/* ── Post-listing stock purchase prompt ── */}
+      {pendingStockListing && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={undefined}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-white">Add Purchase Details?</h3>
+                <p className="text-gray-500 text-xs mt-0.5">{pendingStockListing.brand} {pendingStockListing.model} {pendingStockListing.year}</p>
+              </div>
+              <button onClick={() => setPendingStockListing(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM) *</label>
+                  <input type="number" value={pendingStockForm.purchase_price} onChange={e => setPendingStockForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label>
+                  <input type="date" value={pendingStockForm.purchase_date} onChange={e => setPendingStockForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Source</label>
+                  <select value={pendingStockForm.purchase_source} onChange={e => setPendingStockForm(p => ({ ...p, purchase_source: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    {['Auction','Direct Buy','Trade-in','Other'].map(s => <option key={s} value={s} style={{ background: '#111118' }}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Cost (RM)</label>
+                  <input type="number" value={pendingStockForm.recon_cost} onChange={e => setPendingStockForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} />
+                </div>
+              </div>
+            </div>
+            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Skip</button>
+              <button
+                disabled={pendingStockSaving || !pendingStockForm.purchase_price}
+                onClick={async () => {
+                  setPendingStockSaving(true);
+                  await supabase.from('stock_units').insert({
+                    dealer_id: userId,
+                    listing_id: pendingStockListing.id,
+                    // Mirror car identity fields from the listing
+                    brand:          pendingStockListing.brand,
+                    model:          pendingStockListing.model,
+                    year:           pendingStockListing.year,
+                    variant:        pendingStockListing.variant,
+                    colour:         pendingStockListing.colour,
+                    mileage:        pendingStockListing.mileage,
+                    transmission:   pendingStockListing.transmission,
+                    fuel_type:      pendingStockListing.fuel_type,
+                    body_type:      pendingStockListing.body_type,
+                    engine_cc:      pendingStockListing.engine_cc,
+                    is_recon:       pendingStockListing.is_recon,
+                    import_country: pendingStockListing.import_country,
+                    auction_grade:  pendingStockListing.auction_grade,
+                    interior_grade: pendingStockListing.interior_grade,
+                    auction_house:  pendingStockListing.auction_house,
+                    vin_number:     pendingStockListing.vin_number,
+                    asking_price:   pendingStockListing.selling_price,
+                    // Purchase-specific fields from the modal form
+                    purchase_price: Number(pendingStockForm.purchase_price) || 0,
+                    purchase_date: pendingStockForm.purchase_date || null,
+                    purchase_source: pendingStockForm.purchase_source || null,
+                    recon_cost: Number(pendingStockForm.recon_cost) || 0,
+                    status: 'in_stock',
+                  });
+                  setPendingStockSaving(false);
+                  setPendingStockListing(null);
+                }}
+                className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+                style={T.btnRed}
+              >
+                {pendingStockSaving ? 'Saving...' : 'Add to Stock'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
