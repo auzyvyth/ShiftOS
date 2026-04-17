@@ -388,83 +388,7 @@ const DEFAULT_THEME = {
 
 // ─── Default elements builder ─────────────────────────────────────────────────
 function buildDefaultElements(listing, theme, dealerName) {
-  const brand = listing?.brand || "";
-  const model = listing?.model || "";
-  const variant = listing?.variant || "";
-  const year = String(listing?.year || "");
-  const price = listing?.selling_price || listing?.price;
-  const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
-  const mileage = listing?.mileage
-    ? Number(listing.mileage).toLocaleString() + " km"
-    : "";
-  const trans = listing?.transmission || "";
-  const fuel = listing?.fuel_type || listing?.fuel || "";
-  const acc = theme?.accentColor || "#dc2626";
   return [
-    {
-      id: "hook",
-      type: "text",
-      content: "POV: You just found your dream car 🚗",
-      x: 540,
-      y: 110,
-      fontSize: 56,
-      fontWeight: "600",
-      color: "#ffffff",
-      rotation: 0,
-      opacity: 0.92,
-      align: "center",
-      visible: true,
-      locked: false,
-    },
-    {
-      id: "headline",
-      type: "text",
-      content:
-        [`${year} ${brand} ${model}`, variant]
-          .filter(Boolean)
-          .join(" ")
-          .trim() || "Your Car",
-      x: 60,
-      y: 1480,
-      fontSize: 96,
-      fontWeight: "800",
-      color: "#ffffff",
-      rotation: 0,
-      opacity: 1,
-      align: "left",
-      visible: true,
-      locked: false,
-    },
-    {
-      id: "price",
-      type: "text",
-      content: priceStr || "Price on Request",
-      x: 60,
-      y: 1590,
-      fontSize: 80,
-      fontWeight: "700",
-      color: acc,
-      rotation: 0,
-      opacity: 1,
-      align: "left",
-      visible: true,
-      locked: false,
-    },
-    {
-      id: "stats",
-      type: "text",
-      content: [mileage, trans, fuel].filter(Boolean).join(" · ") || "",
-      x: 60,
-      y: 1690,
-      fontSize: 44,
-      fontWeight: "400",
-      color: "rgba(255,255,255,0.65)",
-      rotation: 0,
-      opacity: 1,
-      align: "left",
-      visible: true,
-      locked: false,
-    },
     {
       id: "watermark",
       type: "text",
@@ -519,7 +443,7 @@ function buildDefaultSlides(listing, images, features, dealerName, whatsapp) {
 
   if (!images.length) return [makeSlide(null, "hype")];
   const tpls = ["hype", "story", "pricing", "cta", "minimal", "hype", "hype"];
-  return images.slice(0, 7).map((img, i) => makeSlide(img, tpls[i] || "hype"));
+  return images.map((img, i) => makeSlide(img, tpls[i] || "hype"));
 }
 
 // ─── AI: rate limiting via Supabase ai_usage ──────────────────────────────────
@@ -1071,11 +995,25 @@ function SelectionOverlay({
   if (!bounds || el?.locked) return null;
 
   const PAD = 4;
-  const H = 8; // handle square size
+  const H = 8; // visual handle square size
   const HALF = H / 2;
+  const HIT = 28; // touch/click hit area
+  const HITHALF = HIT / 2;
 
-  const handleBase = {
+  const hitBase = {
     position: "absolute",
+    width: HIT,
+    height: HIT,
+    background: "transparent",
+    pointerEvents: "all",
+    zIndex: 3,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    touchAction: "none",
+  };
+
+  const dotStyle = {
     width: H,
     height: H,
     background: "#ffffff",
@@ -1083,15 +1021,14 @@ function SelectionOverlay({
     borderRadius: 2,
     boxSizing: "border-box",
     boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
-    pointerEvents: "all",
-    zIndex: 3,
+    pointerEvents: "none",
   };
 
   const corners = [
-    { pos: "nw", style: { top: -HALF, left: -HALF, cursor: "nw-resize" } },
-    { pos: "ne", style: { top: -HALF, right: -HALF, cursor: "ne-resize" } },
-    { pos: "sw", style: { bottom: -HALF, left: -HALF, cursor: "sw-resize" } },
-    { pos: "se", style: { bottom: -HALF, right: -HALF, cursor: "se-resize" } },
+    { pos: "nw", style: { top: -HITHALF, left: -HITHALF, cursor: "nw-resize" } },
+    { pos: "ne", style: { top: -HITHALF, right: -HITHALF, cursor: "ne-resize" } },
+    { pos: "sw", style: { bottom: -HITHALF, left: -HITHALF, cursor: "sw-resize" } },
+    { pos: "se", style: { bottom: -HITHALF, right: -HITHALF, cursor: "se-resize" } },
   ];
 
   return (
@@ -1118,11 +1055,11 @@ function SelectionOverlay({
         }}
       />
 
-      {/* Corner resize handles */}
+      {/* Corner resize handles — large invisible hit area, small visible dot */}
       {corners.map(({ pos, style }) => (
         <div
           key={pos}
-          style={{ ...handleBase, ...style }}
+          style={{ ...hitBase, ...style }}
           onMouseDown={(e) => {
             e.stopPropagation();
             onStartResize(e, elId, pos);
@@ -1131,23 +1068,30 @@ function SelectionOverlay({
             e.stopPropagation();
             onStartResize(e, elId, pos);
           }}
-        />
+        >
+          <div style={dotStyle} />
+        </div>
       ))}
 
-      {/* Rotate handle — above top-center */}
+      {/* Rotate handle — above top-center; large transparent hit area */}
       <div
         style={{
           position: "absolute",
-          top: -(30 + HALF),
+          top: -(30 + HALF + 14),
           left: "50%",
           transform: "translateX(-50%)",
+          width: 36,
+          height: 44,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          justifyContent: "flex-end",
           pointerEvents: "all",
           cursor: "grab",
           gap: 0,
           zIndex: 4,
+          touchAction: "none",
+          background: "transparent",
         }}
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -1163,6 +1107,7 @@ function SelectionOverlay({
             width: 1.5,
             height: 18,
             background: "rgba(255,255,255,0.45)",
+            pointerEvents: "none",
           }}
         />
         <div
@@ -1180,6 +1125,7 @@ function SelectionOverlay({
             color: "#2563eb",
             lineHeight: 1,
             fontWeight: 700,
+            pointerEvents: "none",
           }}
         >
           ↻
@@ -1539,7 +1485,7 @@ function CanvasPreview({
       {/* ── Interactive text / badge elements layer (skipped when hideInteractive) ── */}
       {!hideInteractive && (
         <>
-          <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 10, overflow: "hidden" }}>
             {(slide.elements || [])
               .filter((el) => el.id !== "watermark")
               .map((el) => (
@@ -2049,6 +1995,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const dragging = useRef(null);
   const resizing = useRef(null);
   const rotating = useRef(null);
+  const pinching = useRef(null);
   const canvasInnerRef = useRef(null);
   const aiInputRef = useRef(null);
   const prevFormatRef = useRef("9:16");
@@ -2151,6 +2098,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
     ensureFont("dm");
   }, [listing, rawImages, features]);
 
+  // ── Normalize out-of-bounds element positions on each slide change ────────
+  useEffect(() => {
+    if (!slides.length) return;
+    setSlides((ss) =>
+      ss.map((s) => ({
+        ...s,
+        elements: s.elements.map((e) => ({
+          ...e,
+          x: Math.max(0, Math.min(CW - 40, e.x)),
+          y: Math.max(0, Math.min(CH - 40, e.y)),
+        })),
+      })),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [CW, CH]);
+
   // ── Mobile detection ─────────────────────────────────────────────────────
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -2238,6 +2201,10 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Element helpers ──────────────────────────────────────────────────────
   const updateElement = useCallback(
     (id, patch) => {
+      // Clamp position patches so elements can't land outside canvas bounds
+      const safePatch = { ...patch };
+      if (safePatch.x !== undefined) safePatch.x = Math.max(0, Math.min(CW - 40, safePatch.x));
+      if (safePatch.y !== undefined) safePatch.y = Math.max(0, Math.min(CH - 40, safePatch.y));
       setSlides((ss) => {
         const newSlides = ss.map((s, i) =>
           i !== active
@@ -2245,7 +2212,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
             : {
                 ...s,
                 elements: s.elements.map((e) =>
-                  e.id === id ? { ...e, ...patch } : e,
+                  e.id === id ? { ...e, ...safePatch } : e,
                 ),
               },
         );
@@ -2354,6 +2321,27 @@ export default function TikTokStudioV3({ listing, onClose }) {
       setSelectedId(id);
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el || el.locked) return;
+      // Two-finger pinch on element → resize + move simultaneously
+      if (e.touches && e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const dist = Math.max(1, Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY));
+        pinching.current = {
+          id,
+          startMidX: midX,
+          startMidY: midY,
+          startDist: dist,
+          origX: el.x,
+          origY: el.y,
+          origFontSize: el.fontSize,
+          dragScale,
+        };
+        dragging.current = null;
+        e.preventDefault();
+        return;
+      }
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
       dragging.current = {
@@ -2373,8 +2361,22 @@ export default function TikTokStudioV3({ listing, onClose }) {
     (e, id, handle, dragScale) => {
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el) return;
+      const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
-      resizing.current = { id, handle, startY: cy, origFontSize: el.fontSize, dragScale };
+      const elDiv = canvasInnerRef.current?.querySelector(`[data-el-id="${id}"]`);
+      const r = elDiv?.getBoundingClientRect();
+      const centerX = r ? (r.left + r.right) / 2 : cx;
+      const centerY = r ? (r.top + r.bottom) / 2 : cy;
+      const startDist = Math.max(1, Math.hypot(cx - centerX, cy - centerY));
+      resizing.current = {
+        id,
+        handle,
+        startDist,
+        centerX,
+        centerY,
+        origFontSize: el.fontSize,
+        dragScale,
+      };
       e.preventDefault();
       e.stopPropagation();
     },
@@ -2419,23 +2421,39 @@ export default function TikTokStudioV3({ listing, onClose }) {
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
 
+      if (pinching.current && e.touches && e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const dist = Math.max(1, Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY));
+        const { id, startMidX, startMidY, startDist, origX, origY, origFontSize, dragScale } = pinching.current;
+        const s = dragScale || scale;
+        const ratio = dist / startDist;
+        updateElement(id, {
+          x: Math.max(0, Math.min(CW - 40, origX + (midX - startMidX) / s)),
+          y: Math.max(0, Math.min(CH - 40, origY + (midY - startMidY) / s)),
+          fontSize: Math.round(Math.max(16, Math.min(400, origFontSize * ratio))),
+        });
+        e.preventDefault();
+        return;
+      }
+
       if (dragging.current) {
         const { id, startX, startY, origX, origY, dragScale } = dragging.current;
         const s = dragScale || scale;
         updateElement(id, {
-          x: Math.max(0, Math.min(CW, origX + (cx - startX) / s)),
-          y: Math.max(0, Math.min(CH, origY + (cy - startY) / s)),
+          x: Math.max(0, Math.min(CW - 40, origX + (cx - startX) / s)),
+          y: Math.max(0, Math.min(CH - 40, origY + (cy - startY) / s)),
         });
       }
       if (resizing.current) {
-        const { id, startY, origFontSize, dragScale } = resizing.current;
-        const s = dragScale || scale;
+        const { id, startDist, centerX, centerY, origFontSize } = resizing.current;
+        const newDist = Math.hypot(cx - centerX, cy - centerY);
+        const ratio = newDist / startDist;
         updateElement(id, {
           fontSize: Math.round(
-            Math.max(
-              16,
-              Math.min(200, origFontSize + ((cy - startY) / s) * 0.5),
-            ),
+            Math.max(16, Math.min(400, origFontSize * ratio)),
           ),
         });
       }
@@ -2453,11 +2471,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
       const wasDragging = !!(
         dragging.current ||
         resizing.current ||
-        rotating.current
+        rotating.current ||
+        pinching.current
       );
       dragging.current = null;
       resizing.current = null;
       rotating.current = null;
+      pinching.current = null;
       // Push history snapshot after drag/resize/rotate ends
       if (wasDragging) {
         setSlides((ss) => {
@@ -5062,8 +5082,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   position: "absolute",
                   inset: 0,
                   zIndex: 25,
-                  overflow: "visible",
-                  clipPath: "inset(0 -9999px -9999px 0)",
+                  overflow: "hidden",
                   borderRadius: 4,
                   pointerEvents: "none",
                 }}
@@ -5125,13 +5144,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
           }}
         >
           <div style={{ overflowY: "auto", maxHeight: "40vh", WebkitOverflowScrolling: "touch" }}>
-            {/* Drag handle — tap to close */}
-            <div
-              onClick={() => setSheetPanel(null)}
-              style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px", cursor: "pointer" }}
-            >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
-            </div>
             {sheetBody()}
           </div>
         </div>
@@ -5552,55 +5564,25 @@ export default function TikTokStudioV3({ listing, onClose }) {
               onShiftZ={shiftZ}
             />
 
-            {/* Single-slide view with prev/next navigation */}
+            {/* Single-slide view with side controls */}
             {(() => {
-              const HEADER_ROW = 32;
-              const NAV_ROW = 44;
+              const SIDE_W = 44;
               const V_PAD = 24;
-              const availW = Math.max(desktopWrapperSize.w - 48, 80);
-              const availH = Math.max(desktopWrapperSize.h - HEADER_ROW - NAV_ROW - V_PAD, 80);
+              const H_PAD = 48 + SIDE_W;
+              const availW = Math.max(desktopWrapperSize.w - H_PAD, 80);
+              const availH = Math.max(desktopWrapperSize.h - V_PAD, 80);
               const { displayW: slideW, displayH: slideH } = computeDisplaySize(CW / CH, availW, availH);
               const slideScale = CW > 0 ? slideW / CW : 0.3;
               const btnBase = {
-                width: 26, height: 26, borderRadius: 6, border: "none",
+                width: 28, height: 28, borderRadius: 6, border: "none",
                 background: "transparent", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background 0.15s, color 0.15s",
+                flexShrink: 0,
               };
               return (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px 12px" }}>
-                  {/* Header: label + slide controls */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: slideW, marginBottom: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 600, letterSpacing: "0.05em" }}>
-                      SLIDE {active + 1} / {total}
-                    </span>
-                    <div style={{ display: "flex", gap: 2 }}>
-                      {[
-                        { icon: <MoveUp size={12} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move up" },
-                        { icon: <MoveDown size={12} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move down" },
-                        { icon: <Copy size={12} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate" },
-                        { icon: <Trash2 size={12} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete" },
-                      ].map(({ icon, fn, dis, title }) => (
-                        <button
-                          key={title}
-                          onClick={fn}
-                          disabled={dis}
-                          title={title}
-                          style={{
-                            ...btnBase,
-                            color: dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)",
-                            cursor: dis ? "default" : "pointer",
-                          }}
-                          onMouseEnter={e => { if (!dis) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = dis ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)"; }}
-                        >
-                          {icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Active slide canvas */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px" }}>
+                  {/* Active slide canvas — no header/nav, fills panel */}
                   <div
                     style={{
                       position: "relative",
@@ -5658,8 +5640,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
                             position: "absolute",
                             inset: 0,
                             zIndex: 25,
-                            overflow: "visible",
-                            clipPath: "inset(0 -9999px -9999px 0)",
+                            overflow: "hidden",
                             borderRadius: 8,
                             pointerEvents: "none",
                           }}
@@ -5707,80 +5688,92 @@ export default function TikTokStudioV3({ listing, onClose }) {
                     )}
                   </div>
 
-                  {/* Navigation row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexShrink: 0 }}>
-                    <button
-                      onClick={() => { setActive(Math.max(0, active - 1)); setSelectedId(null); }}
-                      disabled={active === 0}
-                      title="Previous slide"
-                      style={{
-                        ...btnBase,
-                        width: 30, height: 30,
-                        color: active === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)",
-                        cursor: active === 0 ? "default" : "pointer",
-                      }}
-                      onMouseEnter={e => { if (active > 0) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"; }}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-
-                    {/* Slide dots */}
-                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                      {slides.map((_, i) => (
+                  {/* Right side controls column */}
+                  <div style={{
+                    display: "flex", flexDirection: "column", alignItems: "center",
+                    justifyContent: "space-between",
+                    height: slideH, width: SIDE_W, marginLeft: 8, flexShrink: 0,
+                    paddingTop: 4, paddingBottom: 4,
+                  }}>
+                    {/* Top: slide label + manage buttons */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, letterSpacing: "0.06em", marginBottom: 4 }}>
+                        {active + 1}/{total}
+                      </span>
+                      {[
+                        { icon: <MoveUp size={12} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move up" },
+                        { icon: <MoveDown size={12} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move down" },
+                        { icon: <Copy size={12} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate" },
+                        { icon: <Trash2 size={12} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete" },
+                      ].map(({ icon, fn, dis, title }) => (
                         <button
-                          key={i}
-                          onClick={() => { setActive(i); setSelectedId(null); }}
-                          title={`Slide ${i + 1}`}
+                          key={title}
+                          onClick={fn}
+                          disabled={dis}
+                          title={title}
                           style={{
-                            width: i === active ? 18 : 6,
-                            height: 6,
-                            borderRadius: 3,
-                            border: "none",
-                            background: i === active ? "#2563eb" : "rgba(255,255,255,0.2)",
-                            cursor: "pointer",
-                            padding: 0,
-                            transition: "width 0.15s, background 0.15s",
-                            flexShrink: 0,
+                            ...btnBase,
+                            color: dis ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.4)",
+                            cursor: dis ? "default" : "pointer",
                           }}
-                        />
+                          onMouseEnter={e => { if (!dis) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = dis ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.4)"; }}
+                        >{icon}</button>
                       ))}
                     </div>
 
-                    <button
-                      onClick={() => { setActive(Math.min(total - 1, active + 1)); setSelectedId(null); }}
-                      disabled={active === total - 1}
-                      title="Next slide"
-                      style={{
-                        ...btnBase,
-                        width: 30, height: 30,
-                        color: active === total - 1 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)",
-                        cursor: active === total - 1 ? "default" : "pointer",
-                      }}
-                      onMouseEnter={e => { if (active < total - 1) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === total - 1 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"; }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
+                    {/* Bottom: prev / vertical dots / next / add */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <button
+                        onClick={() => { setActive(Math.max(0, active - 1)); setSelectedId(null); }}
+                        disabled={active === 0}
+                        title="Previous slide"
+                        style={{ ...btnBase, color: active === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)", cursor: active === 0 ? "default" : "pointer" }}
+                        onMouseEnter={e => { if (active > 0) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)"; }}
+                      ><ChevronLeft size={14} style={{ transform: "rotate(90deg)" }} /></button>
 
-                    <button
-                      onClick={addSlide}
-                      title="Add slide"
-                      style={{
-                        height: 28, borderRadius: 6,
-                        border: "1px solid rgba(37,99,235,0.35)",
-                        background: "transparent", color: "#3b82f6",
-                        cursor: "pointer", display: "flex", alignItems: "center",
-                        gap: 4, fontSize: 11, fontWeight: 600,
-                        fontFamily: "'DM Sans',sans-serif",
-                        padding: "0 10px",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(37,99,235,0.1)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >
-                      <Plus size={12} /> Add
-                    </button>
+                      {/* Vertical dots */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                        {slides.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setActive(i); setSelectedId(null); }}
+                            title={`Slide ${i + 1}`}
+                            style={{
+                              width: 6, height: i === active ? 18 : 6,
+                              borderRadius: 3, border: "none",
+                              background: i === active ? "#2563eb" : "rgba(255,255,255,0.2)",
+                              cursor: "pointer", padding: 0, flexShrink: 0,
+                              transition: "height 0.15s, background 0.15s",
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => { setActive(Math.min(total - 1, active + 1)); setSelectedId(null); }}
+                        disabled={active === total - 1}
+                        title="Next slide"
+                        style={{ ...btnBase, color: active === total - 1 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)", cursor: active === total - 1 ? "default" : "pointer" }}
+                        onMouseEnter={e => { if (active < total - 1) { e.currentTarget.style.background = "rgba(255,255,235,0.08)"; e.currentTarget.style.color = "#fff"; }}}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === total - 1 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)"; }}
+                      ><ChevronRight size={14} style={{ transform: "rotate(90deg)" }} /></button>
+
+                      <button
+                        onClick={addSlide}
+                        title="Add slide"
+                        style={{
+                          width: 28, height: 28, borderRadius: 6,
+                          border: "1px solid rgba(37,99,235,0.35)",
+                          background: "transparent", color: "#3b82f6",
+                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "background 0.15s", flexShrink: 0,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(37,99,235,0.1)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                      ><Plus size={13} /></button>
+                    </div>
                   </div>
                 </div>
               );
