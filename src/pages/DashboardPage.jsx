@@ -114,10 +114,6 @@ const STYLES = `
   .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
   .data-row:hover { background:rgba(59,130,246,0.025)!important; border-left-color:rgba(59,130,246,0.3); }
 
-  .badge-glow-blue { box-shadow:0 0 6px rgba(96,165,250,0.35); }
-  .badge-glow-blue  { box-shadow:0 0 6px rgba(248,113,113,0.28); }
-  .badge-glow-cyan { box-shadow:0 0 6px rgba(103,232,249,0.22); }
-  .badge-glow-gold { box-shadow:0 0 6px rgba(251,191,36,0.22); }
 
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
   .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
@@ -132,7 +128,7 @@ const STYLES = `
 
   .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
 
-  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.065); border-radius:16px; overflow:hidden; }
+  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; }
   .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(59,130,246,0.25) 35%,rgba(99,102,241,0.15) 65%,transparent); pointer-events:none; }
 
   .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -140,8 +136,8 @@ const STYLES = `
 
   .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
   .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
-  .glass-pill { background:rgba(255,255,255,0.06); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
-  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 0 0 1px rgba(59,130,246,0.06),0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.07); }
+  .glass-pill { background:rgba(255,255,255,0.08); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
+  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 0 0 1px rgba(59,130,246,0.06),0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
 
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -166,7 +162,7 @@ const T = {
   modal: {
     position: 'relative',
     background: 'rgba(5,7,14,0.99)',
-    border: '1px solid rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.08)',
     boxShadow: '0 0 0 1px rgba(59,130,246,0.07), 0 40px 80px rgba(0,0,0,0.8)',
   },
   divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
@@ -208,14 +204,14 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
   if (d < 15)
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 badge-glow-cyan">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
         <Clock className="w-3 h-3" />
         {d === 0 ? "Today" : `${d}d`}
       </span>
     );
   if (d < 25)
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20 badge-glow-gold">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20">
         <Clock className="w-3 h-3" />
         {d}d
       </span>
@@ -228,7 +224,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20 badge-glow-blue">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
@@ -322,7 +318,7 @@ function SettingsField({ label, hint, children }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
           {label}
         </label>
         {hint && <span className="text-xs text-gray-600">{hint}</span>}
@@ -445,7 +441,7 @@ function ProductsCatalogue({ dealerId }) {
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' }}
+      style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)' }}
     >
       {/* Collapsible header */}
       <button
@@ -501,9 +497,9 @@ function ProductsCatalogue({ dealerId }) {
             </div>
           ) : (
             <div className="px-5 pb-5">
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
                 {/* Header row */}
-                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.025)' }}>
                   <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
                 </div>
                 {products.map(p => {
@@ -547,7 +543,7 @@ function ProductsCatalogue({ dealerId }) {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
               <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
@@ -582,7 +578,7 @@ function ProductsCatalogue({ dealerId }) {
                 <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={2} className={taCls} />
               </div>
               <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-400">Active</span>
+                <span className="text-sm text-gray-500">Active</span>
                 <button onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))} className="flex items-center">
                   {form.is_active ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-600" />}
                 </button>
@@ -987,7 +983,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                   className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
                 />
               </div>
-              {subdomainStatus === 'checking' && <span className="text-xs text-gray-400 whitespace-nowrap">Checking...</span>}
+              {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
               {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
               {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
@@ -1212,7 +1208,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </SettingsField>
 
         {/* ── Hero Video ── */}
-        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: heroVideoEnabled ? 12 : 0 }}>
             <div>
               <p style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6' }}>Frontpage Video Section</p>
@@ -1359,8 +1355,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </p>
         </SettingsField>
 
-        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Setup</p>
+        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Setup</p>
           {[
             "Open Telegram → search @BotFather → /newbot",
             "Copy the bot token and paste above",
@@ -1407,7 +1403,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         icon={Globe}
       >
         {/* Why section */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Why Choose Us</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Why Choose Us</p>
         <input className={iCls} placeholder="Section title" value={sfWhy.title} onChange={e => setSfWhy(p => ({ ...p, title: e.target.value }))} />
         <div className="mt-3 space-y-3">
           {sfWhy.items.map((item, i) => (
@@ -1419,7 +1415,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* How It Works */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">How It Works</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">How It Works</p>
         <input className={iCls} placeholder="Section title" value={sfHow.title} onChange={e => setSfHow(p => ({ ...p, title: e.target.value }))} />
         <div className="mt-3 space-y-3">
           {sfHow.steps.map((step, i) => (
@@ -1431,7 +1427,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* Testimonials */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Testimonials</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">Testimonials</p>
         <div className="space-y-4">
           {sfTestimonials.map((t, i) => (
             <div key={i} className="space-y-2">
@@ -1445,7 +1441,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         {/* CTA */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-5 mb-2">Call to Action</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-5 mb-2">Call to Action</p>
         <div className="space-y-2">
           <input className={iCls} placeholder="CTA title" value={sfCta.title} onChange={e => setSfCta(p => ({ ...p, title: e.target.value }))} />
           <input className={iCls} placeholder="Subtitle" value={sfCta.subtitle} onChange={e => setSfCta(p => ({ ...p, subtitle: e.target.value }))} />
@@ -1686,7 +1682,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
           <div className="flex gap-3 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
               style={{ border: "1px solid rgba(255,255,255,0.09)" }}
             >
               Cancel
@@ -1759,7 +1755,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
             style={{ border: "1px solid rgba(255,255,255,0.08)" }}
           >
             Cancel
@@ -2048,10 +2044,10 @@ function AnalyticsTab({ listings, profile }) {
             ].map(({ label, val, color }) => (
               <div key={label}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                <span className="text-xs text-gray-400">{label}</span>
+                <span className="text-xs text-gray-500">{label}</span>
                 <span className="text-xs font-bold text-white tabular-nums">
                   {eventsLoading ? '…' : val}
                 </span>
@@ -2204,7 +2200,7 @@ function AnalyticsTab({ listings, profile }) {
                     </p>
                   </div>
                 </div>
-                <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20 badge-glow-gold">
+                <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
                   {getListingAge(l.created_at)}d
                 </span>
               </div>
@@ -2236,7 +2232,7 @@ function AnalyticsTab({ listings, profile }) {
               <thead>
                 <tr
                   style={{
-                    background: "rgba(255,255,255,0.02)",
+                    background: "rgba(255,255,255,0.025)",
                     boxShadow: "inset 0 -1px 0 rgba(59,130,246,0.2)",
                   }}
                 >
@@ -2314,7 +2310,7 @@ function AnalyticsTab({ listings, profile }) {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold" : "bg-blue-400/10 text-blue-400 border-blue-400/20 badge-glow-blue"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20" : "bg-blue-400/10 text-blue-400 border-blue-400/20"}`}
                       >
                         {l.status || "active"}
                       </span>
@@ -2385,7 +2381,7 @@ function AnalyticsTab({ listings, profile }) {
                           }
                         : {
                             background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }
                     }
                   >
@@ -2408,7 +2404,7 @@ function AnalyticsTab({ listings, profile }) {
                     className="px-3.5 py-3 rounded-2xl rounded-tl-sm"
                     style={{
                       background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     <div className="flex gap-1">
@@ -2431,10 +2427,10 @@ function AnalyticsTab({ listings, profile }) {
                   <button
                     key={p}
                     onClick={() => setInput(p)}
-                    className="text-xs px-3 py-1.5 rounded-full text-gray-400 hover:text-white transition-all"
+                    className="text-xs px-3 py-1.5 rounded-full text-gray-500 hover:text-white transition-all"
                     style={{
                       background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     {p}
@@ -2766,7 +2762,7 @@ function TeamTab({ managerDealership, dealerId }) {
           </button>
         </div>
         {/* Role tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto' }}>
           {ROLE_TABS.map(({ role, label, color }) => {
             const count = salespeople.filter(s => s.role === role).length;
             return (
@@ -2884,7 +2880,7 @@ function TeamTab({ managerDealership, dealerId }) {
                         {s.full_name}
                       </p>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan" : "bg-white/5 text-gray-500 border-white/8"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : "bg-white/5 text-gray-500 border-white/8"}`}
                       >
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
@@ -2901,10 +2897,10 @@ function TeamTab({ managerDealership, dealerId }) {
                     {s.slug ? (
                       <div className="flex items-center gap-2 mb-3">
                         <div
-                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-400"
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
                           style={{
                             background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.07)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }}
                         >
                           <Link className="w-3 h-3 text-gray-600" />
@@ -2958,7 +2954,7 @@ function TeamTab({ managerDealership, dealerId }) {
                           className="rounded-lg px-2.5 py-2"
                           style={{
                             background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.08)",
                           }}
                         >
                           <p
@@ -3036,7 +3032,7 @@ function TeamTab({ managerDealership, dealerId }) {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Cancel
@@ -3097,7 +3093,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                     >
                       Done
@@ -3249,7 +3245,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex gap-3 pt-1">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                     >
                       Cancel
@@ -3410,7 +3406,7 @@ function ListingDetailDrawer({
           {/* Close */}
           <button
             onClick={onClose}
-            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </button>
@@ -3418,7 +3414,7 @@ function ListingDetailDrawer({
           {/* Body */}
           <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowY: 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
             {/* LEFT */}
-            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)', overflowY: isMobile ? 'visible' : 'auto' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)', overflowY: isMobile ? 'visible' : 'auto' }}>
 
               {/* Gallery */}
               <div style={{ display: 'flex', gap: 8 }}>
@@ -3428,7 +3424,7 @@ function ListingDetailDrawer({
                     <div
                       key={i}
                       onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                     </div>
@@ -3506,7 +3502,7 @@ function ListingDetailDrawer({
               </div>
 
               {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
                 {tabs.map(tab => (
                   <button
                     key={tab}
@@ -3562,7 +3558,7 @@ function ListingDetailDrawer({
                       </div>
                       {listing.interior_grade && (
                         <>
-                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.07)' }} />
+                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
                           <div>
                             <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
                             <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
@@ -3589,8 +3585,8 @@ function ListingDetailDrawer({
             </div>
 
             {/* RIGHT */}
-            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
 
                 {/* Edit */}
@@ -3655,7 +3651,7 @@ function ListingDetailDrawer({
                 </button>
 
                 {/* Metadata */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
                   <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -3722,7 +3718,7 @@ function ListingDetailDrawer({
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
                 <p style={{ color: 'white', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
                 <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
@@ -3878,12 +3874,12 @@ function StockTab({ userId, listings }) {
       </div>
 
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
         </div>
         {/* Available / Sold tab toggle */}
-        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {[
             { id: 'available', label: 'Available', count: activeUnits.length },
             { id: 'sold',      label: 'Sold',      count: soldUnits.length   },
@@ -3930,7 +3926,7 @@ function StockTab({ userId, listings }) {
             return (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     {stockView === 'available'
                       ? ['Car', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
                       : ['Car', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
@@ -4016,7 +4012,7 @@ function StockTab({ userId, listings }) {
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
               <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
             </div>
           </div>
@@ -4036,7 +4032,7 @@ function StockTab({ userId, listings }) {
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Date</label><input type="date" value={soldForm.sold_date} onChange={e => setSoldForm(p => ({ ...p, sold_date: e.target.value }))} className={iCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
               <button onClick={handleMarkSold} disabled={soldSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{soldSaving ? 'Saving...' : 'Confirm Sale'}</button>
             </div>
           </div>
@@ -4145,7 +4141,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Enquiries</h2>
           <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Incoming buyer enquiries from your storefront</p>
         </div>
@@ -4157,7 +4153,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   {['Buyer', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
@@ -4188,8 +4184,8 @@ function EnquiriesTab({ userId, onOpenDoc }) {
       {selected && (
         <>
           <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
-          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50, width: 360, maxWidth: '90vw', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50, width: 360, maxWidth: '90vw', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <h3 style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: 0 }}>Enquiry Detail</h3>
               <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
             </div>
@@ -4207,7 +4203,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               </div>
               {/* Follow-up WhatsApp message */}
               {selected.buyer_phone && (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Follow-up Message</p>
                   <textarea
                     value={editedMsg}
@@ -4237,7 +4233,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               )}
               {/* Document shortcuts */}
               {onOpenDoc && (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Generate Document</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button onClick={() => onOpenDoc({ doc_type: 'Deposit Receipt', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, cursor: 'pointer', color: '#fbbf24', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
@@ -4434,7 +4430,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-semibold text-white text-sm">{b.buyer_name || '—'}{newBadge}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">{b.buyer_phone || '—'}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{b.buyer_phone || '—'}</p>
                 </div>
                 <StatusBadge status={b.status} />
               </div>
@@ -4475,7 +4471,7 @@ function BookingsTab({ userId, listings, salesmen }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 8 }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Bookings & Appointments</h2>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
@@ -4522,7 +4518,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                       <thead className="hidden md:table-header-group">
-                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                           {['Buyer', 'Phone', 'Car', 'Time', 'Salesman', 'Status', 'Actions'].map(h => (
                             <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
@@ -4541,7 +4537,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '12px 20px 8px',
                 borderBottom: '1px solid rgba(255,255,255,0.04)',
-                borderTop: todaysBookings.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                borderTop: todaysBookings.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 marginTop: todaysBookings.length > 0 ? 8 : 0,
               }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
@@ -4560,7 +4556,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                   <thead className="hidden md:table-header-group">
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                       {['Buyer', 'Phone', 'Car', 'Scheduled', 'Salesman', 'Status', 'Actions'].map(h => (
                         <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
@@ -4586,7 +4582,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                 const dayStr = day.toDateString();
                 const dayBookings = bookings.filter(b => b.appointment_date && new Date(b.appointment_date).toDateString() === dayStr);
                 return (
-                  <div key={dayStr} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, minHeight: 100 }}>
+                  <div key={dayStr} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 10, minHeight: 100 }}>
                     <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{day.toLocaleDateString('en-MY', { weekday: 'short' })}</p>
                     <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 600, margin: '0 0 8px' }}>{day.getDate()}</p>
                     {dayBookings.map(b => (
@@ -4646,7 +4642,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} className={taCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
               <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Book'}</button>
             </div>
           </div>
@@ -4686,7 +4682,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                 <button
                   onClick={saveBkTemplate}
                   disabled={bkTmplSaving}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-400 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-500 hover:text-white transition-colors"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
                 >
                   <Save className="w-3.5 h-3.5" />
@@ -4946,7 +4942,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Documents</h2>
           <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
         </div>
@@ -4958,7 +4954,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   {['Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
@@ -5011,7 +5007,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                         {selectedListing.images?.[0] ? (
                           <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                         ) : (
-                          <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
                           </div>
                         )}
@@ -5050,7 +5046,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             {l.images?.[0] ? (
                               <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                             ) : (
-                              <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
                               </div>
                             )}
@@ -5084,7 +5080,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
 
               {/* Sales Advisor Details */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
@@ -5095,7 +5091,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
               {/* Financing — Sales Agreement only */}
               {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
                     <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
                     <span style={{ fontSize: 13, color: '#d1d5db', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
@@ -5122,7 +5118,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               )}
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
               <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating...' : 'Generate'}</button>
             </div>
           </div>
@@ -5518,19 +5514,19 @@ export default function DashboardPage() {
     active: {
       label: "Active",
       dot: "bg-emerald-400",
-      cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20 badge-glow-cyan",
+      cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
       next: "reserved",
     },
     reserved: {
       label: "Reserved",
       dot: "bg-amber-400",
-      cls: "bg-amber-400/10 text-amber-400 border-amber-400/20 badge-glow-gold",
+      cls: "bg-amber-400/10 text-amber-400 border-amber-400/20",
       next: "sold",
     },
     sold: {
       label: "Sold",
       dot: "bg-red-400",
-      cls: "bg-blue-400/10 text-blue-400 border-blue-400/20 badge-glow-blue",
+      cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
       next: "active",
     },
   };
@@ -5596,7 +5592,7 @@ export default function DashboardPage() {
             RM {sp.toLocaleString()}
           </span>
           <span
-            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-blue-500/15 text-blue-400 border-blue-500/25 blue-glow badge-glow-blue" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
+            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-blue-500/15 text-blue-400 border-blue-500/25 blue-glow" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
           >
             {isHot && <Flame className="w-3 h-3" />}−{pct}%
           </span>
@@ -5610,11 +5606,11 @@ export default function DashboardPage() {
 
   const condCls = (c) =>
     ({
-      new: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 badge-glow-cyan",
+      new: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25",
       recon:
-        "bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 badge-glow-cyan",
-      used: "bg-white/[0.06] text-gray-400 border border-white/10",
-    })[c] || "bg-white/[0.06] text-gray-400 border border-white/10";
+        "bg-cyan-500/15 text-cyan-400 border border-cyan-500/25",
+      used: "bg-white/[0.06] text-gray-500 border border-white/10",
+    })[c] || "bg-white/[0.06] text-gray-500 border border-white/10";
 
   const GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
@@ -5757,7 +5753,8 @@ export default function DashboardPage() {
       style={{
         fontFamily: "'DM Sans',sans-serif",
         background:
-          "radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
+          "radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
+        backgroundSize: "24px 24px, auto, auto",
       }}
     >
       {sidebarOpen && (
@@ -5912,7 +5909,7 @@ export default function DashboardPage() {
             background: 'rgba(5,7,14,0.7)',
             backdropFilter: 'blur(32px) saturate(180%)',
             WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
             boxShadow: '0 1px 0 rgba(59,130,246,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
           }}
         >
@@ -5964,7 +5961,7 @@ export default function DashboardPage() {
               <>
                 <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                 <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
                     {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
                   </div>
@@ -6013,7 +6010,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Progress bar */}
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#3b82f6,#93c5fd)', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
@@ -6139,10 +6136,10 @@ export default function DashboardPage() {
                 <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#1e40af', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
                 <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
-                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
+                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
                         {filteredListings.length}{searchQuery.trim() && listings.length !== filteredListings.length ? ` of ${listings.length}` : ''}
                       </span>
                     </div>
@@ -6163,7 +6160,7 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => setActiveTab("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
                         Add Listing
@@ -6187,10 +6184,10 @@ export default function DashboardPage() {
                   <>
                     {/* Desktop table */}
                     <div className="hidden md:block table-wrap">
-                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
+                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.025) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                           <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <tr style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                               {['', 'Vehicle', 'Price', 'Mileage', 'Grade', 'VIN', 'Location', 'Date Added', 'Status'].map((h, i) => (
                                 <th key={i} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
                               ))}
@@ -6226,7 +6223,7 @@ export default function DashboardPage() {
                                     <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
                                     <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0' }}>{l.model}</p>
                                     {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{l.variant}</p>}
-                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
+                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
                                   </td>
                                   {/* Price */}
                                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
@@ -6449,7 +6446,7 @@ export default function DashboardPage() {
             fontFamily: "'DM Sans', sans-serif",
             zIndex: 9999,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
               {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
             </div>
@@ -6518,7 +6515,7 @@ export default function DashboardPage() {
             {/* Total footer */}
             {svcPopupListing.included_services_cost > 0 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-blue-500/5">
-                <span className="text-xs text-gray-400 font-medium">Total value</span>
+                <span className="text-xs text-gray-500 font-medium">Total value</span>
                 <span className="text-sm font-bold text-blue-400">
                   RM {Number(svcPopupListing.included_services_cost).toLocaleString()}
                 </span>
@@ -6552,13 +6549,13 @@ export default function DashboardPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-gray-400 text-sm mb-5">
+            <p className="text-gray-500 text-sm mb-5">
               This will permanently remove the car listing from your inventory.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Cancel
@@ -6697,7 +6694,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Skip</button>
+              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Skip</button>
               <button
                 disabled={pendingStockSaving || !pendingStockForm.purchase_price}
                 onClick={async () => {
