@@ -101,18 +101,18 @@ const STYLES = `
   .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(59,130,246,0.35) 35%,rgba(99,102,241,0.2) 65%,transparent); pointer-events:none; z-index:1; }
-  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(59,130,246,0.45) 38%,rgba(99,102,241,0.3) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
+  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; z-index:1; }
+  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(255,255,255,0.07) 38%,rgba(255,255,255,0.04) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
 
   .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
-  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(59,130,246,0.22); }
-  .nav-active { background:rgba(59,130,246,0.1)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #3b82f6!important; box-shadow:inset 0 1px 0 rgba(59,130,246,0.15),inset 0 -1px 0 rgba(0,0,0,0.1); }
+  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(255,255,255,0.1); }
+  .nav-active { background:rgba(220,38,38,0.08)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #dc2626!important; box-shadow:inset 0 1px 0 rgba(220,38,38,0.08),inset 0 -1px 0 rgba(0,0,0,0.1); }
 
   .stat-card { transition:transform 0.18s,box-shadow 0.18s; }
   .stat-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.08); }
 
   .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
-  .data-row:hover { background:rgba(59,130,246,0.025)!important; border-left-color:rgba(59,130,246,0.3); }
+  .data-row:hover { background:rgba(255,255,255,0.025)!important; border-left-color:rgba(255,255,255,0.12); }
 
 
   @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
@@ -120,7 +120,7 @@ const STYLES = `
   .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
 
   .discount-chip { transition:box-shadow 0.15s; }
-  .discount-chip:hover { box-shadow:0 0 10px rgba(59,130,246,0.42); }
+  .discount-chip:hover { box-shadow:0 0 10px rgba(255,255,255,0.08); }
 
   .btn-shimmer { position:relative; overflow:hidden; }
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
@@ -129,7 +129,7 @@ const STYLES = `
   .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
 
   .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; }
-  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(59,130,246,0.25) 35%,rgba(99,102,241,0.15) 65%,transparent); pointer-events:none; }
+  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; }
 
   .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:28px; background:linear-gradient(to left,rgba(8,10,18,0.85),transparent); pointer-events:none; border-radius:0 8px 8px 0; }
@@ -137,12 +137,12 @@ const STYLES = `
   .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
   .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
   .glass-pill { background:rgba(255,255,255,0.08); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
-  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 0 0 1px rgba(59,130,246,0.06),0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
+  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
 
   ::-webkit-scrollbar { width:4px; height:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:rgba(59,130,246,0.22); border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(59,130,246,0.42); }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:4px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
 
   @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 `;
@@ -163,7 +163,7 @@ const T = {
     position: 'relative',
     background: 'rgba(5,7,14,0.99)',
     border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 0 0 1px rgba(59,130,246,0.07), 0 40px 80px rgba(0,0,0,0.8)',
+    boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
   },
   divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
   btnRed: {
@@ -3942,7 +3942,7 @@ function StockTab({ userId, listings }) {
                     const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) : 0;
                     const isAging = u.status === 'in_stock' && days > 60;
                     return (
-                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(59,130,246,0.07)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(59,130,246,0.07)' : 'transparent'}>
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
                         </td>
@@ -4161,7 +4161,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
               </thead>
               <tbody>
                 {enquiries.map(e => (
-                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
+                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || '—')}</td>
                     <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
@@ -4962,7 +4962,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               </thead>
               <tbody>
                 {documents.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
                     <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.car_label || (doc.car_listings ? `${doc.car_listings.brand} ${doc.car_listings.model}` : '—')}</td>
@@ -5865,14 +5865,14 @@ export default function DashboardPage() {
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
               style={{
-                background: "rgba(59,130,246,0.07)",
-                border: "1px solid rgba(59,130,246,0.15)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "inset 0 1px 0 rgba(59,130,246,0.1)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
               }}
             >
-              <Building2 className="w-3.5 h-3.5 text-blue-500/60 flex-shrink-0" />
+              <Building2 className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
               <p className="text-xs font-semibold text-gray-300 truncate flex-1">
                 {profile.dealership}
               </p>
@@ -5885,14 +5885,14 @@ export default function DashboardPage() {
             className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
           >
             <Settings
-              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-blue-400" : ""}`}
+              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-500" : ""}`}
             />
             Settings
           </button>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-all"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-white hover:bg-white/[0.04] transition-all"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -5910,7 +5910,7 @@ export default function DashboardPage() {
             backdropFilter: 'blur(32px) saturate(180%)',
             WebkitBackdropFilter: 'blur(32px) saturate(180%)',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 1px 0 rgba(59,130,246,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
+            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03)',
           }}
         >
           <button
@@ -5922,7 +5922,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
               className="w-5 h-5 rounded flex items-center justify-center font-black text-xs"
-              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 0 8px rgba(59,130,246,0.4)' }}
+              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 0 8px rgba(220,38,38,0.3)' }}
             >
               S
             </div>
@@ -5936,10 +5936,10 @@ export default function DashboardPage() {
               onClick={() => setNotifOpen(p => !p)}
               style={{
                 position: 'relative',
-                background: notifCount > 0 ? 'rgba(59,130,246,0.1)' : 'transparent',
+                background: 'transparent',
                 border: 'none', borderRadius: 8, padding: 6,
                 cursor: 'pointer',
-                color: notifCount > 0 ? '#93c5fd' : '#6b7280',
+                color: notifCount > 0 ? '#f3f4f6' : '#6b7280',
                 display: 'flex',
               }}
             >
@@ -5947,7 +5947,7 @@ export default function DashboardPage() {
               {notifCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -3, right: -3,
-                  background: '#3b82f6', color: '#fff',
+                  background: '#dc2626', color: '#fff',
                   fontSize: 8, fontWeight: 800, borderRadius: '50%',
                   width: 14, height: 14,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5963,14 +5963,14 @@ export default function DashboardPage() {
                 <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
-                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
                   </div>
                   {notifications.length === 0 ? (
                     <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
                           {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
@@ -5988,13 +5988,13 @@ export default function DashboardPage() {
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.09), rgba(99,102,241,0.07))', borderBottom: '1px solid rgba(59,130,246,0.18)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
               {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
+                  <div style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5 text-gray-400" />
                   </div>
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
@@ -6011,7 +6011,7 @@ export default function DashboardPage() {
 
               {/* Progress bar */}
               <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#3b82f6,#93c5fd)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#ef4444)', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
               {/* Checklist */}
@@ -6032,7 +6032,7 @@ export default function DashboardPage() {
                       cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(59,130,246,0.3)'; }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.18)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
                   >
                     {item.done
@@ -6132,8 +6132,8 @@ export default function DashboardPage() {
 
               {/* ── Listings panel ── */}
               <div style={{ position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#3b82f6', filter: 'blur(120px)', opacity: 0.10, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#1e40af', filter: 'blur(100px)', opacity: 0.08, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.04, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#dc2626', filter: 'blur(100px)', opacity: 0.03, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
                 <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 12 }}>
@@ -6448,14 +6448,14 @@ export default function DashboardPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
-              {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+              {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
             </div>
             {notifications.length === 0 ? (
               <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
             ) : notifications.slice(0, 10).map(n => (
-              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(59,130,246,0.04)' }}>
+              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  {!n.is_read && <div style={{ width: 6, height: 6, background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                  {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
                     {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px' }}>{n.body}</p>}
