@@ -102,10 +102,10 @@ const HC_CSS = `
   .hc-content-wrap {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 28% 48px 140px;
+    padding: clamp(80px, 12vh, 200px) 48px 140px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 48px;
     height: 100%;
     box-sizing: border-box;
@@ -323,7 +323,7 @@ const HC_CSS = `
      TABLET
   ════════════════ */
   @media (max-width:1024px) {
-    .hc-content-wrap { padding:26% 32px 120px; gap:40px; }
+    .hc-content-wrap { padding:clamp(70px, 10vh, 160px) 32px 120px; gap:40px; }
     .hc-text { max-width:50%; }
     .hc-glass-card { max-width:46%; max-height:320px; }
     .hc-card-spacer { min-height:260px; max-height:320px; }
@@ -433,11 +433,11 @@ const HC_CSS = `
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 
-  /* ── Hero search bar — sits above hero text in content flow ── */
+  /* ── Hero search bar — sits above eyebrow on the left ── */
   .hc-search-bar {
     width: 100%;
-    max-width: 600px;
-    align-self: center;
+    max-width: 560px;
+    margin-bottom: 20px;
   }
   .hc-search-form {
     position: relative;
@@ -495,7 +495,6 @@ const HC_CSS = `
 
   /* Tablet ≤1024px */
   @media (max-width:1024px) {
-    .hc-search-bar { max-width: 480px; }
     .hc-content-row { gap: 36px; }
     .hc-search-input { font-size: 14px; padding: 13px 50px 13px 42px; }
     .hc-search-btn { width: 34px; height: 34px; border-radius: 8px; }
@@ -925,34 +924,33 @@ export default function HeroCarousel({ siteName, waNumber }) {
         {/* Content */}
         <div className="hc-content">
           <div className="hc-content-wrap">
-            {/* Search bar — above hero text on desktop, absolute on mobile */}
-            <div className="hc-search-bar">
-              <form
-                className="hc-search-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const q = heroSearch.trim();
-                  if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
-                }}
-              >
-                <Search className="hc-search-icon" />
-                <input
-                  className="hc-search-input"
-                  type="text"
-                  placeholder="Search brand or model…"
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                />
-                <button type="submit" className="hc-search-btn" aria-label="Search">
-                  <ArrowRight />
-                </button>
-              </form>
-            </div>
-
             {/* Content row: title + card */}
             <div className="hc-content-row">
               {/* 1. Title */}
               <div className="hc-text">
+                {/* Search bar — above eyebrow on desktop, absolute on mobile */}
+                <div className="hc-search-bar">
+                  <form
+                    className="hc-search-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const q = heroSearch.trim();
+                      if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
+                    }}
+                  >
+                    <Search className="hc-search-icon" />
+                    <input
+                      className="hc-search-input"
+                      type="text"
+                      placeholder="Search brand or model…"
+                      value={heroSearch}
+                      onChange={(e) => setHeroSearch(e.target.value)}
+                    />
+                    <button type="submit" className="hc-search-btn" aria-label="Search">
+                      <ArrowRight />
+                    </button>
+                  </form>
+                </div>
                 <div key={`c-${animKey}`} className="hc-anim">
                   <div className="hc-eyebrow">
                     <div className="hc-eyebrow-dot" />

@@ -36,6 +36,8 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
+const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
+
 const BRANDS = [
   "Perodua",
   "Proton",
@@ -235,6 +237,14 @@ const HomePage = () => {
   const [brand, setBrand] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [superadminPhone, setSuperadminPhone] = useState(null);
+
+  // On main domain (no tenant), fetch superadmin WhatsApp so the CTA button works
+  useEffect(() => {
+    if (tenantLoading || tenant !== null) return;
+    supabase.from('profiles').select('whatsapp_number').eq('id', SUPERADMIN_ID).maybeSingle()
+      .then(({ data }) => { if (data?.whatsapp_number) setSuperadminPhone(data.whatsapp_number); });
+  }, [tenant, tenantLoading]);
 
   // Capture ref slug from URL into sessionStorage on mount
   useEffect(() => {
@@ -269,7 +279,6 @@ const HomePage = () => {
 
   useEffect(() => {
     if (tenant === undefined) return;
-    const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
     let ch, soldCh;
     const load = async () => {
       let query = supabase
@@ -913,27 +922,25 @@ const HomePage = () => {
               <a
                 href={buildWaUrl(
                   ctaCtx.type !== 'loading' ? ctaCtx : { type: 'listing', profile: null, ref: null },
-                  tenant?.whatsapp_number,
+                  tenant?.whatsapp_number || superadminPhone,
                   ctaCtx.type === 'salesman'
                     ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
                     : `Hi ${siteName}, I need help finding a car`
-                ) || (waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : '#')}
+                ) || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="wa-btn-hp"
                 style={waBtn}
                 onClick={() => {
-                  if (tenant?.id) {
-                    supabase.from('whatsapp_enquiries').insert({
-                      dealer_id:     tenant.id,
-                      listing_id:    null,
-                      buyer_name:    null,
-                      buyer_phone:   null,
-                      buyer_message: `General enquiry from homepage CTA`,
-                      source:        'homepage_cta',
-                      status:        'new',
-                    }).then(() => {});
-                  }
+                  supabase.from('whatsapp_enquiries').insert({
+                    dealer_id:     tenant?.id ?? SUPERADMIN_ID,
+                    listing_id:    null,
+                    buyer_name:    null,
+                    buyer_phone:   null,
+                    buyer_message: `General enquiry from homepage CTA`,
+                    source:        'homepage_cta',
+                    status:        'new',
+                  }).then(() => {});
                 }}
               >
                 <MessageCircle size={14} />
