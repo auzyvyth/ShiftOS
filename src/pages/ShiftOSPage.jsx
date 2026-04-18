@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Car,
@@ -201,70 +201,79 @@ const STYLES = `
 `;
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+const PAIN_EMOJIS = [
+  ["😤", "🤯", "📋"],
+  ["📊", "💸", "😬"],
+  ["🎬", "😩", "⏰"],
+];
+
 const PAIN_POINTS = [
   {
     Icon: AlertCircle,
-    title: "Siapa close? Siapa cakap je?",
-    desc: "Without real commission and lead tracking, your best salesman gets the same credit as the one who disappeared after lunch.",
+    title: "Masih post listing satu-satu?",
+    desc: "Auto-post ke Telegram channel dan TikTok the moment you go live. No extra steps.",
   },
   {
     Icon: BarChart2,
-    title: "Still running stock on Excel?",
-    desc: "No purchase price visibility, no recon tracking, no P&L per unit. You don't actually know which cars made you money.",
+    title: "Tak tahu salesman mana yang close deal?",
+    desc: "Every referral link is tracked. See clicks, leads, and conversions per salesman — live.",
   },
   {
     Icon: Video,
-    title: "TikTok content eats your whole Sunday",
-    desc: "Filming, editing, captioning — repeat for every car every week. ShiftOS generates branded slides in seconds.",
+    title: "Buyer tanya pastu hilang?",
+    desc: "All WhatsApp enquiries in one inbox. AI advisor tells you which cars to push and who to follow up.",
   },
 ];
 
 const FEATURES = [
   {
     Icon: Car,
-    title: "Inventory Management",
-    desc: "Add, edit, and track every car. Full history, status, pricing and photos in one place.",
+    title: "Stok Tracker",
+    desc: "Add, edit, and track every unit. Full history, pricing, photos, and status in one place. No more Excel.",
   },
   {
     Icon: Video,
     title: "TikTok Content Studio",
-    desc: "Generate branded slides for any listing and export in one click. No editing skills needed.",
+    desc: "Generate branded slides for any listing and export in one click. Post-ready content without a designer.",
   },
   {
     Icon: Send,
     title: "Telegram Auto-Post",
-    desc: "New listings automatically post to your Telegram channel the moment they go live.",
+    desc: "New listings hit your Telegram channel automatically the moment they go live. Zero manual work.",
   },
   {
     Icon: Users,
     title: "Salesman Panel",
-    desc: "Referral links, commission tracking, appointments, and lead attribution per salesman.",
+    desc: "Unique referral links, live commission tracking, appointments, and lead attribution per salesman.",
   },
   {
     Icon: Bot,
     title: "AI Performance Advisor",
-    desc: "Ask plain questions about your inventory and get instant data-backed answers.",
+    desc: "Ask plain questions like 'which cars have been sitting too long?' and get instant, data-backed answers.",
   },
   {
     Icon: Globe,
-    title: "Drevo Marketplace",
-    desc: "Your cars are automatically listed on xdrive.my, reaching buyers without extra work.",
+    title: "xdrive.my Marketplace",
+    desc: "Your listings automatically appear on xdrive.my — reaching buyers across Malaysia without extra work.",
   },
 ];
 
 const STATS = [
-  { num: "RM1K", label: "Standard per month" },
-  { num: "RM500", label: "Founder rate" },
-  { num: "5 min", label: "Setup time" },
+  { num: "100%", label: "Automated listing workflow" },
+  { num: "1 Dashboard", label: "Replaces 4-5 tools" },
+  { num: "< 5 min", label: "To list a new car" },
   { num: "1", label: "Dashboard for everything" },
 ];
 
 const FOUNDING_FEATURES = [
-  "Full lifetime access",
-  "All future features included",
-  "Priority support",
-  "Drevo marketplace listing",
-  "White-label ready",
+  "Unlimited car listings",
+  "TikTok Content Studio",
+  "Telegram Auto-Post",
+  "Salesman Panel + referral tracking",
+  "AI Performance Advisor",
+  "xdrive.my marketplace listing",
+  "WhatsApp Enquiry Inbox",
+  "Priority onboarding support",
 ];
 
 const MONTHLY_FEATURES = [
@@ -274,6 +283,222 @@ const MONTHLY_FEATURES = [
   "TikTok content studio",
   "AI performance advisor",
 ];
+
+// ─── Emoji burst helper ───────────────────────────────────────────────────────
+function spawnEmojis(container, emojis) {
+  if (!document.getElementById("sos-emoji-kf")) {
+    const s = document.createElement("style");
+    s.id = "sos-emoji-kf";
+    s.textContent =
+      "@keyframes sos-emoji-burst{0%{opacity:1;transform:translate(0,0) scale(1.3)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.4)}}";
+    document.head.appendChild(s);
+  }
+  const count = 9;
+  for (let i = 0; i < count; i++) {
+    const emoji = emojis[i % emojis.length];
+    const angle =
+      (Math.PI * 2 * i) / count - Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+    const radial = 50 + Math.random() * 50;
+    const extraUp = 60 + Math.random() * 40;
+    const dx = Math.round(Math.cos(angle) * radial);
+    const dy = Math.round(Math.sin(angle) * radial - extraUp);
+    const el = document.createElement("div");
+    el.setAttribute("data-sos-emoji", "1");
+    el.textContent = emoji;
+    Object.assign(el.style, {
+      position: "absolute",
+      left: "50%",
+      top: "50%",
+      marginLeft: "-11px",
+      marginTop: "-11px",
+      fontSize: "22px",
+      pointerEvents: "none",
+      zIndex: "10",
+      animation: `sos-emoji-burst 900ms ease-out ${i * 50}ms forwards`,
+    });
+    el.style.setProperty("--dx", `${dx}px`);
+    el.style.setProperty("--dy", `${dy}px`);
+    container.appendChild(el);
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 960 + i * 50);
+  }
+}
+
+// ─── Network Animation ────────────────────────────────────────────────────────
+function NetworkAnimation() {
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const lPaths = [...svg.querySelectorAll(".sos-lp")];
+    const rPaths = [...svg.querySelectorAll(".sos-rp")];
+    const ballLayer = svg.querySelector(".sos-balls");
+
+    const entries = [
+      ...lPaths.flatMap((p, i) => [
+        { p, t: i * 0.25, spd: 0.0028 + i * 0.0003, side: "L" },
+        { p, t: (i * 0.25 + 0.5) % 1, spd: 0.0028 + i * 0.0003, side: "L" },
+      ]),
+      ...rPaths.flatMap((p, i) => [
+        { p, t: i * 0.25, spd: 0.0025 + i * 0.0003, side: "R" },
+        { p, t: (i * 0.25 + 0.5) % 1, spd: 0.0025 + i * 0.0003, side: "R" },
+      ]),
+    ];
+
+    const circles = entries.map((e) => {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("r", "4");
+      c.setAttribute("filter", `url(#sos-glow-${e.side === "L" ? "red" : "blue"})`);
+      ballLayer.appendChild(c);
+      return c;
+    });
+
+    let raf;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      entries.forEach((e, i) => {
+        e.t = (e.t + e.spd) % 1;
+        const len = e.p.getTotalLength();
+        const pt = e.p.getPointAtLength(e.t * len);
+        const t = e.t;
+        const op = t < 0.12 ? t / 0.12 : t > 0.88 ? (1 - t) / 0.12 : 1;
+        circles[i].setAttribute("cx", pt.x);
+        circles[i].setAttribute("cy", pt.y);
+        circles[i].setAttribute("fill", e.side === "L" ? "#dc2626" : "#4a90d9");
+        circles[i].setAttribute("opacity", op.toFixed(3));
+      });
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      ballLayer.innerHTML = "";
+    };
+  }, []);
+
+  const lPills = ["Stock Units", "Walk-in Leads", "WhatsApp Enquiries", "Test Drive Bookings"];
+  const rPills = ["Car Listings", "TikTok Content", "Documents", "Analytics"];
+  const ys = [75, 165, 255, 345];
+
+  const lCX = 150, rCX = 750;
+  const pillW = 148, pillH = 30;
+  const hubCX = 450, hubCY = 210;
+  const hubW = 110, hubH = 50;
+  const lRX = lCX + pillW / 2;
+  const rLX = rCX - pillW / 2;
+  const hLX = hubCX - hubW / 2;
+  const hRX = hubCX + hubW / 2;
+
+  return (
+    <div style={{ width: "100%", maxWidth: 900, margin: "0 auto 8px" }}>
+      <svg ref={svgRef} viewBox="0 0 900 420" width="100%" style={{ display: "block" }}>
+        <defs>
+          <filter id="sos-glow-red">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="sos-glow-blue">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        <text x={lCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">INPUTS</text>
+        <text x={rCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">OUTPUTS</text>
+
+        {ys.map((y, i) => (
+          <path key={`lp${i}`} className="sos-lp"
+            d={`M ${lRX} ${y} C ${lRX + 86} ${y} ${hLX} ${hubCY} ${hLX} ${hubCY}`}
+            fill="none" stroke="rgba(220,38,38,0.22)" strokeWidth="1.5" strokeDasharray="5 5" />
+        ))}
+
+        {ys.map((y, i) => (
+          <path key={`rp${i}`} className="sos-rp"
+            d={`M ${hRX} ${hubCY} C ${hRX} ${y} ${rLX - 86} ${y} ${rLX} ${y}`}
+            fill="none" stroke="rgba(74,144,217,0.22)" strokeWidth="1.5" strokeDasharray="5 5" />
+        ))}
+
+        {lPills.map((label, i) => (
+          <g key={`lpill${i}`}>
+            <rect x={lCX - pillW / 2} y={ys[i] - pillH / 2} width={pillW} height={pillH} rx={pillH / 2}
+              fill="rgba(220,38,38,0.07)" stroke="rgba(220,38,38,0.3)" strokeWidth="1" />
+            <text x={lCX} y={ys[i] + 1} textAnchor="middle" dominantBaseline="middle"
+              fill="#fca5a5" fontSize="11" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+          </g>
+        ))}
+
+        {rPills.map((label, i) => (
+          <g key={`rpill${i}`}>
+            <rect x={rCX - pillW / 2} y={ys[i] - pillH / 2} width={pillW} height={pillH} rx={pillH / 2}
+              fill="rgba(74,144,217,0.07)" stroke="rgba(74,144,217,0.3)" strokeWidth="1" />
+            <text x={rCX} y={ys[i] + 1} textAnchor="middle" dominantBaseline="middle"
+              fill="#93c5fd" fontSize="11" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+          </g>
+        ))}
+
+        <rect x={hLX} y={hubCY - hubH / 2} width={hubW} height={hubH} rx="8"
+          fill="rgba(220,38,38,0.1)" stroke="rgba(220,38,38,0.5)" strokeWidth="1.5" />
+        <text x={hubCX} y={hubCY - 7} textAnchor="middle" dominantBaseline="middle"
+          fill="white" fontSize="14" fontFamily="'Bebas Neue',sans-serif" letterSpacing="2">ShiftOS</text>
+        <text x={hubCX} y={hubCY + 11} textAnchor="middle" dominantBaseline="middle"
+          fill="#6b7280" fontSize="9" fontFamily="'DM Sans',sans-serif">by XDrive</text>
+
+        <g className="sos-balls" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Pain Card ────────────────────────────────────────────────────────────────
+function PainCard({ Icon, title, desc, emojis }) {
+  const cardRef = useRef(null);
+  const triggered = useRef(false);
+  const cooldown = useRef(false);
+
+  const burst = useCallback(() => {
+    if (!cardRef.current || cooldown.current) return;
+    cooldown.current = true;
+    spawnEmojis(cardRef.current, emojis);
+    setTimeout(() => { cooldown.current = false; }, 1100);
+  }, [emojis]);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    if (window.innerWidth >= 768) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !triggered.current) {
+          triggered.current = true;
+          burst();
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    obs.observe(card);
+    return () => obs.disconnect();
+  }, [burst]);
+
+  return (
+    <div
+      ref={cardRef}
+      className="shiftos-pain-card"
+      style={{ overflow: "visible" }}
+      onMouseEnter={() => { if (window.innerWidth >= 768) burst(); }}
+      onMouseLeave={() => {
+        cardRef.current?.querySelectorAll("[data-sos-emoji]").forEach((el) => el.remove());
+      }}
+    >
+      <div style={{ width:40, height:40, borderRadius:8, background:"rgba(220,38,38,0.08)", border:"1px solid rgba(220,38,38,0.15)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
+        <Icon size={18} color="#ef4444" />
+      </div>
+      <p style={{ fontSize:15, fontWeight:600, marginBottom:8, color:"white", lineHeight:1.4 }}>{title}</p>
+      <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, margin:0 }}>{desc}</p>
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ShiftOSPage() {
@@ -533,6 +758,22 @@ export default function ShiftOSPage() {
                   {label}
                 </button>
               ))}
+              <a
+                href="https://xdrive.my"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#9ca3af",
+                  fontSize: 14,
+                  textDecoration: "none",
+                  fontFamily: "'DM Sans', sans-serif",
+                  transition: "color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+              >
+                Marketplace
+              </a>
             </div>
 
             {/* CTA */}
@@ -599,8 +840,8 @@ export default function ShiftOSPage() {
               color: "white",
             }}
           >
-            THE OPERATING SYSTEM FOR{" "}
-            <span className="shiftos-red-text">MALAYSIAN</span> CAR DEALERS
+            Jual Lebih Banyak Kereta.{" "}
+            <span className="shiftos-red-text">Urus Semua</span> Dalam Satu Tempat.
           </h1>
 
           <p
@@ -613,9 +854,9 @@ export default function ShiftOSPage() {
               lineHeight: 1.6,
             }}
           >
-            From stock intake to sold — manage listings, track commissions, book
-            appointments, and close deals faster. Built for Malaysian dealers,
-            not generic SaaS.
+            ShiftOS replaces your WhatsApp groups, Excel sheets, and manual
+            posting — one dashboard built for Malaysian independent used car
+            dealers.
           </p>
 
           <div
@@ -634,21 +875,23 @@ export default function ShiftOSPage() {
               className="shiftos-btn-red"
               style={{ fontSize: 15, padding: "12px 28px" }}
             >
-              <MessageCircle size={16} /> WhatsApp Us
+              <MessageCircle size={16} /> Cuba Percuma — Tanpa Kad Kredit
             </a>
             <button
               onClick={() => scrollTo(featuresRef)}
               className="shiftos-btn-ghost"
               style={{ fontSize: 15, padding: "12px 28px" }}
             >
-              See Features <ChevronDown size={16} />
+              Tengok Demo <ChevronDown size={16} />
             </button>
           </div>
+
+          <NetworkAnimation />
 
           <p
             style={{ fontSize: 12, color: "#4b5563", letterSpacing: "0.08em" }}
           >
-            Trusted by independent dealers across Malaysia
+            Digunakan oleh dealer di Penang, KL & Johor
           </p>
         </section>
 
@@ -684,45 +927,8 @@ export default function ShiftOSPage() {
               gap: 16,
             }}
           >
-            {PAIN_POINTS.map(({ Icon, title, desc }) => (
-              <div key={title} className="shiftos-pain-card">
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    background: "rgba(220,38,38,0.08)",
-                    border: "1px solid rgba(220,38,38,0.15)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 16,
-                  }}
-                >
-                  <Icon size={18} color="#ef4444" />
-                </div>
-                <p
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 600,
-                    marginBottom: 8,
-                    color: "white",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {title}
-                </p>
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: "#6b7280",
-                    lineHeight: 1.6,
-                    margin: 0,
-                  }}
-                >
-                  {desc}
-                </p>
-              </div>
+            {PAIN_POINTS.map(({ Icon, title, desc }, i) => (
+              <PainCard key={title} Icon={Icon} title={title} desc={desc} emojis={PAIN_EMOJIS[i]} />
             ))}
           </div>
         </section>
@@ -741,7 +947,7 @@ export default function ShiftOSPage() {
               marginBottom: 12,
             }}
           >
-            Everything in one dashboard
+            Dari stok masuk sampai kereta sold — semua dalam ShiftOS.
           </h2>
           <p
             style={{
@@ -751,7 +957,7 @@ export default function ShiftOSPage() {
               marginBottom: 52,
             }}
           >
-            No more switching between five apps. One login, full control.
+            SEMUA YANG DEALER PERLUKAN
           </p>
           <div
             className="shiftos-features-grid"
@@ -877,7 +1083,7 @@ export default function ShiftOSPage() {
               marginBottom: 12,
             }}
           >
-            Simple pricing
+            Satu Harga. Semua Features.
           </h2>
           <p
             style={{
@@ -887,7 +1093,7 @@ export default function ShiftOSPage() {
               marginBottom: 52,
             }}
           >
-            No hidden fees. No per-listing charges. Just one flat price.
+            Founding Member deal — masuk awal, kunci harga seumur hidup.
           </p>
           <div
             className="shiftos-pricing-grid"
@@ -953,7 +1159,7 @@ export default function ShiftOSPage() {
                   color: "#d4a84b",
                 }}
               >
-                RM 500
+                RM700
                 <span style={{ fontSize: 22, color: "#92600d" }}>/mo</span>
               </p>
               <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>
@@ -999,7 +1205,7 @@ export default function ShiftOSPage() {
                   boxShadow: "0 2px 12px rgba(180,120,40,0.3)",
                 }}
               >
-                WhatsApp to Claim
+                Dapatkan Founding Member Access
               </a>
             </div>
 
@@ -1098,11 +1304,11 @@ export default function ShiftOSPage() {
             }}
           >
             <h2 style={{ fontSize: 30, fontWeight: 700, marginBottom: 12 }}>
-              This isn't a simple app. Come see it first.
+              Ready to Scale Your Dealership?
             </h2>
             <p style={{ fontSize: 15, color: "#9ca3af", marginBottom: 36 }}>
-              ShiftOS is built for serious dealers. WhatsApp us for a live
-              walkthrough — we'll show you exactly what it can do for your lot.
+              Join dealer-dealer yang dah guna ShiftOS untuk jual lebih, kerja
+              kurang.
             </p>
             <a
               href={waLink}
@@ -1127,7 +1333,7 @@ export default function ShiftOSPage() {
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <MessageCircle size={20} />
-              Chat on WhatsApp
+              Mula Sekarang — Percuma
             </a>
           </div>
         </section>
