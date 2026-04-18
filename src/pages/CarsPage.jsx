@@ -506,8 +506,34 @@ const CarsPage = () => {
       `}</style>
 
       <Helmet>
-        <title>Browse Cars – {siteName}</title>
-        <meta name="description" content="Find your perfect used car from verified Malaysian dealers. Filter by brand, price, body type and more." />
+        <title>
+          {searchQuery
+            ? `${searchQuery} Cars for Sale in Malaysia – ${siteName}`
+            : selectedBrands.length === 1
+            ? `${selectedBrands[0]} Cars for Sale in Malaysia – ${siteName}`
+            : `Browse Used Cars – ${siteName}`}
+        </title>
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta name="description" content={
+          searchQuery
+            ? `${searchQuery} cars for sale in Malaysia — ${filteredCars.length} listings. Find your next ${searchQuery} on XDrive.`
+            : selectedBrands.length === 1
+            ? `${selectedBrands[0]} cars for sale in Malaysia — ${filteredCars.length} listings. Find your next ${selectedBrands[0]} on XDrive.`
+            : `Find your perfect used car from verified Malaysian dealers. Filter by brand, price, body type and more.`
+        } />
+        <link rel="canonical" href={`https://xdrive.my/cars${location.search}`} />
+        {filteredCars.length > 0 && (
+          <script type="application/ld+json">{JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": filteredCars.slice(0, 10).map((car, i) => ({
+              "@type": "ListItem",
+              "position": i + 1,
+              "url": `https://xdrive.my/cars/${car.slug}`,
+              "name": `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
+            })),
+          })}</script>
+        )}
       </Helmet>
 
       <Header />
@@ -683,6 +709,14 @@ const CarsPage = () => {
 
         {/* ── Main layout ── */}
         <div className="cars-main-layout" style={{ maxWidth:'1380px', margin:'0 auto', padding:'28px 24px 60px', paddingTop:'85px' }}>
+
+          <h1 style={{ position:'absolute', width:1, height:1, overflow:'hidden', clip:'rect(0,0,0,0)', whiteSpace:'nowrap' }}>
+            {searchQuery
+              ? `${searchQuery} Cars for Sale in Malaysia`
+              : selectedBrands.length === 1
+              ? `${selectedBrands[0]} Cars for Sale in Malaysia`
+              : 'Used Cars for Sale in Malaysia'}
+          </h1>
 
           {/* Results count + hot deals quick filter */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'10px' }}>
