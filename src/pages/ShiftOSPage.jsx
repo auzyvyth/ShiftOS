@@ -107,6 +107,30 @@ const STYLES = `
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  .shiftos-pricing-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .shiftos-pricing-card::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    left: -60%;
+    width: 60%;
+    height: 220%;
+    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+    animation: pricing-shine 3.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .shiftos-pricing-card.gold::after {
+    background: linear-gradient(105deg, transparent 40%, rgba(212,168,75,0.10) 50%, transparent 60%);
+    animation-delay: 1.8s;
+  }
+  @keyframes pricing-shine {
+    0%   { left: -60%; }
+    50%  { left: 130%; }
+    100% { left: 130%; }
+  }
   @media (max-width: 768px) {
     .shiftos-features-grid { grid-template-columns: 1fr !important; }
     .shiftos-pricing-grid  { grid-template-columns: 1fr !important; }
@@ -248,23 +272,6 @@ export default function ShiftOSPage() {
 
       ctx.fillStyle = "#04060A";
       ctx.fillRect(0, 0, W, H);
-
-      // Central ellipse glow
-      const pulse = 0.12 + 0.06 * Math.sin(t * 0.4);
-      const eg = ctx.createRadialGradient(
-        W / 2,
-        H / 2,
-        0,
-        W / 2,
-        H / 2,
-        W * 0.38,
-      );
-      eg.addColorStop(0, `rgba(220,38,38,${pulse})`);
-      eg.addColorStop(1, "rgba(220,38,38,0)");
-      ctx.fillStyle = eg;
-      ctx.beginPath();
-      ctx.ellipse(W / 2, H / 2, W * 0.38, H * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
 
       // Dot grid with wave + proximity
       const PROX = 110;
@@ -837,6 +844,7 @@ export default function ShiftOSPage() {
           >
             {/* Founding Member */}
             <div
+              className="shiftos-pricing-card gold"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(212,168,75,0.3)",
@@ -940,6 +948,7 @@ export default function ShiftOSPage() {
 
             {/* Monthly Standard */}
             <div
+              className="shiftos-pricing-card"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.08)",
