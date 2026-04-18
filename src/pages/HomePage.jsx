@@ -879,7 +879,7 @@ const HomePage = () => {
                 </p>
               </div>
               <div style={{ flexShrink: 0, position: "relative", zIndex: 1 }}>
-                <Link to="/for-dealers" className="primary-btn" style={primaryBtn}>
+                <Link to="/shiftos" className="primary-btn" style={primaryBtn}>
                   Learn About ShiftOS <ArrowRight size={14} />
                 </Link>
               </div>
