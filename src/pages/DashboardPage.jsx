@@ -2496,6 +2496,10 @@ function TeamTab({ managerDealership, dealerId }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newRole, setNewRole] = useState("salesman");
   const [teamTab, setTeamTab] = useState("salesman");
+  const [msgTarget, setMsgTarget] = useState('all');
+  const [msgText, setMsgText] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgDone, setMsgDone] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+60");
@@ -3048,6 +3052,134 @@ function TeamTab({ managerDealership, dealerId }) {
           </div>
         </div>
       )}
+      {/* ── Message Team Panel ── */}
+      {(() => {
+        const MSG_ROLES = [
+          { value: 'all',        label: 'Everyone',    color: '#f3f4f6' },
+          { value: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
+          { value: 'manager',    label: 'Managers',    color: '#f97316' },
+          { value: 'accountant', label: 'Accountants', color: '#22c55e' },
+          { value: 'fi_officer', label: 'F&I',         color: '#a855f7' },
+          { value: 'admin',      label: 'Admins',      color: '#94a3b8' },
+        ];
+        const recipients = salespeople.filter(s =>
+          (msgTarget === 'all' || s.role === msgTarget) && s.is_active !== false
+        );
+        const sendToTeam = async () => {
+          if (!msgText.trim() || recipients.length === 0 || msgSending) return;
+          setMsgSending(true);
+          const inserts = recipients.map(s => ({
+            salesman_id: s.id,
+            dealer_id: dealerId,
+            type: 'broadcast',
+            title: '📢 Message from Owner',
+            body: msgText.trim(),
+          }));
+          await supabase.from('salesman_notifications').insert(inserts);
+          setMsgSending(false);
+          setMsgDone(true);
+          setMsgText('');
+          setTimeout(() => setMsgDone(false), 3000);
+        };
+        return (
+          <div className="rounded-xl overflow-hidden" style={T.cardDark}>
+            {/* Header */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Message Team</h2>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Sends to each member's dashboard notification</p>
+              </div>
+              <Send style={{ width: 16, height: 16, color: '#4b5563' }} />
+            </div>
+
+            <div style={{ padding: '16px 20px' }}>
+              {/* Role filter pills */}
+              <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Send To</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {MSG_ROLES.map(({ value, label, color }) => {
+                  const cnt = value === 'all'
+                    ? salespeople.filter(s => s.is_active !== false).length
+                    : salespeople.filter(s => s.role === value && s.is_active !== false).length;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => setMsgTarget(value)}
+                      style={{
+                        padding: '6px 14px', borderRadius: 20,
+                        border: `1px solid ${msgTarget === value ? color : 'rgba(255,255,255,0.08)'}`,
+                        background: msgTarget === value ? `${color}18` : 'rgba(255,255,255,0.03)',
+                        color: msgTarget === value ? color : '#6b7280',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        fontFamily: "'DM Sans',sans-serif",
+                        display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+                      }}
+                    >
+                      {value !== 'all' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />}
+                      {label}
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+                        background: msgTarget === value ? `${color}22` : 'rgba(255,255,255,0.05)',
+                        color: msgTarget === value ? color : '#4b5563',
+                      }}>{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Recipient preview */}
+              {recipients.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {recipients.map(s => (
+                    <span key={s.id} style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0, display: 'inline-block' }} />
+                      {s.full_name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Message input */}
+              <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Message</p>
+              <textarea
+                value={msgText}
+                onChange={e => setMsgText(e.target.value)}
+                rows={4}
+                placeholder="Type your message here…"
+                style={{
+                  width: '100%', boxSizing: 'border-box', resize: 'vertical',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, padding: '10px 12px', color: '#f3f4f6', fontSize: 13,
+                  fontFamily: "'DM Sans',sans-serif", outline: 'none', lineHeight: 1.6,
+                  marginBottom: 12,
+                }}
+              />
+
+              <button
+                onClick={sendToTeam}
+                disabled={!msgText.trim() || recipients.length === 0 || msgSending}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '11px 16px', borderRadius: 10, cursor: 'pointer',
+                  fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 600,
+                  border: 'none', transition: 'all 0.15s',
+                  ...(msgDone
+                    ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }
+                    : { ...T.btnRed, opacity: (!msgText.trim() || recipients.length === 0) ? 0.4 : 1 }),
+                }}
+              >
+                {msgDone ? (
+                  <><Check style={{ width: 15, height: 15 }} /> Sent to {recipients.length} member{recipients.length !== 1 ? 's' : ''}</>
+                ) : msgSending ? (
+                  'Sending…'
+                ) : (
+                  <><Send style={{ width: 14, height: 14 }} /> Send to {recipients.length} member{recipients.length !== 1 ? 's' : ''}</>
+                )}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {showAddForm && (
         <div
           className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -4138,111 +4270,206 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     return <span style={{ fontSize: 10, fontWeight: 700, color: m.color, background: m.bg, border: `1px solid ${m.border}`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{status || 'new'}</span>;
   };
 
+  const openDetail = (e) => { setSelected(e); setNotes(e.notes || ''); };
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Enquiries</h2>
-          <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Incoming buyer enquiries from your storefront</p>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Enquiries</h2>
+            <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{enquiries.length} total · tap a row to view details</p>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6, padding: '3px 10px' }}>
+            {enquiries.filter(e => (e.status || 'new') === 'new').length} new
+          </span>
         </div>
-        <div className="table-wrap">
-          {loading ? (
-            <p className="text-gray-500 text-sm p-6">Loading...</p>
-          ) : enquiries.length === 0 ? (
-            <p className="text-gray-600 text-sm p-6">No enquiries yet. They will appear here once buyers contact you through the storefront.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  {['Buyer', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {enquiries.map(e => (
-                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || '—')}</td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <select value={e.status || 'new'} onChange={ev => { ev.stopPropagation(); updateStatus(e.id, ev.target.value); }} style={{ fontSize: 11, fontWeight: 700, background: statusMeta[e.status || 'new']?.bg, color: statusMeta[e.status || 'new']?.color, border: `1px solid ${statusMeta[e.status || 'new']?.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}>
+
+        {loading ? (
+          <p className="text-gray-500 text-sm p-6">Loading...</p>
+        ) : enquiries.length === 0 ? (
+          <p className="text-gray-600 text-sm p-6">No enquiries yet. They'll appear here once buyers contact you through the storefront.</p>
+        ) : (
+          <>
+            {/* ── Mobile cards (hidden on md+) ── */}
+            <div className="md:hidden">
+              {enquiries.map(e => {
+                const m = statusMeta[e.status || 'new'];
+                const carLabel = e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || 'General enquiry');
+                return (
+                  <div
+                    key={e.id}
+                    onClick={() => openDetail(e)}
+                    style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', active: 'background:rgba(255,255,255,0.03)' }}
+                  >
+                    {/* Row 1: name + status */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#f3f4f6' }}>{e.buyer_name || 'Unknown buyer'}</span>
+                      <StatusBadge status={e.status || 'new'} />
+                    </div>
+                    {/* Row 2: car + date */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, color: '#9ca3af', flex: 1, marginRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{carLabel}</span>
+                      <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>{e.created_at ? new Date(e.created_at).toLocaleDateString('en-MY') : '—'}</span>
+                    </div>
+                    {/* Row 3: quick actions */}
+                    <div style={{ display: 'flex', gap: 8 }} onClick={ev => ev.stopPropagation()}>
+                      {e.buyer_phone && (
+                        <button
+                          onClick={() => { openDetail(e); setTimeout(() => handleWhatsApp(e), 80); }}
+                          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 8, color: '#4ade80', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                        >
+                          <MessageCircle style={{ width: 13, height: 13 }} /> WhatsApp
+                        </button>
+                      )}
+                      <select
+                        value={e.status || 'new'}
+                        onChange={ev => updateStatus(e.id, ev.target.value)}
+                        style={{ flex: 1, fontSize: 12, fontWeight: 600, background: m?.bg, color: m?.color, border: `1px solid ${m?.border}`, borderRadius: 8, padding: '8px 6px', cursor: 'pointer', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+                      >
                         {Object.keys(statusMeta).map(s => <option key={s} value={s} style={{ background: '#111118', color: '#fff' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                       </select>
-                    </td>
-                    <td onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{e.created_at ? new Date(e.created_at).toLocaleDateString('en-MY') : '—'}</td>
-                    <td style={{ padding: '12px 14px' }}><button onClick={() => { setSelected(e); setNotes(e.notes || ''); }} style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>View</button></td>
+                      <button
+                        onClick={() => openDetail(e)}
+                        style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap' }}
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Desktop table (hidden on mobile) ── */}
+            <div className="hidden md:block table-wrap">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {['Buyer', 'Car', 'Source', 'Status', 'Date', ''].map(h => (
+                      <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {enquiries.map(e => (
+                    <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
+                      <td onClick={() => openDetail(e)} style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{e.buyer_name || '—'}</td>
+                      <td onClick={() => openDetail(e)} style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || '—')}</td>
+                      <td onClick={() => openDetail(e)} style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}>{e.source || e.ref_slug || '—'}</span></td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <select value={e.status || 'new'} onChange={ev => { ev.stopPropagation(); updateStatus(e.id, ev.target.value); }} style={{ fontSize: 11, fontWeight: 700, background: statusMeta[e.status || 'new']?.bg, color: statusMeta[e.status || 'new']?.color, border: `1px solid ${statusMeta[e.status || 'new']?.border}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}>
+                          {Object.keys(statusMeta).map(s => <option key={s} value={s} style={{ background: '#111118', color: '#fff' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                        </select>
+                      </td>
+                      <td onClick={() => openDetail(e)} style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{e.created_at ? new Date(e.created_at).toLocaleDateString('en-MY') : '—'}</td>
+                      <td style={{ padding: '12px 14px' }}><button onClick={() => openDetail(e)} style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>View</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Detail Drawer */}
+      {/* ── Detail Drawer ── */}
       {selected && (
         <>
-          <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
-          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50, width: 360, maxWidth: '90vw', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: 0 }}>Enquiry Detail</h3>
-              <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
+          <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: '100vw', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
+            {/* Drawer header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+              <div>
+                <h3 style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: 0 }}>{selected.buyer_name || 'Enquiry'}</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{selected.listing ? `${selected.listing.brand} ${selected.listing.model}` : 'General enquiry'}</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <StatusBadge status={selected.status || 'new'} />
+                <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#9ca3af', borderRadius: 8, padding: 6, display: 'flex' }}><X className="w-4 h-4" /></button>
+              </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              {[['Buyer', selected.buyer_name], ['Phone', selected.buyer_phone], ['Car', selected.listing ? `${selected.listing.brand} ${selected.listing.model}` : (selected.car_info || '—')], ['Message', selected.buyer_message], ['Status', selected.status], ['Date', selected.created_at ? new Date(selected.created_at).toLocaleString('en-MY') : '—']].map(([k, v]) => (
-                <div key={k} style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{k}</p>
-                  <p style={{ fontSize: 13, color: '#f3f4f6', margin: 0 }}>{v || '—'}</p>
+
+            {/* Drawer body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', WebkitOverflowScrolling: 'touch' }}>
+
+              {/* Key info grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                {[
+                  ['Phone', selected.buyer_phone],
+                  ['Date', selected.created_at ? new Date(selected.created_at).toLocaleDateString('en-MY') : '—'],
+                  ['Source', selected.source || selected.ref_slug || '—'],
+                  ['Price', selected.listing?.selling_price ? `RM ${Number(selected.listing.selling_price).toLocaleString()}` : '—'],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 12px' }}>
+                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>{k}</p>
+                    <p style={{ fontSize: 13, color: '#f3f4f6', margin: 0, fontWeight: 500 }}>{v || '—'}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Buyer message */}
+              {selected.buyer_message && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px', marginBottom: 16 }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Their message</p>
+                  <p style={{ fontSize: 13, color: '#d1d5db', margin: 0, lineHeight: 1.6 }}>{selected.buyer_message}</p>
                 </div>
-              ))}
-              <div style={{ marginTop: 16 }}>
+              )}
+
+              {/* Status selector */}
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Status</p>
+                <select
+                  value={selected.status || 'new'}
+                  onChange={ev => updateStatus(selected.id, ev.target.value)}
+                  style={{ width: '100%', fontSize: 13, fontWeight: 600, background: statusMeta[selected.status || 'new']?.bg, color: statusMeta[selected.status || 'new']?.color, border: `1px solid ${statusMeta[selected.status || 'new']?.border}`, borderRadius: 8, padding: '10px 12px', cursor: 'pointer', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+                >
+                  {Object.keys(statusMeta).map(s => <option key={s} value={s} style={{ background: '#111118', color: '#fff' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div style={{ marginBottom: 20 }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Notes</p>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Add notes about this enquiry..." className={taCls} />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes about this enquiry..." className={taCls} />
                 <button onClick={saveNotes} disabled={savingNotes} className="mt-2 w-full px-4 py-2 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{savingNotes ? 'Saving...' : 'Save Notes'}</button>
               </div>
-              {/* Follow-up WhatsApp message */}
+
+              {/* WhatsApp follow-up */}
               {selected.buyer_phone && (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', marginBottom: 20 }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Follow-up Message</p>
-                  <textarea
-                    value={editedMsg}
-                    onChange={e => setEditedMsg(e.target.value)}
-                    rows={6}
-                    placeholder="WhatsApp message…"
-                    className={taCls}
-                  />
+                  <textarea value={editedMsg} onChange={e => setEditedMsg(e.target.value)} rows={5} placeholder="WhatsApp message…" className={taCls} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button
                       onClick={() => handleWhatsApp(selected)}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 10, color: '#4ade80', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 12px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 10, color: '#4ade80', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
                     >
-                      <MessageCircle style={{ width: 14, height: 14 }} />
+                      <MessageCircle style={{ width: 15, height: 15 }} />
                       WhatsApp {selected.buyer_name?.split(' ')[0] || ''} ↗
                     </button>
                     <button
                       onClick={saveTemplate}
                       disabled={templateSaving}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#9ca3af', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '11px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#9ca3af', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}
                     >
                       <Save style={{ width: 12, height: 12 }} />
-                      {templateSaving ? 'Saving…' : 'Save default'}
+                      {templateSaving ? 'Saving…' : 'Save as default'}
                     </button>
                   </div>
                 </div>
               )}
+
               {/* Document shortcuts */}
               {onOpenDoc && (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Generate Document</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button onClick={() => onOpenDoc({ doc_type: 'Deposit Receipt', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, cursor: 'pointer', color: '#fbbf24', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
-                      <FileText style={{ width: 14, height: 14 }} />
-                      Generate Deposit Receipt
+                    <button onClick={() => onOpenDoc({ doc_type: 'Deposit Receipt', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, cursor: 'pointer', color: '#fbbf24', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans',sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} /> Generate Deposit Receipt
                     </button>
-                    <button onClick={() => onOpenDoc({ doc_type: 'Sales Agreement', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, cursor: 'pointer', color: '#60a5fa', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif" }}>
-                      <FileText style={{ width: 14, height: 14 }} />
-                      Generate Sales Agreement
+                    <button onClick={() => onOpenDoc({ doc_type: 'Sales Agreement', buyer_name: selected.buyer_name || '', buyer_phone: selected.phone || '', listing_id: selected.listing_id || '' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, cursor: 'pointer', color: '#60a5fa', fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans',sans-serif" }}>
+                      <FileText style={{ width: 14, height: 14 }} /> Generate Sales Agreement
                     </button>
                   </div>
                 </div>
@@ -5164,6 +5391,7 @@ export default function DashboardPage() {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [salesmen,         setSalesmen]         = useState([]);
@@ -5436,15 +5664,16 @@ export default function DashboardPage() {
   };
 
   const filteredListings = useMemo(() => {
-    if (!searchQuery.trim()) return listings;
+    let result = listings.filter((l) => (l.status || "active") === statusFilter);
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase();
-    return listings.filter((l) =>
+    return result.filter((l) =>
       (l.brand || "").toLowerCase().includes(q) ||
       (l.model || "").toLowerCase().includes(q) ||
       (l.variant || "").toLowerCase().includes(q) ||
       (l.vin_number || "").toLowerCase().includes(q)
     );
-  }, [listings, searchQuery]);
+  }, [listings, searchQuery, statusFilter]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6136,11 +6365,11 @@ export default function DashboardPage() {
                 <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#dc2626', filter: 'blur(100px)', opacity: 0.03, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
                 <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
                       <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
-                        {filteredListings.length}{searchQuery.trim() && listings.length !== filteredListings.length ? ` of ${listings.length}` : ''}
+                        {filteredListings.length}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -6168,17 +6397,54 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* ── Status filter tabs ── */}
+                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {[
+                      { key: 'active',   label: 'Active',   count: listings.filter(l => (l.status || 'active') === 'active').length },
+                      { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
+                      { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
+                    ].map(({ key, label, count }) => (
+                      <button
+                        key={key}
+                        onClick={() => setStatusFilter(key)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          padding: '10px 16px', fontSize: 13, fontWeight: 500,
+                          fontFamily: "'DM Sans', sans-serif",
+                          color: statusFilter === key ? '#f3f4f6' : '#6b7280',
+                          borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
+                          marginBottom: -1,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          transition: 'color 0.15s',
+                        }}
+                      >
+                        {label}
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.05)',
+                          color: statusFilter === key ? '#ef4444' : '#4b5563',
+                        }}>
+                          {count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
                 {loading ? (
                   <div style={{ padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</div>
-                ) : listings.length === 0 ? (
+                ) : filteredListings.length === 0 ? (
                   <div style={{ padding: 48, textAlign: 'center' }}>
                     <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                       <Car style={{ width: 24, height: 24, color: 'rgba(59,130,246,0.4)' }} />
                     </div>
-                    <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>No listings yet</p>
-                    <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
-                      Add your first car
-                    </button>
+                    <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>
+                      {listings.length === 0 ? 'No listings yet' : `No ${statusFilter} listings`}
+                    </p>
+                    {listings.length === 0 && (
+                      <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
+                        Add your first car
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <>
