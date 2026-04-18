@@ -3070,13 +3070,13 @@ function TeamTab({ managerDealership, dealerId }) {
           setMsgSending(true);
           const inserts = recipients.map(s => ({
             salesman_id: s.id,
-            dealer_id: dealerId,
             type: 'broadcast',
             title: '📢 Message from Owner',
             body: msgText.trim(),
           }));
-          await supabase.from('salesman_notifications').insert(inserts);
+          const { error } = await supabase.from('salesman_notifications').insert(inserts);
           setMsgSending(false);
+          if (error) { alert('Failed to send: ' + error.message); return; }
           setMsgDone(true);
           setMsgText('');
           setTimeout(() => setMsgDone(false), 3000);
