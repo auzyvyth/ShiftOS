@@ -40,10 +40,11 @@ const STYLES = `
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(8,8,16,0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(8,10,20,0.5);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.06);
   }
   .shiftos-btn-red {
     background: linear-gradient(135deg, #dc2626, #b91c1c);
@@ -81,21 +82,47 @@ const STYLES = `
   }
   .shiftos-btn-ghost:hover { background: rgba(255,255,255,0.1); }
   .shiftos-feature-card {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 16px;
     padding: 24px;
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.25s, background 0.25s;
+    position: relative;
+    isolation: isolate;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .shiftos-feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, transparent 50%);
+    pointer-events: none;
   }
   .shiftos-feature-card:hover {
-    border-color: rgba(220,38,38,0.3);
-    background: rgba(255,255,255,0.07);
+    border-color: rgba(220,38,38,0.35);
+    background: rgba(255,255,255,0.09);
   }
   .shiftos-pain-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(255,255,255,0.13);
+    border-radius: 16px;
     padding: 28px 24px;
+    position: relative;
+    isolation: isolate;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 4px 20px rgba(0,0,0,0.28);
+  }
+  .shiftos-pain-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255,255,255,0.07) 0%, transparent 50%);
+    pointer-events: none;
   }
   .shiftos-heading {
     font-family: 'Bebas Neue', sans-serif;
@@ -110,6 +137,19 @@ const STYLES = `
   .shiftos-pricing-card {
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    isolation: isolate;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 8px 32px rgba(0,0,0,0.35);
+  }
+  .shiftos-pricing-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
   }
   .shiftos-pricing-card::after {
     content: '';
@@ -130,6 +170,25 @@ const STYLES = `
     0%   { left: -60%; }
     50%  { left: 130%; }
     100% { left: 130%; }
+  }
+  .shiftos-liquid {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(255,255,255,0.13);
+    border-radius: 16px;
+    position: relative;
+    isolation: isolate;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .shiftos-liquid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.01) 55%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
   }
   @media (max-width: 768px) {
     .shiftos-features-grid { grid-template-columns: 1fr !important; }
@@ -342,7 +401,7 @@ export default function ShiftOSPage() {
   };
 
   const waLink =
-    "https://wa.me/60112345678?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+    "https://wa.me/60174155191?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
 
   return (
     <div className="shiftos-page">
@@ -747,12 +806,10 @@ export default function ShiftOSPage() {
         {/* ── Stats Strip ── */}
         <section style={{ padding: "0 24px 80px" }}>
           <div
+            className="shiftos-liquid"
             style={{
               maxWidth: 1100,
               margin: "0 auto",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 8,
               overflow: "hidden",
             }}
           >
@@ -1032,12 +1089,10 @@ export default function ShiftOSPage() {
           style={{ padding: "0 24px 80px" }}
         >
           <div
+            className="shiftos-liquid"
             style={{
               maxWidth: 760,
               margin: "0 auto",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8,
               padding: "60px 40px",
               textAlign: "center",
             }}
