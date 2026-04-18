@@ -563,10 +563,11 @@ const HomePage = () => {
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
             : 'XDrive — Buy & Sell Used Cars in Malaysia'}
         </title>
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="description" content={
           profile
             ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
-            : "Malaysia's trusted used car marketplace. Browse hundreds of verified listings from top dealers."
+            : 'Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive.'
         } />
         <meta property="og:title" content={
           profile
@@ -576,6 +577,22 @@ const HomePage = () => {
         <meta property="og:image" content={profile?.site_logo_url || 'https://xdrive.my/og-default.jpg'} />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="canonical" href="https://xdrive.my" />
+        {!profile && (
+          <script type="application/ld+json">{JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "XDrive",
+            "url": "https://xdrive.my",
+            "logo": "https://xdrive.my/xdrivelogo.png",
+            "description": "Buy and sell verified used cars in Malaysia",
+            "areaServed": "MY",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "Customer Service",
+              "availableLanguage": ["en", "ms"]
+            }
+          })}</script>
+        )}
       </Helmet>
 
       <Header />

@@ -412,7 +412,8 @@ export default function CarDetailPage() {
     <>
       <Helmet>
         <title>{car ? `${car.year} ${car.brand} ${car.model} for sale in Malaysia | ${siteName}` : `Car Listing | ${siteName}`}</title>
-        <meta name="description" content={car ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''} — ${car.mileage ? `${Number(car.mileage).toLocaleString('en-MY')} km, ` : ''}RM ${Number(car.selling_price).toLocaleString('en-MY')}. Available at ${siteName}.` : ''} />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta name="description" content={car ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString('en-MY')}, ${car.mileage ? `${Number(car.mileage).toLocaleString('en-MY')}km, ` : ''}${car.transmission || ''}. Verified dealer on XDrive.` : ''} />
         {car && <link rel="canonical" href={`https://xdrive.my/cars/${car.slug}`} />}
         {car && (
           <script type="application/ld+json">{JSON.stringify({

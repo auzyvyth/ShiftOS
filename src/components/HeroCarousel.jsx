@@ -958,10 +958,10 @@ export default function HeroCarousel({ siteName, waNumber }) {
                       {badge || "Verified Listing"}
                     </span>
                   </div>
-                  <h1 className="hc-car-name hc-syne">
+                  <h2 className="hc-car-name hc-syne">
                     {s.year && <span className="hc-year-accent">{s.year} </span>}
                     {s.car_name}
-                  </h1>
+                  </h2>
                   {/* Desktop: meta/price/ctas inline */}
                   <MetaBlock />
                 </div>
