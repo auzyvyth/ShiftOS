@@ -137,23 +137,27 @@ export default function SalesmanPanel() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error || !data.session) {
+        setLoading(false);
         navigate("/login");
         return;
       }
 
-      setUserId(data.session.user.id); // Update the userId state with the authenticated user's ID
-      const { data: profileData } = await supabase
+      setUserId(data.session.user.id);
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", data.session.user.id) // Use the ID directly from the session
+        .eq("id", data.session.user.id)
         .maybeSingle();
 
-      if (!profileData) {
+      if (profileError || !profileData) {
+        setLoading(false);
         navigate("/login");
         return;
       }
-      setProfile(profileData); // Set the profile state
-      if (redirectByRole(profileData.role)) return;
+      if (redirectByRole(profileData.role)) {
+        setLoading(false);
+        return;
+      }
 
       setProfile(profileData);
       setLoading(false);
