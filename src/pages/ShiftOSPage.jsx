@@ -328,6 +328,15 @@ function spawnEmojis(container, emojis) {
 // ─── Network Animation ────────────────────────────────────────────────────────
 function NetworkAnimation() {
   const svgRef = useRef(null);
+  const [isMobile, setIsMobile] = React.useState(
+    typeof window !== "undefined" && window.innerWidth < 768
+  );
+
+  React.useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -375,12 +384,86 @@ function NetworkAnimation() {
       cancelAnimationFrame(raf);
       ballLayer.innerHTML = "";
     };
-  }, []);
+  }, [isMobile]);
 
   const lPills = ["Stock Units", "Walk-in Leads", "WhatsApp Enquiries", "Test Drive Bookings"];
   const rPills = ["Car Listings", "TikTok Content", "Documents", "Analytics"];
-  const ys = [75, 165, 255, 345];
 
+  const svgDefs = (
+    <defs>
+      <filter id="sos-glow-red">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
+        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+      </filter>
+      <filter id="sos-glow-blue">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
+        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+      </filter>
+    </defs>
+  );
+
+  if (isMobile) {
+    const mLCX = 64, mRCX = 296;
+    const mPillW = 116, mPillH = 28;
+    const mHubCX = 180, mHubCY = 200, mHubW = 92, mHubH = 46;
+    const mYs = [82, 152, 224, 296];
+    const mLRX = mLCX + mPillW / 2;
+    const mRLX = mRCX - mPillW / 2;
+    const mHLX = mHubCX - mHubW / 2;
+    const mHRX = mHubCX + mHubW / 2;
+
+    return (
+      <div style={{ width: "100%", margin: "0 auto 8px" }}>
+        <svg ref={svgRef} viewBox="0 0 360 378" width="100%" style={{ display: "block" }}>
+          {svgDefs}
+
+          <text x={mLCX} y={30} textAnchor="middle" fill="#374151" fontSize="8" fontFamily="'DM Sans',sans-serif" letterSpacing="2">INPUTS</text>
+          <text x={mRCX} y={30} textAnchor="middle" fill="#374151" fontSize="8" fontFamily="'DM Sans',sans-serif" letterSpacing="2">OUTPUTS</text>
+
+          {mYs.map((y, i) => (
+            <path key={`lp${i}`} className="sos-lp"
+              d={`M ${mLRX} ${y} C ${mLRX + 48} ${y} ${mHLX} ${mHubCY} ${mHLX} ${mHubCY}`}
+              fill="none" stroke="rgba(220,38,38,0.22)" strokeWidth="1.5" strokeDasharray="4 4" />
+          ))}
+
+          {mYs.map((y, i) => (
+            <path key={`rp${i}`} className="sos-rp"
+              d={`M ${mHRX} ${mHubCY} C ${mHRX} ${y} ${mRLX - 48} ${y} ${mRLX} ${y}`}
+              fill="none" stroke="rgba(74,144,217,0.22)" strokeWidth="1.5" strokeDasharray="4 4" />
+          ))}
+
+          {lPills.map((label, i) => (
+            <g key={`lpill${i}`}>
+              <rect x={mLCX - mPillW / 2} y={mYs[i] - mPillH / 2} width={mPillW} height={mPillH} rx={mPillH / 2}
+                fill="rgba(220,38,38,0.07)" stroke="rgba(220,38,38,0.3)" strokeWidth="1" />
+              <text x={mLCX} y={mYs[i] + 1} textAnchor="middle" dominantBaseline="middle"
+                fill="#fca5a5" fontSize="8.5" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+            </g>
+          ))}
+
+          {rPills.map((label, i) => (
+            <g key={`rpill${i}`}>
+              <rect x={mRCX - mPillW / 2} y={mYs[i] - mPillH / 2} width={mPillW} height={mPillH} rx={mPillH / 2}
+                fill="rgba(74,144,217,0.07)" stroke="rgba(74,144,217,0.3)" strokeWidth="1" />
+              <text x={mRCX} y={mYs[i] + 1} textAnchor="middle" dominantBaseline="middle"
+                fill="#93c5fd" fontSize="8.5" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+            </g>
+          ))}
+
+          <rect x={mHLX} y={mHubCY - mHubH / 2} width={mHubW} height={mHubH} rx="8"
+            fill="rgba(220,38,38,0.1)" stroke="rgba(220,38,38,0.5)" strokeWidth="1.5" />
+          <text x={mHubCX} y={mHubCY - 7} textAnchor="middle" dominantBaseline="middle"
+            fill="white" fontSize="13" fontFamily="'Bebas Neue',sans-serif" letterSpacing="2">ShiftOS</text>
+          <text x={mHubCX} y={mHubCY + 11} textAnchor="middle" dominantBaseline="middle"
+            fill="#6b7280" fontSize="8" fontFamily="'DM Sans',sans-serif">by XDrive</text>
+
+          <g className="sos-balls" />
+        </svg>
+      </div>
+    );
+  }
+
+  const ys = [75, 165, 255, 345];
   const lCX = 150, rCX = 750;
   const pillW = 148, pillH = 30;
   const hubCX = 450, hubCY = 210;
@@ -393,16 +476,7 @@ function NetworkAnimation() {
   return (
     <div style={{ width: "100%", maxWidth: 900, margin: "0 auto 8px" }}>
       <svg ref={svgRef} viewBox="0 0 900 420" width="100%" style={{ display: "block" }}>
-        <defs>
-          <filter id="sos-glow-red">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="sos-glow-blue">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
+        {svgDefs}
 
         <text x={lCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">INPUTS</text>
         <text x={rCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">OUTPUTS</text>
