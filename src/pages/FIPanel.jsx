@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Bell } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
 
@@ -10,6 +11,8 @@ export default function FIPanel() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeNav, setActiveNav] = useState('deals');
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -20,6 +23,15 @@ export default function FIPanel() {
       if (!p || p.role !== 'fi_officer') { navigate('/login'); return; }
       setProfile(p);
       setLoading(false);
+      const loadNotifs = () =>
+        supabase.from('salesman_notifications').select('*')
+          .eq('salesman_id', p.id).order('created_at', { ascending: false }).limit(20)
+          .then(({ data: d }) => setNotifications(d || []));
+      loadNotifs();
+      const ch = supabase.channel('fi_notifs_' + p.id)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'salesman_notifications', filter: `salesman_id=eq.${p.id}` }, loadNotifs)
+        .subscribe();
+      return () => supabase.removeChannel(ch);
     });
   }, [navigate]);
 
@@ -43,6 +55,43 @@ export default function FIPanel() {
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT }} />
         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 3, color: ACCENT }}>F&amp;I PANEL</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: '#6b7280' }}>{profile?.full_name}</span>
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setNotifOpen(p => !p)} style={{ position: 'relative', padding: 6, borderRadius: 8, background: notifications.some(n => !n.is_read) ? 'rgba(168,85,247,0.1)' : 'transparent', border: notifications.some(n => !n.is_read) ? '1px solid rgba(168,85,247,0.25)' : '1px solid transparent', color: notifications.some(n => !n.is_read) ? '#c084fc' : '#6b7280', cursor: 'pointer', display: 'flex' }}>
+            <Bell style={{ width: 16, height: 16 }} />
+            {notifications.filter(n => !n.is_read).length > 0 && (
+              <span style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, background: ACCENT, color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #05070e' }}>
+                {notifications.filter(n => !n.is_read).length > 9 ? '9+' : notifications.filter(n => !n.is_read).length}
+              </span>
+            )}
+          </button>
+          {notifOpen && (
+            <>
+              <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+              <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 300, maxHeight: 380, overflowY: 'auto', background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans',sans-serif" }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+                  {notifications.some(n => !n.is_read) && (
+                    <button onClick={async () => { const ids = notifications.filter(n => !n.is_read).map(n => n.id); await supabase.from('salesman_notifications').update({ is_read: true }).in('id', ids); setNotifications(p => p.map(n => ({ ...n, is_read: true }))); }} style={{ fontSize: 11, color: '#c084fc', background: 'none', border: 'none', cursor: 'pointer' }}>Mark all read</button>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <p style={{ fontSize: 13, color: '#4b5563', padding: '20px', textAlign: 'center' }}>No messages yet</p>
+                ) : notifications.map(n => (
+                  <div key={n.id} onClick={async () => { if (!n.is_read) { await supabase.from('salesman_notifications').update({ is_read: true }).eq('id', n.id); setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x)); } }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: n.is_read ? 'transparent' : 'rgba(168,85,247,0.04)', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {!n.is_read && <div style={{ width: 6, height: 6, background: ACCENT, borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px' }}>{n.title || 'Message from Owner'}</p>
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 3px' }}>{n.body}</p>
+                        <p style={{ fontSize: 10, color: '#4b5563' }}>{n.created_at ? new Date(n.created_at).toLocaleDateString('en-MY') : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <button
           onClick={() => supabase.auth.signOut().then(() => navigate('/login'))}
           style={{ fontSize: 12, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}

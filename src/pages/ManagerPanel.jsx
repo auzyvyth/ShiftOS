@@ -134,6 +134,7 @@ export default function ManagerPanel() {
   const [broadcastDone, setBroadcastDone] = useState(false);
   const [assignDropdown, setAssignDropdown] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [ownerMessages, setOwnerMessages] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
   // ── Auth + fetch ──────────────────────────────────────────────────────────
@@ -204,11 +205,28 @@ export default function ManagerPanel() {
         .order("created_at", { ascending: false })
         .limit(20)
         .then(({ data: d }) => setNotifications(d || []));
+
+      const loadOwnerMsgs = () =>
+        supabase
+          .from("salesman_notifications")
+          .select("*")
+          .eq("salesman_id", p.id)
+          .order("created_at", { ascending: false })
+          .limit(20)
+          .then(({ data: d }) => setOwnerMessages(d || []));
+      loadOwnerMsgs();
+
+      const notifCh = supabase
+        .channel("manager_notifs_" + p.id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadOwnerMsgs)
+        .subscribe();
+
+      return () => supabase.removeChannel(notifCh);
     });
   }, [navigate]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
-  const unreadNotes = notifications.filter((n) => !n.is_read).length;
+  const unreadNotes = notifications.filter((n) => !n.is_read).length + ownerMessages.filter((n) => !n.is_read).length;
 
   const salesmenById = useMemo(
     () => Object.fromEntries(salesmen.map((s) => [s.id, s])),
@@ -761,71 +779,60 @@ export default function ManagerPanel() {
                     Team Messages
                   </span>
                 </div>
-                {notifications.length === 0 ? (
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: "#4b5563",
-                      padding: "20px",
-                      textAlign: "center",
-                    }}
-                  >
+                {ownerMessages.length === 0 && notifications.length === 0 ? (
+                  <p style={{ fontSize: 13, color: "#4b5563", padding: "20px", textAlign: "center" }}>
                     No messages yet
                   </p>
                 ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => handleMarkNoteRead(n)}
-                      style={{
-                        padding: "12px 16px",
-                        borderBottom: "1px solid rgba(255,255,255,0.04)",
-                        background: n.is_read
-                          ? "transparent"
-                          : "rgba(249,115,22,0.04)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {!n.is_read && (
+                  <>
+                    {ownerMessages.length > 0 && (
+                      <>
+                        <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", padding: "8px 16px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>From Owner</p>
+                        {ownerMessages.map((n) => (
                           <div
-                            style={{
-                              width: 6,
-                              height: 6,
-                              background: ACCENT,
-                              borderRadius: "50%",
-                              flexShrink: 0,
-                              marginTop: 5,
+                            key={n.id}
+                            onClick={async () => {
+                              if (!n.is_read) {
+                                await supabase.from("salesman_notifications").update({ is_read: true }).eq("id", n.id);
+                                setOwnerMessages(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+                              }
                             }}
-                          />
-                        )}
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: "#f3f4f6",
-                              margin: "0 0 2px",
-                            }}
+                            style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: n.is_read ? "transparent" : "rgba(249,115,22,0.05)", cursor: "pointer" }}
                           >
-                            {n.profiles?.full_name || "Salesman"}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "#9ca3af",
-                              margin: "0 0 3px",
-                            }}
+                            <div style={{ display: "flex", gap: 8 }}>
+                              {!n.is_read && <div style={{ width: 6, height: 6, background: ACCENT, borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />}
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6", margin: "0 0 2px" }}>{n.title || "Message from Owner"}</p>
+                                <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 3px" }}>{n.body}</p>
+                                <p style={{ fontSize: 10, color: "#4b5563" }}>{timeAgo(n.created_at)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {notifications.length > 0 && (
+                      <>
+                        <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", padding: "8px 16px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>Team Notes</p>
+                        {notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => handleMarkNoteRead(n)}
+                            style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: n.is_read ? "transparent" : "rgba(249,115,22,0.04)", cursor: "pointer" }}
                           >
-                            {n.content}
-                          </p>
-                          <p style={{ fontSize: 10, color: "#4b5563" }}>
-                            {timeAgo(n.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                            <div style={{ display: "flex", gap: 8 }}>
+                              {!n.is_read && <div style={{ width: 6, height: 6, background: ACCENT, borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />}
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6", margin: "0 0 2px" }}>{n.profiles?.full_name || "Salesman"}</p>
+                                <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 3px" }}>{n.content}</p>
+                                <p style={{ fontSize: 10, color: "#4b5563" }}>{timeAgo(n.created_at)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </>
