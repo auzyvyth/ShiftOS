@@ -319,9 +319,12 @@ function spawnEmojis(container, emojis) {
     el.style.setProperty("--dx", `${dx}px`);
     el.style.setProperty("--dy", `${dy}px`);
     container.appendChild(el);
-    setTimeout(() => {
-      if (el.parentNode) el.parentNode.removeChild(el);
-    }, 960 + i * 50);
+    setTimeout(
+      () => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      },
+      960 + i * 50,
+    );
   }
 }
 
@@ -329,7 +332,7 @@ function spawnEmojis(container, emojis) {
 function NetworkAnimation() {
   const svgRef = useRef(null);
   const [isMobile, setIsMobile] = React.useState(
-    typeof window !== "undefined" && window.innerWidth < 768
+    typeof window !== "undefined" && window.innerWidth < 768,
   );
 
   React.useEffect(() => {
@@ -357,9 +360,15 @@ function NetworkAnimation() {
     ];
 
     const circles = entries.map((e) => {
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      const c = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle",
+      );
       c.setAttribute("r", "4");
-      c.setAttribute("filter", `url(#sos-glow-${e.side === "L" ? "red" : "blue"})`);
+      c.setAttribute(
+        "filter",
+        `url(#sos-glow-${e.side === "L" ? "red" : "blue"})`,
+      );
       ballLayer.appendChild(c);
       return c;
     });
@@ -386,26 +395,42 @@ function NetworkAnimation() {
     };
   }, [isMobile]);
 
-  const lPills = ["Stock Units", "Walk-in Leads", "WhatsApp Enquiries", "Test Drive Bookings"];
+  const lPills = [
+    "Stock Units",
+    "Walk-in Leads",
+    "WhatsApp Enquiries",
+    "Test Drive Bookings",
+  ];
   const rPills = ["Car Listings", "TikTok Content", "Documents", "Analytics"];
 
   const svgDefs = (
     <defs>
       <filter id="sos-glow-red">
         <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
-        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
       </filter>
       <filter id="sos-glow-blue">
         <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b" />
-        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
       </filter>
     </defs>
   );
 
   if (isMobile) {
-    const mLCX = 64, mRCX = 296;
-    const mPillW = 116, mPillH = 28;
-    const mHubCX = 180, mHubCY = 200, mHubW = 92, mHubH = 46;
+    const mLCX = 64,
+      mRCX = 296;
+    const mPillW = 116,
+      mPillH = 28;
+    const mHubCX = 180,
+      mHubCY = 200,
+      mHubW = 92,
+      mHubH = 46;
     const mYs = [82, 152, 224, 296];
     const mLRX = mLCX + mPillW / 2;
     const mRLX = mRCX - mPillW / 2;
@@ -414,48 +439,148 @@ function NetworkAnimation() {
 
     return (
       <div style={{ width: "100%", margin: "0 auto 8px" }}>
-        <svg ref={svgRef} viewBox="0 0 360 378" width="100%" style={{ display: "block" }}>
+        <svg
+          ref={svgRef}
+          viewBox="0 0 360 378"
+          width="100%"
+          style={{ display: "block" }}
+        >
           {svgDefs}
 
-          <text x={mLCX} y={30} textAnchor="middle" fill="#374151" fontSize="8" fontFamily="'DM Sans',sans-serif" letterSpacing="2">INPUTS</text>
-          <text x={mRCX} y={30} textAnchor="middle" fill="#374151" fontSize="8" fontFamily="'DM Sans',sans-serif" letterSpacing="2">OUTPUTS</text>
+          <text
+            x={mLCX}
+            y={30}
+            textAnchor="middle"
+            fill="#374151"
+            fontSize="8"
+            fontFamily="'DM Sans',sans-serif"
+            letterSpacing="2"
+          >
+            INPUTS
+          </text>
+          <text
+            x={mRCX}
+            y={30}
+            textAnchor="middle"
+            fill="#374151"
+            fontSize="8"
+            fontFamily="'DM Sans',sans-serif"
+            letterSpacing="2"
+          >
+            OUTPUTS
+          </text>
 
           {mYs.map((y, i) => (
-            <path key={`lp${i}`} className="sos-lp"
+            <path
+              key={`lp${i}`}
+              className="sos-lp"
               d={`M ${mLRX} ${y} C ${mLRX + 48} ${y} ${mHLX} ${mHubCY} ${mHLX} ${mHubCY}`}
-              fill="none" stroke="rgba(220,38,38,0.22)" strokeWidth="1.5" strokeDasharray="4 4" />
+              fill="none"
+              stroke="rgba(220,38,38,0.22)"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
           ))}
 
           {mYs.map((y, i) => (
-            <path key={`rp${i}`} className="sos-rp"
+            <path
+              key={`rp${i}`}
+              className="sos-rp"
               d={`M ${mHRX} ${mHubCY} C ${mHRX} ${y} ${mRLX - 48} ${y} ${mRLX} ${y}`}
-              fill="none" stroke="rgba(74,144,217,0.22)" strokeWidth="1.5" strokeDasharray="4 4" />
+              fill="none"
+              stroke="rgba(74,144,217,0.22)"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
           ))}
 
           {lPills.map((label, i) => (
             <g key={`lpill${i}`}>
-              <rect x={mLCX - mPillW / 2} y={mYs[i] - mPillH / 2} width={mPillW} height={mPillH} rx={mPillH / 2}
-                fill="rgba(220,38,38,0.07)" stroke="rgba(220,38,38,0.3)" strokeWidth="1" />
-              <text x={mLCX} y={mYs[i] + 1} textAnchor="middle" dominantBaseline="middle"
-                fill="#fca5a5" fontSize="8.5" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+              <rect
+                x={mLCX - mPillW / 2}
+                y={mYs[i] - mPillH / 2}
+                width={mPillW}
+                height={mPillH}
+                rx={mPillH / 2}
+                fill="rgba(220,38,38,0.07)"
+                stroke="rgba(220,38,38,0.3)"
+                strokeWidth="1"
+              />
+              <text
+                x={mLCX}
+                y={mYs[i] + 1}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#fca5a5"
+                fontSize="8.5"
+                fontFamily="'DM Sans',sans-serif"
+                fontWeight="500"
+              >
+                {label}
+              </text>
             </g>
           ))}
 
           {rPills.map((label, i) => (
             <g key={`rpill${i}`}>
-              <rect x={mRCX - mPillW / 2} y={mYs[i] - mPillH / 2} width={mPillW} height={mPillH} rx={mPillH / 2}
-                fill="rgba(74,144,217,0.07)" stroke="rgba(74,144,217,0.3)" strokeWidth="1" />
-              <text x={mRCX} y={mYs[i] + 1} textAnchor="middle" dominantBaseline="middle"
-                fill="#93c5fd" fontSize="8.5" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+              <rect
+                x={mRCX - mPillW / 2}
+                y={mYs[i] - mPillH / 2}
+                width={mPillW}
+                height={mPillH}
+                rx={mPillH / 2}
+                fill="rgba(74,144,217,0.07)"
+                stroke="rgba(74,144,217,0.3)"
+                strokeWidth="1"
+              />
+              <text
+                x={mRCX}
+                y={mYs[i] + 1}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#93c5fd"
+                fontSize="8.5"
+                fontFamily="'DM Sans',sans-serif"
+                fontWeight="500"
+              >
+                {label}
+              </text>
             </g>
           ))}
 
-          <rect x={mHLX} y={mHubCY - mHubH / 2} width={mHubW} height={mHubH} rx="8"
-            fill="rgba(220,38,38,0.1)" stroke="rgba(220,38,38,0.5)" strokeWidth="1.5" />
-          <text x={mHubCX} y={mHubCY - 7} textAnchor="middle" dominantBaseline="middle"
-            fill="white" fontSize="13" fontFamily="'Bebas Neue',sans-serif" letterSpacing="2">ShiftOS</text>
-          <text x={mHubCX} y={mHubCY + 11} textAnchor="middle" dominantBaseline="middle"
-            fill="#6b7280" fontSize="8" fontFamily="'DM Sans',sans-serif">by XDrive</text>
+          <rect
+            x={mHLX}
+            y={mHubCY - mHubH / 2}
+            width={mHubW}
+            height={mHubH}
+            rx="8"
+            fill="rgba(220,38,38,0.1)"
+            stroke="rgba(220,38,38,0.5)"
+            strokeWidth="1.5"
+          />
+          <text
+            x={mHubCX}
+            y={mHubCY - 7}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontSize="13"
+            fontFamily="'Bebas Neue',sans-serif"
+            letterSpacing="2"
+          >
+            ShiftOS
+          </text>
+          <text
+            x={mHubCX}
+            y={mHubCY + 11}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#6b7280"
+            fontSize="8"
+            fontFamily="'DM Sans',sans-serif"
+          >
+            by XDrive
+          </text>
 
           <g className="sos-balls" />
         </svg>
@@ -464,10 +589,14 @@ function NetworkAnimation() {
   }
 
   const ys = [75, 165, 255, 345];
-  const lCX = 150, rCX = 750;
-  const pillW = 148, pillH = 30;
-  const hubCX = 450, hubCY = 210;
-  const hubW = 110, hubH = 50;
+  const lCX = 150,
+    rCX = 750;
+  const pillW = 148,
+    pillH = 30;
+  const hubCX = 450,
+    hubCY = 210;
+  const hubW = 110,
+    hubH = 50;
   const lRX = lCX + pillW / 2;
   const rLX = rCX - pillW / 2;
   const hLX = hubCX - hubW / 2;
@@ -475,48 +604,148 @@ function NetworkAnimation() {
 
   return (
     <div style={{ width: "100%", maxWidth: 900, margin: "0 auto 8px" }}>
-      <svg ref={svgRef} viewBox="0 0 900 420" width="100%" style={{ display: "block" }}>
+      <svg
+        ref={svgRef}
+        viewBox="0 0 900 420"
+        width="100%"
+        style={{ display: "block" }}
+      >
         {svgDefs}
 
-        <text x={lCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">INPUTS</text>
-        <text x={rCX} y={28} textAnchor="middle" fill="#374151" fontSize="9" fontFamily="'DM Sans',sans-serif" letterSpacing="2">OUTPUTS</text>
+        <text
+          x={lCX}
+          y={28}
+          textAnchor="middle"
+          fill="#374151"
+          fontSize="9"
+          fontFamily="'DM Sans',sans-serif"
+          letterSpacing="2"
+        >
+          INPUTS
+        </text>
+        <text
+          x={rCX}
+          y={28}
+          textAnchor="middle"
+          fill="#374151"
+          fontSize="9"
+          fontFamily="'DM Sans',sans-serif"
+          letterSpacing="2"
+        >
+          OUTPUTS
+        </text>
 
         {ys.map((y, i) => (
-          <path key={`lp${i}`} className="sos-lp"
+          <path
+            key={`lp${i}`}
+            className="sos-lp"
             d={`M ${lRX} ${y} C ${lRX + 86} ${y} ${hLX} ${hubCY} ${hLX} ${hubCY}`}
-            fill="none" stroke="rgba(220,38,38,0.22)" strokeWidth="1.5" strokeDasharray="5 5" />
+            fill="none"
+            stroke="rgba(220,38,38,0.22)"
+            strokeWidth="1.5"
+            strokeDasharray="5 5"
+          />
         ))}
 
         {ys.map((y, i) => (
-          <path key={`rp${i}`} className="sos-rp"
+          <path
+            key={`rp${i}`}
+            className="sos-rp"
             d={`M ${hRX} ${hubCY} C ${hRX} ${y} ${rLX - 86} ${y} ${rLX} ${y}`}
-            fill="none" stroke="rgba(74,144,217,0.22)" strokeWidth="1.5" strokeDasharray="5 5" />
+            fill="none"
+            stroke="rgba(74,144,217,0.22)"
+            strokeWidth="1.5"
+            strokeDasharray="5 5"
+          />
         ))}
 
         {lPills.map((label, i) => (
           <g key={`lpill${i}`}>
-            <rect x={lCX - pillW / 2} y={ys[i] - pillH / 2} width={pillW} height={pillH} rx={pillH / 2}
-              fill="rgba(220,38,38,0.07)" stroke="rgba(220,38,38,0.3)" strokeWidth="1" />
-            <text x={lCX} y={ys[i] + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="#fca5a5" fontSize="11" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+            <rect
+              x={lCX - pillW / 2}
+              y={ys[i] - pillH / 2}
+              width={pillW}
+              height={pillH}
+              rx={pillH / 2}
+              fill="rgba(220,38,38,0.07)"
+              stroke="rgba(220,38,38,0.3)"
+              strokeWidth="1"
+            />
+            <text
+              x={lCX}
+              y={ys[i] + 1}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#fca5a5"
+              fontSize="11"
+              fontFamily="'DM Sans',sans-serif"
+              fontWeight="500"
+            >
+              {label}
+            </text>
           </g>
         ))}
 
         {rPills.map((label, i) => (
           <g key={`rpill${i}`}>
-            <rect x={rCX - pillW / 2} y={ys[i] - pillH / 2} width={pillW} height={pillH} rx={pillH / 2}
-              fill="rgba(74,144,217,0.07)" stroke="rgba(74,144,217,0.3)" strokeWidth="1" />
-            <text x={rCX} y={ys[i] + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="#93c5fd" fontSize="11" fontFamily="'DM Sans',sans-serif" fontWeight="500">{label}</text>
+            <rect
+              x={rCX - pillW / 2}
+              y={ys[i] - pillH / 2}
+              width={pillW}
+              height={pillH}
+              rx={pillH / 2}
+              fill="rgba(74,144,217,0.07)"
+              stroke="rgba(74,144,217,0.3)"
+              strokeWidth="1"
+            />
+            <text
+              x={rCX}
+              y={ys[i] + 1}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#93c5fd"
+              fontSize="11"
+              fontFamily="'DM Sans',sans-serif"
+              fontWeight="500"
+            >
+              {label}
+            </text>
           </g>
         ))}
 
-        <rect x={hLX} y={hubCY - hubH / 2} width={hubW} height={hubH} rx="8"
-          fill="rgba(220,38,38,0.1)" stroke="rgba(220,38,38,0.5)" strokeWidth="1.5" />
-        <text x={hubCX} y={hubCY - 7} textAnchor="middle" dominantBaseline="middle"
-          fill="white" fontSize="14" fontFamily="'Bebas Neue',sans-serif" letterSpacing="2">ShiftOS</text>
-        <text x={hubCX} y={hubCY + 11} textAnchor="middle" dominantBaseline="middle"
-          fill="#6b7280" fontSize="9" fontFamily="'DM Sans',sans-serif">by XDrive</text>
+        <rect
+          x={hLX}
+          y={hubCY - hubH / 2}
+          width={hubW}
+          height={hubH}
+          rx="8"
+          fill="rgba(220,38,38,0.1)"
+          stroke="rgba(220,38,38,0.5)"
+          strokeWidth="1.5"
+        />
+        <text
+          x={hubCX}
+          y={hubCY - 7}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="white"
+          fontSize="14"
+          fontFamily="'Bebas Neue',sans-serif"
+          letterSpacing="2"
+        >
+          ShiftOS
+        </text>
+        <text
+          x={hubCX}
+          y={hubCY + 11}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#6b7280"
+          fontSize="9"
+          fontFamily="'DM Sans',sans-serif"
+        >
+          by XDrive
+        </text>
 
         <g className="sos-balls" />
       </svg>
@@ -534,7 +763,9 @@ function PainCard({ Icon, title, desc, emojis }) {
     if (!cardRef.current || cooldown.current) return;
     cooldown.current = true;
     spawnEmojis(cardRef.current, emojis);
-    setTimeout(() => { cooldown.current = false; }, 1100);
+    setTimeout(() => {
+      cooldown.current = false;
+    }, 1100);
   }, [emojis]);
 
   useEffect(() => {
@@ -549,7 +780,7 @@ function PainCard({ Icon, title, desc, emojis }) {
           obs.disconnect();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.5 },
     );
     obs.observe(card);
     return () => obs.disconnect();
@@ -560,16 +791,44 @@ function PainCard({ Icon, title, desc, emojis }) {
       ref={cardRef}
       className="shiftos-pain-card"
       style={{ overflow: "visible" }}
-      onMouseEnter={() => { if (window.innerWidth >= 768) burst(); }}
+      onMouseEnter={() => {
+        if (window.innerWidth >= 768) burst();
+      }}
       onMouseLeave={() => {
-        cardRef.current?.querySelectorAll("[data-sos-emoji]").forEach((el) => el.remove());
+        cardRef.current
+          ?.querySelectorAll("[data-sos-emoji]")
+          .forEach((el) => el.remove());
       }}
     >
-      <div style={{ width:40, height:40, borderRadius:8, background:"rgba(220,38,38,0.08)", border:"1px solid rgba(220,38,38,0.15)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 8,
+          background: "rgba(220,38,38,0.08)",
+          border: "1px solid rgba(220,38,38,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 16,
+        }}
+      >
         <Icon size={18} color="#ef4444" />
       </div>
-      <p style={{ fontSize:15, fontWeight:600, marginBottom:8, color:"white", lineHeight:1.4 }}>{title}</p>
-      <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, margin:0 }}>{desc}</p>
+      <p
+        style={{
+          fontSize: 15,
+          fontWeight: 600,
+          marginBottom: 8,
+          color: "white",
+          lineHeight: 1.4,
+        }}
+      >
+        {title}
+      </p>
+      <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
+        {desc}
+      </p>
     </div>
   );
 }
@@ -915,7 +1174,8 @@ export default function ShiftOSPage() {
             }}
           >
             Jual Lebih Banyak Kereta.{" "}
-            <span className="shiftos-red-text">Urus Semua</span> Dalam Satu Tempat.
+            <span className="shiftos-red-text">Urus Semua</span> Dalam Satu
+            Tempat.
           </h1>
 
           <p
@@ -1002,7 +1262,13 @@ export default function ShiftOSPage() {
             }}
           >
             {PAIN_POINTS.map(({ Icon, title, desc }, i) => (
-              <PainCard key={title} Icon={Icon} title={title} desc={desc} emojis={PAIN_EMOJIS[i]} />
+              <PainCard
+                key={title}
+                Icon={Icon}
+                title={title}
+                desc={desc}
+                emojis={PAIN_EMOJIS[i]}
+              />
             ))}
           </div>
         </section>

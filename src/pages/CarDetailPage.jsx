@@ -75,6 +75,49 @@ function Skeleton() {
   );
 }
 
+/* ─── structured data ─── */
+function useCarSchema(listing) {
+  useEffect(() => {
+    if (!listing) return;
+    const name = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(' ');
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Car',
+      name,
+      brand: { '@type': 'Brand', name: listing.brand },
+      model: listing.model,
+      vehicleModelDate: String(listing.year ?? ''),
+      vehicleConfiguration: listing.variant ?? undefined,
+      bodyType: listing.body_type ?? undefined,
+      vehicleTransmission: listing.transmission ?? undefined,
+      fuelType: listing.fuel_type ?? undefined,
+      color: listing.colour ?? undefined,
+      mileageFromOdometer: listing.mileage
+        ? { '@type': 'QuantitativeValue', value: listing.mileage, unitCode: 'KMT' }
+        : undefined,
+      image: listing.images ?? undefined,
+      url: `https://xdrive.my/cars/${listing.slug}`,
+      offers: {
+        '@type': 'Offer',
+        price: listing.selling_price,
+        priceCurrency: 'MYR',
+        availability: listing.status === 'available'
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/SoldOut',
+        itemCondition: listing.is_recon
+          ? 'https://schema.org/RefurbishedCondition'
+          : 'https://schema.org/UsedCondition',
+      },
+    };
+    const el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = 'car-schema';
+    el.textContent = JSON.stringify(JSON.parse(JSON.stringify(schema)));
+    document.head.appendChild(el);
+    return () => { document.getElementById('car-schema')?.remove(); };
+  }, [listing?.id]);
+}
+
 /* ─── main ─── */
 export default function CarDetailPage() {
   const { slug }  = useParams();
@@ -256,6 +299,8 @@ export default function CarDetailPage() {
     load();
   }, [slug]);
 
+  useCarSchema(car);
+
   /* ── car_view analytics — fires once per car after data loads ── */
   useEffect(() => {
     if (!car) return;
@@ -415,32 +460,6 @@ export default function CarDetailPage() {
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="description" content={car ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString('en-MY')}, ${car.mileage ? `${Number(car.mileage).toLocaleString('en-MY')}km, ` : ''}${car.transmission || ''}. Verified dealer on XDrive.` : ''} />
         {car && <link rel="canonical" href={`https://xdrive.my/cars/${car.slug}`} />}
-        {car && (
-          <script type="application/ld+json">{JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Car",
-            "name": `${car.brand} ${car.model}`,
-            "modelDate": String(car.year),
-            "mileageFromOdometer": {
-              "@type": "QuantitativeValue",
-              "value": car.mileage,
-              "unitCode": "KMT"
-            },
-            "description": car.description || `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
-            "image": Array.isArray(car.images) && car.images[0] ? car.images[0] : undefined,
-            "offers": {
-              "@type": "Offer",
-              "price": car.selling_price,
-              "priceCurrency": "MYR",
-              "availability": "https://schema.org/InStock"
-            },
-            "seller": {
-              "@type": "AutoDealer",
-              "name": siteName,
-              "url": typeof window !== 'undefined' ? window.location.origin : undefined
-            }
-          })}</script>
-        )}
       </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
