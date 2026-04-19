@@ -28,6 +28,7 @@ import {
   Tag,
   X,
   CheckCircle2,
+  Send,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -98,10 +99,31 @@ export default function SalesmanPanel() {
   // Enquiries
   const [enquiries, setEnquiries] = useState([]);
   const [enquiriesLoading, setEnquiriesLoading] = useState(true);
+  const [openTemplateId, setOpenTemplateId] = useState(null);
+  const [templateToast, setTemplateToast] = useState(null);
+  const [openAiReplyId, setOpenAiReplyId] = useState(null);
+  const [aiDrafts, setAiDrafts] = useState({});
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Leads
   const [leads, setLeads] = useState([]);
+  const [staleLeads, setStaleLeads] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadScores, setLeadScores] = useState({});
+  const [scoreLoading, setScoreLoading] = useState(false);
+
+  // Broadcast modal
+  const [broadcastCar, setBroadcastCar] = useState(null);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastProgress, setBroadcastProgress] = useState(null); // null | { current, total }
+  const [broadcastDone, setBroadcastDone] = useState(false);
+
+  // AI Caption modal
+  const [aiCaptionCar, setAiCaptionCar] = useState(null);
+  const [aiCaptions, setAiCaptions] = useState({}); // { [carId]: { wa, tiktok } }
+  const [aiCaptionLoading, setAiCaptionLoading] = useState(false);
+  const [aiCaptionTab, setAiCaptionTab] = useState("wa");
+  const [captionCopied, setCaptionCopied] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [addLeadForm, setAddLeadForm] = useState({
     buyer_name: "",
@@ -125,6 +147,20 @@ export default function SalesmanPanel() {
 
   // Commission breakdown
   const [commissionDetails, setCommissionDetails] = useState([]);
+
+  // ── stale leads (48h no contact, exclude won/lost)
+  useEffect(() => {
+    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    setStaleLeads(
+      leads.filter(
+        (l) =>
+          l.stage !== "won" &&
+          l.stage !== "lost" &&
+          l.updated_at &&
+          new Date(l.updated_at).getTime() < cutoff,
+      ),
+    );
+  }, [leads]);
 
   // ── page title
   useEffect(() => {
@@ -267,12 +303,16 @@ export default function SalesmanPanel() {
 
     const apptCh = supabase
       .channel("appts_" + userId)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "appointments",
-        filter: `salesman_id=eq.${userId}`,
-      }, () => fetchAppts())
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `salesman_id=eq.${userId}`,
+        },
+        () => fetchAppts(),
+      )
       .subscribe();
 
     // Commission breakdown (last 5 sold)
@@ -318,9 +358,58 @@ export default function SalesmanPanel() {
       .eq("salesman_id", userId)
       .eq("is_deleted", false)
       .order("updated_at", { ascending: false })
-      .then(({ data }) => {
-        setLeads(data || []);
+      .then(async ({ data }) => {
+        const rows = data || [];
+        setLeads(rows);
         setLeadsLoading(false);
+        if (rows.length === 0) return;
+        // AI lead scoring — fire and forget; errors are silent
+        setScoreLoading(true);
+        try {
+          const payload = rows.map((l) => ({
+            id: l.id,
+            buyer_name: l.buyer_name,
+            stage: l.stage,
+            notes: l.notes,
+            updated_at: l.updated_at,
+            phone: l.phone ? "present" : "missing",
+          }));
+          const prompt = `You are a sales AI assistant. Score each lead as "hot", "warm", or "cold" based on their stage, recency of contact (updated_at), notes, and whether they have a phone number.
+
+Leads JSON:
+${JSON.stringify(payload)}
+
+Return ONLY a valid JSON array (no markdown, no explanation) with this shape:
+[{ "id": "...", "score": "hot"|"warm"|"cold", "reason": "one short sentence" }]
+
+Rules:
+- hot: deposit_taken, won, or recently contacted with phone present
+- cold: lost, or no contact for 7+ days and stage is still "new"
+- warm: everything else`;
+          const { data: aiData } = await supabase.functions.invoke("ai-proxy", {
+            body: { prompt },
+          });
+          const raw =
+            aiData?.reply ??
+            aiData?.content ??
+            aiData?.text ??
+            aiData?.message ??
+            "";
+          const parsed = JSON.parse(
+            typeof raw === "string" ? raw : JSON.stringify(raw),
+          );
+          if (Array.isArray(parsed)) {
+            const map = {};
+            parsed.forEach((r) => {
+              if (r.id) map[r.id] = { score: r.score, reason: r.reason };
+            });
+            setLeadScores(map);
+          }
+        } catch {
+          // silent — no scores shown on failure
+        } finally {
+          setScoreLoading(false);
+        }
       });
 
     // Notifications
@@ -473,12 +562,201 @@ export default function SalesmanPanel() {
     return `${Math.floor(s / 86400)}d ago`;
   };
 
+  const generateAiReply = async (enquiry) => {
+    const car = enquiry.car_listings;
+    const carName = car
+      ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
+      : "the car";
+    const price = car?.selling_price
+      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+      : null;
+    const prompt = `You are a friendly car salesperson in Malaysia. Write a WhatsApp reply in natural Manglish (casual English mixed with some Malay words like lah, boleh, kan, mana tau, etc).
+
+Customer name: ${enquiry.buyer_name || "Customer"}
+Car they asked about: ${carName}${price ? ` priced at ${price}` : ""}
+Their message: "${enquiry.buyer_message || "General enquiry about the car"}"
+Your name: ${profile?.full_name || "the sales team"}
+
+Write a warm, personalised reply that greets them by name, acknowledges the specific car, responds to their message, and suggests a clear next step (viewing / test drive / WhatsApp chat). Keep it 3–5 sentences, conversational, not stiff. Reply with the message text only — no labels, no quotes.`;
+
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: { prompt },
+      });
+      if (error) throw error;
+      const reply =
+        data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "";
+      setAiDrafts((p) => ({ ...p, [enquiry.id]: reply }));
+    } catch {
+      setAiDrafts((p) => ({
+        ...p,
+        [enquiry.id]: "Couldn't generate reply. Please try again.",
+      }));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const WA_TEMPLATES = [
+    {
+      label: "Interested? Let's chat",
+      build: (name, carName, price) =>
+        `Hi ${name}! 👋 Nampak you ada interest dalam ${carName}${price ? ` (RM ${price})` : ""}. Best lah tu — kereta ni memang power! Boleh kita discuss lebih lanjut? Saya ready nak tolong you 😊`,
+    },
+    {
+      label: "Book a test drive",
+      build: (name, carName) =>
+        `Hi ${name}! Test drive dulu baru decide — betul tak? 😄 ${carName} memang best bila dah rasa sendiri. Bila you free nak mai test? Saya boleh arrange untuk you anytime!`,
+    },
+    {
+      label: "Price negotiation",
+      build: (name, carName, price) =>
+        `Hi ${name}! Faham faham, semua orang nak harga terbaik 😅 ${carName}${price ? ` ni listed RM ${price}` : ""} tapi kita boleh discuss. You ada budget dalam range mana? Saya cuba tolong cari jalan 🙏`,
+    },
+    {
+      label: "Deposit to reserve",
+      build: (name, carName) =>
+        `Hi ${name}! Just nak inform — ${carName} ni ada few people tengah tengok jugak. Kalau you serious, boleh letak deposit dulu untuk reserve. Nanti takut kena kebas orang lain pulak 😬 Nak saya explain process dia?`,
+    },
+  ];
+
+  const fireTemplate = (enquiry, tpl) => {
+    const car = enquiry.car_listings;
+    const name = enquiry.buyer_name || "kawan";
+    const carName = car ? `${car.brand} ${car.model}` : "kereta ni";
+    const price = car?.selling_price
+      ? Number(car.selling_price).toLocaleString("en-MY")
+      : null;
+    const text = tpl.build(name, carName, price);
+    navigator.clipboard.writeText(text);
+    const phone = (enquiry.buyer_phone || "").replace(/\D/g, "");
+    if (phone) {
+      window.open(
+        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(text)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+    setTemplateToast(enquiry.id);
+    setTimeout(() => setTemplateToast(null), 2000);
+  };
+
+  const generateAiCaptions = async (car) => {
+    setAiCaptionCar(car);
+    setAiCaptionTab("wa");
+    setCaptionCopied(false);
+    if (aiCaptions[car.id]) return;
+    setAiCaptionLoading(true);
+    const name = [car.year, car.brand, car.model, car.variant]
+      .filter(Boolean)
+      .join(" ");
+    const price = car.selling_price
+      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+      : null;
+    const mileage = car.mileage
+      ? `${Number(car.mileage).toLocaleString()} km`
+      : null;
+    const prompt = `You are a car dealer social media assistant in Malaysia. Generate two captions for this car listing in JSON format only.
+
+Car: ${name}${price ? `, ${price}` : ""}${mileage ? `, ${mileage}` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.colour ? `, ${car.colour}` : ""}
+
+Return valid JSON only (no markdown, no code block), exactly this shape:
+{"wa":"<WhatsApp caption — friendly Manglish, 3–5 lines, includes price, condition, CTA to WhatsApp. Use emojis.>","tiktok":"<TikTok caption — punchy, 1–2 lines max, hype energy, relevant hashtags at end>"}`;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: { prompt },
+      });
+      if (error) throw error;
+      const raw =
+        data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
+      const parsed = JSON.parse(raw);
+      setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
+    } catch {
+      setAiCaptions((p) => ({
+        ...p,
+        [car.id]: {
+          wa: "Couldn't generate caption. Please try again.",
+          tiktok: "Couldn't generate caption. Please try again.",
+        },
+      }));
+    } finally {
+      setAiCaptionLoading(false);
+    }
+  };
+
+  const openBroadcast = (car) => {
+    const name = [car.year, car.brand, car.model, car.variant]
+      .filter(Boolean)
+      .join(" ");
+    const price = car.selling_price
+      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+      : null;
+    const link = car.slug ? `https://xdrive.my/cars/${car.slug}` : null;
+    const msg = [
+      `Hi! 👋 Tengok ni — ${name} dah ada dalam lineup kita!`,
+      price ? `💰 Harga: ${price}` : null,
+      `Kereta ni memang worth it — jangan sampai kena kebas orang lain 😬`,
+      link ? `🔗 Details: ${link}` : null,
+      `\nInterested? Whatsapp saya terus, boleh discuss!`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    setBroadcastCar(car);
+    setBroadcastMsg(msg);
+    setBroadcastProgress(null);
+    setBroadcastDone(false);
+  };
+
+  const runBroadcast = (eligibleLeads) => {
+    const capped = eligibleLeads.slice(0, 10);
+    setBroadcastProgress({ current: 0, total: capped.length });
+    capped.forEach((lead, i) => {
+      setTimeout(() => {
+        const phone = (lead.phone || "").replace(/\D/g, "");
+        if (phone) {
+          window.open(
+            `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(broadcastMsg)}`,
+            "_blank",
+            "noopener,noreferrer",
+          );
+        }
+        setBroadcastProgress({ current: i + 1, total: capped.length });
+        if (i === capped.length - 1) setBroadcastDone(true);
+      }, i * 600);
+    });
+  };
+
   const updateLeadStage = async (leadId, stage) => {
     await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
+  };
+
+  const pingWA = async (lead) => {
+    const car = lead.car_listings;
+    const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
+    const name = lead.buyer_name || "kawan";
+    const phone = (lead.phone || "").replace(/\D/g, "");
+    const msg = encodeURIComponent(
+      `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`,
+    );
+    if (phone) {
+      window.open(
+        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+    const now = new Date().toISOString();
+    await supabase.from("leads").update({ updated_at: now }).eq("id", lead.id);
+    setStaleLeads((p) => p.filter((l) => l.id !== lead.id));
+    setLeads((p) =>
+      p.map((l) => (l.id === lead.id ? { ...l, updated_at: now } : l)),
+    );
   };
 
   const handleAddLead = async () => {
@@ -682,7 +960,12 @@ export default function SalesmanPanel() {
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        .lead-score-wrap:hover .lead-score-tip { display: block !important; }
+        @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        .caption-skeleton { background: linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 75%); background-size:800px 100%; animation:shimmer 1.4s infinite linear; border-radius:8px; }
+      `}</style>
 
       {/* Top bar */}
       <header
@@ -885,6 +1168,81 @@ export default function SalesmanPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* ══ LEFT COLUMN ══ */}
           <div className="space-y-5">
+            {/* Daily goal nudge */}
+            {(() => {
+              const target = profile?.monthly_target ?? 5;
+              const needed = Math.max(target - thisMonthSales, 0);
+              const now = new Date();
+              const daysLeft =
+                new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() -
+                now.getDate();
+              const onTrack = thisMonthSales >= target;
+              const pace =
+                daysLeft > 0 ? (needed / daysLeft).toFixed(1) : needed;
+              const behind =
+                needed > 0 &&
+                daysLeft > 0 &&
+                needed / daysLeft >
+                  target /
+                    new Date(
+                      now.getFullYear(),
+                      now.getMonth() + 1,
+                      0,
+                    ).getDate();
+              const accentColor = onTrack ? "#4ade80" : "#fb923c";
+              const line = onTrack
+                ? "Target smashed! You're on fire this month 🎯"
+                : behind
+                  ? `${needed} more sale${needed !== 1 ? "s" : ""} needed, ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left — let's go`
+                  : "On track — keep pushing";
+              const pillText = onTrack
+                ? `${thisMonthSales} / ${target} this month`
+                : `Need ${needed} sale${needed !== 1 ? "s" : ""} in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`;
+              return (
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderLeft: `3px solid ${accentColor}`,
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: onTrack
+                        ? "#4ade80"
+                        : behind
+                          ? "#fb923c"
+                          : "#d1d5db",
+                      fontWeight: 500,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {line}
+                  </p>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#6b7280",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 99,
+                      padding: "2px 10px",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {pillText}
+                  </span>
+                </div>
+              );
+            })()}
             {/* Profile card — with commission + copy link */}
             <div
               style={{
@@ -1109,6 +1467,133 @@ export default function SalesmanPanel() {
               </div>
             </div>
 
+            {/* Response time stat */}
+            {(() => {
+              const diffs = [];
+              enquiries.forEach((e) => {
+                const created = e.created_at
+                  ? new Date(e.created_at).getTime()
+                  : null;
+                if (!created) return;
+                if (e.replied_at) {
+                  const diff =
+                    (new Date(e.replied_at).getTime() - created) / 60000;
+                  if (diff >= 0) diffs.push(diff);
+                } else {
+                  const phone = (e.buyer_phone || "").replace(/\D/g, "");
+                  if (!phone) return;
+                  const match = appointments
+                    .filter((a) => {
+                      const ap = (a.buyer_phone || "").replace(/\D/g, "");
+                      return (
+                        ap && ap.slice(-8) === phone.slice(-8) && a.created_at
+                      );
+                    })
+                    .sort(
+                      (a, b) => new Date(a.created_at) - new Date(b.created_at),
+                    )[0];
+                  if (match) {
+                    const diff =
+                      (new Date(match.created_at).getTime() - created) / 60000;
+                    if (diff >= 0 && diff < 10080) diffs.push(diff);
+                  }
+                }
+              });
+              const avg = diffs.length
+                ? diffs.reduce((s, v) => s + v, 0) / diffs.length
+                : null;
+              const valueStr =
+                avg === null
+                  ? "--"
+                  : avg < 15
+                    ? "< 15m avg"
+                    : avg > 60
+                      ? "> 1h avg"
+                      : `${Math.round(avg)}m avg`;
+              const color =
+                avg === null
+                  ? "#6b7280"
+                  : avg < 30
+                    ? "#4ade80"
+                    : avg < 120
+                      ? "#fbbf24"
+                      : "#f87171";
+              const bg =
+                avg === null
+                  ? "rgba(255,255,255,0.032)"
+                  : avg < 30
+                    ? "rgba(34,197,94,0.06)"
+                    : avg < 120
+                      ? "rgba(251,191,36,0.06)"
+                      : "rgba(248,113,113,0.06)";
+              const border =
+                avg === null
+                  ? "rgba(255,255,255,0.07)"
+                  : avg < 30
+                    ? "rgba(34,197,94,0.2)"
+                    : avg < 120
+                      ? "rgba(251,191,36,0.2)"
+                      : "rgba(248,113,113,0.2)";
+              const iconBg =
+                avg === null
+                  ? "rgba(168,85,247,0.12)"
+                  : avg < 30
+                    ? "rgba(34,197,94,0.15)"
+                    : avg < 120
+                      ? "rgba(251,191,36,0.15)"
+                      : "rgba(248,113,113,0.15)";
+              return (
+                <div
+                  className="rounded-xl"
+                  style={{
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: iconBg }}
+                  >
+                    <Clock className="w-4 h-4" style={{ color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 mb-0.5">
+                      Response Time
+                    </p>
+                    <p
+                      className="text-lg font-bold leading-none"
+                      style={{ color }}
+                    >
+                      {valueStr}
+                    </p>
+                    <p style={{ fontSize: 10, color: "#4b5563", marginTop: 3 }}>
+                      {"< 30m = higher close rate"}
+                    </p>
+                  </div>
+                  {diffs.length > 0 && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#6b7280",
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 99,
+                        padding: "2px 8px",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {diffs.length} sampled
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Enquiries */}
             <div
               style={{
@@ -1230,7 +1715,7 @@ export default function SalesmanPanel() {
                           </p>
                         )}
                         {phone && (
-                          <div className="flex gap-2 ml-9">
+                          <div className="flex gap-2 ml-9 flex-wrap">
                             <a
                               href={`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${waMsg}`}
                               target="_blank"
@@ -1269,6 +1754,309 @@ export default function SalesmanPanel() {
                               <Phone className="w-3 h-3" />
                               Call
                             </a>
+                            <button
+                              onClick={() => {
+                                const next =
+                                  openAiReplyId === e.id ? null : e.id;
+                                setOpenAiReplyId(next);
+                                if (next && !aiDrafts[e.id]) {
+                                  generateAiReply(e);
+                                }
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 11,
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                background:
+                                  openAiReplyId === e.id
+                                    ? "rgba(99,102,241,0.18)"
+                                    : "rgba(99,102,241,0.08)",
+                                border: `1px solid ${openAiReplyId === e.id ? "rgba(99,102,241,0.4)" : "rgba(99,102,241,0.2)"}`,
+                                color: "#a5b4fc",
+                                cursor: "pointer",
+                                fontFamily: "'DM Sans',sans-serif",
+                              }}
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              AI Reply
+                            </button>
+                            <button
+                              onClick={() =>
+                                setOpenTemplateId(
+                                  openTemplateId === e.id ? null : e.id,
+                                )
+                              }
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 11,
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                background:
+                                  openTemplateId === e.id
+                                    ? "rgba(167,139,250,0.15)"
+                                    : "rgba(167,139,250,0.07)",
+                                border: `1px solid ${openTemplateId === e.id ? "rgba(167,139,250,0.35)" : "rgba(167,139,250,0.2)"}`,
+                                color: "#c084fc",
+                                cursor: "pointer",
+                                fontFamily: "'DM Sans',sans-serif",
+                              }}
+                            >
+                              <Tag className="w-3 h-3" />
+                              Templates
+                            </button>
+                          </div>
+                        )}
+                        {openAiReplyId === e.id && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              marginLeft: 36,
+                              background: "rgba(255,255,255,0.032)",
+                              border: "1px solid rgba(255,255,255,0.07)",
+                              borderRadius: 12,
+                              padding: 12,
+                              fontFamily: "'DM Sans',sans-serif",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontSize: 10,
+                                color: "#6366f1",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                                marginBottom: 8,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                              }}
+                            >
+                              <Sparkles style={{ width: 10, height: 10 }} />
+                              AI Draft
+                            </p>
+                            {aiLoading && !aiDrafts[e.id] ? (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  padding: "16px 0",
+                                  color: "#6b7280",
+                                  fontSize: 12,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    border: "2px solid rgba(255,255,255,0.08)",
+                                    borderTop: "2px solid #6366f1",
+                                    borderRadius: "50%",
+                                    animation: "spin 0.7s linear infinite",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                Generating reply…
+                              </div>
+                            ) : (
+                              <>
+                                <textarea
+                                  value={aiDrafts[e.id] || ""}
+                                  onChange={(ev) =>
+                                    setAiDrafts((p) => ({
+                                      ...p,
+                                      [e.id]: ev.target.value,
+                                    }))
+                                  }
+                                  rows={5}
+                                  style={{
+                                    width: "100%",
+                                    background: "rgba(255,255,255,0.04)",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    borderRadius: 8,
+                                    padding: "8px 10px",
+                                    fontSize: 12,
+                                    color: "white",
+                                    outline: "none",
+                                    resize: "vertical",
+                                    fontFamily: "'DM Sans',sans-serif",
+                                    lineHeight: 1.6,
+                                    boxSizing: "border-box",
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: 8,
+                                    marginTop: 8,
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      const draft = aiDrafts[e.id] || "";
+                                      navigator.clipboard.writeText(draft);
+                                      const ph = (e.buyer_phone || "").replace(
+                                        /\D/g,
+                                        "",
+                                      );
+                                      if (ph) {
+                                        window.open(
+                                          `https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(draft)}`,
+                                          "_blank",
+                                          "noopener,noreferrer",
+                                        );
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1,
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      padding: "7px 0",
+                                      borderRadius: 8,
+                                      background: "rgba(37,211,102,0.12)",
+                                      border: "1px solid rgba(37,211,102,0.28)",
+                                      color: "#4ade80",
+                                      cursor: "pointer",
+                                      fontFamily: "'DM Sans',sans-serif",
+                                    }}
+                                  >
+                                    Copy &amp; Open WA
+                                  </button>
+                                  <button
+                                    disabled={aiLoading}
+                                    onClick={() => {
+                                      setAiDrafts((p) => ({
+                                        ...p,
+                                        [e.id]: "",
+                                      }));
+                                      generateAiReply(e);
+                                    }}
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      padding: "7px 12px",
+                                      borderRadius: 8,
+                                      background: "rgba(99,102,241,0.1)",
+                                      border: "1px solid rgba(99,102,241,0.25)",
+                                      color: "#a5b4fc",
+                                      cursor: aiLoading
+                                        ? "not-allowed"
+                                        : "pointer",
+                                      opacity: aiLoading ? 0.5 : 1,
+                                      fontFamily: "'DM Sans',sans-serif",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                    }}
+                                  >
+                                    {aiLoading ? (
+                                      <div
+                                        style={{
+                                          width: 10,
+                                          height: 10,
+                                          border:
+                                            "2px solid rgba(255,255,255,0.1)",
+                                          borderTop: "2px solid #a5b4fc",
+                                          borderRadius: "50%",
+                                          animation:
+                                            "spin 0.7s linear infinite",
+                                        }}
+                                      />
+                                    ) : null}
+                                    Regenerate
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {openTemplateId === e.id && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              marginLeft: 36,
+                              background: "rgba(255,255,255,0.04)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: 10,
+                              padding: 10,
+                              position: "relative",
+                            }}
+                          >
+                            {templateToast === e.id && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 8,
+                                  left: "50%",
+                                  transform: "translateX(-50%)",
+                                  background: "rgba(34,197,94,0.18)",
+                                  border: "1px solid rgba(34,197,94,0.35)",
+                                  color: "#4ade80",
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  padding: "3px 12px",
+                                  borderRadius: 20,
+                                  whiteSpace: "nowrap",
+                                  zIndex: 2,
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                ✓ Copied + Opening WA
+                              </div>
+                            )}
+                            <p
+                              style={{
+                                fontSize: 10,
+                                color: "#4b5563",
+                                fontWeight: 600,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Quick Templates
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                              }}
+                            >
+                              {WA_TEMPLATES.map((tpl) => (
+                                <button
+                                  key={tpl.label}
+                                  onClick={() => fireTemplate(e, tpl)}
+                                  style={{
+                                    textAlign: "left",
+                                    fontSize: 12,
+                                    padding: "7px 10px",
+                                    borderRadius: 7,
+                                    background: "rgba(255,255,255,0.04)",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    color: "#d1d5db",
+                                    cursor: "pointer",
+                                    fontFamily: "'DM Sans',sans-serif",
+                                    transition: "background 0.15s",
+                                  }}
+                                  onMouseEnter={(ev) => {
+                                    ev.currentTarget.style.background =
+                                      "rgba(255,255,255,0.08)";
+                                  }}
+                                  onMouseLeave={(ev) => {
+                                    ev.currentTarget.style.background =
+                                      "rgba(255,255,255,0.04)";
+                                  }}
+                                >
+                                  {tpl.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1546,6 +2334,23 @@ export default function SalesmanPanel() {
                 {myListings.map((car) => {
                   const listCopied = listingCopied[car.id];
                   const price = Number(car.selling_price || 0);
+                  const stats = carStatsMap[car.id] ?? {};
+                  const views = stats.views || 0;
+                  const enquiries = stats.enquiries || 0;
+                  const cvr = views > 0 ? (enquiries / views) * 100 : null;
+                  const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+                  const cvrColor =
+                    cvr === null
+                      ? "rgba(255,255,255,0.07)"
+                      : cvr >= 6
+                        ? "rgba(34,197,94,0.8)"
+                        : cvr >= 3
+                          ? "rgba(251,191,36,0.7)"
+                          : cvr >= 1
+                            ? "rgba(59,130,246,0.6)"
+                            : "rgba(255,255,255,0.07)";
+                  const isHot = cvr !== null && cvr > 6 && views > 3;
+                  const isStale = views > 10 && (cvr === 0 || cvr === null);
                   return (
                     <div
                       key={car.id}
@@ -1565,15 +2370,63 @@ export default function SalesmanPanel() {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <p className="text-sm font-bold text-white leading-tight">
-                              {car.year} {car.brand} {car.model}
-                              {car.variant ? (
-                                <span className="font-normal text-gray-400">
-                                  {" "}
-                                  {car.variant}
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <p className="text-sm font-bold text-white leading-tight">
+                                {car.year} {car.brand} {car.model}
+                                {car.variant ? (
+                                  <span className="font-normal text-gray-400">
+                                    {" "}
+                                    {car.variant}
+                                  </span>
+                                ) : null}
+                              </p>
+                              {isHot && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: "#4ade80",
+                                    background: "rgba(34,197,94,0.12)",
+                                    border: "1px solid rgba(34,197,94,0.3)",
+                                    borderRadius: 99,
+                                    padding: "1px 7px",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: "50%",
+                                      background: "#4ade80",
+                                      animation:
+                                        "pulse 1.4s ease-in-out infinite",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  Hot
                                 </span>
-                              ) : null}
-                            </p>
+                              )}
+                              {isStale && !isHot && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: "#6b7280",
+                                    background: "rgba(255,255,255,0.05)",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    borderRadius: 99,
+                                    padding: "1px 7px",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  Stale
+                                </span>
+                              )}
+                            </div>
                             <StatusBadge status={car.status} />
                           </div>
                           <p className="text-sm font-semibold text-blue-400 mb-1">
@@ -1592,7 +2445,7 @@ export default function SalesmanPanel() {
                           </p>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                         <span
                           style={{
                             fontSize: 11,
@@ -1603,7 +2456,7 @@ export default function SalesmanPanel() {
                             padding: "2px 8px",
                           }}
                         >
-                          👁 {carStatsMap[car.id]?.views || 0} views
+                          👁 {views} views
                         </span>
                         <span
                           style={{
@@ -1615,27 +2468,59 @@ export default function SalesmanPanel() {
                             padding: "2px 8px",
                           }}
                         >
-                          💬 {carStatsMap[car.id]?.enquiries || 0} enquiries
+                          💬 {enquiries} enquiries
                         </span>
-                        {(carStatsMap[car.id]?.views || 0) > 0 && (
-                          <span
+                      </div>
+                      {/* CVR heatmap bar */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            flex: 1,
+                            height: 4,
+                            borderRadius: 2,
+                            background: "rgba(255,255,255,0.07)",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
                             style={{
-                              fontSize: 11,
-                              color: "#34d399",
-                              background: "rgba(52,211,153,0.08)",
-                              border: "1px solid rgba(52,211,153,0.15)",
-                              borderRadius: 6,
-                              padding: "2px 8px",
+                              height: "100%",
+                              width: `${cvrFill}%`,
+                              background: cvrColor,
+                              borderRadius: 2,
+                              transition: "width 0.5s ease",
                             }}
-                          >
-                            {(
-                              ((carStatsMap[car.id]?.enquiries || 0) /
-                                (carStatsMap[car.id]?.views || 1)) *
-                              100
-                            ).toFixed(1)}
-                            % CVR
-                          </span>
-                        )}
+                          />
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color:
+                              cvr === null
+                                ? "#4b5563"
+                                : cvr >= 6
+                                  ? "#4ade80"
+                                  : cvr >= 3
+                                    ? "#fbbf24"
+                                    : cvr >= 1
+                                      ? "#93c5fd"
+                                      : "#4b5563",
+                            whiteSpace: "nowrap",
+                            minWidth: 64,
+                            textAlign: "right",
+                          }}
+                        >
+                          {cvr === null
+                            ? "No views yet"
+                            : `${cvr.toFixed(1)}% CVR`}
+                        </span>
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <button
@@ -1682,6 +2567,30 @@ export default function SalesmanPanel() {
                           <Sparkles className="w-3 h-3" />
                           TikTok Slide
                         </button>
+                        <button
+                          onClick={() => generateAiCaptions(car)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: "rgba(168,85,247,0.10)",
+                            border: "1px solid rgba(168,85,247,0.30)",
+                            color: "#c084fc",
+                          }}
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          AI Caption
+                        </button>
+                        <button
+                          onClick={() => openBroadcast(car)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: "rgba(249,115,22,0.10)",
+                            border: "1px solid rgba(249,115,22,0.30)",
+                            color: "#fb923c",
+                          }}
+                        >
+                          <Send className="w-3 h-3" />
+                          Broadcast
+                        </button>
                       </div>
                     </div>
                   );
@@ -1692,11 +2601,169 @@ export default function SalesmanPanel() {
           {/* end right column */}
         </div>
 
+        {/* Needs Follow-up */}
+        {staleLeads.length > 0 && (
+          <div
+            className="mt-6"
+            style={{
+              background: "rgba(251,146,60,0.05)",
+              border: "1px solid rgba(251,146,60,0.2)",
+              borderRadius: 16,
+              padding: 20,
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <AlertCircle className="w-4 h-4 text-orange-400" />
+              <p className="text-sm font-medium text-white">Needs Follow-up</p>
+              <span
+                className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{
+                  background: "rgba(251,146,60,0.15)",
+                  border: "1px solid rgba(251,146,60,0.3)",
+                  color: "#fb923c",
+                }}
+              >
+                {staleLeads.length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {staleLeads.map((lead) => {
+                const car = lead.car_listings;
+                const carName = car ? `${car.brand} ${car.model}` : null;
+                const daysAgo = Math.floor(
+                  (Date.now() - new Date(lead.updated_at)) / 86400000,
+                );
+                const sc = STAGE_COLOR[lead.stage] || STAGE_COLOR.new;
+                return (
+                  <div
+                    key={lead.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      background: "rgba(255,255,255,0.025)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#f3f4f6",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {lead.buyer_name || "—"}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            background: sc.bg,
+                            border: `1px solid ${sc.border}`,
+                            color: sc.tx,
+                            borderRadius: 6,
+                            padding: "1px 6px",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.07em",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {lead.stage.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {carName && (
+                          <span style={{ fontSize: 11, color: "#6b7280" }}>
+                            {carName}
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#fb923c",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {daysAgo}d no contact
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => pingWA(lead)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        background: "rgba(37,211,102,0.1)",
+                        border: "1px solid rgba(37,211,102,0.28)",
+                        color: "#4ade80",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        fontFamily: "'DM Sans',sans-serif",
+                      }}
+                    >
+                      <MessageSquare style={{ width: 12, height: 12 }} />
+                      Ping on WA
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Lead Pipeline */}
         <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4 text-blue-400" />
             <p className="text-sm font-medium text-white">My Leads</p>
+            {Object.keys(leadScores).length > 0 && (
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "2px 7px",
+                  borderRadius: 20,
+                  background: "rgba(99,102,241,0.1)",
+                  border: "1px solid rgba(99,102,241,0.22)",
+                  color: "#a5b4fc",
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Sparkles style={{ width: 8, height: 8 }} />
+                AI scored
+              </span>
+            )}
+            {scoreLoading && (
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  border: "2px solid rgba(255,255,255,0.08)",
+                  borderTop: "2px solid #a5b4fc",
+                  borderRadius: "50%",
+                  animation: "spin 0.7s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
+            )}
             <span className="ml-auto text-xs text-gray-500">
               {leads.length} total
             </span>
@@ -1804,6 +2871,15 @@ export default function SalesmanPanel() {
                       )}
                       {stageLeads.map((lead) => {
                         const car = lead.car_listings;
+                        const ls = leadScores[lead.id];
+                        const dotColor =
+                          ls?.score === "hot"
+                            ? "#22c55e"
+                            : ls?.score === "warm"
+                              ? "#fbbf24"
+                              : ls?.score === "cold"
+                                ? "#6b7280"
+                                : null;
                         return (
                           <div
                             key={lead.id}
@@ -1814,19 +2890,83 @@ export default function SalesmanPanel() {
                               padding: "8px 10px",
                             }}
                           >
-                            <p
+                            <div
                               style={{
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: "#f3f4f6",
-                                margin: "0 0 2px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                marginBottom: 2,
                               }}
                             >
-                              {lead.buyer_name || "—"}
-                            </p>
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: "#f3f4f6",
+                                  margin: 0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {lead.buyer_name || "—"}
+                              </p>
+                              {dotColor && (
+                                <div
+                                  style={{
+                                    position: "relative",
+                                    flexShrink: 0,
+                                  }}
+                                  className="lead-score-wrap"
+                                >
+                                  <div
+                                    style={{
+                                      width: 7,
+                                      height: 7,
+                                      borderRadius: "50%",
+                                      background: dotColor,
+                                      boxShadow: `0 0 5px ${dotColor}88`,
+                                      cursor: "default",
+                                    }}
+                                  />
+                                  <div
+                                    className="lead-score-tip"
+                                    style={{
+                                      display: "none",
+                                      position: "absolute",
+                                      bottom: "calc(100% + 5px)",
+                                      right: 0,
+                                      background: "#1f2937",
+                                      border: "1px solid rgba(255,255,255,0.1)",
+                                      borderRadius: 6,
+                                      padding: "4px 8px",
+                                      fontSize: 10,
+                                      color: "#d1d5db",
+                                      whiteSpace: "nowrap",
+                                      maxWidth: 160,
+                                      whiteSpaceCollapse: "collapse",
+                                      zIndex: 10,
+                                      pointerEvents: "none",
+                                      boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontWeight: 700,
+                                        color: dotColor,
+                                        textTransform: "capitalize",
+                                      }}
+                                    >
+                                      {ls.score}
+                                    </span>
+                                    {" — "}
+                                    {ls.reason}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             {car && (
                               <p
                                 style={{
@@ -2091,6 +3231,386 @@ export default function SalesmanPanel() {
           </div>
         )}
       </main>
+
+      {/* Broadcast modal */}
+      {broadcastCar &&
+        (() => {
+          const eligible = leads.filter(
+            (l) =>
+              l.stage !== "won" &&
+              l.stage !== "lost" &&
+              (l.phone || "").replace(/\D/g, "").length > 0,
+          );
+          const capped = eligible.slice(0, 10);
+          const carName = [
+            broadcastCar.year,
+            broadcastCar.brand,
+            broadcastCar.model,
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <div
+              onClick={() => {
+                if (!broadcastProgress || broadcastDone) setBroadcastCar(null);
+              }}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.78)",
+                zIndex: 999,
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#111827",
+                  borderRadius: "16px 16px 0 0",
+                  width: "100%",
+                  maxWidth: 480,
+                  padding: 24,
+                  paddingBottom: 36,
+                }}
+              >
+                {/* header */}
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4 text-orange-400" />
+                    <p className="text-white font-semibold text-sm">
+                      Broadcast to Leads
+                    </p>
+                  </div>
+                  {(!broadcastProgress || broadcastDone) && (
+                    <button
+                      onClick={() => setBroadcastCar(null)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-gray-400 text-xs mb-4">{carName}</p>
+
+                {/* lead count + cap warning */}
+                <div
+                  className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg"
+                  style={{
+                    background: "rgba(249,115,22,0.08)",
+                    border: "1px solid rgba(249,115,22,0.2)",
+                  }}
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-orange-300">
+                    {eligible.length === 0
+                      ? "No active leads with a phone number to broadcast to."
+                      : eligible.length > 10
+                        ? `This will open ${capped.length} WhatsApp tabs (capped from ${eligible.length} — only first 10 will be contacted).`
+                        : `This will open ${capped.length} WhatsApp tab${capped.length !== 1 ? "s" : ""}.`}
+                  </p>
+                </div>
+
+                {/* lead count badge */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span
+                    className="text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(255,255,255,0.07)",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    {eligible.length} eligible lead
+                    {eligible.length !== 1 ? "s" : ""} (not won/lost)
+                  </span>
+                </div>
+
+                {/* message textarea */}
+                <textarea
+                  value={broadcastMsg}
+                  onChange={(e) => setBroadcastMsg(e.target.value)}
+                  disabled={!!broadcastProgress && !broadcastDone}
+                  rows={7}
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 10,
+                    color: "#e5e7eb",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    padding: "10px 12px",
+                    resize: "vertical",
+                    outline: "none",
+                    marginBottom: 12,
+                    fontFamily: "inherit",
+                  }}
+                />
+
+                {/* progress / success / action */}
+                {broadcastDone ? (
+                  <div className="flex items-center gap-2 justify-center py-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <p className="text-green-400 text-sm font-medium">
+                      All {capped.length} tabs opened!
+                    </p>
+                  </div>
+                ) : broadcastProgress ? (
+                  <div className="text-center py-2">
+                    <p className="text-orange-300 text-sm font-medium">
+                      Opening {broadcastProgress.current} of{" "}
+                      {broadcastProgress.total}…
+                    </p>
+                    <div
+                      className="mt-2 rounded-full overflow-hidden"
+                      style={{
+                        height: 4,
+                        background: "rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%`,
+                          background: "#f97316",
+                          transition: "width 0.3s ease",
+                          borderRadius: 9999,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() =>
+                      eligible.length > 0 && runBroadcast(eligible)
+                    }
+                    disabled={eligible.length === 0}
+                    style={{
+                      width: "100%",
+                      padding: "11px 0",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background:
+                        eligible.length === 0
+                          ? "rgba(255,255,255,0.05)"
+                          : "rgba(249,115,22,0.18)",
+                      border:
+                        eligible.length === 0
+                          ? "1px solid rgba(255,255,255,0.08)"
+                          : "1px solid rgba(249,115,22,0.4)",
+                      color: eligible.length === 0 ? "#6b7280" : "#fb923c",
+                      cursor: eligible.length === 0 ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Send className="w-4 h-4" />
+                    Open WA for each lead
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* AI Caption modal */}
+      {aiCaptionCar && (
+        <div
+          onClick={() => setAiCaptionCar(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.78)",
+            zIndex: 999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#111827",
+              borderRadius: "16px 16px 0 0",
+              width: "100%",
+              maxWidth: 480,
+              padding: 24,
+              paddingBottom: 36,
+            }}
+          >
+            {/* header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-white font-semibold text-sm">
+                  AI Caption Writer
+                </p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {[aiCaptionCar.year, aiCaptionCar.brand, aiCaptionCar.model]
+                    .filter(Boolean)
+                    .join(" ")}
+                </p>
+              </div>
+              <button
+                onClick={() => setAiCaptionCar(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* tabs */}
+            <div className="flex gap-2 mb-4">
+              {["wa", "tiktok"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setAiCaptionTab(tab);
+                    setCaptionCopied(false);
+                  }}
+                  style={{
+                    padding: "6px 16px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border:
+                      aiCaptionTab === tab
+                        ? "1px solid rgba(168,85,247,0.5)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                    background:
+                      aiCaptionTab === tab
+                        ? "rgba(168,85,247,0.15)"
+                        : "rgba(255,255,255,0.04)",
+                    color: aiCaptionTab === tab ? "#c084fc" : "#9ca3af",
+                  }}
+                >
+                  {tab === "wa" ? "WhatsApp" : "TikTok"}
+                </button>
+              ))}
+            </div>
+
+            {/* content */}
+            {aiCaptionLoading ? (
+              <div className="space-y-2">
+                <div
+                  className="caption-skeleton"
+                  style={{ height: 18, width: "70%" }}
+                />
+                <div
+                  className="caption-skeleton"
+                  style={{ height: 18, width: "90%" }}
+                />
+                <div
+                  className="caption-skeleton"
+                  style={{ height: 18, width: "55%" }}
+                />
+                <div
+                  className="caption-skeleton"
+                  style={{ height: 18, width: "80%" }}
+                />
+              </div>
+            ) : (
+              <textarea
+                value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? ""}
+                onChange={(e) =>
+                  setAiCaptions((p) => ({
+                    ...p,
+                    [aiCaptionCar.id]: {
+                      ...p[aiCaptionCar.id],
+                      [aiCaptionTab]: e.target.value,
+                    },
+                  }))
+                }
+                rows={6}
+                style={{
+                  width: "100%",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 10,
+                  color: "#e5e7eb",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  padding: "10px 12px",
+                  resize: "vertical",
+                  outline: "none",
+                }}
+              />
+            )}
+
+            {/* actions */}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => {
+                  const text =
+                    aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "";
+                  navigator.clipboard.writeText(text);
+                  setCaptionCopied(true);
+                  setTimeout(() => setCaptionCopied(false), 2000);
+                }}
+                disabled={aiCaptionLoading || !aiCaptions[aiCaptionCar.id]}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: captionCopied
+                    ? "rgba(34,197,94,0.15)"
+                    : "rgba(168,85,247,0.15)",
+                  border: captionCopied
+                    ? "1px solid rgba(34,197,94,0.4)"
+                    : "1px solid rgba(168,85,247,0.4)",
+                  color: captionCopied ? "#4ade80" : "#c084fc",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {captionCopied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {captionCopied ? "Copied!" : "Copy"}
+              </button>
+              <button
+                onClick={() => {
+                  setAiCaptions((p) => {
+                    const next = { ...p };
+                    delete next[aiCaptionCar.id];
+                    return next;
+                  });
+                  generateAiCaptions(aiCaptionCar);
+                }}
+                disabled={aiCaptionLoading}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#9ca3af",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TikTok Studio modal */}
       {tiktokListing && (

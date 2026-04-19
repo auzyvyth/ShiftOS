@@ -560,7 +560,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
         const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
         const { data, error } = await supabase
           .from("hero_carousel_slides")
-          .select("*")
+          .select("*, car_listings(slug)")
           .eq("active", true)
           .eq("dealer_id", tenant?.id ?? SUPERADMIN_ID)
           .order("sort_order", { ascending: true });
