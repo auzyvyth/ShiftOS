@@ -391,7 +391,6 @@ export default function SalesmanPanel() {
     supabase
       .from("leads")
       .select("*, car_listings(brand, model, year, selling_price)")
-      .eq("salesman_id", userId)
       .eq("is_deleted", false)
       .order("updated_at", { ascending: false })
       .then(async ({ data }) => {
@@ -949,7 +948,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         notes: addLeadForm.notes,
         car_listing_id: addLeadForm.car_listing_id || null,
         stage: "new",
-        lead_source: "salesman",
+        lead_source: "manual",
       })
       .select()
       .single();
@@ -974,6 +973,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     "deposit_taken",
     "won",
     "lost",
+    "closed_won",
+    "closed_lost",
   ];
   const STAGE_COLOR = {
     new: {
@@ -1012,6 +1013,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       tx: "#4ade80",
     },
     lost: {
+      bg: "rgba(107,114,128,0.12)",
+      border: "rgba(107,114,128,0.3)",
+      tx: "#9ca3af",
+    },
+    closed_won: {
+      bg: "rgba(34,197,94,0.18)",
+      border: "rgba(34,197,94,0.4)",
+      tx: "#4ade80",
+    },
+    closed_lost: {
       bg: "rgba(107,114,128,0.12)",
       border: "rgba(107,114,128,0.3)",
       tx: "#9ca3af",
