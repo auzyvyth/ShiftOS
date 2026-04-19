@@ -165,6 +165,14 @@ export default function SalesmanPanel() {
   // Commission breakdown
   const [commissionDetails, setCommissionDetails] = useState([]);
 
+  // Listings sort/filter
+  const [sortBy, setSortBy] = useState("newest");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [cvrHover, setCvrHover] = useState(null); // carId while hovering bar
+
+  // Lost leads accordion
+  const [lostOpen, setLostOpen] = useState(false);
+
   // ── stale leads (48h no contact, exclude won/lost)
   useEffect(() => {
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
@@ -638,6 +646,11 @@ Rules:
     navigator.clipboard.writeText(uniqueLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const updateApptStatus = async (apptId, newStatus) => {
+    setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: newStatus } : a));
+    await supabase.from("appointments").update({ status: newStatus }).eq("id", apptId);
   };
 
   const handleListingCopy = (car, type) => {
@@ -1124,19 +1137,33 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       ...commissionDetails.map(c => ({ type: "sale", label: `Sold: ${[c.year, c.brand, c.model].filter(Boolean).join(" ")}`, ts: c.sold_at, dot: "#4ade80" })),
     ].filter(i => i.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8);
 
-    return (
+    const monthlyTarget = profile?.monthly_target || 5;
+    const targetPct = Math.min(100, (thisMonthSales / monthlyTarget) * 100);
+    const targetHit = thisMonthSales >= monthlyTarget;
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const leadsThisMonth = leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length;
+    const apptThisMonth = appointments.filter(a => a.appointment_date && new Date(a.appointment_date) >= monthStart).length;
+    const enqThisMonth = enquiries.filter(e => e.created_at && new Date(e.created_at) >= monthStart).length;
+
+    const SUBTABS_UI = (
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+        {[["overview", "Overview"], ["performance", "Performance"], ["month", "This month"]].map(([key, label]) => (
+          <button key={key} onClick={() => setSubTab(key)} style={{ background: subTab === key ? "rgba(29,78,216,0.2)" : "transparent", border: subTab === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent", borderRadius: 7, color: subTab === key ? "#93c5fd" : "#64748b", fontSize: 13, fontWeight: subTab === key ? 600 : 400, padding: "6px 14px", cursor: "pointer" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+
+    // ── Overview ───────────────────────────────────────────────────────────────
+    if (subTab === "overview") return (
       <>
-        {/* Sub-tabs */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
-          {[["overview", "Overview"], ["performance", "Performance"], ["month", "This month"]].map(([key, label]) => (
-            <button key={key} onClick={() => setSubTab(key)} style={{ background: subTab === key ? "rgba(29,78,216,0.2)" : "transparent", border: subTab === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent", borderRadius: 7, color: subTab === key ? "#93c5fd" : "#64748b", fontSize: 13, fontWeight: subTab === key ? 600 : 400, padding: "6px 14px", cursor: "pointer" }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {SUBTABS_UI}
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 28 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 14 }}>
           <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Enquiries</span><MessageSquare size={14} color="#3b82f6" /></div>
             <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myEnquiries}</p>
@@ -1157,6 +1184,24 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{leads.filter(l => l.stage !== "won" && l.stage !== "lost").length}</p>
             {staleLeads.length > 0 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#ef4444" }}>{staleLeads.length} stale</p>}
           </div>
+        </div>
+
+        {/* Monthly target card */}
+        <div style={{ background: "#0d1117", border: targetHit ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? "12px 14px" : "14px 18px", marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Target size={14} color={targetHit ? "#22c55e" : "#3b82f6"} />
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Monthly target</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {targetHit && <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>🎯 Target hit!</span>}
+              <span style={{ fontSize: 13, fontWeight: 700, color: targetHit ? "#4ade80" : "#f1f5f9" }}>{thisMonthSales} / {monthlyTarget}</span>
+            </div>
+          </div>
+          <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${targetPct}%`, background: targetHit ? "#22c55e" : "#3b82f6", borderRadius: 99, transition: "width 0.4s" }} />
+          </div>
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>{targetHit ? `${thisMonthSales - monthlyTarget} cars over target` : `${monthlyTarget - thisMonthSales} more to go`}</p>
         </div>
 
         {/* Charts row */}
@@ -1223,135 +1268,591 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
       </>
     );
+
+    // ── Performance ────────────────────────────────────────────────────────────
+    if (subTab === "performance") {
+      const cvrRows = myListings.map(car => {
+        const s = carStatsMap[car.id] ?? {};
+        const views = s.views || 0;
+        const enqs = s.enquiries || 0;
+        const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
+        return { car, views, enqs, cvr };
+      }).sort((a, b) => b.views - a.views);
+
+      const top3 = cvrRows.slice(0, 3);
+      const maxViews = top3.length > 0 ? top3[0].views : 1;
+
+      return (
+        <>
+          {SUBTABS_UI}
+
+          {/* Per-listing CVR table */}
+          <div style={{ ...CARD, marginBottom: 16 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Listing performance</p>
+            {cvrRows.length === 0 ? (
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No listings assigned yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      {["Car", "Views", "Enquiries", "CVR"].map(h => (
+                        <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cvrRows.map(({ car, views, enqs, cvr }) => {
+                      const cvrNum = parseFloat(cvr);
+                      return (
+                        <tr key={car.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                          <td style={{ padding: "9px 10px", color: "#e5e7eb", fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                          </td>
+                          <td style={{ padding: "9px 10px", color: "#60a5fa", fontWeight: 600 }}>{views}</td>
+                          <td style={{ padding: "9px 10px", color: "#fbbf24", fontWeight: 600 }}>{enqs}</td>
+                          <td style={{ padding: "9px 10px", fontWeight: 700, color: cvr === null ? "#374151" : cvrNum > 6 ? "#4ade80" : cvrNum > 2 ? "#fbbf24" : "#9ca3af" }}>
+                            {cvr !== null ? `${cvr}%` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Top 3 by views — inline bar chart */}
+          <div style={{ ...CARD, marginBottom: 16 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Top listings by views</p>
+            {top3.length === 0 ? (
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No view data yet.</p>
+            ) : top3.map(({ car, views }, i) => {
+              const barW = maxViews > 0 ? (views / maxViews) * 100 : 0;
+              const medals = ["🥇", "🥈", "🥉"];
+              return (
+                <div key={car.id} style={{ marginBottom: i < top3.length - 1 ? 14 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 12, color: "#d1d5db" }}>{medals[i]} {[car.year, car.brand, car.model].filter(Boolean).join(" ")}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#60a5fa" }}>{views} views</span>
+                  </div>
+                  <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${barW}%`, background: i === 0 ? "#3b82f6" : i === 1 ? "#6366f1" : "#8b5cf6", borderRadius: 99 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Commission breakdown */}
+          <div style={CARD}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Commission breakdown</p>
+            {commissionDetails.length === 0 ? (
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No sold cars yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      {["Car", "Sold date", "Commission"].map(h => (
+                        <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commissionDetails.map((c, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                        <td style={{ padding: "9px 10px", color: "#e5e7eb", fontWeight: 500 }}>{[c.year, c.brand, c.model].filter(Boolean).join(" ") || "—"}</td>
+                        <td style={{ padding: "9px 10px", color: "#9ca3af" }}>{c.sold_at ? new Date(c.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
+                        <td style={{ padding: "9px 10px", fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, color: "#4ade80", fontWeight: 700, letterSpacing: "0.04em" }}>RM {Number(c.commission_amount || 0).toLocaleString("en-MY")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+
+    // ── This month ─────────────────────────────────────────────────────────────
+    return (
+      <>
+        {SUBTABS_UI}
+
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 20 }}>
+          {[
+            { label: "Leads added",   val: leadsThisMonth,  color: "#60a5fa",  Icon: () => <Users size={14} color="#60a5fa" /> },
+            { label: "Appointments",  val: apptThisMonth,   color: "#c084fc",  Icon: () => <Clock size={14} color="#c084fc" /> },
+            { label: "Enquiries",     val: enqThisMonth,    color: "#3b82f6",  Icon: () => <MessageSquare size={14} color="#3b82f6" /> },
+            { label: "Cars sold",     val: thisMonthSales,  color: "#22c55e",  Icon: () => <Car size={14} color="#22c55e" /> },
+          ].map(({ label, val, color, Icon }) => (
+            <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{label}</span>
+                <Icon />
+              </div>
+              <p style={{ margin: 0, fontSize: isMobile ? 22 : 30, fontWeight: 700, color, lineHeight: 1, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.02em" }}>{val}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Monthly target recap */}
+        <div style={{ background: "#0d1117", border: targetHit ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? "12px 14px" : "14px 18px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Target size={14} color={targetHit ? "#22c55e" : "#3b82f6"} />
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Monthly target</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {targetHit && <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>🎯 Target hit!</span>}
+              <span style={{ fontSize: 13, fontWeight: 700, color: targetHit ? "#4ade80" : "#f1f5f9" }}>{thisMonthSales} / {monthlyTarget} cars</span>
+            </div>
+          </div>
+          <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${targetPct}%`, background: targetHit ? "#22c55e" : "#3b82f6", borderRadius: 99, transition: "width 0.4s" }} />
+          </div>
+        </div>
+
+        {/* Leads added this month list */}
+        <div style={CARD}>
+          <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Leads added this month</p>
+          {leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length === 0 ? (
+            <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No leads added this month yet.</p>
+          ) : (
+            leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).slice(0, 8).map(lead => (
+              <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
+                  {(lead.buyer_name || "?")[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                  {lead.phone && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{lead.phone}</p>}
+                </div>
+                <span style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(lead.created_at)}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280", textTransform: "capitalize", flexShrink: 0 }}>{(lead.stage || "new").replace("_", " ")}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </>
+    );
   };
 
-  const renderListings = () => (
-    <div>
-      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Listings ({myListings.length})</p>
-      {myListings.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No listings assigned yet.</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
-          {myListings.map((car) => {
-            const stats = carStatsMap[car.id] ?? {};
-            const views = stats.views || 0;
-            const enqs = stats.enquiries || 0;
-            const cvr = views > 0 ? (enqs / views) * 100 : null;
-            const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
-            const isHot = cvr !== null && cvr > 6 && views > 3;
-            const isStale = views > 10 && (cvr === 0 || cvr === null);
-            const img = car.images?.[0];
-            const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
-            const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
+  const renderListings = () => {
+    // compute per-listing stats once
+    const enriched = myListings.map((car) => {
+      const stats = carStatsMap[car.id] ?? {};
+      const views = stats.views || 0;
+      const enqs = stats.enquiries || 0;
+      const cvr = views > 0 ? (enqs / views) * 100 : null;
+      const isHot = cvr !== null && cvr > 6 && views > 3;
+      const isStale = views > 10 && (cvr === null || cvr === 0);
+      return { car, views, enqs, cvr, isHot, isStale };
+    });
+
+    const hotCount = enriched.filter(e => e.isHot).length;
+    const staleCount = enriched.filter(e => e.isStale).length;
+    const activeCount = myListings.filter(c => c.status === "available").length;
+
+    // filter
+    const filtered = filterStatus === "all"
+      ? enriched
+      : enriched.filter(e => e.car.status === filterStatus);
+
+    // sort
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
+      if (sortBy === "price_asc") return (a.car.selling_price || 0) - (b.car.selling_price || 0);
+      // newest: default — preserve original order (already sorted by created_at from query)
+      return 0;
+    });
+
+    const SEL_STYLE = (active) => ({
+      fontSize: 11, padding: "5px 11px", borderRadius: 7, cursor: "pointer",
+      background: active ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)",
+      border: active ? "1px solid rgba(59,130,246,0.4)" : "1px solid rgba(255,255,255,0.08)",
+      color: active ? "#93c5fd" : "#6b7280", fontWeight: active ? 600 : 400,
+    });
+
+    return (
+      <div>
+        <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Listings ({myListings.length})</p>
+
+        {myListings.length > 0 && (
+          <>
+            {/* Summary strip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{activeCount}</span> active
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#ef4444", fontWeight: 600 }}>🔥 {hotCount}</span> hot
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#6b7280", fontWeight: 600 }}>💤 {staleCount}</span> stale
+              </span>
+            </div>
+
+            {/* Sort / filter strip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:</span>
+              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
+              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
+              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Status:</span>
+              {["all", "available", "reserved", "pending"].map(s => (
+                <button key={s} style={SEL_STYLE(filterStatus === s)} onClick={() => setFilterStatus(s)}>
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {myListings.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "52px 24px", background: "#0d1117", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 14 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Car size={24} color="#374151" />
+            </div>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#4b5563" }}>No listings assigned yet</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#374151", textAlign: "center", maxWidth: 260, lineHeight: 1.6 }}>Ask your manager to assign a car to you to get started.</p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 0", color: "#374151", fontSize: 13 }}>No listings match this filter.</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+            {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
+              const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+              const img = car.images?.[0];
+              const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+              const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
+              const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
+              const isHovering = cvrHover === car.id;
+              return (
+                <div key={car.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                  {img ? (
+                    <img src={img} alt={name} style={{ width: "100%", height: 150, objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: 150, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Car size={32} color="#374151" />
+                    </div>
+                  )}
+                  <div style={{ padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, marginRight: 8 }}>{name}</p>
+                      <StatusBadge status={car.status} />
+                    </div>
+                    <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#60a5fa" }}>{price}</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
+                      {[car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null, car.transmission, car.colour].filter(Boolean).join(" · ")}
+                    </p>
+                    {/* CVR heatmap with tooltip */}
+                    <div style={{ marginBottom: 10, position: "relative" }}
+                      onMouseEnter={() => setCvrHover(car.id)}
+                      onMouseLeave={() => setCvrHover(null)}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: "#4b5563" }}>{views} views · {enqs} enquiries</span>
+                        {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
+                        {isStale && !isHot && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+                      </div>
+                      <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible", cursor: "default" }}>
+                        <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
+                      </div>
+                      {isHovering && (
+                        <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "#e2e8f0", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
+                          {views} views · {enqs} enquiries · <span style={{ color: isHot ? "#ef4444" : "#60a5fa", fontWeight: 600 }}>{cvrLabel}% CVR</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
+                      <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer", textAlign: "center" }}>
+                        {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
+                      </button>
+                      <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}>WA Caption</button>
+                      <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}>Broadcast</button>
+                      <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}>AI Caption</button>
+                      <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}>TikTok</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderBookings = () => {
+    const todayStr = new Date().toDateString();
+    const todayAppts = appointments.filter(a => new Date(a.appointment_date).toDateString() === todayStr);
+    const upcomingAppts = appointments.filter(a => new Date(a.appointment_date) > new Date() && new Date(a.appointment_date).toDateString() !== todayStr);
+    const confirmedCount = appointments.filter(a => a.status === "confirmed").length;
+    const pendingCount = appointments.filter(a => a.status === "pending").length;
+
+    const SECTION_LABEL = (text) => (
+      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#374151", letterSpacing: "0.1em", textTransform: "uppercase" }}>{text}</p>
+    );
+
+    const BTN = (label, color, bg, border, onClick) => (
+      <button onClick={onClick} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: bg, border: `1px solid ${border}`, color, cursor: "pointer", fontWeight: 500 }}>{label}</button>
+    );
+
+    const renderApptCard = (appt, i, groupTotal) => {
+      const isToday = new Date(appt.appointment_date).toDateString() === todayStr;
+      const hasDeposit = appt.deposit_amount > 0;
+      const bookingTypeLabel = appt.booking_type
+        ? appt.booking_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+        : null;
+      return (
+        <div key={appt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+          {/* badges row above the renderAppt content */}
+          {(bookingTypeLabel || hasDeposit) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px 0" }}>
+              {bookingTypeLabel && (
+                <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", borderRadius: 99, padding: "2px 8px" }}>
+                  {bookingTypeLabel}
+                </span>
+              )}
+              {hasDeposit && (
+                <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>
+                  Deposit: RM {Number(appt.deposit_amount).toLocaleString("en-MY")}
+                </span>
+              )}
+            </div>
+          )}
+          {/* existing appointment row (unchanged) */}
+          <div style={{ padding: "0 6px" }}>
+            {renderAppt(appt, 0, 1, isToday)}
+          </div>
+          {/* status action buttons */}
+          {(appt.status === "pending" || appt.status === "confirmed") && (
+            <div style={{ display: "flex", gap: 6, padding: "0 14px 12px", flexWrap: "wrap" }}>
+              {appt.status === "pending" && (
+                <>
+                  {BTN("Confirm", "#4ade80", "rgba(34,197,94,0.1)", "rgba(34,197,94,0.3)", () => updateApptStatus(appt.id, "confirmed"))}
+                  {BTN("Cancel", "#f87171", "rgba(239,68,68,0.08)", "rgba(239,68,68,0.25)", () => updateApptStatus(appt.id, "cancelled"))}
+                </>
+              )}
+              {appt.status === "confirmed" && (
+                <>
+                  {BTN("Mark Done", "#4ade80", "rgba(34,197,94,0.1)", "rgba(34,197,94,0.3)", () => updateApptStatus(appt.id, "done"))}
+                  {BTN("Reschedule", "#fbbf24", "rgba(251,191,36,0.08)", "rgba(251,191,36,0.25)", () => updateApptStatus(appt.id, "rescheduled"))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Bookings</p>
+
+        {appointments.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "52px 24px", background: "#0d1117", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 14 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Clock size={24} color="#374151" />
+            </div>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#4b5563" }}>No upcoming bookings</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#374151", textAlign: "center", maxWidth: 280, lineHeight: 1.6 }}>When customers book a test drive, they'll appear here.</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary strip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16, padding: "10px 14px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#4ade80", fontWeight: 600 }}>{confirmedCount}</span> confirmed
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#60a5fa", fontWeight: 600 }}>{pendingCount}</span> pending
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{todayAppts.length}</span> today
+              </span>
+            </div>
+
+            {/* Today section */}
+            {todayAppts.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                {SECTION_LABEL("Today")}
+                {todayAppts.map((appt, i) => renderApptCard(appt, i, todayAppts.length))}
+              </div>
+            )}
+
+            {/* Upcoming section */}
+            {upcomingAppts.length > 0 && (
+              <div>
+                {SECTION_LABEL("Upcoming")}
+                {upcomingAppts.map((appt, i) => renderApptCard(appt, i, upcomingAppts.length))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderLeads = () => {
+    const activeStages = LEAD_STAGES.filter(s => s !== "lost");
+    const lostLeads = leads.filter(l => l.stage === "lost");
+
+    const AI_SCORE_PILL = (leadId) => {
+      if (scoreLoading) {
+        return (
+          <span style={{ display: "inline-block", width: 52, height: 16, borderRadius: 99, background: "rgba(255,255,255,0.07)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        );
+      }
+      const s = leadScores[leadId];
+      if (!s) return null;
+      const cfg = {
+        hot:  { bg: "rgba(239,68,68,0.15)",  border: "rgba(239,68,68,0.35)",  color: "#f87171", label: "🔥 Hot"  },
+        warm: { bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.35)", color: "#fbbf24", label: "⚡ Warm" },
+        cold: { bg: "rgba(107,114,128,0.15)", border: "rgba(107,114,128,0.3)", color: "#9ca3af", label: "❄️ Cold" },
+      }[s.score] || null;
+      if (!cfg) return null;
+      return (
+        <span title={s.reason || ""} style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 99, background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, cursor: "default", flexShrink: 0 }}>
+          {cfg.label}
+        </span>
+      );
+    };
+
+    const renderLeadCard = (lead) => {
+      const car = lead.car_listings;
+      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+
+      const stageIdx = LEAD_STAGES.indexOf(lead.stage);
+      const nextStage = LEAD_STAGES.filter(s => s !== "lost" && s !== "won").find((s, i) => LEAD_STAGES.indexOf(s) > stageIdx);
+
+      return (
+        <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
+          {/* top row: name + AI score */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 2 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3 }}>{lead.buyer_name || "—"}</p>
+            {AI_SCORE_PILL(lead.id)}
+          </div>
+
+          {/* lead age */}
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Added {timeAgo(lead.created_at)}</p>
+
+          {/* car name + price */}
+          {carName && <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>{carName}</p>}
+          {carPrice && <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#60a5fa" }}>{carPrice}</p>}
+
+          {/* phone */}
+          {lead.phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
+
+          {/* notes preview */}
+          {lead.notes && (
+            <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              "{lead.notes}"
+            </p>
+          )}
+
+          {/* action buttons */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {nextStage && lead.stage !== "won" && (
+              <button onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                → {nextStage.replace(/_/g, " ")}
+              </button>
+            )}
+            {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
+              <button onClick={() => updateLeadStage(lead.id, "won")} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+                → Won
+              </button>
+            )}
+            {lead.phone && (
+              <button onClick={() => pingWA(lead)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Lead Pipeline ({leads.filter(l => l.stage !== "lost").length})</p>
+          <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
+            <Plus size={13} /> Add Lead
+          </button>
+        </div>
+
+        {isMobile && leads.length > 0 && (
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>swipe to see more →</p>
+        )}
+
+        {/* Kanban board — lost excluded */}
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollSnapType: isMobile ? "x mandatory" : undefined }}>
+          {activeStages.map(stage => {
+            const sc = STAGE_COLOR[stage] || {};
+            const stageLeads = leads.filter(l => l.stage === stage);
             return (
-              <div key={car.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                {img ? (
-                  <img src={img} alt={name} style={{ width: "100%", height: 150, objectFit: "cover" }} />
-                ) : (
-                  <div style={{ width: "100%", height: 150, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Car size={32} color="#374151" />
-                  </div>
-                )}
-                <div style={{ padding: "12px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, marginRight: 8 }}>{name}</p>
-                    <StatusBadge status={car.status} />
-                  </div>
-                  <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#60a5fa" }}>{price}</p>
-                  <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
-                    {[car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null, car.transmission, car.colour].filter(Boolean).join(" · ")}
-                  </p>
-                  {/* CVR heatmap */}
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, color: "#4b5563" }}>{views} views · {enqs} enquiries</span>
-                      {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
-                      {isStale && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+              <div key={stage} style={{ minWidth: isMobile ? 170 : 200, flexShrink: 0, scrollSnapAlign: isMobile ? "start" : undefined }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>{stage.replace(/_/g, " ")}</span>
+                  <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>{stageLeads.length}</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {stageLeads.length === 0 && (
+                    <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
                     </div>
-                    <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
-                    </div>
-                  </div>
-                  <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
-                    <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer", textAlign: "center" }}>
-                      {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
-                    </button>
-                    <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}>WA Caption</button>
-                    <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}>Broadcast</button>
-                    <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}>AI Caption</button>
-                    <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}>TikTok</button>
-                  </div>
+                  )}
+                  {stageLeads.map(lead => renderLeadCard(lead))}
                 </div>
               </div>
             );
           })}
         </div>
-      )}
-    </div>
-  );
 
-  const renderBookings = () => (
-    <div>
-      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Upcoming Bookings ({appointments.length})</p>
-      {appointments.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No upcoming bookings.</div>
-      ) : (
-        <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "0 16px" }}>
-          {appointments.map((appt, i) => {
-            const isToday = new Date(appt.appointment_date).toDateString() === new Date().toDateString();
-            return renderAppt(appt, i, appointments.length, isToday);
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderLeads = () => (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Lead Pipeline ({leads.length})</p>
-        <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
-          <Plus size={13} /> Add Lead
-        </button>
-      </div>
-      {isMobile && leads.length > 0 && (
-        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>swipe to see more →</p>
-      )}
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollSnapType: isMobile ? "x mandatory" : undefined }}>
-        {LEAD_STAGES.filter(s => s !== "lost").map(stage => {
-          const sc = STAGE_COLOR[stage] || {};
-          const stageLeads = leads.filter(l => l.stage === stage);
-          return (
-            <div key={stage} style={{ minWidth: isMobile ? 160 : 200, flexShrink: 0, scrollSnapAlign: isMobile ? "start" : undefined }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>{stage.replace("_", " ")}</span>
-                <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>{stageLeads.length}</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {stageLeads.length === 0 && <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#374151" }}>Empty</span></div>}
-                {stageLeads.map(lead => (
-                  <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{lead.buyer_name || "—"}</p>
-                    {lead.phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {LEAD_STAGES.filter(s => s !== stage).slice(0, 2).map(nextStage => (
-                        <button key={nextStage} onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                          → {nextStage.replace("_", " ")}
-                        </button>
-                      ))}
-                      {lead.phone && (
-                        <button onClick={() => pingWA(lead)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
-                      )}
+        {/* Lost leads accordion */}
+        {lostLeads.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <button
+              onClick={() => setLostOpen(o => !o)}
+              style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0" }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Lost ({lostLeads.length})
+              </span>
+              <span style={{ fontSize: 12, color: "#374151" }}>{lostOpen ? "▲" : "▼"}</span>
+            </button>
+            {lostOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                {lostLeads.map(lead => {
+                  const car = lead.car_listings;
+                  const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+                  return (
+                    <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", opacity: 0.65 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6b7280" }}>{lead.buyer_name || "—"}</p>
+                        <span style={{ fontSize: 10, color: "#374151" }}>{timeAgo(lead.created_at)}</span>
+                      </div>
+                      {carName && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>{carName}</p>}
+                      {lead.notes && <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{lead.notes}"</p>}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          );
-        })}
+            )}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderEnquiries = () => (
     <div>
