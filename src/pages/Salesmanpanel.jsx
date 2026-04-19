@@ -542,8 +542,10 @@ Rules:
     }
 
     return () => {
-      Object.values(chartRefs.current).forEach((c) => c?.destroy());
-      chartRefs.current = {};
+      ["spark-enquiries", "spark-commission"].forEach((id) => {
+        chartRefs.current[id]?.destroy();
+        delete chartRefs.current[id];
+      });
     };
   }, [enquiries, commissionDetails]);
 
@@ -629,7 +631,7 @@ Rules:
         },
       });
     }
-  }, [rawEvents, leads]);
+  }, [rawEvents, leads, activeTab, subTab]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
