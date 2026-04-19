@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,8 @@ import {
   X,
   CheckCircle2,
   Send,
+  LayoutGrid,
+  Users,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -52,6 +54,7 @@ function StatusBadge({ status }) {
     reserved: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
     pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   };
+
   return (
     <span
       className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize flex-shrink-0 ${styles[status] ?? "bg-gray-700 text-gray-400 border-gray-600"}`}
@@ -71,6 +74,9 @@ export default function SalesmanPanel() {
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [subTab, setSubTab] = useState("overview");
+  const [sidenavCollapsed, setSidenavCollapsed] = useState(false);
 
   // ── unique-link copy state
   const [copied, setCopied] = useState(false);
@@ -139,6 +145,7 @@ export default function SalesmanPanel() {
 
   // Per-listing analytics
   const [carStatsMap, setCarStatsMap] = useState({});
+  const [rawEvents, setRawEvents] = useState([]);
 
   // Manager notes
   const [managerNotes, setManagerNotes] = useState([]);
@@ -201,9 +208,10 @@ export default function SalesmanPanel() {
       if (profileData.slug) {
         const { data: evts } = await supabase
           .from("analytics_events")
-          .select("event_type")
+          .select("event_type, created_at")
           .eq("salesman_slug", profileData.slug);
         if (evts) {
+          setRawEvents(evts);
           setMyClicks(
             evts.filter(
               (e) =>
@@ -267,15 +275,25 @@ export default function SalesmanPanel() {
       .subscribe();
 
     // Active listings assigned to me — full detail for rich cards
-    supabase
-      .from("car_listings")
-      .select(
-        "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
+    const fetchMyListings = () =>
+      supabase
+        .from("car_listings")
+        .select(
+          "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, fuel_type, body_type, specs, features, options, city, condition",
+        )
+        .eq("assigned_to", userId)
+        .neq("status", "sold")
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setMyListings(data || []));
+    fetchMyListings();
+    const listingsCh = supabase
+      .channel("my_listings_" + userId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "car_listings" },
+        fetchMyListings,
       )
-      .eq("assigned_to", userId)
-      .neq("status", "sold")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setMyListings(data || []));
+      .subscribe();
 
     // All-time commission — no sold_at column yet, date filter removed
     supabase
@@ -456,9 +474,153 @@ Rules:
       supabase.removeChannel(ch);
       supabase.removeChannel(notifCh);
       supabase.removeChannel(apptCh);
+      supabase.removeChannel(listingsCh);
     };
   }, [userId]);
   // ─────────────────────────────────────────────────────────────────────────
+
+  const chartRefs = useRef({});
+
+  // ── mobile sidenav collapse ───────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => setSidenavCollapsed(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // ── sparkline charts ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.Chart && !document.getElementById("chartjs-cdn")) {
+      const s = document.createElement("script");
+      s.id = "chartjs-cdn";
+      s.src = "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js";
+      s.onload = () => drawSparklines();
+      document.head.appendChild(s);
+    } else if (window.Chart) {
+      drawSparklines();
+    }
+
+    function bucket7Days(rows, dateKey) {
+      const counts = Array(7).fill(0);
+      const now = Date.now();
+      rows.forEach((r) => {
+        const diff = Math.floor((now - new Date(r[dateKey]).getTime()) / 86400000);
+        if (diff >= 0 && diff < 7) counts[6 - diff]++;
+      });
+      return counts;
+    }
+
+    function sparkline(id, data, color) {
+      const canvas = document.getElementById(id);
+      if (!canvas || !window.Chart) return;
+      if (chartRefs.current[id]) chartRefs.current[id].destroy();
+      chartRefs.current[id] = new window.Chart(canvas, {
+        type: "line",
+        data: {
+          labels: data.map((_, i) => i),
+          datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: color + "22", tension: 0.4 }],
+        },
+        options: { animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } },
+      });
+    }
+
+    function drawSparklines() {
+      const enqData = bucket7Days(enquiries, "created_at");
+      const commData = bucket7Days(commissionDetails, "sold_at");
+      sparkline("spark-enquiries", enqData, "#3b82f6");
+      sparkline("spark-commission", commData, "#22c55e");
+    }
+
+    return () => {
+      Object.values(chartRefs.current).forEach((c) => c?.destroy());
+      chartRefs.current = {};
+    };
+  }, [enquiries, commissionDetails]);
+
+  // ── main charts (line + donut) ────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.Chart) return;
+
+    // Build 14-day labels + data
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - (13 - i));
+      return d;
+    });
+    const labels = days.map((d) =>
+      d.toLocaleDateString("en-MY", { month: "short", day: "numeric" }),
+    );
+    const viewCounts = days.map((day) => {
+      const next = new Date(day); next.setDate(next.getDate() + 1);
+      return rawEvents.filter((e) => {
+        const t = new Date(e.created_at).getTime();
+        return (e.event_type === "car_view" || e.event_type === "link_visit") &&
+          t >= day.getTime() && t < next.getTime();
+      }).length;
+    });
+    const enqCounts = days.map((day) => {
+      const next = new Date(day); next.setDate(next.getDate() + 1);
+      return rawEvents.filter((e) => {
+        const t = new Date(e.created_at).getTime();
+        return (e.event_type === "whatsapp_click" || e.event_type === "call_click") &&
+          t >= day.getTime() && t < next.getTime();
+      }).length;
+    });
+
+    const tickStyle = { color: "rgba(255,255,255,0.25)", font: { size: 10 } };
+    const gridStyle = { color: "rgba(255,255,255,0.05)" };
+
+    // Line chart
+    const lineCanvas = document.getElementById("chart-line");
+    if (lineCanvas) {
+      if (chartRefs.current["chart-line"]) chartRefs.current["chart-line"].destroy();
+      chartRefs.current["chart-line"] = new window.Chart(lineCanvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "Views", data: viewCounts, borderColor: "#60a5fa", borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
+            { label: "Enquiries", data: enqCounts, borderColor: "#fbbf24", borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4, borderDash: [4, 3] },
+          ],
+        },
+        options: {
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: true } },
+          scales: {
+            x: { ticks: { ...tickStyle, maxTicksLimit: 7 }, grid: gridStyle },
+            y: { ticks: tickStyle, grid: gridStyle },
+          },
+        },
+      });
+    }
+
+    // Donut chart
+    const STAGE_COLORS = {
+      new: "#60a5fa", contacted: "#fbbf24", viewing_booked: "#c084fc",
+      negotiating: "#fb923c", deposit_taken: "#4ade80", won: "#22c55e",
+    };
+    const stageKeys = Object.keys(STAGE_COLORS);
+    const stageCounts = stageKeys.map((s) => leads.filter((l) => l.stage === s).length);
+
+    const donutCanvas = document.getElementById("chart-donut");
+    if (donutCanvas) {
+      if (chartRefs.current["chart-donut"]) chartRefs.current["chart-donut"].destroy();
+      chartRefs.current["chart-donut"] = new window.Chart(donutCanvas, {
+        type: "doughnut",
+        data: {
+          labels: stageKeys,
+          datasets: [{ data: stageCounts, backgroundColor: stageKeys.map((s) => STAGE_COLORS[s]), borderWidth: 0, hoverOffset: 2 }],
+        },
+        options: {
+          animation: false,
+          cutout: "68%",
+          plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        },
+      });
+    }
+  }, [rawEvents, leads]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -948,14 +1110,330 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     );
   };
 
+  // ── render helpers ────────────────────────────────────────────────────────
+  const CARD = { background: "rgba(255,255,255,0.032)", border: "0.5px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: 14 };
+
+  const renderDashboard = () => {
+    const stale = [...staleLeads].sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+    const activityFeed = [
+      ...appointments.map(a => ({ type: "booking", label: `Booking: ${a.buyer_name || "—"} for ${a.car_listings?.brand || "a car"}`, ts: a.created_at, dot: "#22c55e" })),
+      ...enquiries.map(e => ({ type: "enquiry", label: `Enquiry from ${e.buyer_name || "someone"} — ${e.car_listings?.brand || ""}`, ts: e.created_at, dot: "#60a5fa" })),
+      ...leads.filter(l => l.updated_at).map(l => ({ type: "lead", label: `Lead: ${l.buyer_name || "—"} (${l.stage || "new"})`, ts: l.updated_at, dot: "#fbbf24" })),
+      ...commissionDetails.map(c => ({ type: "sale", label: `Sold: ${[c.year, c.brand, c.model].filter(Boolean).join(" ")}`, ts: c.sold_at, dot: "#4ade80" })),
+    ].filter(i => i.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8);
+
+    return (
+      <>
+        {/* Sub-tabs */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+          {[["overview", "Overview"], ["performance", "Performance"], ["month", "This month"]].map(([key, label]) => (
+            <button key={key} onClick={() => setSubTab(key)} style={{ background: subTab === key ? "rgba(29,78,216,0.2)" : "transparent", border: subTab === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent", borderRadius: 7, color: subTab === key ? "#93c5fd" : "#64748b", fontSize: 13, fontWeight: subTab === key ? 600 : 400, padding: "6px 14px", cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* KPI cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Enquiries</span><MessageSquare size={14} color="#3b82f6" /></div>
+            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myEnquiries}</p>
+            <canvas id="spark-enquiries" height="36" style={{ width: "100%", marginTop: 10, display: "block" }} />
+          </div>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Listings</span><Car size={14} color="#a78bfa" /></div>
+            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myListings.length}</p>
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>{myListings.filter(l => l.status === "available").length} available</p>
+          </div>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Commission</span><TrendingUp size={14} color="#22c55e" /></div>
+            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>RM {commission !== null ? Number(commission).toLocaleString("en-MY") : "–"}</p>
+            <canvas id="spark-commission" height="36" style={{ width: "100%", marginTop: 10, display: "block" }} />
+          </div>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Leads</span><Users size={14} color="#f59e0b" /></div>
+            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{leads.filter(l => l.stage !== "won" && l.stage !== "lost").length}</p>
+            {staleLeads.length > 0 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#ef4444" }}>{staleLeads.length} stale</p>}
+          </div>
+        </div>
+
+        {/* Charts row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div style={CARD}>
+            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Views &amp; enquiries — last 14 days</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: "#60a5fa" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Views</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 16, height: 2, background: "repeating-linear-gradient(to right,#fbbf24 0,#fbbf24 4px,transparent 4px,transparent 7px)" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Enquiries</span></div>
+            </div>
+            <div style={{ position: "relative", height: 130 }}><canvas id="chart-line" style={{ width: "100%", height: "100%" }} /></div>
+          </div>
+          <div style={CARD}>
+            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Lead stage breakdown</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ width: 110, height: 110, flexShrink: 0 }}><canvas id="chart-donut" style={{ width: "100%", height: "100%" }} /></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[["new","#60a5fa","New"],["contacted","#fbbf24","Contacted"],["viewing_booked","#c084fc","Viewing booked"],["negotiating","#fb923c","Negotiating"],["deposit_taken","#4ade80","Deposit taken"],["won","#22c55e","Won"]].map(([s,c,lbl]) => (
+                  <div key={s} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: "#9ca3af" }}>{lbl} ({leads.filter(l => l.stage === s).length})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom row */}
+        <div style={{ display: "grid", gridTemplateColumns: stale.length === 0 ? "1fr" : "1fr 1fr", gap: 12 }}>
+          {stale.length > 0 && (
+            <div style={CARD}>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Follow-up nudges</p>
+              {stale.slice(0, 3).map((lead) => {
+                const daysIdle = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
+                const carName = lead.car_listings ? `${lead.car_listings.brand || ""} ${lead.car_listings.model || ""}`.trim() : "";
+                return (
+                  <div key={lead.id} style={{ background: "rgba(251,146,60,0.06)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <div style={{ flexShrink: 0, width: 8, height: 8, borderRadius: "50%", background: "#fb923c" }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#fdba74", fontWeight: 500 }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#92400e" }}>{daysIdle}d idle{carName ? ` · ${carName}` : ""}</p>
+                    </div>
+                    <button onClick={() => pingWA(lead)} style={{ background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", fontSize: 11, padding: "4px 10px", borderRadius: 6, cursor: "pointer", flexShrink: 0 }}>
+                      Ping WA
+                    </button>
+                  </div>
+                );
+              })}
+              {stale.length > 3 && <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{stale.length - 3} more stale lead{stale.length - 3 !== 1 ? "s" : ""}</p>}
+            </div>
+          )}
+          <div style={CARD}>
+            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Activity feed</p>
+            {activityFeed.length === 0 && <p style={{ fontSize: 12, color: "#374151", margin: "12px 0 0" }}>No recent activity yet.</p>}
+            {activityFeed.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < activityFeed.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.dot, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "#9ca3af", flex: 1 }}>{item.label}</span>
+                <span style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(item.ts)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const renderListings = () => (
+    <div>
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Listings ({myListings.length})</p>
+      {myListings.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No listings assigned yet.</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+          {myListings.map((car) => {
+            const stats = carStatsMap[car.id] ?? {};
+            const views = stats.views || 0;
+            const enqs = stats.enquiries || 0;
+            const cvr = views > 0 ? (enqs / views) * 100 : null;
+            const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+            const isHot = cvr !== null && cvr > 6 && views > 3;
+            const isStale = views > 10 && (cvr === 0 || cvr === null);
+            const img = car.images?.[0];
+            const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+            const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
+            return (
+              <div key={car.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                {img ? (
+                  <img src={img} alt={name} style={{ width: "100%", height: 150, objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: "100%", height: 150, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Car size={32} color="#374151" />
+                  </div>
+                )}
+                <div style={{ padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, marginRight: 8 }}>{name}</p>
+                    <StatusBadge status={car.status} />
+                  </div>
+                  <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#60a5fa" }}>{price}</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
+                    {[car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null, car.transmission, car.colour].filter(Boolean).join(" · ")}
+                  </p>
+                  {/* CVR heatmap */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, color: "#4b5563" }}>{views} views · {enqs} enquiries</span>
+                      {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
+                      {isStale && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+                    </div>
+                    <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer" }}>
+                      {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
+                    </button>
+                    <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>WA Caption</button>
+                    <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer" }}>Broadcast</button>
+                    <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>AI Caption</button>
+                    <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer" }}>TikTok</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderBookings = () => (
+    <div>
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Upcoming Bookings ({appointments.length})</p>
+      {appointments.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No upcoming bookings.</div>
+      ) : (
+        <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "0 16px" }}>
+          {appointments.map((appt, i) => {
+            const isToday = new Date(appt.appointment_date).toDateString() === new Date().toDateString();
+            return renderAppt(appt, i, appointments.length, isToday);
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderLeads = () => (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Lead Pipeline ({leads.length})</p>
+        <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
+          <Plus size={13} /> Add Lead
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+        {LEAD_STAGES.filter(s => s !== "lost").map(stage => {
+          const sc = STAGE_COLOR[stage] || {};
+          const stageLeads = leads.filter(l => l.stage === stage);
+          return (
+            <div key={stage} style={{ minWidth: 200, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>{stage.replace("_", " ")}</span>
+                <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>{stageLeads.length}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {stageLeads.length === 0 && <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 11, color: "#374151" }}>Empty</span></div>}
+                {stageLeads.map(lead => (
+                  <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{lead.buyer_name || "—"}</p>
+                    {lead.phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {LEAD_STAGES.filter(s => s !== stage).slice(0, 2).map(nextStage => (
+                        <button key={nextStage} onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                          → {nextStage.replace("_", " ")}
+                        </button>
+                      ))}
+                      {lead.phone && (
+                        <button onClick={() => pingWA(lead)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderEnquiries = () => (
+    <div>
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Enquiries ({enquiries.length})</p>
+      {enquiries.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No enquiries yet.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {enquiries.map(enq => {
+            const car = enq.car_listings;
+            const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+            const phone = (enq.buyer_phone || "").replace(/\D/g, "");
+            return (
+              <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
+                    {carName && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#60a5fa" }}>{carName}</p>}
+                  </div>
+                  <span style={{ fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</span>
+                </div>
+                {enq.buyer_message && <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", fontStyle: "italic" }}>"{enq.buyer_message}"</p>}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {phone && (
+                    <button onClick={() => window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}`, "_blank")} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer" }}>
+                      WhatsApp
+                    </button>
+                  )}
+                  <button onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
+                    Templates
+                  </button>
+                  <button onClick={() => { setOpenAiReplyId(enq.id); generateAiReply(enq); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>
+                    AI Reply
+                  </button>
+                </div>
+                {openTemplateId === enq.id && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {WA_TEMPLATES.map((tpl, ti) => (
+                      <button key={ti} onClick={() => fireTemplate(enq, tpl)} style={{ textAlign: "left", fontSize: 11, padding: "6px 10px", borderRadius: 7, background: templateToast === enq.id ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: templateToast === enq.id ? "#4ade80" : "#9ca3af", cursor: "pointer" }}>
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {openAiReplyId === enq.id && (
+                  <div style={{ marginTop: 10 }}>
+                    {aiLoading ? (
+                      <div className="caption-skeleton" style={{ height: 60, width: "100%" }} />
+                    ) : aiDrafts[enq.id] ? (
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af", whiteSpace: "pre-wrap" }}>{aiDrafts[enq.id]}</p>
+                        <button onClick={() => navigator.clipboard.writeText(aiDrafts[enq.id])} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>Copy</button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+      <div style={{ textAlign: "center" }}>
+        <TrendingUp size={32} color="#374151" style={{ marginBottom: 12 }} />
+        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>Analytics coming soon</p>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>Detailed performance data will appear here.</p>
+      </div>
+    </div>
+  );
+
+  const renderTeam = () => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+      <div style={{ textAlign: "center" }}>
+        <Users size={32} color="#374151" style={{ marginBottom: 12 }} />
+        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>Team view coming soon</p>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>See your team's performance here.</p>
+      </div>
+    </div>
+  );
+
   return (
     <div
-      className="min-h-screen text-white"
-      style={{
-        background:
-          "radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), #05070e",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
+      style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}
     >
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
@@ -964,2273 +1442,216 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
         .lead-score-wrap:hover .lead-score-tip { display: block !important; }
         @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes hotpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
         .caption-skeleton { background: linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 75%); background-size:800px 100%; animation:shimmer 1.4s infinite linear; border-radius:8px; }
+        .hot-dot { animation: hotpulse 1.5s ease-in-out infinite; }
       `}</style>
 
-      {/* Top bar */}
-      <header
-        className="px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+      {/* ─── Sidenav ─── */}
+      <nav
         style={{
-          background: "rgba(5,7,14,0.96)",
-          borderBottom: "1px solid rgba(255,255,255,0.048)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
+          width: sidenavCollapsed ? 56 : 200,
+          flexShrink: 0,
+          background: "#080a12",
+          borderRight: "1px solid rgba(255,255,255,0.07)",
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          transition: "width 0.2s ease",
+          overflow: "hidden",
         }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm"
-            style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-          >
+        {/* Logo */}
+        <div style={{ padding: sidenavCollapsed ? "14px 0" : 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: sidenavCollapsed ? "center" : "flex-start", gap: 8 }}>
+          <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>
             S
           </div>
-          <span
-            className="font-bold tracking-wide text-white"
+          {!sidenavCollapsed && (
+            <div>
+              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", lineHeight: 1, margin: 0 }}>SHIFTOS</p>
+              <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· My Panel</p>
+            </div>
+          )}
+        </div>
+
+        {/* MAIN section */}
+        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>}
+        {[
+          { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+          { tab: "listings",  label: "Listings",  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: myListings.length || null },
+          { tab: "bookings",  label: "Bookings",  icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: appointments.length || null },
+        ].map(({ tab, label, icon, badge }) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              letterSpacing: "3px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: sidenavCollapsed ? "center" : undefined,
+              gap: sidenavCollapsed ? 0 : 10,
+              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
+              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
+              borderRadius: 8,
+              cursor: "pointer",
+              position: "relative",
+              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+              color: activeTab === tab ? "#93c5fd" : "#6b7280",
+              fontSize: 13,
+              fontWeight: 500,
+              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
+              textAlign: sidenavCollapsed ? "center" : "left",
             }}
           >
-            SHIFTOS
-          </span>
-          <span className="text-gray-600 text-xs ml-1">· My Panel</span>
+            {icon}
+{!sidenavCollapsed && <span style={{ flex: 1 }}>{label}</span>}
+            {badge ? (
+              sidenavCollapsed
+                ? <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, background: "#3b82f6", borderRadius: "50%" }} />
+                : <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
+            ) : null}
+          </button>
+        ))}
+
+        {/* CRM section */}
+        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>CRM</p>}
+        {[
+          { tab: "leads",     label: "Leads",     icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+          { tab: "analytics", label: "Analytics", icon: <TrendingUp style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+          { tab: "enquiries", label: "Enquiries", icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: enquiries.filter(e => e.status === "new").length || null },
+        ].map(({ tab, label, icon, badge }) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: sidenavCollapsed ? "center" : undefined,
+              gap: sidenavCollapsed ? 0 : 10,
+              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
+              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
+              borderRadius: 8,
+              cursor: "pointer",
+              position: "relative",
+              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+              color: activeTab === tab ? "#93c5fd" : "#6b7280",
+              fontSize: 13,
+              fontWeight: 500,
+              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
+              textAlign: sidenavCollapsed ? "center" : "left",
+            }}
+          >
+            {icon}
+{!sidenavCollapsed && <span style={{ flex: 1 }}>{label}</span>}
+            {badge ? (
+              sidenavCollapsed
+                ? <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, background: "#3b82f6", borderRadius: "50%" }} />
+                : <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
+            ) : null}
+          </button>
+        ))}
+
+        {/* TEAM section */}
+        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Team</p>}
+        {[
+          { tab: "team", label: "Team", icon: <Users style={{ width: 14, height: 14, flexShrink: 0 }} /> },
+        ].map(({ tab, label, icon }) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: sidenavCollapsed ? "center" : undefined,
+              gap: sidenavCollapsed ? 0 : 10,
+              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
+              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
+              borderRadius: 8,
+              cursor: "pointer",
+              position: "relative",
+              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+              color: activeTab === tab ? "#93c5fd" : "#6b7280",
+              fontSize: 13,
+              fontWeight: 500,
+              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
+              textAlign: sidenavCollapsed ? "center" : "left",
+            }}
+          >
+            {icon}
+{!sidenavCollapsed && <span>{label}</span>}
+          </button>
+        ))}
+
+        {/* Bottom profile */}
+        <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: sidenavCollapsed ? "12px 0" : "12px 16px", display: "flex", alignItems: "center", justifyContent: sidenavCollapsed ? "center" : "flex-start", gap: 10 }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
+            {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
+          </div>
+          {!sidenavCollapsed && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name || profile?.slug || "Salesman"}</p>
+              <p style={{ fontSize: 10, color: "#4b5563", margin: 0, textTransform: "capitalize" }}>{profile?.role || "salesman"}</p>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          {/* Bell */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => {
-                setNotifOpen((p) => !p);
-              }}
-              className="relative p-2 rounded-lg transition-all"
-              style={{
-                background:
-                  unreadCount > 0 ? "rgba(59,130,246,0.1)" : "transparent",
-                border:
-                  unreadCount > 0
-                    ? "1px solid rgba(59,130,246,0.25)"
-                    : "1px solid transparent",
-                color: unreadCount > 0 ? "#93c5fd" : "#6b7280",
-              }}
-            >
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-gray-900">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-            {notifOpen && (
-              <>
-                <div
-                  onClick={() => setNotifOpen(false)}
-                  style={{ position: "fixed", inset: 0, zIndex: 40 }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "110%",
-                    right: 0,
-                    zIndex: 50,
-                    width: 300,
-                    maxHeight: 380,
-                    overflowY: "auto",
-                    background: "#111827",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 12,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 16px",
-                      borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#f3f4f6",
-                      }}
-                    >
-                      Notifications
-                    </span>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllNotifsRead}
-                        style={{
-                          fontSize: 11,
-                          color: "#60a5fa",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-                  {notifications.length === 0 ? (
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: "#4b5563",
-                        padding: "20px 16px",
-                        textAlign: "center",
-                      }}
-                    >
-                      No notifications yet
-                    </p>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => markNotifRead(n)}
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid rgba(255,255,255,0.04)",
-                          background: n.is_read
-                            ? "transparent"
-                            : "rgba(59,130,246,0.04)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "flex-start",
-                          }}
-                        >
-                          {!n.is_read && (
-                            <div
-                              style={{
-                                width: 6,
-                                height: 6,
-                                background: "#3b82f6",
-                                borderRadius: "50%",
-                                flexShrink: 0,
-                                marginTop: 5,
-                              }}
-                            />
-                          )}
-                          <div style={{ flex: 1 }}>
-                            <p
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#f3f4f6",
-                                margin: "0 0 2px",
-                              }}
-                            >
-                              {n.title}
-                            </p>
-                            {n.body && (
-                              <p
-                                style={{
-                                  fontSize: 12,
-                                  color: "#9ca3af",
-                                  margin: "0 0 3px",
-                                }}
-                              >
-                                {n.body}
-                              </p>
-                            )}
-                            <p style={{ fontSize: 10, color: "#4b5563" }}>
-                              {timeAgo(n.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            )}
+      </nav>
+
+      {/* ─── Right content pane ─── */}
+      <div style={{ flex: 1, minWidth: 0, background: "#05070e", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+
+        {/* Sticky topbar */}
+        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(5,7,14,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+              {(() => {
+                const h = new Date().getHours();
+                return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+              })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b", marginTop: 2 }}>
+              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
+              {profile?.dealership ? ` · ${profile.dealership}` : ""}
+            </p>
           </div>
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm text-red-400 hover:bg-red-500/10 px-3 py-2 rounded-lg transition-all"
+            onClick={() => setShowAddLead(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, padding: "8px 14px", cursor: "pointer" }}
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
+            <Plus size={14} /> Add Lead
+          </button>
+          <button
+            onClick={() => setNotifOpen(true)}
+            style={{ position: "relative", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}
+          >
+            <Bell size={16} />
+            {notifications.filter((n) => !n.read).length > 0 && (
+              <span style={{ position: "absolute", top: 6, right: 6, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #05070e" }} />
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#64748b", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}
+          >
+            <LogOut size={15} />
           </button>
         </div>
-      </header>
 
-      {/* ── Main two-column layout ── */}
-      <main className="px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* ══ LEFT COLUMN ══ */}
-          <div className="space-y-5">
-            {/* Daily goal nudge */}
-            {(() => {
-              const target = profile?.monthly_target ?? 5;
-              const needed = Math.max(target - thisMonthSales, 0);
-              const now = new Date();
-              const daysLeft =
-                new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() -
-                now.getDate();
-              const onTrack = thisMonthSales >= target;
-              const pace =
-                daysLeft > 0 ? (needed / daysLeft).toFixed(1) : needed;
-              const behind =
-                needed > 0 &&
-                daysLeft > 0 &&
-                needed / daysLeft >
-                  target /
-                    new Date(
-                      now.getFullYear(),
-                      now.getMonth() + 1,
-                      0,
-                    ).getDate();
-              const accentColor = onTrack ? "#4ade80" : "#fb923c";
-              const line = onTrack
-                ? "Target smashed! You're on fire this month 🎯"
-                : behind
-                  ? `${needed} more sale${needed !== 1 ? "s" : ""} needed, ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left — let's go`
-                  : "On track — keep pushing";
-              const pillText = onTrack
-                ? `${thisMonthSales} / ${target} this month`
-                : `Need ${needed} sale${needed !== 1 ? "s" : ""} in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`;
-              return (
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    borderLeft: `3px solid ${accentColor}`,
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: onTrack
-                        ? "#4ade80"
-                        : behind
-                          ? "#fb923c"
-                          : "#d1d5db",
-                      fontWeight: 500,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {line}
-                  </p>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "#6b7280",
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 99,
-                      padding: "2px 10px",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {pillText}
-                  </span>
-                </div>
-              );
-            })()}
-            {/* Profile card — with commission + copy link */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.032)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16,
-                padding: 20,
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <AvatarDisplay />
-                <div className="flex-1 min-w-0">
-                  <p className="text-lg font-bold text-white leading-tight">
-                    {profile?.full_name || "—"}
-                  </p>
-                  <p className="text-gray-400 text-sm capitalize">
-                    {profile?.role || "Salesperson"}
-                  </p>
-                  {profile?.dealership && (
-                    <p className="text-gray-600 text-xs mt-0.5">
-                      {profile.dealership}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  {profile?.is_active === false && (
-                    <span className="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400">
-                      Inactive
-                    </span>
-                  )}
-                  {uniqueLink && (
-                    <button
-                      onClick={handleCopy}
-                      title="Copy your unique tracking link — share it anywhere to track clicks"
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all"
-                      style={{
-                        background: copied
-                          ? "rgba(22,163,74,0.1)"
-                          : "rgba(255,255,255,0.04)",
-                        borderColor: copied
-                          ? "rgba(22,163,74,0.3)"
-                          : "rgba(255,255,255,0.1)",
-                        color: copied ? "#4ade80" : "#9ca3af",
-                      }}
-                    >
-                      {copied ? (
-                        <Check className="w-3 h-3" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                      {copied ? "Copied!" : "Copy Link"}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-gray-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">
-                    Total commission
-                  </span>
-                  <span
-                    className="text-sm font-bold"
-                    style={{
-                      color:
-                        commission && commission > 0 ? "#4ade80" : "#6b7280",
-                    }}
-                  >
-                    {commission === null
-                      ? "—"
-                      : `RM ${Number(commission).toLocaleString()}`}
-                  </span>
-                </div>
-                {commissionDetails.length > 0 && (
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                  >
-                    {commissionDetails.map((c, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span style={{ fontSize: 11, color: "#6b7280" }}>
-                          {c.year} {c.brand} {c.model}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: "#4ade80",
-                          }}
-                        >
-                          +RM {Number(c.commission_amount).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Slug guard banner */}
-            {!profile?.slug && (
-              <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3 flex items-center gap-3">
-                <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                <p className="text-xs text-yellow-400">
-                  Your account doesn't have a unique link yet. Contact your
-                  manager to set one up.
-                </p>
-              </div>
-            )}
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.032)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 16,
-                  padding: 16,
-                  textAlign: "center",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                }}
-              >
-                <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <Eye className="w-4 h-4 text-blue-400" />
-                </div>
-                <p className="text-2xl font-bold text-white">{myClicks}</p>
-                <p className="text-xs text-gray-500 mt-1">Link Clicks</p>
-              </div>
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.032)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 16,
-                  padding: 16,
-                  textAlign: "center",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                }}
-              >
-                <div className="w-8 h-8 bg-yellow-600/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <MessageSquare className="w-4 h-4 text-yellow-400" />
-                </div>
-                <p className="text-2xl font-bold text-white">{myEnquiries}</p>
-                <p className="text-xs text-gray-500 mt-1">Enquiries</p>
-              </div>
-              <div
-                className="rounded-xl p-4 text-center"
-                style={{
-                  background: "rgba(22,163,74,0.06)",
-                  border: "1px solid rgba(22,163,74,0.2)",
-                }}
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2"
-                  style={{ background: "rgba(22,163,74,0.15)" }}
-                >
-                  <ShoppingBag className="w-4 h-4 text-green-400" />
-                </div>
-                <p className="text-2xl font-bold text-green-400">{soldCount}</p>
-                <p
-                  className="text-xs mt-1"
-                  style={{ color: "rgba(74,222,128,0.6)" }}
-                >
-                  All Time Sales
-                </p>
-              </div>
-              {/* Monthly target card */}
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  background: "rgba(59,130,246,0.06)",
-                  border: "1px solid rgba(59,130,246,0.2)",
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "rgba(59,130,246,0.15)" }}
-                  >
-                    <Target className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <span className="text-xs text-blue-400 font-bold">
-                    {thisMonthSales}/{profile?.monthly_target || 5}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: 4,
-                    background: "rgba(255,255,255,0.07)",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    marginBottom: 6,
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${Math.min(100, (thisMonthSales / (profile?.monthly_target || 5)) * 100)}%`,
-                      background:
-                        thisMonthSales >= (profile?.monthly_target || 5)
-                          ? "#4ade80"
-                          : "#3b82f6",
-                      borderRadius: 4,
-                      transition: "width 0.5s ease",
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">This Month</p>
-                {thisMonthSales >= (profile?.monthly_target || 5) && (
-                  <p className="text-xs text-green-400 font-bold mt-1">
-                    🎯 Target hit!
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Response time stat */}
-            {(() => {
-              const diffs = [];
-              enquiries.forEach((e) => {
-                const created = e.created_at
-                  ? new Date(e.created_at).getTime()
-                  : null;
-                if (!created) return;
-                if (e.replied_at) {
-                  const diff =
-                    (new Date(e.replied_at).getTime() - created) / 60000;
-                  if (diff >= 0) diffs.push(diff);
-                } else {
-                  const phone = (e.buyer_phone || "").replace(/\D/g, "");
-                  if (!phone) return;
-                  const match = appointments
-                    .filter((a) => {
-                      const ap = (a.buyer_phone || "").replace(/\D/g, "");
-                      return (
-                        ap && ap.slice(-8) === phone.slice(-8) && a.created_at
-                      );
-                    })
-                    .sort(
-                      (a, b) => new Date(a.created_at) - new Date(b.created_at),
-                    )[0];
-                  if (match) {
-                    const diff =
-                      (new Date(match.created_at).getTime() - created) / 60000;
-                    if (diff >= 0 && diff < 10080) diffs.push(diff);
-                  }
-                }
-              });
-              const avg = diffs.length
-                ? diffs.reduce((s, v) => s + v, 0) / diffs.length
-                : null;
-              const valueStr =
-                avg === null
-                  ? "--"
-                  : avg < 15
-                    ? "< 15m avg"
-                    : avg > 60
-                      ? "> 1h avg"
-                      : `${Math.round(avg)}m avg`;
-              const color =
-                avg === null
-                  ? "#6b7280"
-                  : avg < 30
-                    ? "#4ade80"
-                    : avg < 120
-                      ? "#fbbf24"
-                      : "#f87171";
-              const bg =
-                avg === null
-                  ? "rgba(255,255,255,0.032)"
-                  : avg < 30
-                    ? "rgba(34,197,94,0.06)"
-                    : avg < 120
-                      ? "rgba(251,191,36,0.06)"
-                      : "rgba(248,113,113,0.06)";
-              const border =
-                avg === null
-                  ? "rgba(255,255,255,0.07)"
-                  : avg < 30
-                    ? "rgba(34,197,94,0.2)"
-                    : avg < 120
-                      ? "rgba(251,191,36,0.2)"
-                      : "rgba(248,113,113,0.2)";
-              const iconBg =
-                avg === null
-                  ? "rgba(168,85,247,0.12)"
-                  : avg < 30
-                    ? "rgba(34,197,94,0.15)"
-                    : avg < 120
-                      ? "rgba(251,191,36,0.15)"
-                      : "rgba(248,113,113,0.15)";
-              return (
-                <div
-                  className="rounded-xl"
-                  style={{
-                    background: bg,
-                    border: `1px solid ${border}`,
-                    padding: "12px 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: iconBg }}
-                  >
-                    <Clock className="w-4 h-4" style={{ color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 mb-0.5">
-                      Response Time
-                    </p>
-                    <p
-                      className="text-lg font-bold leading-none"
-                      style={{ color }}
-                    >
-                      {valueStr}
-                    </p>
-                    <p style={{ fontSize: 10, color: "#4b5563", marginTop: 3 }}>
-                      {"< 30m = higher close rate"}
-                    </p>
-                  </div>
-                  {diffs.length > 0 && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "#6b7280",
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 99,
-                        padding: "2px 8px",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {diffs.length} sampled
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Enquiries */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.032)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16,
-                padding: 20,
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="w-4 h-4 text-yellow-400" />
-                <p className="text-sm font-medium text-white">Enquiries</p>
-                {enquiries.filter((e) => e.status === "new").length > 0 && (
-                  <span
-                    className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: "rgba(251,191,36,0.12)",
-                      border: "1px solid rgba(251,191,36,0.25)",
-                      color: "#fbbf24",
-                    }}
-                  >
-                    {enquiries.filter((e) => e.status === "new").length} new
-                  </span>
-                )}
-              </div>
-              {enquiriesLoading ? (
-                <div className="text-center py-6 text-gray-600 text-sm">
-                  Loading...
-                </div>
-              ) : enquiries.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageSquare className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">No enquiries yet.</p>
-                  <p className="text-gray-600 text-xs mt-1">
-                    Enquiries from your link will appear here.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {enquiries.slice(0, 8).map((e) => {
-                    const car = e.car_listings;
-                    const phone = (e.buyer_phone || "").replace(/\D/g, "");
-                    const waMsg = encodeURIComponent(
-                      `Hi${e.buyer_name ? " " + e.buyer_name : ""}, thanks for your interest${car ? " in the " + car.brand + " " + car.model : ""}! How can I help you?`,
-                    );
-                    const isNew =
-                      Date.now() - new Date(e.created_at) < 86400000;
-                    return (
-                      <div
-                        key={e.id}
-                        style={{
-                          padding: "12px",
-                          background: isNew
-                            ? "rgba(251,191,36,0.04)"
-                            : "rgba(255,255,255,0.02)",
-                          border: `1px solid ${isNew ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.06)"}`,
-                          borderRadius: 10,
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: "50%",
-                                background: "rgba(251,191,36,0.1)",
-                                border: "1px solid rgba(251,191,36,0.2)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                              }}
-                            >
-                              <User className="w-3.5 h-3.5 text-yellow-400" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-white">
-                                {e.buyer_name || "Anonymous"}
-                              </p>
-                              {e.buyer_phone && (
-                                <p className="text-xs text-gray-500">
-                                  {e.buyer_phone}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {isNew && (
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 800,
-                                  background: "rgba(251,191,36,0.15)",
-                                  border: "1px solid rgba(251,191,36,0.3)",
-                                  color: "#fbbf24",
-                                  borderRadius: 4,
-                                  padding: "1px 5px",
-                                }}
-                              >
-                                NEW
-                              </span>
-                            )}
-                            <p className="text-xs text-gray-600">
-                              {timeAgo(e.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                        {car && (
-                          <p className="text-xs text-gray-400 mb-1 ml-9">
-                            {car.brand} {car.model} {car.year}
-                          </p>
-                        )}
-                        {e.buyer_message && (
-                          <p className="text-xs text-gray-500 italic mb-2 ml-9 truncate">
-                            "{e.buyer_message}"
-                          </p>
-                        )}
-                        {phone && (
-                          <div className="flex gap-2 ml-9 flex-wrap">
-                            <a
-                              href={`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${waMsg}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(37,211,102,0.1)",
-                                border: "1px solid rgba(37,211,102,0.25)",
-                                color: "#4ade80",
-                                textDecoration: "none",
-                              }}
-                            >
-                              <MessageSquare className="w-3 h-3" />
-                              Reply WA
-                            </a>
-                            <a
-                              href={`tel:${phone}`}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(96,165,250,0.08)",
-                                border: "1px solid rgba(96,165,250,0.2)",
-                                color: "#93c5fd",
-                                textDecoration: "none",
-                              }}
-                            >
-                              <Phone className="w-3 h-3" />
-                              Call
-                            </a>
-                            <button
-                              onClick={() => {
-                                const next =
-                                  openAiReplyId === e.id ? null : e.id;
-                                setOpenAiReplyId(next);
-                                if (next && !aiDrafts[e.id]) {
-                                  generateAiReply(e);
-                                }
-                              }}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background:
-                                  openAiReplyId === e.id
-                                    ? "rgba(99,102,241,0.18)"
-                                    : "rgba(99,102,241,0.08)",
-                                border: `1px solid ${openAiReplyId === e.id ? "rgba(99,102,241,0.4)" : "rgba(99,102,241,0.2)"}`,
-                                color: "#a5b4fc",
-                                cursor: "pointer",
-                                fontFamily: "'DM Sans',sans-serif",
-                              }}
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              AI Reply
-                            </button>
-                            <button
-                              onClick={() =>
-                                setOpenTemplateId(
-                                  openTemplateId === e.id ? null : e.id,
-                                )
-                              }
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background:
-                                  openTemplateId === e.id
-                                    ? "rgba(167,139,250,0.15)"
-                                    : "rgba(167,139,250,0.07)",
-                                border: `1px solid ${openTemplateId === e.id ? "rgba(167,139,250,0.35)" : "rgba(167,139,250,0.2)"}`,
-                                color: "#c084fc",
-                                cursor: "pointer",
-                                fontFamily: "'DM Sans',sans-serif",
-                              }}
-                            >
-                              <Tag className="w-3 h-3" />
-                              Templates
-                            </button>
-                          </div>
-                        )}
-                        {openAiReplyId === e.id && (
-                          <div
-                            style={{
-                              marginTop: 10,
-                              marginLeft: 36,
-                              background: "rgba(255,255,255,0.032)",
-                              border: "1px solid rgba(255,255,255,0.07)",
-                              borderRadius: 12,
-                              padding: 12,
-                              fontFamily: "'DM Sans',sans-serif",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: 10,
-                                color: "#6366f1",
-                                fontWeight: 700,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.08em",
-                                marginBottom: 8,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 5,
-                              }}
-                            >
-                              <Sparkles style={{ width: 10, height: 10 }} />
-                              AI Draft
-                            </p>
-                            {aiLoading && !aiDrafts[e.id] ? (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 8,
-                                  padding: "16px 0",
-                                  color: "#6b7280",
-                                  fontSize: 12,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: 14,
-                                    height: 14,
-                                    border: "2px solid rgba(255,255,255,0.08)",
-                                    borderTop: "2px solid #6366f1",
-                                    borderRadius: "50%",
-                                    animation: "spin 0.7s linear infinite",
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                Generating reply…
-                              </div>
-                            ) : (
-                              <>
-                                <textarea
-                                  value={aiDrafts[e.id] || ""}
-                                  onChange={(ev) =>
-                                    setAiDrafts((p) => ({
-                                      ...p,
-                                      [e.id]: ev.target.value,
-                                    }))
-                                  }
-                                  rows={5}
-                                  style={{
-                                    width: "100%",
-                                    background: "rgba(255,255,255,0.04)",
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    borderRadius: 8,
-                                    padding: "8px 10px",
-                                    fontSize: 12,
-                                    color: "white",
-                                    outline: "none",
-                                    resize: "vertical",
-                                    fontFamily: "'DM Sans',sans-serif",
-                                    lineHeight: 1.6,
-                                    boxSizing: "border-box",
-                                  }}
-                                />
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    gap: 8,
-                                    marginTop: 8,
-                                  }}
-                                >
-                                  <button
-                                    onClick={() => {
-                                      const draft = aiDrafts[e.id] || "";
-                                      navigator.clipboard.writeText(draft);
-                                      const ph = (e.buyer_phone || "").replace(
-                                        /\D/g,
-                                        "",
-                                      );
-                                      if (ph) {
-                                        window.open(
-                                          `https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(draft)}`,
-                                          "_blank",
-                                          "noopener,noreferrer",
-                                        );
-                                      }
-                                    }}
-                                    style={{
-                                      flex: 1,
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      padding: "7px 0",
-                                      borderRadius: 8,
-                                      background: "rgba(37,211,102,0.12)",
-                                      border: "1px solid rgba(37,211,102,0.28)",
-                                      color: "#4ade80",
-                                      cursor: "pointer",
-                                      fontFamily: "'DM Sans',sans-serif",
-                                    }}
-                                  >
-                                    Copy &amp; Open WA
-                                  </button>
-                                  <button
-                                    disabled={aiLoading}
-                                    onClick={() => {
-                                      setAiDrafts((p) => ({
-                                        ...p,
-                                        [e.id]: "",
-                                      }));
-                                      generateAiReply(e);
-                                    }}
-                                    style={{
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      padding: "7px 12px",
-                                      borderRadius: 8,
-                                      background: "rgba(99,102,241,0.1)",
-                                      border: "1px solid rgba(99,102,241,0.25)",
-                                      color: "#a5b4fc",
-                                      cursor: aiLoading
-                                        ? "not-allowed"
-                                        : "pointer",
-                                      opacity: aiLoading ? 0.5 : 1,
-                                      fontFamily: "'DM Sans',sans-serif",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: 4,
-                                    }}
-                                  >
-                                    {aiLoading ? (
-                                      <div
-                                        style={{
-                                          width: 10,
-                                          height: 10,
-                                          border:
-                                            "2px solid rgba(255,255,255,0.1)",
-                                          borderTop: "2px solid #a5b4fc",
-                                          borderRadius: "50%",
-                                          animation:
-                                            "spin 0.7s linear infinite",
-                                        }}
-                                      />
-                                    ) : null}
-                                    Regenerate
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                        {openTemplateId === e.id && (
-                          <div
-                            style={{
-                              marginTop: 10,
-                              marginLeft: 36,
-                              background: "rgba(255,255,255,0.04)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 10,
-                              padding: 10,
-                              position: "relative",
-                            }}
-                          >
-                            {templateToast === e.id && (
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: 8,
-                                  left: "50%",
-                                  transform: "translateX(-50%)",
-                                  background: "rgba(34,197,94,0.18)",
-                                  border: "1px solid rgba(34,197,94,0.35)",
-                                  color: "#4ade80",
-                                  fontSize: 10,
-                                  fontWeight: 600,
-                                  padding: "3px 12px",
-                                  borderRadius: 20,
-                                  whiteSpace: "nowrap",
-                                  zIndex: 2,
-                                  pointerEvents: "none",
-                                }}
-                              >
-                                ✓ Copied + Opening WA
-                              </div>
-                            )}
-                            <p
-                              style={{
-                                fontSize: 10,
-                                color: "#4b5563",
-                                fontWeight: 600,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.08em",
-                                marginBottom: 8,
-                              }}
-                            >
-                              Quick Templates
-                            </p>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 6,
-                              }}
-                            >
-                              {WA_TEMPLATES.map((tpl) => (
-                                <button
-                                  key={tpl.label}
-                                  onClick={() => fireTemplate(e, tpl)}
-                                  style={{
-                                    textAlign: "left",
-                                    fontSize: 12,
-                                    padding: "7px 10px",
-                                    borderRadius: 7,
-                                    background: "rgba(255,255,255,0.04)",
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    color: "#d1d5db",
-                                    cursor: "pointer",
-                                    fontFamily: "'DM Sans',sans-serif",
-                                    transition: "background 0.15s",
-                                  }}
-                                  onMouseEnter={(ev) => {
-                                    ev.currentTarget.style.background =
-                                      "rgba(255,255,255,0.08)";
-                                  }}
-                                  onMouseLeave={(ev) => {
-                                    ev.currentTarget.style.background =
-                                      "rgba(255,255,255,0.04)";
-                                  }}
-                                >
-                                  {tpl.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Upcoming Appointments */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.032)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16,
-                padding: 20,
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-blue-400" />
-                <p className="text-sm font-medium text-white">
-                  Upcoming Appointments
-                </p>
-              </div>
-              {appointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <Clock className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">
-                    No upcoming viewings yet.
-                  </p>
-                  <p className="text-gray-600 text-xs mt-1">
-                    Bookings from your listings will appear here.
-                  </p>
-                </div>
-              ) : (
-                (() => {
-                  const todayStr = new Date().toDateString();
-                  const todaysAppts = appointments.filter(
-                    (a) =>
-                      a.appointment_date &&
-                      new Date(a.appointment_date).toDateString() === todayStr,
-                  );
-                  const otherAppts = appointments.filter(
-                    (a) =>
-                      !a.appointment_date ||
-                      new Date(a.appointment_date).toDateString() !== todayStr,
-                  );
-                  return (
-                    <div>
-                      {/* TODAY */}
-                      {todaysAppts.length > 0 && (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div
-                              style={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: "50%",
-                                background: "#3b82f6",
-                                boxShadow: "0 0 6px rgba(59,130,246,0.8)",
-                                animation: "hotpulse 1.5s ease-in-out infinite",
-                                flexShrink: 0,
-                              }}
-                            />
-                            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-                              Today
-                            </span>
-                            <span
-                              className="text-xs font-bold px-2 py-0.5 rounded-full"
-                              style={{
-                                background: "rgba(59,130,246,0.12)",
-                                border: "1px solid rgba(59,130,246,0.25)",
-                                color: "#93c5fd",
-                              }}
-                            >
-                              {todaysAppts.length}
-                            </span>
-                          </div>
-                          {todaysAppts.map((appt, i) =>
-                            renderAppt(appt, i, todaysAppts.length, true),
-                          )}
-                          <div className="my-4 border-t border-gray-800" />
-                        </>
-                      )}
-                      {/* ALL OTHER */}
-                      {otherAppts.length > 0 && (
-                        <>
-                          {todaysAppts.length > 0 && (
-                            <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-3">
-                              Upcoming
-                            </p>
-                          )}
-                          {otherAppts.map((appt, i) =>
-                            renderAppt(appt, i, otherAppts.length, false),
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-            {/* Notes to Manager */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.032)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16,
-                padding: 20,
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-4 h-4 text-purple-400" />
-                <p className="text-sm font-medium text-white">
-                  Notes to Manager
-                </p>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  marginBottom: 12,
-                  maxHeight: 180,
-                  overflowY: "auto",
-                }}
-              >
-                {managerNotes.length === 0 && (
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "#374151",
-                      textAlign: "center",
-                      padding: "16px 0",
-                    }}
-                  >
-                    No notes yet. Leave a note for your manager.
-                  </p>
-                )}
-                {managerNotes.map((n) => (
-                  <div
-                    key={n.id}
-                    style={{
-                      background: "rgba(167,139,250,0.05)",
-                      border: "1px solid rgba(167,139,250,0.12)",
-                      borderRadius: 8,
-                      padding: "8px 12px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "#d1d5db",
-                        margin: "0 0 3px",
-                      }}
-                    >
-                      {n.content}
-                    </p>
-                    <p style={{ fontSize: 10, color: "#374151", margin: 0 }}>
-                      {new Date(n.created_at).toLocaleDateString("en-MY")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Type a note..."
-                  style={{
-                    flex: 1,
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 8,
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    color: "#fff",
-                    outline: "none",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                  onKeyDown={async (e) => {
-                    if (e.key === "Enter" && newNote.trim() && !noteSaving) {
-                      setNoteSaving(true);
-                      const { data } = await supabase
-                        .from("salesman_notes")
-                        .insert({
-                          salesman_id: userId,
-                          dealer_id: profile?.dealer_id,
-                          content: newNote.trim(),
-                        })
-                        .select()
-                        .single();
-                      if (data) setManagerNotes((p) => [data, ...p]);
-                      setNewNote("");
-                      setNoteSaving(false);
-                    }
-                  }}
-                />
-                <button
-                  disabled={!newNote.trim() || noteSaving}
-                  onClick={async () => {
-                    if (!newNote.trim() || noteSaving) return;
-                    setNoteSaving(true);
-                    const { data } = await supabase
-                      .from("salesman_notes")
-                      .insert({
-                        salesman_id: userId,
-                        dealer_id: profile?.dealer_id,
-                        content: newNote.trim(),
-                      })
-                      .select()
-                      .single();
-                    if (data) setManagerNotes((p) => [data, ...p]);
-                    setNewNote("");
-                    setNoteSaving(false);
-                  }}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    background:
-                      noteSaving || !newNote.trim()
-                        ? "rgba(167,139,250,0.1)"
-                        : "rgba(167,139,250,0.2)",
-                    border: "1px solid rgba(167,139,250,0.3)",
-                    color: "#c084fc",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  {noteSaving ? "..." : "Send"}
-                </button>
-              </div>
-            </div>
-          </div>
-          {/* end left column */}
-
-          {/* ══ RIGHT COLUMN: My Listings ══ */}
-          <div
-            style={{
-              background: "rgba(255,255,255,0.032)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 16,
-              padding: 20,
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Car className="w-4 h-4 text-blue-400" />
-              <p className="text-sm font-medium text-white">My Listings</p>
-              {myListings.length > 0 && (
-                <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
-                  {myListings.length}
-                </span>
-              )}
-            </div>
-
-            {myListings.length === 0 ? (
-              <div className="text-center py-16">
-                <Car className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">
-                  No listings assigned yet.
-                </p>
-                <p className="text-gray-600 text-xs mt-1">
-                  Ask your manager to assign cars to you.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {myListings.map((car) => {
-                  const listCopied = listingCopied[car.id];
-                  const price = Number(car.selling_price || 0);
-                  const stats = carStatsMap[car.id] ?? {};
-                  const views = stats.views || 0;
-                  const enquiries = stats.enquiries || 0;
-                  const cvr = views > 0 ? (enquiries / views) * 100 : null;
-                  const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
-                  const cvrColor =
-                    cvr === null
-                      ? "rgba(255,255,255,0.07)"
-                      : cvr >= 6
-                        ? "rgba(34,197,94,0.8)"
-                        : cvr >= 3
-                          ? "rgba(251,191,36,0.7)"
-                          : cvr >= 1
-                            ? "rgba(59,130,246,0.6)"
-                            : "rgba(255,255,255,0.07)";
-                  const isHot = cvr !== null && cvr > 6 && views > 3;
-                  const isStale = views > 10 && (cvr === 0 || cvr === null);
-                  return (
-                    <div
-                      key={car.id}
-                      className="bg-gray-800/50 border border-gray-700/60 rounded-xl p-3"
-                    >
-                      <div className="flex gap-3 mb-3">
-                        {car.images?.[0] ? (
-                          <img
-                            src={car.images[0]}
-                            alt=""
-                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-700"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg bg-gray-700/80 flex items-center justify-center flex-shrink-0">
-                            <Car className="w-6 h-6 text-gray-600" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                              <p className="text-sm font-bold text-white leading-tight">
-                                {car.year} {car.brand} {car.model}
-                                {car.variant ? (
-                                  <span className="font-normal text-gray-400">
-                                    {" "}
-                                    {car.variant}
-                                  </span>
-                                ) : null}
-                              </p>
-                              {isHot && (
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 4,
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#4ade80",
-                                    background: "rgba(34,197,94,0.12)",
-                                    border: "1px solid rgba(34,197,94,0.3)",
-                                    borderRadius: 99,
-                                    padding: "1px 7px",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      width: 6,
-                                      height: 6,
-                                      borderRadius: "50%",
-                                      background: "#4ade80",
-                                      animation:
-                                        "pulse 1.4s ease-in-out infinite",
-                                      flexShrink: 0,
-                                    }}
-                                  />
-                                  Hot
-                                </span>
-                              )}
-                              {isStale && !isHot && (
-                                <span
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#6b7280",
-                                    background: "rgba(255,255,255,0.05)",
-                                    border: "1px solid rgba(255,255,255,0.1)",
-                                    borderRadius: 99,
-                                    padding: "1px 7px",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  Stale
-                                </span>
-                              )}
-                            </div>
-                            <StatusBadge status={car.status} />
-                          </div>
-                          <p className="text-sm font-semibold text-blue-400 mb-1">
-                            RM {price.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {[
-                              car.mileage
-                                ? `${Number(car.mileage).toLocaleString()} km`
-                                : null,
-                              car.colour,
-                              car.transmission,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || "—"}
-                          </p>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "#93c5fd",
-                            background: "rgba(59,130,246,0.08)",
-                            border: "1px solid rgba(59,130,246,0.15)",
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                          }}
-                        >
-                          👁 {views} views
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "#fbbf24",
-                            background: "rgba(251,191,36,0.08)",
-                            border: "1px solid rgba(251,191,36,0.15)",
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                          }}
-                        >
-                          💬 {enquiries} enquiries
-                        </span>
-                      </div>
-                      {/* CVR heatmap bar */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <div
-                          style={{
-                            flex: 1,
-                            height: 4,
-                            borderRadius: 2,
-                            background: "rgba(255,255,255,0.07)",
-                            overflow: "hidden",
-                          }}
-                        >
-                          <div
-                            style={{
-                              height: "100%",
-                              width: `${cvrFill}%`,
-                              background: cvrColor,
-                              borderRadius: 2,
-                              transition: "width 0.5s ease",
-                            }}
-                          />
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color:
-                              cvr === null
-                                ? "#4b5563"
-                                : cvr >= 6
-                                  ? "#4ade80"
-                                  : cvr >= 3
-                                    ? "#fbbf24"
-                                    : cvr >= 1
-                                      ? "#93c5fd"
-                                      : "#4b5563",
-                            whiteSpace: "nowrap",
-                            minWidth: 64,
-                            textAlign: "right",
-                          }}
-                        >
-                          {cvr === null
-                            ? "No views yet"
-                            : `${cvr.toFixed(1)}% CVR`}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => handleListingCopy(car, "link")}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-400 hover:text-white transition-all"
-                        >
-                          {listCopied === "link" ? (
-                            <>
-                              <Check className="w-3 h-3 text-green-400" />
-                              <span className="text-green-400">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              Copy Link
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleListingCopy(car, "wa")}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-400 hover:text-white transition-all"
-                        >
-                          {listCopied === "wa" ? (
-                            <>
-                              <Check className="w-3 h-3 text-green-400" />
-                              <span className="text-green-400">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <MessageSquare className="w-3 h-3" />
-                              WA Caption
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setTiktokListing(car)}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
-                          style={{
-                            background: "rgba(59,130,246,0.10)",
-                            border: "1px solid rgba(59,130,246,0.30)",
-                            color: "#93c5fd",
-                          }}
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          TikTok Slide
-                        </button>
-                        <button
-                          onClick={() => generateAiCaptions(car)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={{
-                            background: "rgba(168,85,247,0.10)",
-                            border: "1px solid rgba(168,85,247,0.30)",
-                            color: "#c084fc",
-                          }}
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          AI Caption
-                        </button>
-                        <button
-                          onClick={() => openBroadcast(car)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={{
-                            background: "rgba(249,115,22,0.10)",
-                            border: "1px solid rgba(249,115,22,0.30)",
-                            color: "#fb923c",
-                          }}
-                        >
-                          <Send className="w-3 h-3" />
-                          Broadcast
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {/* end right column */}
+        {/* Scrollable content */}
+        <div style={{ padding: 24, flex: 1 }}>
+          {activeTab === "dashboard" && renderDashboard()}
+          {activeTab === "listings" && renderListings()}
+          {activeTab === "bookings" && renderBookings()}
+          {activeTab === "leads" && renderLeads()}
+          {activeTab === "analytics" && renderAnalytics()}
+          {activeTab === "enquiries" && renderEnquiries()}
+          {activeTab === "team" && renderTeam()}
         </div>
-
-        {/* Needs Follow-up */}
-        {staleLeads.length > 0 && (
-          <div
-            className="mt-6"
-            style={{
-              background: "rgba(251,146,60,0.05)",
-              border: "1px solid rgba(251,146,60,0.2)",
-              borderRadius: 16,
-              padding: 20,
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <AlertCircle className="w-4 h-4 text-orange-400" />
-              <p className="text-sm font-medium text-white">Needs Follow-up</p>
-              <span
-                className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{
-                  background: "rgba(251,146,60,0.15)",
-                  border: "1px solid rgba(251,146,60,0.3)",
-                  color: "#fb923c",
-                }}
-              >
-                {staleLeads.length}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {staleLeads.map((lead) => {
-                const car = lead.car_listings;
-                const carName = car ? `${car.brand} ${car.model}` : null;
-                const daysAgo = Math.floor(
-                  (Date.now() - new Date(lead.updated_at)) / 86400000,
-                );
-                const sc = STAGE_COLOR[lead.stage] || STAGE_COLOR.new;
-                return (
-                  <div
-                    key={lead.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      background: "rgba(255,255,255,0.025)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 10,
-                      padding: "10px 12px",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "#f3f4f6",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {lead.buyer_name || "—"}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            background: sc.bg,
-                            border: `1px solid ${sc.border}`,
-                            color: sc.tx,
-                            borderRadius: 6,
-                            padding: "1px 6px",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.07em",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {lead.stage.replace("_", " ")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {carName && (
-                          <span style={{ fontSize: 11, color: "#6b7280" }}>
-                            {carName}
-                          </span>
-                        )}
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "#fb923c",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {daysAgo}d no contact
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => pingWA(lead)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        background: "rgba(37,211,102,0.1)",
-                        border: "1px solid rgba(37,211,102,0.28)",
-                        color: "#4ade80",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                        fontFamily: "'DM Sans',sans-serif",
-                      }}
-                    >
-                      <MessageSquare style={{ width: 12, height: 12 }} />
-                      Ping on WA
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Lead Pipeline */}
-        <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-blue-400" />
-            <p className="text-sm font-medium text-white">My Leads</p>
-            {Object.keys(leadScores).length > 0 && (
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  padding: "2px 7px",
-                  borderRadius: 20,
-                  background: "rgba(99,102,241,0.1)",
-                  border: "1px solid rgba(99,102,241,0.22)",
-                  color: "#a5b4fc",
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <Sparkles style={{ width: 8, height: 8 }} />
-                AI scored
-              </span>
-            )}
-            {scoreLoading && (
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  border: "2px solid rgba(255,255,255,0.08)",
-                  borderTop: "2px solid #a5b4fc",
-                  borderRadius: "50%",
-                  animation: "spin 0.7s linear infinite",
-                  flexShrink: 0,
-                }}
-              />
-            )}
-            <span className="ml-auto text-xs text-gray-500">
-              {leads.length} total
-            </span>
-            <button
-              onClick={() => setShowAddLead(true)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                fontSize: 12,
-                fontWeight: 600,
-                padding: "5px 12px",
-                borderRadius: 8,
-                background: "rgba(59,130,246,0.1)",
-                border: "1px solid rgba(59,130,246,0.25)",
-                color: "#93c5fd",
-                cursor: "pointer",
-              }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Lead
-            </button>
-          </div>
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                minWidth: 700,
-                paddingBottom: 8,
-              }}
-            >
-              {[
-                "new",
-                "contacted",
-                "viewing_booked",
-                "negotiating",
-                "deposit_taken",
-                "won",
-              ].map((stage) => {
-                const stageLeads = leads.filter((l) => l.stage === stage);
-                const sc = STAGE_COLOR[stage];
-                return (
-                  <div
-                    key={stage}
-                    style={{
-                      flex: "0 0 160px",
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 10,
-                      padding: 10,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: sc.tx,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        {stage.replace("_", " ")}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          background: sc.bg,
-                          border: `1px solid ${sc.border}`,
-                          color: sc.tx,
-                          borderRadius: 10,
-                          padding: "0 6px",
-                        }}
-                      >
-                        {stageLeads.length}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                      }}
-                    >
-                      {stageLeads.length === 0 && (
-                        <p
-                          style={{
-                            fontSize: 11,
-                            color: "#374151",
-                            textAlign: "center",
-                            padding: "12px 0",
-                          }}
-                        >
-                          Empty
-                        </p>
-                      )}
-                      {stageLeads.map((lead) => {
-                        const car = lead.car_listings;
-                        const ls = leadScores[lead.id];
-                        const dotColor =
-                          ls?.score === "hot"
-                            ? "#22c55e"
-                            : ls?.score === "warm"
-                              ? "#fbbf24"
-                              : ls?.score === "cold"
-                                ? "#6b7280"
-                                : null;
-                        return (
-                          <div
-                            key={lead.id}
-                            style={{
-                              background: "rgba(255,255,255,0.03)",
-                              border: "1px solid rgba(255,255,255,0.07)",
-                              borderRadius: 8,
-                              padding: "8px 10px",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 5,
-                                marginBottom: 2,
-                              }}
-                            >
-                              <p
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  color: "#f3f4f6",
-                                  margin: 0,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  flex: 1,
-                                  minWidth: 0,
-                                }}
-                              >
-                                {lead.buyer_name || "—"}
-                              </p>
-                              {dotColor && (
-                                <div
-                                  style={{
-                                    position: "relative",
-                                    flexShrink: 0,
-                                  }}
-                                  className="lead-score-wrap"
-                                >
-                                  <div
-                                    style={{
-                                      width: 7,
-                                      height: 7,
-                                      borderRadius: "50%",
-                                      background: dotColor,
-                                      boxShadow: `0 0 5px ${dotColor}88`,
-                                      cursor: "default",
-                                    }}
-                                  />
-                                  <div
-                                    className="lead-score-tip"
-                                    style={{
-                                      display: "none",
-                                      position: "absolute",
-                                      bottom: "calc(100% + 5px)",
-                                      right: 0,
-                                      background: "#1f2937",
-                                      border: "1px solid rgba(255,255,255,0.1)",
-                                      borderRadius: 6,
-                                      padding: "4px 8px",
-                                      fontSize: 10,
-                                      color: "#d1d5db",
-                                      whiteSpace: "nowrap",
-                                      maxWidth: 160,
-                                      whiteSpaceCollapse: "collapse",
-                                      zIndex: 10,
-                                      pointerEvents: "none",
-                                      boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        fontWeight: 700,
-                                        color: dotColor,
-                                        textTransform: "capitalize",
-                                      }}
-                                    >
-                                      {ls.score}
-                                    </span>
-                                    {" — "}
-                                    {ls.reason}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            {car && (
-                              <p
-                                style={{
-                                  fontSize: 10,
-                                  color: "#6b7280",
-                                  margin: "0 0 4px",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {car.brand} {car.model}
-                              </p>
-                            )}
-                            {lead.phone && (
-                              <p style={{ fontSize: 10, color: "#4b5563" }}>
-                                📞 {lead.phone}
-                              </p>
-                            )}
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 4,
-                                marginTop: 6,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              {stage !== "won" &&
-                                stage !== "lost" &&
-                                (() => {
-                                  const idx = LEAD_STAGES.indexOf(stage);
-                                  const next = LEAD_STAGES[idx + 1];
-                                  return next ? (
-                                    <button
-                                      onClick={() =>
-                                        updateLeadStage(lead.id, next)
-                                      }
-                                      style={{
-                                        fontSize: 9,
-                                        padding: "2px 7px",
-                                        borderRadius: 5,
-                                        background: "rgba(59,130,246,0.1)",
-                                        border:
-                                          "1px solid rgba(59,130,246,0.2)",
-                                        color: "#93c5fd",
-                                        cursor: "pointer",
-                                        fontFamily: "'DM Sans',sans-serif",
-                                      }}
-                                    >
-                                      → {next.replace("_", " ")}
-                                    </button>
-                                  ) : null;
-                                })()}
-                              <button
-                                onClick={() => updateLeadStage(lead.id, "lost")}
-                                style={{
-                                  fontSize: 9,
-                                  padding: "2px 7px",
-                                  borderRadius: 5,
-                                  background: "rgba(107,114,128,0.08)",
-                                  border: "1px solid rgba(107,114,128,0.2)",
-                                  color: "#6b7280",
-                                  cursor: "pointer",
-                                  fontFamily: "'DM Sans',sans-serif",
-                                }}
-                              >
-                                Lost
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Add Lead Modal */}
-        {showAddLead && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.78)",
-              backdropFilter: "blur(8px)",
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "center",
-              zIndex: 50,
-            }}
-          >
-            <div
-              style={{
-                background: "#111827",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "16px 16px 0 0",
-                width: "100%",
-                maxWidth: 480,
-                padding: 20,
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 16,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 600,
-                    color: "#f3f4f6",
-                    margin: 0,
-                  }}
-                >
-                  Add Lead
-                </p>
-                <button
-                  onClick={() => setShowAddLead(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                  }}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 12 }}
-              >
-                <input
-                  value={addLeadForm.buyer_name}
-                  onChange={(e) =>
-                    setAddLeadForm((p) => ({
-                      ...p,
-                      buyer_name: e.target.value,
-                    }))
-                  }
-                  placeholder="Buyer name *"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    fontSize: 13,
-                    color: "#fff",
-                    outline: "none",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                />
-                <input
-                  value={addLeadForm.phone}
-                  onChange={(e) =>
-                    setAddLeadForm((p) => ({ ...p, phone: e.target.value }))
-                  }
-                  placeholder="Phone number"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    fontSize: 13,
-                    color: "#fff",
-                    outline: "none",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                />
-                <select
-                  value={addLeadForm.car_listing_id}
-                  onChange={(e) =>
-                    setAddLeadForm((p) => ({
-                      ...p,
-                      car_listing_id: e.target.value,
-                    }))
-                  }
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    fontSize: 13,
-                    color: addLeadForm.car_listing_id ? "#fff" : "#6b7280",
-                    outline: "none",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  <option value="">Select car (optional)</option>
-                  {myListings.map((l) => (
-                    <option
-                      key={l.id}
-                      value={l.id}
-                      style={{ background: "#111827" }}
-                    >
-                      {l.brand} {l.model} {l.year}
-                    </option>
-                  ))}
-                </select>
-                <textarea
-                  value={addLeadForm.notes}
-                  onChange={(e) =>
-                    setAddLeadForm((p) => ({ ...p, notes: e.target.value }))
-                  }
-                  placeholder="Notes..."
-                  rows={2}
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    fontSize: 13,
-                    color: "#fff",
-                    outline: "none",
-                    resize: "none",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                />
-              </div>
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button
-                  onClick={() => setShowAddLead(false)}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    borderRadius: 10,
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "#9ca3af",
-                    cursor: "pointer",
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddLead}
-                  disabled={addLeadSaving || !addLeadForm.buyer_name}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    borderRadius: 10,
-                    background: "linear-gradient(135deg,#3b82f6,#1d4ed8)",
-                    border: "none",
-                    color: "#fff",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    opacity: addLeadSaving || !addLeadForm.buyer_name ? 0.5 : 1,
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  {addLeadSaving ? "Saving..." : "Add Lead"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+      </div>
 
       {/* Broadcast modal */}
       {broadcastCar &&

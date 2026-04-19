@@ -5497,7 +5497,8 @@ export default function DashboardPage() {
       const { data: sm } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
-        .eq("role", "salesman");
+        .eq("role", "salesman")
+        .eq("dealer_id", uid);
       if (active) {
         setSalesmen(sm || []);
         setLoading(false);
