@@ -66,6 +66,16 @@ function StatusBadge({ status }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+function useWindowSize() {
+  const [w, setW] = useState(window.innerWidth);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 export default function SalesmanPanel() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -76,7 +86,7 @@ export default function SalesmanPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [subTab, setSubTab] = useState("overview");
-  const [sidenavCollapsed, setSidenavCollapsed] = useState(false);
+  const isMobile = useWindowSize() < 768;
 
   // ── unique-link copy state
   const [copied, setCopied] = useState(false);
@@ -480,14 +490,6 @@ Rules:
   // ─────────────────────────────────────────────────────────────────────────
 
   const chartRefs = useRef({});
-
-  // ── mobile sidenav collapse ───────────────────────────────────────────────
-  useEffect(() => {
-    const check = () => setSidenavCollapsed(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   // ── sparkline charts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -1134,43 +1136,43 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 }}>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 28 }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Enquiries</span><MessageSquare size={14} color="#3b82f6" /></div>
-            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myEnquiries}</p>
-            <canvas id="spark-enquiries" height="36" style={{ width: "100%", marginTop: 10, display: "block" }} />
+            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myEnquiries}</p>
+            <canvas id="spark-enquiries" height={isMobile ? 28 : 36} style={{ width: "100%", marginTop: 10, display: "block" }} />
           </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Listings</span><Car size={14} color="#a78bfa" /></div>
-            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myListings.length}</p>
+            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myListings.length}</p>
             <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>{myListings.filter(l => l.status === "available").length} available</p>
           </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Commission</span><TrendingUp size={14} color="#22c55e" /></div>
-            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>RM {commission !== null ? Number(commission).toLocaleString("en-MY") : "–"}</p>
-            <canvas id="spark-commission" height="36" style={{ width: "100%", marginTop: 10, display: "block" }} />
+            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>RM {commission !== null ? Number(commission).toLocaleString("en-MY") : "–"}</p>
+            <canvas id="spark-commission" height={isMobile ? 28 : 36} style={{ width: "100%", marginTop: 10, display: "block" }} />
           </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px" }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Leads</span><Users size={14} color="#f59e0b" /></div>
-            <p style={{ margin: 0, fontSize: 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{leads.filter(l => l.stage !== "won" && l.stage !== "lost").length}</p>
+            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{leads.filter(l => l.stage !== "won" && l.stage !== "lost").length}</p>
             {staleLeads.length > 0 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#ef4444" }}>{staleLeads.length} stale</p>}
           </div>
         </div>
 
         {/* Charts row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <div style={CARD}>
             <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Views &amp; enquiries — last 14 days</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: "#60a5fa" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Views</span></div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 16, height: 2, background: "repeating-linear-gradient(to right,#fbbf24 0,#fbbf24 4px,transparent 4px,transparent 7px)" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Enquiries</span></div>
             </div>
-            <div style={{ position: "relative", height: 130 }}><canvas id="chart-line" style={{ width: "100%", height: "100%" }} /></div>
+            <div style={{ position: "relative", height: isMobile ? 150 : 130 }}><canvas id="chart-line" style={{ width: "100%", height: "100%" }} /></div>
           </div>
           <div style={CARD}>
             <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Lead stage breakdown</p>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 110, height: 110, flexShrink: 0 }}><canvas id="chart-donut" style={{ width: "100%", height: "100%" }} /></div>
+              <div style={{ width: isMobile ? 90 : 110, height: isMobile ? 90 : 110, flexShrink: 0 }}><canvas id="chart-donut" style={{ width: "100%", height: "100%" }} /></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {[["new","#60a5fa","New"],["contacted","#fbbf24","Contacted"],["viewing_booked","#c084fc","Viewing booked"],["negotiating","#fb923c","Negotiating"],["deposit_taken","#4ade80","Deposit taken"],["won","#22c55e","Won"]].map(([s,c,lbl]) => (
                   <div key={s} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1184,7 +1186,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
 
         {/* Bottom row */}
-        <div style={{ display: "grid", gridTemplateColumns: stale.length === 0 ? "1fr" : "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : (stale.length === 0 ? "1fr" : "1fr 1fr"), gap: 12 }}>
           {stale.length > 0 && (
             <div style={CARD}>
               <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Follow-up nudges</p>
@@ -1229,7 +1231,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {myListings.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No listings assigned yet.</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
           {myListings.map((car) => {
             const stats = carStatsMap[car.id] ?? {};
             const views = stats.views || 0;
@@ -1270,14 +1272,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer" }}>
+                  <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
+                    <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer", textAlign: "center" }}>
                       {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
                     </button>
-                    <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>WA Caption</button>
-                    <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer" }}>Broadcast</button>
-                    <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>AI Caption</button>
-                    <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer" }}>TikTok</button>
+                    <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}>WA Caption</button>
+                    <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}>Broadcast</button>
+                    <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}>AI Caption</button>
+                    <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}>TikTok</button>
                   </div>
                 </div>
               </div>
@@ -1312,12 +1314,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <Plus size={13} /> Add Lead
         </button>
       </div>
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+      {isMobile && leads.length > 0 && (
+        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>swipe to see more →</p>
+      )}
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollSnapType: isMobile ? "x mandatory" : undefined }}>
         {LEAD_STAGES.filter(s => s !== "lost").map(stage => {
           const sc = STAGE_COLOR[stage] || {};
           const stageLeads = leads.filter(l => l.stage === stage);
           return (
-            <div key={stage} style={{ minWidth: 200, flexShrink: 0 }}>
+            <div key={stage} style={{ minWidth: isMobile ? 160 : 200, flexShrink: 0, scrollSnapAlign: isMobile ? "start" : undefined }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>{stage.replace("_", " ")}</span>
                 <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>{stageLeads.length}</span>
@@ -1433,7 +1438,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   return (
     <div
-      style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}
+      style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}
     >
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
@@ -1447,202 +1452,152 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         .hot-dot { animation: hotpulse 1.5s ease-in-out infinite; }
       `}</style>
 
-      {/* ─── Sidenav ─── */}
-      <nav
-        style={{
-          width: sidenavCollapsed ? 56 : 200,
-          flexShrink: 0,
-          background: "#080a12",
-          borderRight: "1px solid rgba(255,255,255,0.07)",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          transition: "width 0.2s ease",
-          overflow: "hidden",
-        }}
-      >
-        {/* Logo */}
-        <div style={{ padding: sidenavCollapsed ? "14px 0" : 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: sidenavCollapsed ? "center" : "flex-start", gap: 8 }}>
-          <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>
-            S
-          </div>
-          {!sidenavCollapsed && (
+      {/* ─── Sidenav (desktop) / Bottom nav (mobile) ─── */}
+      {isMobile ? (
+        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, height: 60, background: "#080a12", borderTop: "0.5px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "row" }}>
+          {[
+            { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} />, badge: null },
+            { tab: "listings",  label: "Listings",  icon: <Car size={18} />, badge: myListings.length || null },
+            { tab: "bookings",  label: "Bookings",  icon: <Clock size={18} />, badge: appointments.length || null },
+            { tab: "leads",     label: "Leads",     icon: <User size={18} />, badge: null },
+            { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} />, badge: null },
+            { tab: "enquiries", label: "Enquiries", icon: <MessageSquare size={18} />, badge: enquiries.filter(e => e.status === "new").length || null },
+            { tab: "team",      label: "Team",      icon: <Users size={18} />, badge: null },
+          ].map(({ tab, label, icon, badge }) => {
+            const isActive = activeTab === tab;
+            return (
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "transparent", border: "none", cursor: "pointer", color: isActive ? "#93c5fd" : "#4b5563", position: "relative", padding: "6px 0" }}>
+                {isActive && <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 3, height: 3, borderRadius: 99, background: "#3b82f6" }} />}
+                <div style={{ position: "relative" }}>
+                  {icon}
+                  {badge ? <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, background: "#ef4444", borderRadius: "50%" }} /> : null}
+                </div>
+                {isActive && <span style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}>{label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+      ) : (
+        <nav style={{ width: 200, flexShrink: 0, background: "#080a12", borderRight: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", overflowY: "auto", position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+          {/* Logo */}
+          <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
             <div>
               <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", lineHeight: 1, margin: 0 }}>SHIFTOS</p>
               <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· My Panel</p>
             </div>
-          )}
-        </div>
-
-        {/* MAIN section */}
-        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>}
-        {[
-          { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-          { tab: "listings",  label: "Listings",  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: myListings.length || null },
-          { tab: "bookings",  label: "Bookings",  icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: appointments.length || null },
-        ].map(({ tab, label, icon, badge }) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: sidenavCollapsed ? "center" : undefined,
-              gap: sidenavCollapsed ? 0 : 10,
-              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
-              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
-              borderRadius: 8,
-              cursor: "pointer",
-              position: "relative",
-              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
-              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
-              color: activeTab === tab ? "#93c5fd" : "#6b7280",
-              fontSize: 13,
-              fontWeight: 500,
-              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
-              textAlign: sidenavCollapsed ? "center" : "left",
-            }}
-          >
-            {icon}
-{!sidenavCollapsed && <span style={{ flex: 1 }}>{label}</span>}
-            {badge ? (
-              sidenavCollapsed
-                ? <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, background: "#3b82f6", borderRadius: "50%" }} />
-                : <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
-            ) : null}
-          </button>
-        ))}
-
-        {/* CRM section */}
-        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>CRM</p>}
-        {[
-          { tab: "leads",     label: "Leads",     icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-          { tab: "analytics", label: "Analytics", icon: <TrendingUp style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-          { tab: "enquiries", label: "Enquiries", icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: enquiries.filter(e => e.status === "new").length || null },
-        ].map(({ tab, label, icon, badge }) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: sidenavCollapsed ? "center" : undefined,
-              gap: sidenavCollapsed ? 0 : 10,
-              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
-              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
-              borderRadius: 8,
-              cursor: "pointer",
-              position: "relative",
-              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
-              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
-              color: activeTab === tab ? "#93c5fd" : "#6b7280",
-              fontSize: 13,
-              fontWeight: 500,
-              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
-              textAlign: sidenavCollapsed ? "center" : "left",
-            }}
-          >
-            {icon}
-{!sidenavCollapsed && <span style={{ flex: 1 }}>{label}</span>}
-            {badge ? (
-              sidenavCollapsed
-                ? <span style={{ position: "absolute", top: 5, right: 5, width: 6, height: 6, background: "#3b82f6", borderRadius: "50%" }} />
-                : <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
-            ) : null}
-          </button>
-        ))}
-
-        {/* TEAM section */}
-        {!sidenavCollapsed && <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Team</p>}
-        {[
-          { tab: "team", label: "Team", icon: <Users style={{ width: 14, height: 14, flexShrink: 0 }} /> },
-        ].map(({ tab, label, icon }) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: sidenavCollapsed ? "center" : undefined,
-              gap: sidenavCollapsed ? 0 : 10,
-              padding: sidenavCollapsed ? "10px 0" : "8px 16px",
-              margin: sidenavCollapsed ? "1px 4px" : "1px 8px",
-              borderRadius: 8,
-              cursor: "pointer",
-              position: "relative",
-              background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
-              border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
-              color: activeTab === tab ? "#93c5fd" : "#6b7280",
-              fontSize: 13,
-              fontWeight: 500,
-              width: sidenavCollapsed ? "calc(100% - 8px)" : "calc(100% - 16px)",
-              textAlign: sidenavCollapsed ? "center" : "left",
-            }}
-          >
-            {icon}
-{!sidenavCollapsed && <span>{label}</span>}
-          </button>
-        ))}
-
-        {/* Bottom profile */}
-        <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: sidenavCollapsed ? "12px 0" : "12px 16px", display: "flex", alignItems: "center", justifyContent: sidenavCollapsed ? "center" : "flex-start", gap: 10 }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
-            {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
           </div>
-          {!sidenavCollapsed && (
+
+          {/* MAIN section */}
+          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>
+          {[
+            { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+            { tab: "listings",  label: "Listings",  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: myListings.length || null },
+            { tab: "bookings",  label: "Bookings",  icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: appointments.length || null },
+          ].map(({ tab, label, icon, badge }) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+              {icon}
+              <span style={{ flex: 1 }}>{label}</span>
+              {badge ? <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span> : null}
+            </button>
+          ))}
+
+          {/* CRM section */}
+          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>CRM</p>
+          {[
+            { tab: "leads",     label: "Leads",     icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+            { tab: "analytics", label: "Analytics", icon: <TrendingUp style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
+            { tab: "enquiries", label: "Enquiries", icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: enquiries.filter(e => e.status === "new").length || null },
+          ].map(({ tab, label, icon, badge }) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+              {icon}
+              <span style={{ flex: 1 }}>{label}</span>
+              {badge ? <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span> : null}
+            </button>
+          ))}
+
+          {/* TEAM section */}
+          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Team</p>
+          {[
+            { tab: "team", label: "Team", icon: <Users style={{ width: 14, height: 14, flexShrink: 0 }} /> },
+          ].map(({ tab, label, icon }) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+              {icon}
+              <span>{label}</span>
+            </button>
+          ))}
+
+          {/* Bottom profile */}
+          <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
+              {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name || profile?.slug || "Salesman"}</p>
               <p style={{ fontSize: 10, color: "#4b5563", margin: 0, textTransform: "capitalize" }}>{profile?.role || "salesman"}</p>
             </div>
-          )}
-        </div>
-      </nav>
+          </div>
+        </nav>
+      )}
 
       {/* ─── Right content pane ─── */}
       <div style={{ flex: 1, minWidth: 0, background: "#05070e", display: "flex", flexDirection: "column", overflowY: "auto" }}>
 
         {/* Sticky topbar */}
-        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(5,7,14,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
-              {(() => {
-                const h = new Date().getHours();
-                return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-              })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
-            </p>
-            <p style={{ margin: 0, fontSize: 12, color: "#64748b", marginTop: 2 }}>
-              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
-              {profile?.dealership ? ` · ${profile.dealership}` : ""}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowAddLead(true)}
-            style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, padding: "8px 14px", cursor: "pointer" }}
-          >
-            <Plus size={14} /> Add Lead
-          </button>
-          <button
-            onClick={() => setNotifOpen(true)}
-            style={{ position: "relative", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}
-          >
-            <Bell size={16} />
-            {notifications.filter((n) => !n.read).length > 0 && (
-              <span style={{ position: "absolute", top: 6, right: 6, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #05070e" }} />
-            )}
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#64748b", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}
-          >
-            <LogOut size={15} />
-          </button>
+        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(5,7,14,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: isMobile ? "12px 16px" : "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+          {isMobile ? (
+            <>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
+                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", margin: 0 }}>SHIFTOS</p>
+              </div>
+              <button onClick={() => setNotifOpen(v => !v)} style={{ position: "relative", background: unreadCount > 0 ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.06)", border: unreadCount > 0 ? "1px solid rgba(59,130,246,0.3)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: unreadCount > 0 ? "#93c5fd" : "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #05070e" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+                  {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}{profile?.dealership ? ` · ${profile.dealership}` : ""}
+                </p>
+              </div>
+              <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, padding: "8px 14px", cursor: "pointer" }}>
+                <Plus size={14} /> Add Lead
+              </button>
+              <button onClick={() => setNotifOpen(v => !v)} style={{ position: "relative", background: unreadCount > 0 ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.06)", border: unreadCount > 0 ? "1px solid rgba(59,130,246,0.3)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: unreadCount > 0 ? "#93c5fd" : "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #05070e" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                )}
+              </button>
+              <button onClick={handleLogout} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#64748b", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <LogOut size={15} />
+              </button>
+            </>
+          )}
         </div>
 
+        {/* Mobile greeting banner */}
+        {isMobile && (
+          <div style={{ padding: "12px 16px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "#f1f5f9" }}>
+              {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>
+              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}{profile?.dealership ? ` · ${profile.dealership}` : ""}
+            </p>
+          </div>
+        )}
+
         {/* Scrollable content */}
-        <div style={{ padding: 24, flex: 1 }}>
+        <div style={{ padding: isMobile ? "16px 12px" : 24, flex: 1, paddingBottom: isMobile ? 80 : 24 }}>
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "bookings" && renderBookings()}
@@ -1652,6 +1607,85 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {activeTab === "team" && renderTeam()}
         </div>
       </div>
+
+      {/* FAB — mobile only */}
+      {isMobile && (
+        <button onClick={() => setShowAddLead(true)} style={{ position: "fixed", bottom: 72, right: 16, zIndex: 40, width: 44, height: 44, borderRadius: "50%", background: "#2563eb", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(37,99,235,0.4)" }}>
+          <Plus size={20} />
+        </button>
+      )}
+
+      {/* Add Lead modal */}
+      {showAddLead && (
+        <div onClick={() => setShowAddLead(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: isMobile ? "16px 16px 0 0" : 12, width: isMobile ? "100%" : 480, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Add Lead</p>
+                <button onClick={() => setShowAddLead(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Name</label>
+                  <input value={addLeadForm.buyer_name} onChange={e => setAddLeadForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Buyer name" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Phone</label>
+                  <input value={addLeadForm.phone} onChange={e => setAddLeadForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. 0123456789" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Car (optional)</label>
+                  <select value={addLeadForm.car_listing_id} onChange={e => setAddLeadForm(p => ({ ...p, car_listing_id: e.target.value }))} style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none" }}>
+                    <option value="">— no car selected —</option>
+                    {myListings.map(c => <option key={c.id} value={c.id}>{c.year} {c.brand} {c.model}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Notes</label>
+                  <textarea value={addLeadForm.notes} onChange={e => setAddLeadForm(p => ({ ...p, notes: e.target.value }))} placeholder="Any notes..." rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+                </div>
+                <button onClick={handleAddLead} disabled={addLeadSaving || !addLeadForm.buyer_name} style={{ width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 600, background: addLeadSaving || !addLeadForm.buyer_name ? "rgba(255,255,255,0.05)" : "#1d4ed8", border: "none", color: addLeadSaving || !addLeadForm.buyer_name ? "#6b7280" : "#fff", cursor: addLeadSaving || !addLeadForm.buyer_name ? "not-allowed" : "pointer" }}>
+                  {addLeadSaving ? "Saving..." : "Add Lead"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification panel */}
+      {notifOpen && (
+        <>
+          <div onClick={() => setNotifOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
+          <div style={{ position: "fixed", top: isMobile ? 52 : 60, right: isMobile ? 8 : 16, zIndex: 46, width: isMobile ? "calc(100vw - 16px)" : 320, maxHeight: 420, display: "flex", flexDirection: "column", background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>Notifications</span>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {unreadCount > 0 && (
+                  <button onClick={markAllNotifsRead} style={{ fontSize: 11, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Mark all read</button>
+                )}
+                <button onClick={() => setNotifOpen(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", display: "flex", padding: 0 }}><X size={16} /></button>
+              </div>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {notifications.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#4b5563", padding: "24px 16px", textAlign: "center", margin: 0 }}>No notifications yet.</p>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} onClick={() => markNotifRead(n)} style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: n.is_read ? "transparent" : "rgba(59,130,246,0.05)", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    {!n.is_read && <div style={{ width: 6, height: 6, background: "#3b82f6", borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>{n.title || "Notification"}</p>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>{n.body}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{timeAgo(n.created_at)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Broadcast modal */}
       {broadcastCar &&
@@ -2035,10 +2069,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
       {/* TikTok Studio modal */}
       {tiktokListing && (
-        <TikTokStudioV3
-          listing={tiktokListing}
-          onClose={() => setTiktokListing(null)}
-        />
+        <div style={isMobile ? { position: "fixed", inset: 0, zIndex: 9999, overflowY: "auto", borderRadius: 0 } : {}}>
+          <TikTokStudioV3
+            listing={tiktokListing}
+            onClose={() => setTiktokListing(null)}
+          />
+        </div>
       )}
     </div>
   );
