@@ -9,10 +9,9 @@ export default function DealerSlugRedirect() {
     const redirect = async () => {
       // Look up dealer by subdomain
       const { data } = await supabase
-        .from('profiles')
+        .from('public_dealer_profiles')
         .select('subdomain')
         .eq('subdomain', dealerSlug)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (data?.subdomain) {

@@ -5,9 +5,9 @@ export const MARKETPLACE_DOMAIN = "xdrive.my";
 export const DASHBOARD_DOMAIN = "shiftos.com";
 
 const PROFILE_SELECT =
-  "id, full_name, dealership, site_name, subdomain, avatar_url, site_logo_url, " +
-  "whatsapp_number, email, phone, social_facebook, social_instagram, social_tiktok, " +
-  "location, about_text, brand_color, " +
+  "id, dealership, site_name, subdomain, avatar_url, site_logo_url, logo_url, " +
+  "whatsapp_number, social_facebook, social_instagram, social_tiktok, " +
+  "location, city, state, about_text, brand_color, custom_domain, slug, " +
   "storefront_why, storefront_how, storefront_testimonials, storefront_cta, " +
   "hero_title, hero_subtitle, hero_cta_text, " +
   "announcement_bar, announcement_bar_enabled";
@@ -71,7 +71,7 @@ export default function useTenant() {
       }
 
       const { data } = await supabase
-        .from("profiles")
+        .from("public_dealer_profiles")
         .select(PROFILE_SELECT)
         .eq("subdomain", subdomain)
         .maybeSingle();
@@ -98,7 +98,7 @@ export default function useTenant() {
             async () => {
               // Re-fetch the full profile so all storefront fields refresh
               const { data: updated } = await supabase
-                .from("profiles")
+                .from("public_dealer_profiles")
                 .select(PROFILE_SELECT)
                 .eq("id", profile.id)
                 .maybeSingle();

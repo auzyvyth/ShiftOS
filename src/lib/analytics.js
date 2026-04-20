@@ -43,10 +43,9 @@ export async function trackEvent(eventType, { carId = null, carName = null, deal
 
     if (salesman?.dealership) {
       const { data: dealer } = await supabase
-        .from('profiles')
+        .from('public_dealer_profiles')
         .select('id')
         .eq('dealership', salesman.dealership)
-        .eq('role', 'dealer')
         .limit(1)
         .maybeSingle();
       resolvedDealerId = dealer?.id || null;

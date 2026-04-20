@@ -381,7 +381,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
     setPdfLoading(true);
     try {
       const [{ data: dealer }, { data: { user } }] = await Promise.all([
-        supabase.from('profiles').select('site_name,dealership,whatsapp_number,avatar_url').eq('role', 'dealer').limit(1).maybeSingle(),
+        supabase.from('public_dealer_profiles').select('site_name,dealership,whatsapp_number,avatar_url').limit(1).maybeSingle(),
         supabase.auth.getUser(),
       ]);
 
