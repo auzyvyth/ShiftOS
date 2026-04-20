@@ -93,6 +93,7 @@ export default function SalesmanPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [subTab, setSubTab] = useState("overview");
+  const [chartJsLoaded, setChartJsLoaded] = useState(!!window.Chart);
   const isMobile = useWindowSize() < 768;
 
   // ── unique-link copy state
@@ -517,7 +518,7 @@ Rules:
       const s = document.createElement("script");
       s.id = "chartjs-cdn";
       s.src = "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js";
-      s.onload = () => drawSparklines();
+      s.onload = () => { setChartJsLoaded(true); drawSparklines(); };
       document.head.appendChild(s);
     } else if (window.Chart) {
       drawSparklines();
@@ -701,7 +702,7 @@ Rules:
         },
       });
     }
-  }, [rawEvents, leads, activeTab, subTab]);
+  }, [rawEvents, leads, activeTab, subTab, chartJsLoaded]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

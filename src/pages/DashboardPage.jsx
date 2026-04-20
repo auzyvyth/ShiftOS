@@ -1846,7 +1846,8 @@ function AnalyticsTab({ listings, profile }) {
       const dayEvents = evts.filter(e => e.created_at?.slice(0, 10) === dateStr);
       result.push({
         date: label,
-        clicks:    dayEvents.filter(e => ['link_visit', 'car_view'].includes(e.event_type)).length,
+        visitors:  dayEvents.filter(e => e.event_type === 'store_visit').length,
+        clicks:    dayEvents.filter(e => ['link_visit', 'car_view', 'card_click'].includes(e.event_type)).length,
         whatsapp:  dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
         calls:     dayEvents.filter(e => e.event_type === 'call_click').length,
         enquiries: dayEvents.filter(e => ['whatsapp_click', 'call_click'].includes(e.event_type)).length,
@@ -1862,7 +1863,7 @@ function AnalyticsTab({ listings, profile }) {
     events.forEach(e => {
       if (!e.car_id) return;
       if (!map[e.car_id]) map[e.car_id] = { views: 0, leads: 0 };
-      if (['car_view', 'link_visit'].includes(e.event_type)) map[e.car_id].views++;
+      if (['car_view', 'link_visit', 'card_click'].includes(e.event_type)) map[e.car_id].views++;
       if (['whatsapp_click', 'call_click'].includes(e.event_type)) map[e.car_id].leads++;
     });
     Object.values(map).forEach(s => {
@@ -2104,6 +2105,7 @@ function AnalyticsTab({ listings, profile }) {
                   travellerWidth={6}
                   startIndex={Math.max(0, dailyChart.length - 14)}
                 />
+                <Line type="monotone" dataKey="visitors"  stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
                 <Line type="monotone" dataKey="clicks"    stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
                 <Line type="monotone" dataKey="enquiries" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
                 <Line type="monotone" dataKey="whatsapp"  stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
