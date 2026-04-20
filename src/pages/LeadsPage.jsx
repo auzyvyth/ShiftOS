@@ -38,7 +38,7 @@ function StageSection({ stage, leads, onOpen, onMoveNext, onMovePrev }) {
         border: `1px solid ${isOver ? cfg.headerBorder : cfg.border}`,
         borderLeft: `3px solid ${cfg.headerBorder}`,
         borderRadius: 10,
-        overflow: 'hidden',
+        overflow: 'clip',
         transition: 'border-color 0.15s, background 0.15s',
       }}
     >

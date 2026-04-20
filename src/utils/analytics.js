@@ -1,4 +1,4 @@
-const SESSION_KEY = 'xdrive_session_id';
+const SESSION_KEY = "xdrive_session_id";
 
 export function getOrCreateSessionId() {
   let sid = sessionStorage.getItem(SESSION_KEY);
@@ -10,7 +10,7 @@ export function getOrCreateSessionId() {
 }
 
 export function getSlugFromURL() {
-  return new URLSearchParams(window.location.search).get('ref') || null;
+  return new URLSearchParams(window.location.search).get("ref") || null;
 }
 
 /**
@@ -19,7 +19,7 @@ export function getSlugFromURL() {
  */
 export async function trackEvent(supabase, eventType, payload = {}) {
   try {
-    await supabase.from('analytics_events').insert({
+    await supabase.from("analytics_events").insert({
       event_type: eventType,
       session_id: getOrCreateSessionId(),
       page_path: window.location.pathname,
@@ -28,6 +28,6 @@ export async function trackEvent(supabase, eventType, payload = {}) {
       ...payload,
     });
   } catch (e) {
-    console.warn('Analytics error:', e);
+    console.warn("Analytics error:", e);
   }
 }

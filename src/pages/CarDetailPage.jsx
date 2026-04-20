@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle } from 'lucide-react';
+import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle, Phone } from 'lucide-react';
 import { getCategoryCfg } from '../utils/serviceCategories';
 import { getEmbedUrl } from '../utils/videoEmbed';
 import { supabase } from '../supabaseClient';
@@ -365,6 +365,19 @@ export default function CarDetailPage() {
   /* ── WhatsApp ── */
   function handleWhatsApp() {
     setShowEnquiryModal(true);
+  }
+
+  /* ── Call ── */
+  function handleCall() {
+    const phone = dealer?.whatsapp_number?.replace(/\D/g, '');
+    if (!phone) return;
+    trackEvent(supabase, 'call_click', {
+      car_id: car.id,
+      car_name: `${car.brand} ${car.model} ${car.year}`,
+      dealer_id: car.dealer_id,
+      metadata: { source: 'car_detail' },
+    });
+    window.location.href = `tel:+${phone}`;
   }
 
   async function handleEnquirySubmit() {
@@ -945,6 +958,15 @@ export default function CarDetailPage() {
                 WhatsApp Dealer
               </button>
 
+              {dealer?.whatsapp_number && (
+                <button
+                  onClick={handleCall}
+                  style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.13)', color: 'white', borderRadius: '8px', padding: '12px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+                >
+                  <Phone size={14} /> Call Dealer
+                </button>
+              )}
+
               <button
                 onClick={() => bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.13)', color: 'white', borderRadius: '8px', padding: '12px', fontWeight: 500, fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 4 }}
@@ -1338,6 +1360,12 @@ export default function CarDetailPage() {
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
           WhatsApp
         </button>
+        {dealer?.whatsapp_number && (
+          <button className="cdp-mobile-bar-book" onClick={handleCall}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Phone size={14} /> Call
+          </button>
+        )}
       </div>
 
       {/* ── Enquiry modal ── */}
