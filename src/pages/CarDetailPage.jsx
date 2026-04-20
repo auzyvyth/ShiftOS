@@ -251,8 +251,8 @@ export default function CarDetailPage() {
 
       if (carData.dealer_id) {
         const { data: d } = await supabase
-          .from('profiles')
-          .select('full_name,dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug')
+          .from('public_dealer_profiles')
+          .select('dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug')
           .eq('id', carData.dealer_id).maybeSingle();
         setDealer(d);
       }

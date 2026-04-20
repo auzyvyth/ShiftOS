@@ -50,8 +50,8 @@ export function useCTAContext() {
       // Priority 2: subdomain dealer
       if (subdomain) {
         const { data } = await supabase
-          .from('profiles')
-          .select('id, full_name, whatsapp_number, site_name, subdomain')
+          .from('public_dealer_profiles')
+          .select('id, dealership, whatsapp_number, site_name, subdomain')
           .eq('subdomain', subdomain)
           .maybeSingle();
         if (data) {

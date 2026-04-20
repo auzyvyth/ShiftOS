@@ -242,7 +242,7 @@ const HomePage = () => {
   // On main domain (no tenant), fetch superadmin WhatsApp so the CTA button works
   useEffect(() => {
     if (tenantLoading || tenant !== null) return;
-    supabase.from('profiles').select('whatsapp_number').eq('id', SUPERADMIN_ID).maybeSingle()
+    supabase.from('public_dealer_profiles').select('whatsapp_number').eq('id', SUPERADMIN_ID).maybeSingle()
       .then(({ data }) => { if (data?.whatsapp_number) setSuperadminPhone(data.whatsapp_number); });
   }, [tenant, tenantLoading]);
 
