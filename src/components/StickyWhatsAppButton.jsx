@@ -3,17 +3,18 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
+import { supabase } from '../supabaseClient';
+import { trackEvent, getSlugFromURL } from '../utils/analytics';
 
 export default function StickyWhatsAppButton({ phoneNumber, message }) {
   const { t } = useTranslation();
-  const { waUrl } = useSiteProfile();
+  const { waUrl, profile: tenant } = useSiteProfile();
   const ctaCtx = useCTAContext();
 
   const msg = message || t('common.needHelp');
 
   let url;
   if (phoneNumber) {
-    // Explicit override — respect it
     url = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
   } else if (ctaCtx.type === 'salesman') {
     url = buildWaUrl(ctaCtx, null, msg);
@@ -21,11 +22,31 @@ export default function StickyWhatsAppButton({ phoneNumber, message }) {
     url = waUrl(msg);
   }
 
+  const handleClick = () => {
+    const dealerId = tenant?.id || null;
+    trackEvent(supabase, 'whatsapp_click', {
+      dealer_id: dealerId,
+      metadata: { source: 'sticky_button' },
+    });
+    if (dealerId) {
+      supabase.from('whatsapp_enquiries').insert({
+        dealer_id: dealerId,
+        buyer_name: null,
+        buyer_phone: null,
+        buyer_message: msg,
+        source: 'sticky_button',
+        status: 'new',
+        ref_slug: getSlugFromURL() || null,
+      }).then(() => {});
+    }
+  };
+
   return (
     <motion.a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleClick}
       className="fixed bottom-6 right-6 z-50 flex items-center justify-center bg-[#25D366] text-white w-14 h-14 rounded-full shadow-2xl hover:shadow-[0_0_30px_rgba(37,211,102,0.5)] transition-all duration-300 group"
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
