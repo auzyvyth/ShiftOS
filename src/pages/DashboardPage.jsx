@@ -7,6 +7,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -1458,7 +1459,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </SettingsSection>
 
       {/* ── 6. Services & Add-ons ── */}
-      <ProductsCatalogue dealerId={profile?.id} />
+      <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} />
 
       {/* ── 7. Danger Zone ── */}
       <div
@@ -1807,10 +1808,12 @@ function AnalyticsTab({ listings, profile }) {
   const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
     if (!profile?.id) return;
+    const dealerId = getDealerIdFromProfile(profile);
+    if (!dealerId) return;
     supabase
       .from("analytics_events")
       .select("*")
-      .eq("dealer_id", profile.id)   // scope to logged-in dealer only
+      .eq("dealer_id", dealerId)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setEvents(data || []);
@@ -1818,7 +1821,7 @@ function AnalyticsTab({ listings, profile }) {
       });
   }, [profile?.id]);
   const totalClicks = events.filter(
-    (e) => e.event_type === "link_visit" || e.event_type === "car_view",
+    (e) => e.event_type === "link_visit" || e.event_type === "car_view" || e.event_type === "card_click",
   ).length;
   const totalEnquiries = events.filter(
     (e) => e.event_type === "whatsapp_click" || e.event_type === "call_click",
@@ -4206,7 +4209,20 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     setLoading(false);
   };
 
-  useEffect(() => { if (userId) fetchEnquiries(); }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    fetchEnquiries();
+    const ch = supabase
+      .channel('enquiries_live_' + userId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'whatsapp_enquiries',
+        filter: `dealer_id=eq.${userId}`,
+      }, () => fetchEnquiries())
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!userId) return;
@@ -5482,15 +5498,19 @@ export default function DashboardPage() {
         }
         setProfile(p);
         loadedUidRef.current = uid;
+        // Correct dealer ID for manager/admin roles (their uid ≠ dealer_id)
+        const dealerId = getDealerIdFromProfile(p);
+        setUserId(dealerId);
       } else {
         navigate("/login");
         return;
       }
 
+      const dealerId = getDealerIdFromProfile(p);
       const { data: cars, error: carsError } = await supabase
         .from("car_listings")
         .select("*")
-        .eq("dealer_id", uid)
+        .eq("dealer_id", dealerId)
         .order("created_at", { ascending: false });
       if (active) setListings(carsError ? [] : cars || []);
 
@@ -5498,7 +5518,7 @@ export default function DashboardPage() {
         .from("profiles")
         .select("id, full_name, avatar_url")
         .eq("role", "salesman")
-        .eq("dealer_id", uid);
+        .eq("dealer_id", dealerId);
       if (active) {
         setSalesmen(sm || []);
         setLoading(false);
@@ -6626,7 +6646,7 @@ export default function DashboardPage() {
             <AnalyticsTab listings={listings} profile={profile} />
           )}
           {activeTab === "team" && (
-            <TeamTab managerDealership={profile?.dealership} dealerId={profile?.id} />
+            <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} />
           )}
           {activeTab === "settings" && profile && (
             <SettingsTab
