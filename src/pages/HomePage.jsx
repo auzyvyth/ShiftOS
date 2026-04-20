@@ -36,7 +36,6 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
-const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
 
 const BRANDS = [
   "Perodua",
@@ -241,8 +240,8 @@ const HomePage = () => {
 
   // On main domain (no tenant), fetch superadmin WhatsApp so the CTA button works
   useEffect(() => {
-    if (tenantLoading || tenant !== null) return;
-    supabase.from('public_dealer_profiles').select('whatsapp_number').eq('id', SUPERADMIN_ID).maybeSingle()
+    if (tenantLoading || !tenant?.id) return;
+    supabase.from('public_dealer_profiles').select('whatsapp_number').eq('id', tenant.id).maybeSingle()
       .then(({ data }) => { if (data?.whatsapp_number) setSuperadminPhone(data.whatsapp_number); });
   }, [tenant, tenantLoading]);
 
@@ -288,7 +287,10 @@ const HomePage = () => {
         .order("created_at", { ascending: false })
         .limit(60);
 
-      query = query.eq("dealer_id", tenant?.id ?? SUPERADMIN_ID);
+      if (tenant?.id) {
+        query = query.eq("dealer_id", tenant.id);
+      }
+      // no dealer_id filter on root domain — show all dealers
 
       const { data, error, count } = await query;
       if (!error && data) {
@@ -308,7 +310,10 @@ const HomePage = () => {
         .from("car_listings")
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
-      query = query.eq("dealer_id", tenant?.id ?? SUPERADMIN_ID);
+      if (tenant?.id) {
+        query = query.eq("dealer_id", tenant.id);
+      }
+      // no dealer_id filter on root domain — count all dealers
       const { count } = await query;
       setSoldCount(count || 0);
     };
@@ -950,7 +955,7 @@ const HomePage = () => {
                 style={waBtn}
                 onClick={() => {
                   supabase.from('whatsapp_enquiries').insert({
-                    dealer_id:     tenant?.id ?? SUPERADMIN_ID,
+                    dealer_id:     tenant?.id || null,
                     listing_id:    null,
                     buyer_name:    null,
                     buyer_phone:   null,

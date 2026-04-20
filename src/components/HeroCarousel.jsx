@@ -557,12 +557,16 @@ export default function HeroCarousel({ siteName, waNumber }) {
     if (tenant === undefined) return; // still loading
     const fetchSlides = async () => {
       try {
-        const SUPERADMIN_ID = '1e7bf24e-5b71-4c64-8d03-b60db5e59316';
+        if (!tenant?.id) {
+          setSlides([]);
+          return;
+        }
+        // on root domain there's no single dealer — hide carousel
         const { data, error } = await supabase
           .from("hero_carousel_slides")
           .select("*, car_listings(slug)")
           .eq("active", true)
-          .eq("dealer_id", tenant?.id ?? SUPERADMIN_ID)
+          .eq("dealer_id", tenant.id)
           .order("sort_order", { ascending: true });
         setSlides(!error && data ? data : []);
       } catch {
