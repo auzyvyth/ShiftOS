@@ -2430,31 +2430,87 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     if (!car) return null;
     const parseTags = (str) => {
       if (!str) return [];
-      return str.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      return str
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
     };
-    const images = Array.isArray(car.images) && car.images.length > 0 ? car.images : [];
+    const images =
+      Array.isArray(car.images) && car.images.length > 0 ? car.images : [];
     const sp = car.selling_price || 0;
     const op = car.original_price || null;
     const saving = op && op > sp ? op - sp : 0;
-    const monthly = sp > 0 ? Math.round((sp * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12)) : null;
+    const monthly =
+      sp > 0 ? Math.round((sp * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
     const stats = carStatsMap[car.id] ?? {};
     const views = stats.views || 0;
     const enqs = stats.enquiries || 0;
     const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
     const features = parseTags(car.features);
-    const options  = parseTags(car.options);
-    const tabs     = ["specs", "features", "options"].filter(t => t !== "specs" || true);
+    const options = parseTags(car.options);
+    const tabs = ["specs", "features", "options"].filter(
+      (t) => t !== "specs" || true,
+    );
 
-    const close = () => { setSelectedCar(null); setCarDetailImgIdx(0); setCarDetailTab("specs"); setCarDetailLbOpen(false); };
+    const close = () => {
+      setSelectedCar(null);
+      setCarDetailImgIdx(0);
+      setCarDetailTab("specs");
+      setCarDetailLbOpen(false);
+    };
 
     const navBtn = (side, onClick) => (
-      <button onClick={e => { e.stopPropagation(); onClick(); }} style={{ position: "absolute", [side]: 8, top: "50%", transform: "translateY(-50%)", width: 30, height: 30, borderRadius: 6, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {side === "left" ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        style={{
+          position: "absolute",
+          [side]: 8,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 30,
+          height: 30,
+          borderRadius: 6,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#9ca3af",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {side === "left" ? (
+          <ChevronLeft size={14} />
+        ) : (
+          <ChevronRight size={14} />
+        )}
       </button>
     );
 
     const actionBtn = (label, color, bg, border, onClick) => (
-      <button onClick={onClick} style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 6, padding: "10px 12px", fontSize: 12, fontWeight: 500, color, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
+      <button
+        onClick={onClick}
+        style={{
+          width: "100%",
+          background: bg,
+          border: `1px solid ${border}`,
+          borderRadius: 6,
+          padding: "10px 12px",
+          fontSize: 12,
+          fontWeight: 500,
+          color,
+          cursor: "pointer",
+          textAlign: "left",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
         {label}
       </button>
     );
@@ -2462,106 +2518,434 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     return (
       <>
         {/* Backdrop */}
-        <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", overflowY: "auto" }}>
+        <div
+          onClick={close}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            background: "rgba(0,0,0,0.82)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            overflowY: "auto",
+          }}
+        >
           {/* Panel */}
           <div
-            onClick={e => e.stopPropagation()}
-            style={{ position: "relative", margin: isMobile ? 0 : "24px auto", maxWidth: isMobile ? "100vw" : 1000, width: isMobile ? "100vw" : "calc(100vw - 48px)", height: isMobile ? "100dvh" : undefined, maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)", background: "rgba(11,11,15,0.99)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: isMobile ? 0 : 8, overflow: "hidden", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              margin: isMobile ? 0 : "24px auto",
+              maxWidth: isMobile ? "100vw" : 1000,
+              width: isMobile ? "100vw" : "calc(100vw - 48px)",
+              height: isMobile ? "100dvh" : undefined,
+              maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)",
+              background: "rgba(11,11,15,0.99)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: isMobile ? 0 : 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
           >
             {/* Close */}
-            <button onClick={close} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button
+              onClick={close}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                zIndex: 10,
+                width: 36,
+                height: 36,
+                borderRadius: 6,
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#9ca3af",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <X size={16} />
             </button>
 
             {/* Body */}
-            <div style={{ display: "flex", flex: 1, minHeight: 0, overflowY: "auto", flexDirection: isMobile ? "column" : "row" }}>
-
+            <div
+              style={{
+                display: "flex",
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                flexDirection: isMobile ? "column" : "row",
+              }}
+            >
               {/* LEFT — gallery + details */}
-              <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? "none" : "1px solid rgba(255,255,255,0.08)", overflowY: isMobile ? "visible" : "auto" }}>
-
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: isMobile ? 16 : 24,
+                  borderRight: isMobile
+                    ? "none"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  overflowY: isMobile ? "visible" : "auto",
+                }}
+              >
                 {/* Gallery */}
                 {images.length > 0 ? (
                   <div style={{ display: "flex", gap: 8 }}>
                     {/* Thumb strip */}
-                    <div style={{ width: 60, display: "flex", flexDirection: "column", gap: 5, maxHeight: isMobile ? 180 : 300, overflowY: "auto" }}>
+                    <div
+                      style={{
+                        width: 60,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 5,
+                        maxHeight: isMobile ? 180 : 300,
+                        overflowY: "auto",
+                      }}
+                    >
                       {images.map((img, i) => (
-                        <div key={i} onClick={() => setCarDetailImgIdx(i)} style={{ width: 60, height: 44, borderRadius: 4, cursor: "pointer", flexShrink: 0, background: "#0d0d0d", border: i === carDetailImgIdx ? "1px solid rgba(59,130,246,0.6)" : "1px solid rgba(255,255,255,0.08)", overflow: "hidden", opacity: i === carDetailImgIdx ? 1 : 0.45 }}>
-                          <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                        <div
+                          key={i}
+                          onClick={() => setCarDetailImgIdx(i)}
+                          style={{
+                            width: 60,
+                            height: 44,
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            background: "#0d0d0d",
+                            border:
+                              i === carDetailImgIdx
+                                ? "1px solid rgba(59,130,246,0.6)"
+                                : "1px solid rgba(255,255,255,0.08)",
+                            overflow: "hidden",
+                            opacity: i === carDetailImgIdx ? 1 : 0.45,
+                          }}
+                        >
+                          <img
+                            src={img}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              display: "block",
+                            }}
+                          />
                         </div>
                       ))}
                     </div>
                     {/* Main image */}
-                    <div style={{ flex: 1, position: "relative", background: "#0d0d0d", borderRadius: 6, overflow: "hidden", height: isMobile ? 180 : 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <img src={images[carDetailImgIdx]} alt="" onClick={() => setCarDetailLbOpen(true)} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", cursor: "zoom-in", display: "block" }} />
+                    <div
+                      style={{
+                        flex: 1,
+                        position: "relative",
+                        background: "#0d0d0d",
+                        borderRadius: 6,
+                        overflow: "hidden",
+                        height: isMobile ? 180 : 300,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <img
+                        src={images[carDetailImgIdx]}
+                        alt=""
+                        onClick={() => setCarDetailLbOpen(true)}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          objectFit: "contain",
+                          cursor: "zoom-in",
+                          display: "block",
+                        }}
+                      />
                       {images.length > 1 && (
                         <>
-                          {navBtn("left",  () => setCarDetailImgIdx(i => (i - 1 + images.length) % images.length))}
-                          {navBtn("right", () => setCarDetailImgIdx(i => (i + 1) % images.length))}
+                          {navBtn("left", () =>
+                            setCarDetailImgIdx(
+                              (i) => (i - 1 + images.length) % images.length,
+                            ),
+                          )}
+                          {navBtn("right", () =>
+                            setCarDetailImgIdx((i) => (i + 1) % images.length),
+                          )}
                         </>
                       )}
-                      <button onClick={() => setCarDetailLbOpen(true)} style={{ position: "absolute", bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <button
+                        onClick={() => setCarDetailLbOpen(true)}
+                        style={{
+                          position: "absolute",
+                          bottom: 8,
+                          right: 8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          background: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(8px)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          color: "#9ca3af",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
                         <ZoomIn size={13} />
                       </button>
                       {images.length > 1 && (
-                        <span style={{ position: "absolute", bottom: 8, left: 8, fontSize: 10, color: "#9ca3af", background: "rgba(0,0,0,0.55)", borderRadius: 4, padding: "2px 7px" }}>{carDetailImgIdx + 1} / {images.length}</span>
+                        <span
+                          style={{
+                            position: "absolute",
+                            bottom: 8,
+                            left: 8,
+                            fontSize: 10,
+                            color: "#9ca3af",
+                            background: "rgba(0,0,0,0.55)",
+                            borderRadius: 4,
+                            padding: "2px 7px",
+                          }}
+                        >
+                          {carDetailImgIdx + 1} / {images.length}
+                        </span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div style={{ height: isMobile ? 160 : 260, background: "rgba(255,255,255,0.03)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div
+                    style={{
+                      height: isMobile ? 160 : 260,
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Car size={40} color="#374151" />
                   </div>
                 )}
 
                 {/* Car header */}
                 <div style={{ marginTop: 18 }}>
-                  <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.15em", margin: 0 }}>{car.brand}</p>
-                  <p style={{ fontSize: 22, fontWeight: 300, color: "#f3f4f6", margin: "4px 0 0", lineHeight: 1.2 }}>{car.model}{car.variant ? ` ${car.variant}` : ""}</p>
-                  <p style={{ fontSize: 12, color: "#6b7280", margin: "6px 0 0" }}>
-                    {[car.year, car.body_type, car.transmission, car.fuel_type].filter(Boolean).join(" · ")}
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      margin: 0,
+                    }}
+                  >
+                    {car.brand}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 300,
+                      color: "#f3f4f6",
+                      margin: "4px 0 0",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {car.model}
+                    {car.variant ? ` ${car.variant}` : ""}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#6b7280",
+                      margin: "6px 0 0",
+                    }}
+                  >
+                    {[car.year, car.body_type, car.transmission, car.fuel_type]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                   {(car.city || car.state) && (
-                    <p style={{ fontSize: 12, color: "#6b7280", margin: "4px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
-                      <MapPin size={11} /> {[car.city, car.state].filter(Boolean).join(", ")}
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#6b7280",
+                        margin: "4px 0 0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <MapPin size={11} />{" "}
+                      {[car.city, car.state].filter(Boolean).join(", ")}
                     </p>
                   )}
                 </div>
 
                 {/* Price */}
                 <div style={{ marginTop: 12 }}>
-                  <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: "#f3f4f6", margin: 0, lineHeight: 1 }}>
+                  <p
+                    style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 32,
+                      color: "#f3f4f6",
+                      margin: 0,
+                      lineHeight: 1,
+                    }}
+                  >
                     {sp ? `RM ${sp.toLocaleString("en-MY")}` : "—"}
                   </p>
                   {saving > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                      <span style={{ fontSize: 12, color: "#374151", textDecoration: "line-through" }}>RM {op.toLocaleString("en-MY")}</span>
-                      <span style={{ fontSize: 10, color: "#93c5fd", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 4, padding: "1px 6px" }}>SAVE RM {saving.toLocaleString("en-MY")}</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginTop: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "#374151",
+                          textDecoration: "line-through",
+                        }}
+                      >
+                        RM {op.toLocaleString("en-MY")}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "#93c5fd",
+                          background: "rgba(59,130,246,0.12)",
+                          border: "1px solid rgba(59,130,246,0.25)",
+                          borderRadius: 4,
+                          padding: "1px 6px",
+                        }}
+                      >
+                        SAVE RM {saving.toLocaleString("en-MY")}
+                      </span>
                     </div>
                   )}
-                  {monthly > 0 && <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>}
+                  {monthly > 0 && (
+                    <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr ·
+                      3.5% p.a.
+                    </p>
+                  )}
                 </div>
 
                 {/* Specs strip */}
-                <div style={{ display: "flex", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", margin: "16px 0", padding: "12px 0", gap: 0, overflowX: "auto" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    borderTop: "1px solid rgba(255,255,255,0.05)",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    margin: "16px 0",
+                    padding: "12px 0",
+                    gap: 0,
+                    overflowX: "auto",
+                  }}
+                >
                   {[
-                    { Icon: Gauge,       label: "Mileage",      value: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
-                    { Icon: Settings,    label: "Engine",       value: car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : "—" },
-                    { Icon: ChevronRight,label: "Transmission", value: car.transmission || "—" },
-                    { Icon: Droplets,    label: "Fuel",         value: car.fuel_type || "—" },
-                    { Icon: Palette,     label: "Colour",       value: car.colour || "—" },
+                    {
+                      Icon: Gauge,
+                      label: "Mileage",
+                      value: car.mileage
+                        ? `${Number(car.mileage).toLocaleString()} km`
+                        : "—",
+                    },
+                    {
+                      Icon: Settings,
+                      label: "Engine",
+                      value: car.engine_cc
+                        ? `${Number(car.engine_cc).toLocaleString()} cc`
+                        : "—",
+                    },
+                    {
+                      Icon: ChevronRight,
+                      label: "Transmission",
+                      value: car.transmission || "—",
+                    },
+                    {
+                      Icon: Droplets,
+                      label: "Fuel",
+                      value: car.fuel_type || "—",
+                    },
+                    {
+                      Icon: Palette,
+                      label: "Colour",
+                      value: car.colour || "—",
+                    },
                   ].map(({ Icon, label, value }, i, arr) => (
-                    <div key={label} style={{ flex: "1 0 70px", textAlign: "center", padding: "0 10px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <Icon size={13} color="#6b7280" style={{ marginBottom: 4 }} />
-                      <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.12em", color: "#6b7280", marginBottom: 3 }}>{label}</p>
-                      <p style={{ fontSize: 12, color: "#f3f4f6", margin: 0 }}>{value}</p>
+                    <div
+                      key={label}
+                      style={{
+                        flex: "1 0 70px",
+                        textAlign: "center",
+                        padding: "0 10px",
+                        borderRight:
+                          i < arr.length - 1
+                            ? "1px solid rgba(255,255,255,0.05)"
+                            : "none",
+                      }}
+                    >
+                      <Icon
+                        size={13}
+                        color="#6b7280"
+                        style={{ marginBottom: 4 }}
+                      />
+                      <p
+                        style={{
+                          fontSize: 9,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.12em",
+                          color: "#6b7280",
+                          marginBottom: 3,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#f3f4f6", margin: 0 }}>
+                        {value}
+                      </p>
                     </div>
                   ))}
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 }}>
-                  {tabs.map(tab => (
-                    <button key={tab} onClick={() => setCarDetailTab(tab)} style={{ padding: "8px 16px", fontSize: 12, color: carDetailTab === tab ? "#f3f4f6" : "#6b7280", borderBottom: carDetailTab === tab ? "2px solid #ef4444" : "2px solid transparent", background: "none", border: "none", borderBottom: carDetailTab === tab ? "2px solid #ef4444" : "2px solid transparent", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    marginBottom: 16,
+                  }}
+                >
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setCarDetailTab(tab)}
+                      style={{
+                        padding: "8px 16px",
+                        fontSize: 12,
+                        color: carDetailTab === tab ? "#f3f4f6" : "#6b7280",
+                        borderBottom:
+                          carDetailTab === tab
+                            ? "2px solid #ef4444"
+                            : "2px solid transparent",
+                        background: "none",
+                        border: "none",
+                        borderBottom:
+                          carDetailTab === tab
+                            ? "2px solid #ef4444"
+                            : "2px solid transparent",
+                        cursor: "pointer",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                   ))}
@@ -2571,18 +2955,40 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 {carDetailTab === "specs" && (
                   <div>
                     {[
-                      { k: "Year",        v: car.year || "—" },
-                      { k: "Condition",   v: car.condition || "—" },
-                      { k: "Body Type",   v: car.body_type || "—" },
-                      { k: "Colour",      v: car.colour || "—" },
-                      { k: "Mileage",     v: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
-                      { k: "Transmission",v: car.transmission || "—" },
-                      { k: "Fuel Type",   v: car.fuel_type || "—" },
-                      { k: "Location",    v: [car.city, car.state].filter(Boolean).join(", ") || "—" },
+                      { k: "Year", v: car.year || "—" },
+                      { k: "Condition", v: car.condition || "—" },
+                      { k: "Body Type", v: car.body_type || "—" },
+                      { k: "Colour", v: car.colour || "—" },
+                      {
+                        k: "Mileage",
+                        v: car.mileage
+                          ? `${Number(car.mileage).toLocaleString()} km`
+                          : "—",
+                      },
+                      { k: "Transmission", v: car.transmission || "—" },
+                      { k: "Fuel Type", v: car.fuel_type || "—" },
+                      {
+                        k: "Location",
+                        v:
+                          [car.city, car.state].filter(Boolean).join(", ") ||
+                          "—",
+                      },
                     ].map(({ k, v }) => (
-                      <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                        <span style={{ fontSize: 12, color: "#6b7280" }}>{k}</span>
-                        <span style={{ fontSize: 13, color: "#9ca3af" }}>{v}</span>
+                      <div
+                        key={k}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "10px 0",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>
+                          {k}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {v}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -2591,75 +2997,227 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 {/* Tab: Features */}
                 {carDetailTab === "features" && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {features.length === 0
-                      ? <p style={{ fontSize: 13, color: "#6b7280" }}>No features listed.</p>
-                      : features.map((f, i) => <span key={i} style={{ fontSize: 12, color: "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "4px 10px" }}>{f}</span>)
-                    }
+                    {features.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "#6b7280" }}>
+                        No features listed.
+                      </p>
+                    ) : (
+                      features.map((f, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 12,
+                            color: "#9ca3af",
+                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 4,
+                            padding: "4px 10px",
+                          }}
+                        >
+                          {f}
+                        </span>
+                      ))
+                    )}
                   </div>
                 )}
 
                 {/* Tab: Options */}
                 {carDetailTab === "options" && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {options.length === 0
-                      ? <p style={{ fontSize: 13, color: "#6b7280" }}>No options listed.</p>
-                      : options.map((o, i) => <span key={i} style={{ fontSize: 12, color: "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "4px 10px" }}>{o}</span>)
-                    }
+                    {options.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "#6b7280" }}>
+                        No options listed.
+                      </p>
+                    ) : (
+                      options.map((o, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 12,
+                            color: "#9ca3af",
+                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 4,
+                            padding: "4px 10px",
+                          }}
+                        >
+                          {o}
+                        </span>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
 
               {/* RIGHT — actions + CVR */}
-              <div style={{ flex: isMobile ? "none" : "0 0 200px", width: isMobile ? "100%" : undefined, padding: isMobile ? "12px 16px 32px" : 20, display: "flex", flexDirection: "column", gap: 8, borderTop: isMobile ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
-                <p style={{ fontSize: 10, color: "#6b7280", letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 4px" }}>Actions</p>
+              <div
+                style={{
+                  flex: isMobile ? "none" : "0 0 200px",
+                  width: isMobile ? "100%" : undefined,
+                  padding: isMobile ? "12px 16px 32px" : 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  borderTop: isMobile
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "none",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: "#6b7280",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  Actions
+                </p>
 
                 {actionBtn(
-                  <><Copy size={13} style={{ flexShrink: 0 }} /> Copy Link</>,
+                  <>
+                    <Copy size={13} style={{ flexShrink: 0 }} /> Copy Link
+                  </>,
                   listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af",
-                  listingCopied[car.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
-                  listingCopied[car.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
-                  () => handleListingCopy(car, "link")
+                  listingCopied[car.id] === "link"
+                    ? "rgba(34,197,94,0.08)"
+                    : "rgba(255,255,255,0.04)",
+                  listingCopied[car.id] === "link"
+                    ? "rgba(34,197,94,0.3)"
+                    : "rgba(255,255,255,0.08)",
+                  () => handleListingCopy(car, "link"),
                 )}
                 {actionBtn(
-                  <><MessageSquare size={13} style={{ flexShrink: 0 }} /> WA Caption</>,
-                  "#4ade80", "rgba(37,211,102,0.06)", "rgba(37,211,102,0.2)",
-                  () => handleListingCopy(car, "wa")
+                  <>
+                    <MessageSquare size={13} style={{ flexShrink: 0 }} /> WA
+                    Caption
+                  </>,
+                  "#4ade80",
+                  "rgba(37,211,102,0.06)",
+                  "rgba(37,211,102,0.2)",
+                  () => handleListingCopy(car, "wa"),
                 )}
                 {actionBtn(
-                  <><Sparkles size={13} style={{ flexShrink: 0 }} /> AI Caption</>,
-                  "#c084fc", "rgba(168,85,247,0.08)", "rgba(168,85,247,0.25)",
-                  () => { generateAiCaptions(car); close(); }
+                  <>
+                    <Sparkles size={13} style={{ flexShrink: 0 }} /> AI Caption
+                  </>,
+                  "#c084fc",
+                  "rgba(168,85,247,0.08)",
+                  "rgba(168,85,247,0.25)",
+                  () => {
+                    generateAiCaptions(car);
+                    close();
+                  },
                 )}
                 {actionBtn(
-                  <><Bell size={13} style={{ flexShrink: 0 }} /> Broadcast</>,
-                  "#fb923c", "rgba(249,115,22,0.08)", "rgba(249,115,22,0.25)",
-                  () => { openBroadcast(car); close(); }
+                  <>
+                    <Bell size={13} style={{ flexShrink: 0 }} /> Broadcast
+                  </>,
+                  "#fb923c",
+                  "rgba(249,115,22,0.08)",
+                  "rgba(249,115,22,0.25)",
+                  () => {
+                    openBroadcast(car);
+                    close();
+                  },
                 )}
                 {actionBtn(
-                  <><Eye size={13} style={{ flexShrink: 0 }} /> TikTok Studio</>,
-                  "#f87171", "rgba(239,68,68,0.08)", "rgba(239,68,68,0.25)",
-                  () => { setTiktokListing(car); close(); }
+                  <>
+                    <Eye size={13} style={{ flexShrink: 0 }} /> TikTok Studio
+                  </>,
+                  "#f87171",
+                  "rgba(239,68,68,0.08)",
+                  "rgba(239,68,68,0.25)",
+                  () => {
+                    setTiktokListing(car);
+                    close();
+                  },
                 )}
 
                 {/* CVR stats */}
-                <div style={{ marginTop: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: 12 }}>
-                  <p style={{ fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>Performance</p>
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 10,
+                      color: "#6b7280",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      margin: "0 0 8px",
+                    }}
+                  >
+                    Performance
+                  </p>
                   {[
                     { label: "Views", val: views, color: "#60a5fa" },
                     { label: "Enquiries", val: enqs, color: "#fbbf24" },
-                    { label: "CVR", val: cvr !== null ? `${cvr}%` : "—", color: "#4ade80" },
+                    {
+                      label: "CVR",
+                      val: cvr !== null ? `${cvr}%` : "—",
+                      color: "#4ade80",
+                    },
                   ].map(({ label, val, color }) => (
-                    <div key={label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, color: "#6b7280" }}>{label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color }}>{val}</span>
+                    <div
+                      key={label}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#6b7280" }}>
+                        {label}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color }}>
+                        {val}
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 {/* Status */}
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: 12 }}>
-                  <p style={{ fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>Status</p>
-                  <span style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize", color: car.status === "active" ? "#4ade80" : car.status === "sold" ? "#9ca3af" : "#fbbf24" }}>{car.status || "active"}</span>
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 10,
+                      color: "#6b7280",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Status
+                  </p>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textTransform: "capitalize",
+                      color:
+                        car.status === "active"
+                          ? "#4ade80"
+                          : car.status === "sold"
+                            ? "#9ca3af"
+                            : "#fbbf24",
+                    }}
+                  >
+                    {car.status || "active"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -2668,19 +3226,119 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {/* Lightbox */}
         {carDetailLbOpen && images.length > 0 && (
-          <div onClick={() => setCarDetailLbOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.96)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <button onClick={() => setCarDetailLbOpen(false)} style={{ position: "absolute", top: 16, right: 16, width: 40, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#e5e5e5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
+          <div
+            onClick={() => setCarDetailLbOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 300,
+              background: "rgba(0,0,0,0.96)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <button
+              onClick={() => setCarDetailLbOpen(false)}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: "#e5e5e5",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10,
+              }}
+            >
               <X size={18} />
             </button>
-            {images.length > 1 && <span style={{ position: "absolute", top: 20, left: "50%", transform: "translateX(-50%)", fontSize: 12, color: "#9ca3af", background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 12px" }}>{carDetailImgIdx + 1} / {images.length}</span>}
             {images.length > 1 && (
-              <button onClick={e => { e.stopPropagation(); setCarDetailImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", width: 44, height: 44, borderRadius: 8, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#e5e5e5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span
+                style={{
+                  position: "absolute",
+                  top: 20,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  background: "rgba(0,0,0,0.5)",
+                  borderRadius: 20,
+                  padding: "4px 12px",
+                }}
+              >
+                {carDetailImgIdx + 1} / {images.length}
+              </span>
+            )}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarDetailImgIdx(
+                    (i) => (i - 1 + images.length) % images.length,
+                  );
+                }}
+                style={{
+                  position: "absolute",
+                  left: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#e5e5e5",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <ChevronLeft size={22} />
               </button>
             )}
-            <img src={images[carDetailImgIdx]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: "calc(100vw - 120px)", maxHeight: "90vh", objectFit: "contain", borderRadius: 4, display: "block" }} />
+            <img
+              src={images[carDetailImgIdx]}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: "calc(100vw - 120px)",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: 4,
+                display: "block",
+              }}
+            />
             {images.length > 1 && (
-              <button onClick={e => { e.stopPropagation(); setCarDetailImgIdx(i => (i + 1) % images.length); }} style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", width: 44, height: 44, borderRadius: 8, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#e5e5e5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarDetailImgIdx((i) => (i + 1) % images.length);
+                }}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#e5e5e5",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <ChevronRight size={22} />
               </button>
             )}
@@ -2937,12 +3595,25 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     <img
                       src={img}
                       alt={name}
-                      onClick={() => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); }}
-                      style={{ width: "100%", height: 150, objectFit: "cover", cursor: "pointer" }}
+                      onClick={() => {
+                        setSelectedCar(car);
+                        setCarDetailImgIdx(0);
+                        setCarDetailTab("specs");
+                      }}
+                      style={{
+                        width: "100%",
+                        height: 150,
+                        objectFit: "cover",
+                        cursor: "pointer",
+                      }}
                     />
                   ) : (
                     <div
-                      onClick={() => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); }}
+                      onClick={() => {
+                        setSelectedCar(car);
+                        setCarDetailImgIdx(0);
+                        setCarDetailTab("specs");
+                      }}
                       style={{
                         width: "100%",
                         height: 150,
@@ -2966,7 +3637,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       }}
                     >
                       <p
-                        onClick={() => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); }}
+                        onClick={() => {
+                          setSelectedCar(car);
+                          setCarDetailImgIdx(0);
+                          setCarDetailTab("specs");
+                        }}
                         style={{
                           margin: 0,
                           fontSize: 13,
