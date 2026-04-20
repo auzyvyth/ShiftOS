@@ -7,7 +7,6 @@ import {
   TrendingDown,
   Star,
   CheckCircle,
-  Users,
   DollarSign,
   UserCheck,
   ShieldCheck,
@@ -16,10 +15,8 @@ import {
   Search,
   ChevronDown,
   ArrowRight,
-  Zap,
   MapPin,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -282,10 +279,10 @@ const HomePage = () => {
     const load = async () => {
       let query = supabase
         .from("car_listings")
-        .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)', { count: "exact" })
+        .select(`${CAR_FIELDS}, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`, { count: "exact" })
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(30);
 
       if (tenant?.id) {
         query = query.eq("dealer_id", tenant.id);
@@ -318,7 +315,8 @@ const HomePage = () => {
       setSoldCount(count || 0);
     };
     load();
-    fetchSoldCount();
+    // sold count is below-fold — defer until after first paint
+    setTimeout(fetchSoldCount, 800);
     ch = supabase
       .channel("home")
       .on("postgres_changes", { event: "*", schema: "public", table: "car_listings" }, load)
@@ -431,7 +429,6 @@ const HomePage = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         html, body { overflow-x: hidden; width: 100%; }
         body { background: #0C0C0E !important; margin: 0 !important; }
@@ -563,6 +560,10 @@ const HomePage = () => {
       `}</style>
 
       <Helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
+        <link rel="preconnect" href="https://lemdkdizdlcirhbzqlos.supabase.co" />
         <title>
           {profile
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
