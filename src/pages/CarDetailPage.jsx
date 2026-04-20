@@ -376,7 +376,7 @@ export default function CarDetailPage() {
       metadata: { source: 'storefront', price: car.selling_price },
     });
     if (car?.dealer_id) {
-      await supabase.from('whatsapp_enquiries').insert({
+      const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
         dealer_id: car.dealer_id,
         listing_id: car.id,
         buyer_name: enquiryForm.name,
@@ -386,6 +386,7 @@ export default function CarDetailPage() {
         source: 'storefront',
         status: 'new',
       });
+      if (enqErr) console.error('[handleEnquirySubmit] insert error:', enqErr.message, enqErr);
     }
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
     window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, message), '_blank');
@@ -414,7 +415,7 @@ export default function CarDetailPage() {
 
     const [h, m] = form.time.split(':');
     const dt = new Date(`${form.date}T${h.padStart(2,'0')}:${m}:00`);
-    await supabase.from('appointments').insert({
+    const { error: bookErr } = await supabase.from('appointments').insert({
       dealer_id: car.dealer_id,
       salesman_id: salesmanId,
       car_listing_id: car.id,
@@ -425,6 +426,11 @@ export default function CarDetailPage() {
       status: 'confirmed',
     });
     setSubmitting(false);
+    if (bookErr) {
+      console.error('[handleBook] insert error:', bookErr.message, bookErr);
+      alert('Booking failed. Please try again.');
+      return;
+    }
     setBooked(true);
   }
 
