@@ -70,8 +70,8 @@ function useWindowSize() {
   const [w, setW] = useState(window.innerWidth);
   useEffect(() => {
     const h = () => setW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
   return w;
 }
@@ -514,7 +514,9 @@ Rules:
       const counts = Array(7).fill(0);
       const now = Date.now();
       rows.forEach((r) => {
-        const diff = Math.floor((now - new Date(r[dateKey]).getTime()) / 86400000);
+        const diff = Math.floor(
+          (now - new Date(r[dateKey]).getTime()) / 86400000,
+        );
         if (diff >= 0 && diff < 7) counts[6 - diff]++;
       });
       return counts;
@@ -528,9 +530,23 @@ Rules:
         type: "line",
         data: {
           labels: data.map((_, i) => i),
-          datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: color + "22", tension: 0.4 }],
+          datasets: [
+            {
+              data,
+              borderColor: color,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: true,
+              backgroundColor: color + "22",
+              tension: 0.4,
+            },
+          ],
         },
-        options: { animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } },
+        options: {
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+        },
       });
     }
 
@@ -564,19 +580,28 @@ Rules:
       d.toLocaleDateString("en-MY", { month: "short", day: "numeric" }),
     );
     const viewCounts = days.map((day) => {
-      const next = new Date(day); next.setDate(next.getDate() + 1);
+      const next = new Date(day);
+      next.setDate(next.getDate() + 1);
       return rawEvents.filter((e) => {
         const t = new Date(e.created_at).getTime();
-        return (e.event_type === "car_view" || e.event_type === "link_visit") &&
-          t >= day.getTime() && t < next.getTime();
+        return (
+          (e.event_type === "car_view" || e.event_type === "link_visit") &&
+          t >= day.getTime() &&
+          t < next.getTime()
+        );
       }).length;
     });
     const enqCounts = days.map((day) => {
-      const next = new Date(day); next.setDate(next.getDate() + 1);
+      const next = new Date(day);
+      next.setDate(next.getDate() + 1);
       return rawEvents.filter((e) => {
         const t = new Date(e.created_at).getTime();
-        return (e.event_type === "whatsapp_click" || e.event_type === "call_click") &&
-          t >= day.getTime() && t < next.getTime();
+        return (
+          (e.event_type === "whatsapp_click" ||
+            e.event_type === "call_click") &&
+          t >= day.getTime() &&
+          t < next.getTime()
+        );
       }).length;
     });
 
@@ -586,14 +611,32 @@ Rules:
     // Line chart
     const lineCanvas = document.getElementById("chart-line");
     if (lineCanvas) {
-      if (chartRefs.current["chart-line"]) chartRefs.current["chart-line"].destroy();
+      if (chartRefs.current["chart-line"])
+        chartRefs.current["chart-line"].destroy();
       chartRefs.current["chart-line"] = new window.Chart(lineCanvas, {
         type: "line",
         data: {
           labels,
           datasets: [
-            { label: "Views", data: viewCounts, borderColor: "#60a5fa", borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
-            { label: "Enquiries", data: enqCounts, borderColor: "#fbbf24", borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4, borderDash: [4, 3] },
+            {
+              label: "Views",
+              data: viewCounts,
+              borderColor: "#60a5fa",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              tension: 0.4,
+            },
+            {
+              label: "Enquiries",
+              data: enqCounts,
+              borderColor: "#fbbf24",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              tension: 0.4,
+              borderDash: [4, 3],
+            },
           ],
         },
         options: {
@@ -609,20 +652,34 @@ Rules:
 
     // Donut chart
     const STAGE_COLORS = {
-      new: "#60a5fa", contacted: "#fbbf24", viewing_booked: "#c084fc",
-      negotiating: "#fb923c", deposit_taken: "#4ade80", won: "#22c55e",
+      new: "#60a5fa",
+      contacted: "#fbbf24",
+      viewing_booked: "#c084fc",
+      negotiating: "#fb923c",
+      deposit_taken: "#4ade80",
+      won: "#22c55e",
     };
     const stageKeys = Object.keys(STAGE_COLORS);
-    const stageCounts = stageKeys.map((s) => leads.filter((l) => l.stage === s).length);
+    const stageCounts = stageKeys.map(
+      (s) => leads.filter((l) => l.stage === s).length,
+    );
 
     const donutCanvas = document.getElementById("chart-donut");
     if (donutCanvas) {
-      if (chartRefs.current["chart-donut"]) chartRefs.current["chart-donut"].destroy();
+      if (chartRefs.current["chart-donut"])
+        chartRefs.current["chart-donut"].destroy();
       chartRefs.current["chart-donut"] = new window.Chart(donutCanvas, {
         type: "doughnut",
         data: {
           labels: stageKeys,
-          datasets: [{ data: stageCounts, backgroundColor: stageKeys.map((s) => STAGE_COLORS[s]), borderWidth: 0, hoverOffset: 2 }],
+          datasets: [
+            {
+              data: stageCounts,
+              backgroundColor: stageKeys.map((s) => STAGE_COLORS[s]),
+              borderWidth: 0,
+              hoverOffset: 2,
+            },
+          ],
         },
         options: {
           animation: false,
@@ -650,8 +707,13 @@ Rules:
   };
 
   const updateApptStatus = async (apptId, newStatus) => {
-    setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: newStatus } : a));
-    await supabase.from("appointments").update({ status: newStatus }).eq("id", apptId);
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === apptId ? { ...a, status: newStatus } : a)),
+    );
+    await supabase
+      .from("appointments")
+      .update({ status: newStatus })
+      .eq("id", apptId);
   };
 
   const handleListingCopy = (car, type) => {
@@ -1139,16 +1201,48 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   };
 
   // ── render helpers ────────────────────────────────────────────────────────
-  const CARD = { background: "rgba(255,255,255,0.032)", border: "0.5px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: 14 };
+  const CARD = {
+    background: "rgba(255,255,255,0.032)",
+    border: "0.5px solid rgba(255,255,255,0.07)",
+    borderRadius: 12,
+    padding: 14,
+  };
 
   const renderDashboard = () => {
-    const stale = [...staleLeads].sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+    const stale = [...staleLeads].sort(
+      (a, b) => new Date(a.updated_at) - new Date(b.updated_at),
+    );
     const activityFeed = [
-      ...appointments.map(a => ({ type: "booking", label: `Booking: ${a.buyer_name || "—"} for ${a.car_listings?.brand || "a car"}`, ts: a.created_at, dot: "#22c55e" })),
-      ...enquiries.map(e => ({ type: "enquiry", label: `Enquiry from ${e.buyer_name || "someone"} — ${e.car_listings?.brand || ""}`, ts: e.created_at, dot: "#60a5fa" })),
-      ...leads.filter(l => l.updated_at).map(l => ({ type: "lead", label: `Lead: ${l.buyer_name || "—"} (${l.stage || "new"})`, ts: l.updated_at, dot: "#fbbf24" })),
-      ...commissionDetails.map(c => ({ type: "sale", label: `Sold: ${[c.year, c.brand, c.model].filter(Boolean).join(" ")}`, ts: c.sold_at, dot: "#4ade80" })),
-    ].filter(i => i.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8);
+      ...appointments.map((a) => ({
+        type: "booking",
+        label: `Booking: ${a.buyer_name || "—"} for ${a.car_listings?.brand || "a car"}`,
+        ts: a.created_at,
+        dot: "#22c55e",
+      })),
+      ...enquiries.map((e) => ({
+        type: "enquiry",
+        label: `Enquiry from ${e.buyer_name || "someone"} — ${e.car_listings?.brand || ""}`,
+        ts: e.created_at,
+        dot: "#60a5fa",
+      })),
+      ...leads
+        .filter((l) => l.updated_at)
+        .map((l) => ({
+          type: "lead",
+          label: `Lead: ${l.buyer_name || "—"} (${l.stage || "new"})`,
+          ts: l.updated_at,
+          dot: "#fbbf24",
+        })),
+      ...commissionDetails.map((c) => ({
+        type: "sale",
+        label: `Sold: ${[c.year, c.brand, c.model].filter(Boolean).join(" ")}`,
+        ts: c.sold_at,
+        dot: "#4ade80",
+      })),
+    ]
+      .filter((i) => i.ts)
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+      .slice(0, 8);
 
     const monthlyTarget = profile?.monthly_target || 5;
     const targetPct = Math.min(100, (thisMonthSales / monthlyTarget) * 100);
@@ -1156,14 +1250,51 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const leadsThisMonth = leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length;
-    const apptThisMonth = appointments.filter(a => a.appointment_date && new Date(a.appointment_date) >= monthStart).length;
-    const enqThisMonth = enquiries.filter(e => e.created_at && new Date(e.created_at) >= monthStart).length;
+    const leadsThisMonth = leads.filter(
+      (l) => l.created_at && new Date(l.created_at) >= monthStart,
+    ).length;
+    const apptThisMonth = appointments.filter(
+      (a) => a.appointment_date && new Date(a.appointment_date) >= monthStart,
+    ).length;
+    const enqThisMonth = enquiries.filter(
+      (e) => e.created_at && new Date(e.created_at) >= monthStart,
+    ).length;
 
     const SUBTABS_UI = (
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, width: "fit-content" }}>
-        {[["overview", "Overview"], ["performance", "Performance"], ["month", "This month"]].map(([key, label]) => (
-          <button key={key} onClick={() => setSubTab(key)} style={{ background: subTab === key ? "rgba(29,78,216,0.2)" : "transparent", border: subTab === key ? "0.5px solid rgba(29,78,216,0.35)" : "0.5px solid transparent", borderRadius: 7, color: subTab === key ? "#93c5fd" : "#64748b", fontSize: 13, fontWeight: subTab === key ? 600 : 400, padding: "6px 14px", cursor: "pointer" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          marginBottom: 20,
+          background: "rgba(255,255,255,0.04)",
+          borderRadius: 10,
+          padding: 4,
+          width: "fit-content",
+        }}
+      >
+        {[
+          ["overview", "Overview"],
+          ["performance", "Performance"],
+          ["month", "This month"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSubTab(key)}
+            style={{
+              background:
+                subTab === key ? "rgba(29,78,216,0.2)" : "transparent",
+              border:
+                subTab === key
+                  ? "0.5px solid rgba(29,78,216,0.35)"
+                  : "0.5px solid transparent",
+              borderRadius: 7,
+              color: subTab === key ? "#93c5fd" : "#64748b",
+              fontSize: 13,
+              fontWeight: subTab === key ? 600 : 400,
+              padding: "6px 14px",
+              cursor: "pointer",
+            }}
+          >
             {label}
           </button>
         ))}
@@ -1171,126 +1302,550 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     );
 
     // ── Overview ───────────────────────────────────────────────────────────────
-    if (subTab === "overview") return (
-      <>
-        {SUBTABS_UI}
+    if (subTab === "overview")
+      return (
+        <>
+          {SUBTABS_UI}
 
-        {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 14 }}>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Enquiries</span><MessageSquare size={14} color="#3b82f6" /></div>
-            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myEnquiries}</p>
-            <canvas id="spark-enquiries" height={isMobile ? 28 : 36} style={{ width: "100%", marginTop: 10, display: "block" }} />
+          {/* KPI cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)",
+              gap: isMobile ? 8 : 14,
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: isMobile ? 12 : "16px 18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  Enquiries
+                </span>
+                <MessageSquare size={14} color="#3b82f6" />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? 18 : 26,
+                  fontWeight: 700,
+                  color: "#f1f5f9",
+                  lineHeight: 1,
+                }}
+              >
+                {myEnquiries}
+              </p>
+              <canvas
+                id="spark-enquiries"
+                height={isMobile ? 28 : 36}
+                style={{ width: "100%", marginTop: 10, display: "block" }}
+              />
+            </div>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: isMobile ? 12 : "16px 18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  Active Listings
+                </span>
+                <Car size={14} color="#a78bfa" />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? 18 : 26,
+                  fontWeight: 700,
+                  color: "#f1f5f9",
+                  lineHeight: 1,
+                }}
+              >
+                {myListings.length}
+              </p>
+              <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>
+                {myListings.filter((l) => l.status === "available").length}{" "}
+                available
+              </p>
+            </div>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: isMobile ? 12 : "16px 18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  Commission
+                </span>
+                <TrendingUp size={14} color="#22c55e" />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? 18 : 26,
+                  fontWeight: 700,
+                  color: "#f1f5f9",
+                  lineHeight: 1,
+                }}
+              >
+                RM{" "}
+                {commission !== null
+                  ? Number(commission).toLocaleString("en-MY")
+                  : "–"}
+              </p>
+              <canvas
+                id="spark-commission"
+                height={isMobile ? 28 : 36}
+                style={{ width: "100%", marginTop: 10, display: "block" }}
+              />
+            </div>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: isMobile ? 12 : "16px 18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  Active Leads
+                </span>
+                <Users size={14} color="#f59e0b" />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? 18 : 26,
+                  fontWeight: 700,
+                  color: "#f1f5f9",
+                  lineHeight: 1,
+                }}
+              >
+                {
+                  leads.filter((l) => l.stage !== "won" && l.stage !== "lost")
+                    .length
+                }
+              </p>
+              {staleLeads.length > 0 && (
+                <p
+                  style={{ margin: "6px 0 0", fontSize: 11, color: "#ef4444" }}
+                >
+                  {staleLeads.length} stale
+                </p>
+              )}
+            </div>
           </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Listings</span><Car size={14} color="#a78bfa" /></div>
-            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{myListings.length}</p>
-            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>{myListings.filter(l => l.status === "available").length} available</p>
-          </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Commission</span><TrendingUp size={14} color="#22c55e" /></div>
-            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>RM {commission !== null ? Number(commission).toLocaleString("en-MY") : "–"}</p>
-            <canvas id="spark-commission" height={isMobile ? 28 : 36} style={{ width: "100%", marginTop: 10, display: "block" }} />
-          </div>
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Active Leads</span><Users size={14} color="#f59e0b" /></div>
-            <p style={{ margin: 0, fontSize: isMobile ? 18 : 26, fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{leads.filter(l => l.stage !== "won" && l.stage !== "lost").length}</p>
-            {staleLeads.length > 0 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#ef4444" }}>{staleLeads.length} stale</p>}
-          </div>
-        </div>
 
-        {/* Monthly target card */}
-        <div style={{ background: "#0d1117", border: targetHit ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? "12px 14px" : "14px 18px", marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Target size={14} color={targetHit ? "#22c55e" : "#3b82f6"} />
-              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Monthly target</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {targetHit && <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>🎯 Target hit!</span>}
-              <span style={{ fontSize: 13, fontWeight: 700, color: targetHit ? "#4ade80" : "#f1f5f9" }}>{thisMonthSales} / {monthlyTarget}</span>
-            </div>
-          </div>
-          <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${targetPct}%`, background: targetHit ? "#22c55e" : "#3b82f6", borderRadius: 99, transition: "width 0.4s" }} />
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>{targetHit ? `${thisMonthSales - monthlyTarget} cars over target` : `${monthlyTarget - thisMonthSales} more to go`}</p>
-        </div>
-
-        {/* Charts row */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <div style={CARD}>
-            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Views &amp; enquiries — last 14 days</p>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: "#60a5fa" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Views</span></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 16, height: 2, background: "repeating-linear-gradient(to right,#fbbf24 0,#fbbf24 4px,transparent 4px,transparent 7px)" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Enquiries</span></div>
-            </div>
-            <div style={{ position: "relative", height: isMobile ? 150 : 130 }}><canvas id="chart-line" style={{ width: "100%", height: "100%" }} /></div>
-          </div>
-          <div style={CARD}>
-            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Lead stage breakdown</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: isMobile ? 90 : 110, height: isMobile ? 90 : 110, flexShrink: 0 }}><canvas id="chart-donut" style={{ width: "100%", height: "100%" }} /></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[["new","#60a5fa","New"],["contacted","#fbbf24","Contacted"],["viewing_booked","#c084fc","Viewing booked"],["negotiating","#fb923c","Negotiating"],["deposit_taken","#4ade80","Deposit taken"],["won","#22c55e","Won"]].map(([s,c,lbl]) => (
-                  <div key={s} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: "#9ca3af" }}>{lbl} ({leads.filter(l => l.stage === s).length})</span>
-                  </div>
-                ))}
+          {/* Monthly target card */}
+          <div
+            style={{
+              background: "#0d1117",
+              border: targetHit
+                ? "1px solid rgba(34,197,94,0.25)"
+                : "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 12,
+              padding: isMobile ? "12px 14px" : "14px 18px",
+              marginBottom: 28,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Target size={14} color={targetHit ? "#22c55e" : "#3b82f6"} />
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  Monthly target
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {targetHit && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      background: "rgba(34,197,94,0.12)",
+                      border: "1px solid rgba(34,197,94,0.3)",
+                      color: "#4ade80",
+                      borderRadius: 99,
+                      padding: "2px 8px",
+                    }}
+                  >
+                    🎯 Target hit!
+                  </span>
+                )}
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: targetHit ? "#4ade80" : "#f1f5f9",
+                  }}
+                >
+                  {thisMonthSales} / {monthlyTarget}
+                </span>
               </div>
             </div>
+            <div
+              style={{
+                height: 6,
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: 99,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${targetPct}%`,
+                  background: targetHit ? "#22c55e" : "#3b82f6",
+                  borderRadius: 99,
+                  transition: "width 0.4s",
+                }}
+              />
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#475569" }}>
+              {targetHit
+                ? `${thisMonthSales - monthlyTarget} cars over target`
+                : `${monthlyTarget - thisMonthSales} more to go`}
+            </p>
           </div>
-        </div>
 
-        {/* Bottom row */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : (stale.length === 0 ? "1fr" : "1fr 1fr"), gap: 12 }}>
-          {stale.length > 0 && (
+          {/* Charts row */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 12,
+              marginBottom: 12,
+            }}
+          >
             <div style={CARD}>
-              <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Follow-up nudges</p>
-              {stale.slice(0, 3).map((lead) => {
-                const daysIdle = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
-                const carName = lead.car_listings ? `${lead.car_listings.brand || ""} ${lead.car_listings.model || ""}`.trim() : "";
-                return (
-                  <div key={lead.id} style={{ background: "rgba(251,146,60,0.06)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <div style={{ flexShrink: 0, width: 8, height: 8, borderRadius: "50%", background: "#fb923c" }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#fdba74", fontWeight: 500 }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#92400e" }}>{daysIdle}d idle{carName ? ` · ${carName}` : ""}</p>
-                    </div>
-                    <button onClick={() => pingWA(lead)} style={{ background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", fontSize: 11, padding: "4px 10px", borderRadius: 6, cursor: "pointer", flexShrink: 0 }}>
-                      Ping WA
-                    </button>
-                  </div>
-                );
-              })}
-              {stale.length > 3 && <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{stale.length - 3} more stale lead{stale.length - 3 !== 1 ? "s" : ""}</p>}
-            </div>
-          )}
-          <div style={CARD}>
-            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>Activity feed</p>
-            {activityFeed.length === 0 && <p style={{ fontSize: 12, color: "#374151", margin: "12px 0 0" }}>No recent activity yet.</p>}
-            {activityFeed.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < activityFeed.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.dot, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: "#9ca3af", flex: 1 }}>{item.label}</span>
-                <span style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(item.ts)}</span>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 500,
+                }}
+              >
+                Views &amp; enquiries — last 14 days
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 2,
+                      background: "#60a5fa",
+                    }}
+                  />
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>Views</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div
+                    style={{
+                      width: 16,
+                      height: 2,
+                      background:
+                        "repeating-linear-gradient(to right,#fbbf24 0,#fbbf24 4px,transparent 4px,transparent 7px)",
+                    }}
+                  />
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                    Enquiries
+                  </span>
+                </div>
               </div>
-            ))}
+              <div
+                style={{ position: "relative", height: isMobile ? 150 : 130 }}
+              >
+                <canvas
+                  id="chart-line"
+                  style={{ width: "100%", height: "100%" }}
+                />
+              </div>
+            </div>
+            <div style={CARD}>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 500,
+                }}
+              >
+                Lead stage breakdown
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div
+                  style={{
+                    width: isMobile ? 90 : 110,
+                    height: isMobile ? 90 : 110,
+                    flexShrink: 0,
+                  }}
+                >
+                  <canvas
+                    id="chart-donut"
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  {[
+                    ["new", "#60a5fa", "New"],
+                    ["contacted", "#fbbf24", "Contacted"],
+                    ["viewing_booked", "#c084fc", "Viewing booked"],
+                    ["negotiating", "#fb923c", "Negotiating"],
+                    ["deposit_taken", "#4ade80", "Deposit taken"],
+                    ["won", "#22c55e", "Won"],
+                  ].map(([s, c, lbl]) => (
+                    <div
+                      key={s}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 2,
+                          background: c,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                        {lbl} ({leads.filter((l) => l.stage === s).length})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </>
-    );
+
+          {/* Bottom row */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : stale.length === 0
+                  ? "1fr"
+                  : "1fr 1fr",
+              gap: 12,
+            }}
+          >
+            {stale.length > 0 && (
+              <div style={CARD}>
+                <p
+                  style={{
+                    margin: "0 0 12px",
+                    fontSize: 12,
+                    color: "#9ca3af",
+                    fontWeight: 500,
+                  }}
+                >
+                  Follow-up nudges
+                </p>
+                {stale.slice(0, 3).map((lead) => {
+                  const daysIdle = Math.floor(
+                    (Date.now() - new Date(lead.updated_at)) / 86400000,
+                  );
+                  const carName = lead.car_listings
+                    ? `${lead.car_listings.brand || ""} ${lead.car_listings.model || ""}`.trim()
+                    : "";
+                  return (
+                    <div
+                      key={lead.id}
+                      style={{
+                        background: "rgba(251,146,60,0.06)",
+                        border: "1px solid rgba(251,146,60,0.2)",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: "#fb923c",
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 12,
+                            color: "#fdba74",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {lead.buyer_name || "—"}
+                        </p>
+                        <p
+                          style={{
+                            margin: "2px 0 0",
+                            fontSize: 11,
+                            color: "#92400e",
+                          }}
+                        >
+                          {daysIdle}d idle{carName ? ` · ${carName}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => pingWA(lead)}
+                        style={{
+                          background: "rgba(37,211,102,0.1)",
+                          border: "1px solid rgba(37,211,102,0.25)",
+                          color: "#4ade80",
+                          fontSize: 11,
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        Ping WA
+                      </button>
+                    </div>
+                  );
+                })}
+                {stale.length > 3 && (
+                  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>
+                    {stale.length - 3} more stale lead
+                    {stale.length - 3 !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            )}
+            <div style={CARD}>
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 500,
+                }}
+              >
+                Activity feed
+              </p>
+              {activityFeed.length === 0 && (
+                <p
+                  style={{ fontSize: 12, color: "#374151", margin: "12px 0 0" }}
+                >
+                  No recent activity yet.
+                </p>
+              )}
+              {activityFeed.map((item, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 0",
+                    borderBottom:
+                      i < activityFeed.length - 1
+                        ? "1px solid rgba(255,255,255,0.05)"
+                        : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: item.dot,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#9ca3af", flex: 1 }}>
+                    {item.label}
+                  </span>
+                  <span
+                    style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}
+                  >
+                    {timeAgo(item.ts)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      );
 
     // ── Performance ────────────────────────────────────────────────────────────
     if (subTab === "performance") {
-      const cvrRows = myListings.map(car => {
-        const s = carStatsMap[car.id] ?? {};
-        const views = s.views || 0;
-        const enqs = s.enquiries || 0;
-        const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
-        return { car, views, enqs, cvr };
-      }).sort((a, b) => b.views - a.views);
+      const cvrRows = myListings
+        .map((car) => {
+          const s = carStatsMap[car.id] ?? {};
+          const views = s.views || 0;
+          const enqs = s.enquiries || 0;
+          const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
+          return { car, views, enqs, cvr };
+        })
+        .sort((a, b) => b.views - a.views);
 
       const top3 = cvrRows.slice(0, 3);
       const maxViews = top3.length > 0 ? top3[0].views : 1;
@@ -1301,16 +1856,51 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
           {/* Per-listing CVR table */}
           <div style={{ ...CARD, marginBottom: 16 }}>
-            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Listing performance</p>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#f1f5f9",
+              }}
+            >
+              Listing performance
+            </p>
             {cvrRows.length === 0 ? (
-              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No listings assigned yet.</p>
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
+                No listings assigned yet.
+              </p>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 12,
+                  }}
+                >
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Car", "Views", "Enquiries", "CVR"].map(h => (
-                        <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                    <tr
+                      style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      {["Car", "Views", "Enquiries", "CVR"].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: "6px 10px",
+                            textAlign: "left",
+                            fontSize: 10,
+                            color: "#4b5563",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -1318,13 +1908,59 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     {cvrRows.map(({ car, views, enqs, cvr }) => {
                       const cvrNum = parseFloat(cvr);
                       return (
-                        <tr key={car.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "9px 10px", color: "#e5e7eb", fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                        <tr
+                          key={car.id}
+                          style={{
+                            borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "9px 10px",
+                              color: "#e5e7eb",
+                              fontWeight: 500,
+                              maxWidth: 180,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {[car.year, car.brand, car.model]
+                              .filter(Boolean)
+                              .join(" ")}
                           </td>
-                          <td style={{ padding: "9px 10px", color: "#60a5fa", fontWeight: 600 }}>{views}</td>
-                          <td style={{ padding: "9px 10px", color: "#fbbf24", fontWeight: 600 }}>{enqs}</td>
-                          <td style={{ padding: "9px 10px", fontWeight: 700, color: cvr === null ? "#374151" : cvrNum > 6 ? "#4ade80" : cvrNum > 2 ? "#fbbf24" : "#9ca3af" }}>
+                          <td
+                            style={{
+                              padding: "9px 10px",
+                              color: "#60a5fa",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {views}
+                          </td>
+                          <td
+                            style={{
+                              padding: "9px 10px",
+                              color: "#fbbf24",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {enqs}
+                          </td>
+                          <td
+                            style={{
+                              padding: "9px 10px",
+                              fontWeight: 700,
+                              color:
+                                cvr === null
+                                  ? "#374151"
+                                  : cvrNum > 6
+                                    ? "#4ade80"
+                                    : cvrNum > 2
+                                      ? "#fbbf24"
+                                      : "#9ca3af",
+                            }}
+                          >
                             {cvr !== null ? `${cvr}%` : "—"}
                           </td>
                         </tr>
@@ -1338,47 +1974,174 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
           {/* Top 3 by views — inline bar chart */}
           <div style={{ ...CARD, marginBottom: 16 }}>
-            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Top listings by views</p>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#f1f5f9",
+              }}
+            >
+              Top listings by views
+            </p>
             {top3.length === 0 ? (
-              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No view data yet.</p>
-            ) : top3.map(({ car, views }, i) => {
-              const barW = maxViews > 0 ? (views / maxViews) * 100 : 0;
-              const medals = ["🥇", "🥈", "🥉"];
-              return (
-                <div key={car.id} style={{ marginBottom: i < top3.length - 1 ? 14 : 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 12, color: "#d1d5db" }}>{medals[i]} {[car.year, car.brand, car.model].filter(Boolean).join(" ")}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#60a5fa" }}>{views} views</span>
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
+                No view data yet.
+              </p>
+            ) : (
+              top3.map(({ car, views }, i) => {
+                const barW = maxViews > 0 ? (views / maxViews) * 100 : 0;
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div
+                    key={car.id}
+                    style={{ marginBottom: i < top3.length - 1 ? 14 : 0 }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 5,
+                      }}
+                    >
+                      <span style={{ fontSize: 12, color: "#d1d5db" }}>
+                        {medals[i]}{" "}
+                        {[car.year, car.brand, car.model]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#60a5fa",
+                        }}
+                      >
+                        {views} views
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 5,
+                        background: "rgba(255,255,255,0.05)",
+                        borderRadius: 99,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${barW}%`,
+                          background:
+                            i === 0
+                              ? "#3b82f6"
+                              : i === 1
+                                ? "#6366f1"
+                                : "#8b5cf6",
+                          borderRadius: 99,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${barW}%`, background: i === 0 ? "#3b82f6" : i === 1 ? "#6366f1" : "#8b5cf6", borderRadius: 99 }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Commission breakdown */}
           <div style={CARD}>
-            <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Commission breakdown</p>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#f1f5f9",
+              }}
+            >
+              Commission breakdown
+            </p>
             {commissionDetails.length === 0 ? (
-              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No sold cars yet.</p>
+              <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
+                No sold cars yet.
+              </p>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 12,
+                  }}
+                >
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Car", "Sold date", "Commission"].map(h => (
-                        <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                    <tr
+                      style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      {["Car", "Sold date", "Commission"].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: "6px 10px",
+                            textAlign: "left",
+                            fontSize: 10,
+                            color: "#4b5563",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {commissionDetails.map((c, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                        <td style={{ padding: "9px 10px", color: "#e5e7eb", fontWeight: 500 }}>{[c.year, c.brand, c.model].filter(Boolean).join(" ") || "—"}</td>
-                        <td style={{ padding: "9px 10px", color: "#9ca3af" }}>{c.sold_at ? new Date(c.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
-                        <td style={{ padding: "9px 10px", fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, color: "#4ade80", fontWeight: 700, letterSpacing: "0.04em" }}>RM {Number(c.commission_amount || 0).toLocaleString("en-MY")}</td>
+                      <tr
+                        key={i}
+                        style={{
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "9px 10px",
+                            color: "#e5e7eb",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {[c.year, c.brand, c.model]
+                            .filter(Boolean)
+                            .join(" ") || "—"}
+                        </td>
+                        <td style={{ padding: "9px 10px", color: "#9ca3af" }}>
+                          {c.sold_at
+                            ? new Date(c.sold_at).toLocaleDateString("en-MY", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "—"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "9px 10px",
+                            fontFamily: "'Bebas Neue', sans-serif",
+                            fontSize: 15,
+                            color: "#4ade80",
+                            fontWeight: 700,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          RM{" "}
+                          {Number(c.commission_amount || 0).toLocaleString(
+                            "en-MY",
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1395,59 +2158,254 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       <>
         {SUBTABS_UI}
 
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 14, marginBottom: 20 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)",
+            gap: isMobile ? 8 : 14,
+            marginBottom: 20,
+          }}
+        >
           {[
-            { label: "Leads added",   val: leadsThisMonth,  color: "#60a5fa",  Icon: () => <Users size={14} color="#60a5fa" /> },
-            { label: "Appointments",  val: apptThisMonth,   color: "#c084fc",  Icon: () => <Clock size={14} color="#c084fc" /> },
-            { label: "Enquiries",     val: enqThisMonth,    color: "#3b82f6",  Icon: () => <MessageSquare size={14} color="#3b82f6" /> },
-            { label: "Cars sold",     val: thisMonthSales,  color: "#22c55e",  Icon: () => <Car size={14} color="#22c55e" /> },
+            {
+              label: "Leads added",
+              val: leadsThisMonth,
+              color: "#60a5fa",
+              Icon: () => <Users size={14} color="#60a5fa" />,
+            },
+            {
+              label: "Appointments",
+              val: apptThisMonth,
+              color: "#c084fc",
+              Icon: () => <Clock size={14} color="#c084fc" />,
+            },
+            {
+              label: "Enquiries",
+              val: enqThisMonth,
+              color: "#3b82f6",
+              Icon: () => <MessageSquare size={14} color="#3b82f6" />,
+            },
+            {
+              label: "Cars sold",
+              val: thisMonthSales,
+              color: "#22c55e",
+              Icon: () => <Car size={14} color="#22c55e" />,
+            },
           ].map(({ label, val, color, Icon }) => (
-            <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? 12 : "16px 18px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{label}</span>
+            <div
+              key={label}
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: isMobile ? 12 : "16px 18px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
+                >
+                  {label}
+                </span>
                 <Icon />
               </div>
-              <p style={{ margin: 0, fontSize: isMobile ? 22 : 30, fontWeight: 700, color, lineHeight: 1, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.02em" }}>{val}</p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isMobile ? 22 : 30,
+                  fontWeight: 700,
+                  color,
+                  lineHeight: 1,
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {val}
+              </p>
             </div>
           ))}
         </div>
 
         {/* Monthly target recap */}
-        <div style={{ background: "#0d1117", border: targetHit ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: isMobile ? "12px 14px" : "14px 18px", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div
+          style={{
+            background: "#0d1117",
+            border: targetHit
+              ? "1px solid rgba(34,197,94,0.25)"
+              : "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 12,
+            padding: isMobile ? "12px 14px" : "14px 18px",
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 8,
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Target size={14} color={targetHit ? "#22c55e" : "#3b82f6"} />
-              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Monthly target</span>
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>
+                Monthly target
+              </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {targetHit && <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>🎯 Target hit!</span>}
-              <span style={{ fontSize: 13, fontWeight: 700, color: targetHit ? "#4ade80" : "#f1f5f9" }}>{thisMonthSales} / {monthlyTarget} cars</span>
+              {targetHit && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: "rgba(34,197,94,0.12)",
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    color: "#4ade80",
+                    borderRadius: 99,
+                    padding: "2px 8px",
+                  }}
+                >
+                  🎯 Target hit!
+                </span>
+              )}
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: targetHit ? "#4ade80" : "#f1f5f9",
+                }}
+              >
+                {thisMonthSales} / {monthlyTarget} cars
+              </span>
             </div>
           </div>
-          <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${targetPct}%`, background: targetHit ? "#22c55e" : "#3b82f6", borderRadius: 99, transition: "width 0.4s" }} />
+          <div
+            style={{
+              height: 6,
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: 99,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${targetPct}%`,
+                background: targetHit ? "#22c55e" : "#3b82f6",
+                borderRadius: 99,
+                transition: "width 0.4s",
+              }}
+            />
           </div>
         </div>
 
         {/* Leads added this month list */}
         <div style={CARD}>
-          <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Leads added this month</p>
-          {leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length === 0 ? (
-            <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No leads added this month yet.</p>
+          <p
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#f1f5f9",
+            }}
+          >
+            Leads added this month
+          </p>
+          {leads.filter(
+            (l) => l.created_at && new Date(l.created_at) >= monthStart,
+          ).length === 0 ? (
+            <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
+              No leads added this month yet.
+            </p>
           ) : (
-            leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).slice(0, 8).map(lead => (
-              <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
-                  {(lead.buyer_name || "?")[0].toUpperCase()}
+            leads
+              .filter(
+                (l) => l.created_at && new Date(l.created_at) >= monthStart,
+              )
+              .slice(0, 8)
+              .map((lead) => (
+                <div
+                  key={lead.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "rgba(37,99,235,0.15)",
+                      border: "1px solid rgba(37,99,235,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#93c5fd",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(lead.buyer_name || "?")[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        color: "#e5e7eb",
+                        fontWeight: 500,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {lead.buyer_name || "—"}
+                    </p>
+                    {lead.phone && (
+                      <p
+                        style={{
+                          margin: "1px 0 0",
+                          fontSize: 11,
+                          color: "#4b5563",
+                        }}
+                      >
+                        {lead.phone}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}
+                  >
+                    {timeAgo(lead.created_at)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: "2px 7px",
+                      borderRadius: 99,
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#6b7280",
+                      textTransform: "capitalize",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(lead.stage || "new").replace("_", " ")}
+                  </span>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                  {lead.phone && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{lead.phone}</p>}
-                </div>
-                <span style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(lead.created_at)}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280", textTransform: "capitalize", flexShrink: 0 }}>{(lead.stage || "new").replace("_", " ")}</span>
-              </div>
-            ))
+              ))
           )}
         </div>
       </>
@@ -1466,61 +2424,137 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       return { car, views, enqs, cvr, isHot, isStale };
     });
 
-    const hotCount = enriched.filter(e => e.isHot).length;
-    const staleCount = enriched.filter(e => e.isStale).length;
-    const activeCount = myListings.filter(c => c.status === "available").length;
+    const hotCount = enriched.filter((e) => e.isHot).length;
+    const staleCount = enriched.filter((e) => e.isStale).length;
+    const activeCount = myListings.filter(
+      (c) => c.status === "available",
+    ).length;
 
     // filter
-    const filtered = filterStatus === "all"
-      ? enriched
-      : enriched.filter(e => e.car.status === filterStatus);
+    const filtered =
+      filterStatus === "all"
+        ? enriched
+        : enriched.filter((e) => e.car.status === filterStatus);
 
     // sort
     const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
-      if (sortBy === "price_asc") return (a.car.selling_price || 0) - (b.car.selling_price || 0);
+      if (sortBy === "price_desc")
+        return (b.car.selling_price || 0) - (a.car.selling_price || 0);
+      if (sortBy === "price_asc")
+        return (a.car.selling_price || 0) - (b.car.selling_price || 0);
       // newest: default — preserve original order (already sorted by created_at from query)
       return 0;
     });
 
     const SEL_STYLE = (active) => ({
-      fontSize: 11, padding: "5px 11px", borderRadius: 7, cursor: "pointer",
+      fontSize: 11,
+      padding: "5px 11px",
+      borderRadius: 7,
+      cursor: "pointer",
       background: active ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)",
-      border: active ? "1px solid rgba(59,130,246,0.4)" : "1px solid rgba(255,255,255,0.08)",
-      color: active ? "#93c5fd" : "#6b7280", fontWeight: active ? 600 : 400,
+      border: active
+        ? "1px solid rgba(59,130,246,0.4)"
+        : "1px solid rgba(255,255,255,0.08)",
+      color: active ? "#93c5fd" : "#6b7280",
+      fontWeight: active ? 600 : 400,
     });
 
     return (
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Listings ({myListings.length})</p>
+        <p
+          style={{
+            margin: "0 0 12px",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#f1f5f9",
+          }}
+        >
+          My Listings ({myListings.length})
+        </p>
 
         {myListings.length > 0 && (
           <>
             {/* Summary strip */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 14,
+                padding: "10px 14px",
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+              }}
+            >
               <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{activeCount}</span> active
+                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
+                  {activeCount}
+                </span>{" "}
+                active
               </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#ef4444", fontWeight: 600 }}>🔥 {hotCount}</span> hot
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
               </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
               <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#6b7280", fontWeight: 600 }}>💤 {staleCount}</span> stale
+                <span style={{ color: "#ef4444", fontWeight: 600 }}>
+                  🔥 {hotCount}
+                </span>{" "}
+                hot
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
+              </span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#6b7280", fontWeight: 600 }}>
+                  💤 {staleCount}
+                </span>{" "}
+                stale
               </span>
             </div>
 
             {/* Sort / filter strip */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:</span>
-              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
-              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
-              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 14,
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
+                Sort:
+              </span>
+              <button
+                style={SEL_STYLE(sortBy === "newest")}
+                onClick={() => setSortBy("newest")}
+              >
+                Newest
+              </button>
+              <button
+                style={SEL_STYLE(sortBy === "price_desc")}
+                onClick={() => setSortBy("price_desc")}
+              >
+                Price ↓
+              </button>
+              <button
+                style={SEL_STYLE(sortBy === "price_asc")}
+                onClick={() => setSortBy("price_asc")}
+              >
+                Price ↑
+              </button>
               <span style={{ flex: 1 }} />
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Status:</span>
-              {["all", "available", "reserved", "pending"].map(s => (
-                <button key={s} style={SEL_STYLE(filterStatus === s)} onClick={() => setFilterStatus(s)}>
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
+                Status:
+              </span>
+              {["all", "available", "reserved", "pending"].map((s) => (
+                <button
+                  key={s}
+                  style={SEL_STYLE(filterStatus === s)}
+                  onClick={() => setFilterStatus(s)}
+                >
                   {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
@@ -1529,69 +2563,342 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         )}
 
         {myListings.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "52px 24px", background: "#0d1117", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              padding: "52px 24px",
+              background: "#0d1117",
+              border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: 14,
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Car size={24} color="#374151" />
             </div>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#4b5563" }}>No listings assigned yet</p>
-            <p style={{ margin: 0, fontSize: 12, color: "#374151", textAlign: "center", maxWidth: 260, lineHeight: 1.6 }}>Ask your manager to assign a car to you to get started.</p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#4b5563",
+              }}
+            >
+              No listings assigned yet
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: "#374151",
+                textAlign: "center",
+                maxWidth: 260,
+                lineHeight: 1.6,
+              }}
+            >
+              Ask your manager to assign a car to you to get started.
+            </p>
           </div>
         ) : sorted.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "32px 0", color: "#374151", fontSize: 13 }}>No listings match this filter.</div>
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 0",
+              color: "#374151",
+              fontSize: 13,
+            }}
+          >
+            No listings match this filter.
+          </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fill,minmax(260px,1fr))",
+              gap: 14,
+            }}
+          >
             {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
               const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
               const img = car.images?.[0];
-              const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
-              const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
+              const name = [car.year, car.brand, car.model, car.variant]
+                .filter(Boolean)
+                .join(" ");
+              const price = car.selling_price
+                ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+                : "—";
               const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
               const isHovering = cvrHover === car.id;
               return (
-                <div key={car.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                <div
+                  key={car.id}
+                  style={{
+                    background: "#0d1117",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
                   {img ? (
-                    <img src={img} alt={name} style={{ width: "100%", height: 150, objectFit: "cover" }} />
+                    <img
+                      src={img}
+                      alt={name}
+                      style={{ width: "100%", height: 150, objectFit: "cover" }}
+                    />
                   ) : (
-                    <div style={{ width: "100%", height: 150, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 150,
+                        background: "rgba(255,255,255,0.04)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       <Car size={32} color="#374151" />
                     </div>
                   )}
                   <div style={{ padding: "12px 14px" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, marginRight: 8 }}>{name}</p>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#e5e7eb",
+                          lineHeight: 1.3,
+                          flex: 1,
+                          marginRight: 8,
+                        }}
+                      >
+                        {name}
+                      </p>
                       <StatusBadge status={car.status} />
                     </div>
-                    <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#60a5fa" }}>{price}</p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
-                      {[car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null, car.transmission, car.colour].filter(Boolean).join(" · ")}
+                    <p
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#60a5fa",
+                      }}
+                    >
+                      {price}
+                    </p>
+                    <p
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 11,
+                        color: "#4b5563",
+                      }}
+                    >
+                      {[
+                        car.mileage
+                          ? `${Number(car.mileage).toLocaleString()} km`
+                          : null,
+                        car.transmission,
+                        car.colour,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     {/* CVR heatmap with tooltip */}
-                    <div style={{ marginBottom: 10, position: "relative" }}
+                    <div
+                      style={{ marginBottom: 10, position: "relative" }}
                       onMouseEnter={() => setCvrHover(car.id)}
                       onMouseLeave={() => setCvrHover(null)}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: "#4b5563" }}>{views} views · {enqs} enquiries</span>
-                        {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
-                        {isStale && !isHot && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, color: "#4b5563" }}>
+                          {views} views · {enqs} enquiries
+                        </span>
+                        {isHot && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "#ef4444",
+                              fontWeight: 600,
+                            }}
+                          >
+                            🔥 Hot
+                          </span>
+                        )}
+                        {isStale && !isHot && (
+                          <span style={{ fontSize: 10, color: "#6b7280" }}>
+                            💤 Stale
+                          </span>
+                        )}
                       </div>
-                      <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible", cursor: "default" }}>
-                        <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 99,
+                          background: "rgba(255,255,255,0.06)",
+                          overflow: "visible",
+                          cursor: "default",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${cvrFill}%`,
+                            background: isHot ? "#ef4444" : "#3b82f6",
+                            borderRadius: 99,
+                            transition: "width 0.3s",
+                          }}
+                        />
                       </div>
                       {isHovering && (
-                        <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "#e2e8f0", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
-                          {views} views · {enqs} enquiries · <span style={{ color: isHot ? "#ef4444" : "#60a5fa", fontWeight: 600 }}>{cvrLabel}% CVR</span>
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: "calc(100% + 6px)",
+                            left: 0,
+                            background: "#1e293b",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: 7,
+                            padding: "5px 10px",
+                            fontSize: 11,
+                            color: "#e2e8f0",
+                            whiteSpace: "nowrap",
+                            zIndex: 10,
+                            pointerEvents: "none",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                          }}
+                        >
+                          {views} views · {enqs} enquiries ·{" "}
+                          <span
+                            style={{
+                              color: isHot ? "#ef4444" : "#60a5fa",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {cvrLabel}% CVR
+                          </span>
                         </div>
                       )}
                     </div>
-                    <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
-                      <button onClick={() => handleListingCopy(car, "link")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af", cursor: "pointer", textAlign: "center" }}>
-                        {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
+                    <div
+                      style={{
+                        display: isMobile ? "grid" : "flex",
+                        gridTemplateColumns: isMobile ? "1fr 1fr" : undefined,
+                        gap: 6,
+                        flexWrap: isMobile ? undefined : "wrap",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleListingCopy(car, "link")}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background:
+                            listingCopied[car.id] === "link"
+                              ? "rgba(34,197,94,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color:
+                            listingCopied[car.id] === "link"
+                              ? "#4ade80"
+                              : "#9ca3af",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        {listingCopied[car.id] === "link"
+                          ? "✓ Copied"
+                          : "Copy Link"}
                       </button>
-                      <button onClick={() => handleListingCopy(car, "wa")} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}>WA Caption</button>
-                      <button onClick={() => openBroadcast(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}>Broadcast</button>
-                      <button onClick={() => generateAiCaptions(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}>AI Caption</button>
-                      <button onClick={() => setTiktokListing(car)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}>TikTok</button>
+                      <button
+                        onClick={() => handleListingCopy(car, "wa")}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color: "#9ca3af",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        WA Caption
+                      </button>
+                      <button
+                        onClick={() => openBroadcast(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(249,115,22,0.1)",
+                          border: "1px solid rgba(249,115,22,0.25)",
+                          color: "#fb923c",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Broadcast
+                      </button>
+                      <button
+                        onClick={() => generateAiCaptions(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(168,85,247,0.1)",
+                          border: "1px solid rgba(168,85,247,0.25)",
+                          color: "#c084fc",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        AI Caption
+                      </button>
+                      <button
+                        onClick={() => setTiktokListing(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(239,68,68,0.1)",
+                          border: "1px solid rgba(239,68,68,0.25)",
+                          color: "#f87171",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        TikTok
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1605,38 +2912,113 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   const renderBookings = () => {
     const todayStr = new Date().toDateString();
-    const todayAppts = appointments.filter(a => new Date(a.appointment_date).toDateString() === todayStr);
-    const upcomingAppts = appointments.filter(a => new Date(a.appointment_date) > new Date() && new Date(a.appointment_date).toDateString() !== todayStr);
-    const confirmedCount = appointments.filter(a => a.status === "confirmed").length;
-    const pendingCount = appointments.filter(a => a.status === "pending").length;
+    const todayAppts = appointments.filter(
+      (a) => new Date(a.appointment_date).toDateString() === todayStr,
+    );
+    const upcomingAppts = appointments.filter(
+      (a) =>
+        new Date(a.appointment_date) > new Date() &&
+        new Date(a.appointment_date).toDateString() !== todayStr,
+    );
+    const confirmedCount = appointments.filter(
+      (a) => a.status === "confirmed",
+    ).length;
+    const pendingCount = appointments.filter(
+      (a) => a.status === "pending",
+    ).length;
 
     const SECTION_LABEL = (text) => (
-      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#374151", letterSpacing: "0.1em", textTransform: "uppercase" }}>{text}</p>
+      <p
+        style={{
+          margin: "0 0 8px",
+          fontSize: 10,
+          fontWeight: 700,
+          color: "#374151",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}
+      >
+        {text}
+      </p>
     );
 
     const BTN = (label, color, bg, border, onClick) => (
-      <button onClick={onClick} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: bg, border: `1px solid ${border}`, color, cursor: "pointer", fontWeight: 500 }}>{label}</button>
+      <button
+        onClick={onClick}
+        style={{
+          fontSize: 10,
+          padding: "3px 9px",
+          borderRadius: 5,
+          background: bg,
+          border: `1px solid ${border}`,
+          color,
+          cursor: "pointer",
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </button>
     );
 
     const renderApptCard = (appt, i, groupTotal) => {
-      const isToday = new Date(appt.appointment_date).toDateString() === todayStr;
+      const isToday =
+        new Date(appt.appointment_date).toDateString() === todayStr;
       const hasDeposit = appt.deposit_amount > 0;
       const bookingTypeLabel = appt.booking_type
-        ? appt.booking_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+        ? appt.booking_type
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase())
         : null;
       return (
-        <div key={appt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+        <div
+          key={appt.id}
+          style={{
+            background: "#0d1117",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 12,
+            marginBottom: 8,
+            overflow: "hidden",
+          }}
+        >
           {/* badges row above the renderAppt content */}
           {(bookingTypeLabel || hasDeposit) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px 0" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px 0",
+              }}
+            >
               {bookingTypeLabel && (
-                <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", borderRadius: 99, padding: "2px 8px" }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: "rgba(99,102,241,0.12)",
+                    border: "1px solid rgba(99,102,241,0.25)",
+                    color: "#a5b4fc",
+                    borderRadius: 99,
+                    padding: "2px 8px",
+                  }}
+                >
                   {bookingTypeLabel}
                 </span>
               )}
               {hasDeposit && (
-                <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>
-                  Deposit: RM {Number(appt.deposit_amount).toLocaleString("en-MY")}
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: "rgba(34,197,94,0.12)",
+                    border: "1px solid rgba(34,197,94,0.25)",
+                    color: "#4ade80",
+                    borderRadius: 99,
+                    padding: "2px 8px",
+                  }}
+                >
+                  Deposit: RM{" "}
+                  {Number(appt.deposit_amount).toLocaleString("en-MY")}
                 </span>
               )}
             </div>
@@ -1647,17 +3029,48 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
           {/* status action buttons */}
           {(appt.status === "pending" || appt.status === "confirmed") && (
-            <div style={{ display: "flex", gap: 6, padding: "0 14px 12px", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                padding: "0 14px 12px",
+                flexWrap: "wrap",
+              }}
+            >
               {appt.status === "pending" && (
                 <>
-                  {BTN("Confirm", "#4ade80", "rgba(34,197,94,0.1)", "rgba(34,197,94,0.3)", () => updateApptStatus(appt.id, "confirmed"))}
-                  {BTN("Cancel", "#f87171", "rgba(239,68,68,0.08)", "rgba(239,68,68,0.25)", () => updateApptStatus(appt.id, "cancelled"))}
+                  {BTN(
+                    "Confirm",
+                    "#4ade80",
+                    "rgba(34,197,94,0.1)",
+                    "rgba(34,197,94,0.3)",
+                    () => updateApptStatus(appt.id, "confirmed"),
+                  )}
+                  {BTN(
+                    "Cancel",
+                    "#f87171",
+                    "rgba(239,68,68,0.08)",
+                    "rgba(239,68,68,0.25)",
+                    () => updateApptStatus(appt.id, "cancelled"),
+                  )}
                 </>
               )}
               {appt.status === "confirmed" && (
                 <>
-                  {BTN("Mark Done", "#4ade80", "rgba(34,197,94,0.1)", "rgba(34,197,94,0.3)", () => updateApptStatus(appt.id, "done"))}
-                  {BTN("Reschedule", "#fbbf24", "rgba(251,191,36,0.08)", "rgba(251,191,36,0.25)", () => updateApptStatus(appt.id, "rescheduled"))}
+                  {BTN(
+                    "Mark Done",
+                    "#4ade80",
+                    "rgba(34,197,94,0.1)",
+                    "rgba(34,197,94,0.3)",
+                    () => updateApptStatus(appt.id, "done"),
+                  )}
+                  {BTN(
+                    "Reschedule",
+                    "#fbbf24",
+                    "rgba(251,191,36,0.08)",
+                    "rgba(251,191,36,0.25)",
+                    () => updateApptStatus(appt.id, "rescheduled"),
+                  )}
                 </>
               )}
             </div>
@@ -1668,30 +3081,107 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     return (
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Bookings</p>
+        <p
+          style={{
+            margin: "0 0 12px",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#f1f5f9",
+          }}
+        >
+          Bookings
+        </p>
 
         {appointments.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "52px 24px", background: "#0d1117", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              padding: "52px 24px",
+              background: "#0d1117",
+              border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: 14,
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Clock size={24} color="#374151" />
             </div>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#4b5563" }}>No upcoming bookings</p>
-            <p style={{ margin: 0, fontSize: 12, color: "#374151", textAlign: "center", maxWidth: 280, lineHeight: 1.6 }}>When customers book a test drive, they'll appear here.</p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#4b5563",
+              }}
+            >
+              No upcoming bookings
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: "#374151",
+                textAlign: "center",
+                maxWidth: 280,
+                lineHeight: 1.6,
+              }}
+            >
+              When customers book a test drive, they'll appear here.
+            </p>
           </div>
         ) : (
           <>
             {/* Summary strip */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16, padding: "10px 14px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 16,
+                padding: "10px 14px",
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+              }}
+            >
               <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#4ade80", fontWeight: 600 }}>{confirmedCount}</span> confirmed
+                <span style={{ color: "#4ade80", fontWeight: 600 }}>
+                  {confirmedCount}
+                </span>{" "}
+                confirmed
               </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#60a5fa", fontWeight: 600 }}>{pendingCount}</span> pending
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
               </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>·</span>
               <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{todayAppts.length}</span> today
+                <span style={{ color: "#60a5fa", fontWeight: 600 }}>
+                  {pendingCount}
+                </span>{" "}
+                pending
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
+              </span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
+                  {todayAppts.length}
+                </span>{" "}
+                today
               </span>
             </div>
 
@@ -1699,7 +3189,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             {todayAppts.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 {SECTION_LABEL("Today")}
-                {todayAppts.map((appt, i) => renderApptCard(appt, i, todayAppts.length))}
+                {todayAppts.map((appt, i) =>
+                  renderApptCard(appt, i, todayAppts.length),
+                )}
               </div>
             )}
 
@@ -1707,7 +3199,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             {upcomingAppts.length > 0 && (
               <div>
                 {SECTION_LABEL("Upcoming")}
-                {upcomingAppts.map((appt, i) => renderApptCard(appt, i, upcomingAppts.length))}
+                {upcomingAppts.map((appt, i) =>
+                  renderApptCard(appt, i, upcomingAppts.length),
+                )}
               </div>
             )}
           </>
@@ -1717,25 +3211,64 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   };
 
   const renderLeads = () => {
-    const activeStages = LEAD_STAGES.filter(s => s !== "lost");
-    const lostLeads = leads.filter(l => l.stage === "lost");
+    const activeStages = LEAD_STAGES.filter((s) => s !== "lost");
+    const lostLeads = leads.filter((l) => l.stage === "lost");
 
     const AI_SCORE_PILL = (leadId) => {
       if (scoreLoading) {
         return (
-          <span style={{ display: "inline-block", width: 52, height: 16, borderRadius: 99, background: "rgba(255,255,255,0.07)", animation: "pulse 1.5s ease-in-out infinite" }} />
+          <span
+            style={{
+              display: "inline-block",
+              width: 52,
+              height: 16,
+              borderRadius: 99,
+              background: "rgba(255,255,255,0.07)",
+              animation: "pulse 1.5s ease-in-out infinite",
+            }}
+          />
         );
       }
       const s = leadScores[leadId];
       if (!s) return null;
-      const cfg = {
-        hot:  { bg: "rgba(239,68,68,0.15)",  border: "rgba(239,68,68,0.35)",  color: "#f87171", label: "🔥 Hot"  },
-        warm: { bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.35)", color: "#fbbf24", label: "⚡ Warm" },
-        cold: { bg: "rgba(107,114,128,0.15)", border: "rgba(107,114,128,0.3)", color: "#9ca3af", label: "❄️ Cold" },
-      }[s.score] || null;
+      const cfg =
+        {
+          hot: {
+            bg: "rgba(239,68,68,0.15)",
+            border: "rgba(239,68,68,0.35)",
+            color: "#f87171",
+            label: "🔥 Hot",
+          },
+          warm: {
+            bg: "rgba(251,191,36,0.15)",
+            border: "rgba(251,191,36,0.35)",
+            color: "#fbbf24",
+            label: "⚡ Warm",
+          },
+          cold: {
+            bg: "rgba(107,114,128,0.15)",
+            border: "rgba(107,114,128,0.3)",
+            color: "#9ca3af",
+            label: "❄️ Cold",
+          },
+        }[s.score] || null;
       if (!cfg) return null;
       return (
-        <span title={s.reason || ""} style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 99, background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, cursor: "default", flexShrink: 0 }}>
+        <span
+          title={s.reason || ""}
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            padding: "2px 7px",
+            borderRadius: 99,
+            background: cfg.bg,
+            border: `1px solid ${cfg.border}`,
+            color: cfg.color,
+            cursor: "default",
+            flexShrink: 0,
+          }}
+        >
           {cfg.label}
         </span>
       );
@@ -1743,33 +3276,96 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
-      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
-      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const carName = car
+        ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
+        : null;
+      const carPrice = car?.selling_price
+        ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+        : null;
 
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
-      const nextStage = LEAD_STAGES.filter(s => s !== "lost" && s !== "won").find((s, i) => LEAD_STAGES.indexOf(s) > stageIdx);
+      const nextStage = LEAD_STAGES.filter(
+        (s) => s !== "lost" && s !== "won",
+      ).find((s, i) => LEAD_STAGES.indexOf(s) > stageIdx);
 
       return (
-        <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
+        <div
+          key={lead.id}
+          style={{
+            background: "#0d1117",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            padding: "10px 12px",
+          }}
+        >
           {/* top row: name + AI score */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 2 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3 }}>{lead.buyer_name || "—"}</p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 6,
+              marginBottom: 2,
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#e5e7eb",
+                lineHeight: 1.3,
+              }}
+            >
+              {lead.buyer_name || "—"}
+            </p>
             {AI_SCORE_PILL(lead.id)}
           </div>
 
           {/* lead age */}
-          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Added {timeAgo(lead.created_at)}</p>
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
+            Added {timeAgo(lead.created_at)}
+          </p>
 
           {/* car name + price */}
-          {carName && <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>{carName}</p>}
-          {carPrice && <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#60a5fa" }}>{carPrice}</p>}
+          {carName && (
+            <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>
+              {carName}
+            </p>
+          )}
+          {carPrice && (
+            <p
+              style={{
+                margin: "0 0 4px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#60a5fa",
+              }}
+            >
+              {carPrice}
+            </p>
+          )}
 
           {/* phone */}
-          {lead.phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
+          {lead.phone && (
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>
+              📞 {lead.phone}
+            </p>
+          )}
 
           {/* notes preview */}
           {lead.notes && (
-            <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p
+              style={{
+                margin: "0 0 6px",
+                fontSize: 10,
+                color: "#4b5563",
+                fontStyle: "italic",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               "{lead.notes}"
             </p>
           )}
@@ -1777,17 +3373,52 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {/* action buttons */}
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {nextStage && lead.stage !== "won" && (
-              <button onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+              <button
+                onClick={() => updateLeadStage(lead.id, nextStage)}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 7px",
+                  borderRadius: 5,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#6b7280",
+                  cursor: "pointer",
+                }}
+              >
                 → {nextStage.replace(/_/g, " ")}
               </button>
             )}
             {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
-              <button onClick={() => updateLeadStage(lead.id, "won")} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+              <button
+                onClick={() => updateLeadStage(lead.id, "won")}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 7px",
+                  borderRadius: 5,
+                  background: "rgba(34,197,94,0.08)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  color: "#4ade80",
+                  cursor: "pointer",
+                }}
+              >
                 → Won
               </button>
             )}
             {lead.phone && (
-              <button onClick={() => pingWA(lead)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
+              <button
+                onClick={() => pingWA(lead)}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 7px",
+                  borderRadius: 5,
+                  background: "rgba(37,211,102,0.1)",
+                  border: "1px solid rgba(37,211,102,0.2)",
+                  color: "#4ade80",
+                  cursor: "pointer",
+                }}
+              >
+                WA
+              </button>
             )}
           </div>
         </div>
@@ -1796,35 +3427,123 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     return (
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Lead Pipeline ({leads.filter(l => l.stage !== "lost").length})</p>
-          <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 600,
+              color: "#f1f5f9",
+            }}
+          >
+            Lead Pipeline ({leads.filter((l) => l.stage !== "lost").length})
+          </p>
+          <button
+            onClick={() => setShowAddLead(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#1d4ed8",
+              border: "none",
+              borderRadius: 8,
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 12px",
+              cursor: "pointer",
+            }}
+          >
             <Plus size={13} /> Add Lead
           </button>
         </div>
 
         {isMobile && leads.length > 0 && (
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>swipe to see more →</p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>
+            swipe to see more →
+          </p>
         )}
 
         {/* Kanban board — lost excluded */}
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollSnapType: isMobile ? "x mandatory" : undefined }}>
-          {activeStages.map(stage => {
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            overflowX: "auto",
+            paddingBottom: 8,
+            scrollSnapType: isMobile ? "x mandatory" : undefined,
+          }}
+        >
+          {activeStages.map((stage) => {
             const sc = STAGE_COLOR[stage] || {};
-            const stageLeads = leads.filter(l => l.stage === stage);
+            const stageLeads = leads.filter((l) => l.stage === stage);
             return (
-              <div key={stage} style={{ minWidth: isMobile ? 170 : 200, flexShrink: 0, scrollSnapAlign: isMobile ? "start" : undefined }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>{stage.replace(/_/g, " ")}</span>
-                  <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>{stageLeads.length}</span>
+              <div
+                key={stage}
+                style={{
+                  minWidth: isMobile ? 170 : 200,
+                  flexShrink: 0,
+                  scrollSnapAlign: isMobile ? "start" : undefined,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: sc.tx || "#9ca3af",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {stage.replace(/_/g, " ")}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      background: sc.bg,
+                      border: `1px solid ${sc.border}`,
+                      color: sc.tx,
+                      borderRadius: 99,
+                      padding: "1px 6px",
+                    }}
+                  >
+                    {stageLeads.length}
+                  </span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
                   {stageLeads.length === 0 && (
-                    <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                    <div
+                      style={{
+                        height: 60,
+                        borderRadius: 10,
+                        border: "1px dashed rgba(255,255,255,0.07)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#374151" }}>
+                        Empty
+                      </span>
                     </div>
                   )}
-                  {stageLeads.map(lead => renderLeadCard(lead))}
+                  {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
               </div>
             );
@@ -1835,27 +3554,105 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <button
-              onClick={() => setLostOpen(o => !o)}
-              style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0" }}
+              onClick={() => setLostOpen((o) => !o)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px 0",
+              }}
             >
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#4b5563",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
                 Lost ({lostLeads.length})
               </span>
-              <span style={{ fontSize: 12, color: "#374151" }}>{lostOpen ? "▲" : "▼"}</span>
+              <span style={{ fontSize: 12, color: "#374151" }}>
+                {lostOpen ? "▲" : "▼"}
+              </span>
             </button>
             {lostOpen && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-                {lostLeads.map(lead => {
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginTop: 8,
+                }}
+              >
+                {lostLeads.map((lead) => {
                   const car = lead.car_listings;
-                  const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+                  const carName = car
+                    ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
+                    : null;
                   return (
-                    <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", opacity: 0.65 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6b7280" }}>{lead.buyer_name || "—"}</p>
-                        <span style={{ fontSize: 10, color: "#374151" }}>{timeAgo(lead.created_at)}</span>
+                    <div
+                      key={lead.id}
+                      style={{
+                        background: "#0d1117",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        opacity: 0.65,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 6,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#6b7280",
+                          }}
+                        >
+                          {lead.buyer_name || "—"}
+                        </p>
+                        <span style={{ fontSize: 10, color: "#374151" }}>
+                          {timeAgo(lead.created_at)}
+                        </span>
                       </div>
-                      {carName && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>{carName}</p>}
-                      {lead.notes && <p style={{ margin: "4px 0 0", fontSize: 10, color: "#374151", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{lead.notes}"</p>}
+                      {carName && (
+                        <p
+                          style={{
+                            margin: "2px 0 0",
+                            fontSize: 11,
+                            color: "#4b5563",
+                          }}
+                        >
+                          {carName}
+                        </p>
+                      )}
+                      {lead.notes && (
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            fontSize: 10,
+                            color: "#374151",
+                            fontStyle: "italic",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          "{lead.notes}"
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -1869,42 +3666,173 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   const renderEnquiries = () => (
     <div>
-      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Enquiries ({enquiries.length})</p>
+      <p
+        style={{
+          margin: "0 0 16px",
+          fontSize: 16,
+          fontWeight: 600,
+          color: "#f1f5f9",
+        }}
+      >
+        Enquiries ({enquiries.length})
+      </p>
       {enquiries.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}>No enquiries yet.</div>
+        <div
+          style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}
+        >
+          No enquiries yet.
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {enquiries.map(enq => {
+          {enquiries.map((enq) => {
             const car = enq.car_listings;
-            const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+            const carName = car
+              ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
+              : null;
             const phone = (enq.buyer_phone || "").replace(/\D/g, "");
             return (
-              <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+              <div
+                key={enq.id}
+                style={{
+                  background: "#0d1117",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    marginBottom: 6,
+                  }}
+                >
                   <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
-                    {carName && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#60a5fa" }}>{carName}</p>}
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#e5e7eb",
+                      }}
+                    >
+                      {enq.buyer_name || "—"}
+                    </p>
+                    {carName && (
+                      <p
+                        style={{
+                          margin: "2px 0 0",
+                          fontSize: 11,
+                          color: "#60a5fa",
+                        }}
+                      >
+                        {carName}
+                      </p>
+                    )}
                   </div>
-                  <span style={{ fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</span>
+                  <span style={{ fontSize: 10, color: "#374151" }}>
+                    {timeAgo(enq.created_at)}
+                  </span>
                 </div>
-                {enq.buyer_message && <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", fontStyle: "italic" }}>"{enq.buyer_message}"</p>}
+                {enq.buyer_message && (
+                  <p
+                    style={{
+                      margin: "0 0 10px",
+                      fontSize: 12,
+                      color: "#6b7280",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    "{enq.buyer_message}"
+                  </p>
+                )}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {phone && (
-                    <button onClick={() => window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}`, "_blank")} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer" }}>
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}`,
+                          "_blank",
+                        )
+                      }
+                      style={{
+                        fontSize: 11,
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        background: "rgba(37,211,102,0.1)",
+                        border: "1px solid rgba(37,211,102,0.25)",
+                        color: "#4ade80",
+                        cursor: "pointer",
+                      }}
+                    >
                       WhatsApp
                     </button>
                   )}
-                  <button onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
+                  <button
+                    onClick={() =>
+                      setOpenTemplateId(
+                        openTemplateId === enq.id ? null : enq.id,
+                      )
+                    }
+                    style={{
+                      fontSize: 11,
+                      padding: "5px 10px",
+                      borderRadius: 7,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#9ca3af",
+                      cursor: "pointer",
+                    }}
+                  >
                     Templates
                   </button>
-                  <button onClick={() => { setOpenAiReplyId(enq.id); generateAiReply(enq); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>
+                  <button
+                    onClick={() => {
+                      setOpenAiReplyId(enq.id);
+                      generateAiReply(enq);
+                    }}
+                    style={{
+                      fontSize: 11,
+                      padding: "5px 10px",
+                      borderRadius: 7,
+                      background: "rgba(168,85,247,0.1)",
+                      border: "1px solid rgba(168,85,247,0.25)",
+                      color: "#c084fc",
+                      cursor: "pointer",
+                    }}
+                  >
                     AI Reply
                   </button>
                 </div>
                 {openTemplateId === enq.id && (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                    }}
+                  >
                     {WA_TEMPLATES.map((tpl, ti) => (
-                      <button key={ti} onClick={() => fireTemplate(enq, tpl)} style={{ textAlign: "left", fontSize: 11, padding: "6px 10px", borderRadius: 7, background: templateToast === enq.id ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: templateToast === enq.id ? "#4ade80" : "#9ca3af", cursor: "pointer" }}>
+                      <button
+                        key={ti}
+                        onClick={() => fireTemplate(enq, tpl)}
+                        style={{
+                          textAlign: "left",
+                          fontSize: 11,
+                          padding: "6px 10px",
+                          borderRadius: 7,
+                          background:
+                            templateToast === enq.id
+                              ? "rgba(34,197,94,0.1)"
+                              : "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          color:
+                            templateToast === enq.id ? "#4ade80" : "#9ca3af",
+                          cursor: "pointer",
+                        }}
+                      >
                         {tpl.label}
                       </button>
                     ))}
@@ -1913,11 +3841,38 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 {openAiReplyId === enq.id && (
                   <div style={{ marginTop: 10 }}>
                     {aiLoading ? (
-                      <div className="caption-skeleton" style={{ height: 60, width: "100%" }} />
+                      <div
+                        className="caption-skeleton"
+                        style={{ height: 60, width: "100%" }}
+                      />
                     ) : aiDrafts[enq.id] ? (
                       <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af", whiteSpace: "pre-wrap" }}>{aiDrafts[enq.id]}</p>
-                        <button onClick={() => navigator.clipboard.writeText(aiDrafts[enq.id])} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>Copy</button>
+                        <p
+                          style={{
+                            margin: "0 0 6px",
+                            fontSize: 12,
+                            color: "#9ca3af",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {aiDrafts[enq.id]}
+                        </p>
+                        <button
+                          onClick={() =>
+                            navigator.clipboard.writeText(aiDrafts[enq.id])
+                          }
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            background: "rgba(168,85,247,0.1)",
+                            border: "1px solid rgba(168,85,247,0.25)",
+                            color: "#c084fc",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Copy
+                        </button>
                       </div>
                     ) : null}
                   </div>
@@ -1931,28 +3886,60 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   );
 
   const renderAnalytics = () => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 300,
+      }}
+    >
       <div style={{ textAlign: "center" }}>
         <TrendingUp size={32} color="#374151" style={{ marginBottom: 12 }} />
-        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>Analytics coming soon</p>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>Detailed performance data will appear here.</p>
+        <p
+          style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}
+        >
+          Analytics coming soon
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>
+          Detailed performance data will appear here.
+        </p>
       </div>
     </div>
   );
 
   const renderTeam = () => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 300,
+      }}
+    >
       <div style={{ textAlign: "center" }}>
         <Users size={32} color="#374151" style={{ marginBottom: 12 }} />
-        <p style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}>Team view coming soon</p>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>See your team's performance here.</p>
+        <p
+          style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}
+        >
+          Team view coming soon
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>
+          See your team's performance here.
+        </p>
       </div>
     </div>
   );
 
   return (
     <div
-      style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        minHeight: "100vh",
+        fontFamily: "'DM Sans', sans-serif",
+        color: "#fff",
+      }}
     >
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
@@ -1968,130 +3955,692 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
       {/* ─── Sidenav (desktop) / Bottom nav (mobile) ─── */}
       {isMobile ? (
-        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, height: 60, background: "#080a12", borderTop: "0.5px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "row" }}>
+        <nav
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            height: 60,
+            background: "#080a12",
+            borderTop: "0.5px solid rgba(255,255,255,0.07)",
+            display: "flex",
+            flexDirection: "row",
+          }}
+        >
           {[
-            { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} />, badge: null },
-            { tab: "listings",  label: "Listings",  icon: <Car size={18} />, badge: myListings.length || null },
-            { tab: "bookings",  label: "Bookings",  icon: <Clock size={18} />, badge: appointments.length || null },
-            { tab: "leads",     label: "Leads",     icon: <User size={18} />, badge: null },
-            { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} />, badge: null },
-            { tab: "enquiries", label: "Enquiries", icon: <MessageSquare size={18} />, badge: enquiries.filter(e => e.status === "new").length || null },
-            { tab: "team",      label: "Team",      icon: <Users size={18} />, badge: null },
+            {
+              tab: "dashboard",
+              label: "Dashboard",
+              icon: <LayoutGrid size={18} />,
+              badge: null,
+            },
+            {
+              tab: "listings",
+              label: "Listings",
+              icon: <Car size={18} />,
+              badge: myListings.length || null,
+            },
+            {
+              tab: "bookings",
+              label: "Bookings",
+              icon: <Clock size={18} />,
+              badge: appointments.length || null,
+            },
+            {
+              tab: "leads",
+              label: "Leads",
+              icon: <User size={18} />,
+              badge: null,
+            },
+            {
+              tab: "analytics",
+              label: "Analytics",
+              icon: <TrendingUp size={18} />,
+              badge: null,
+            },
+            {
+              tab: "enquiries",
+              label: "Enquiries",
+              icon: <MessageSquare size={18} />,
+              badge: enquiries.filter((e) => e.status === "new").length || null,
+            },
+            {
+              tab: "team",
+              label: "Team",
+              icon: <Users size={18} />,
+              badge: null,
+            },
           ].map(({ tab, label, icon, badge }) => {
             const isActive = activeTab === tab;
             return (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "transparent", border: "none", cursor: "pointer", color: isActive ? "#93c5fd" : "#4b5563", position: "relative", padding: "6px 0" }}>
-                {isActive && <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 3, height: 3, borderRadius: 99, background: "#3b82f6" }} />}
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: isActive ? "#93c5fd" : "#4b5563",
+                  position: "relative",
+                  padding: "6px 0",
+                }}
+              >
+                {isActive && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 5,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: 3,
+                      height: 3,
+                      borderRadius: 99,
+                      background: "#3b82f6",
+                    }}
+                  />
+                )}
                 <div style={{ position: "relative" }}>
                   {icon}
-                  {badge ? <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, background: "#ef4444", borderRadius: "50%" }} /> : null}
+                  {badge ? (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -2,
+                        right: -2,
+                        width: 6,
+                        height: 6,
+                        background: "#ef4444",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  ) : null}
                 </div>
-                {isActive && <span style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}>{label}</span>}
+                {isActive && (
+                  <span
+                    style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
+                  >
+                    {label}
+                  </span>
+                )}
               </button>
             );
           })}
         </nav>
       ) : (
-        <nav style={{ width: 200, flexShrink: 0, background: "#080a12", borderRight: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", overflowY: "auto", position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+        <nav
+          style={{
+            width: 200,
+            flexShrink: 0,
+            background: "#080a12",
+            borderRight: "1px solid rgba(255,255,255,0.07)",
+            display: "flex",
+            flexDirection: "column",
+            overflowY: "auto",
+            position: "sticky",
+            top: 0,
+            height: "100vh",
+            overflow: "hidden",
+          }}
+        >
           {/* Logo */}
-          <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
+          <div
+            style={{
+              padding: 16,
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                background: "#2563eb",
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontWeight: 700,
+                color: "#fff",
+                flexShrink: 0,
+              }}
+            >
+              S
+            </div>
             <div>
-              <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", lineHeight: 1, margin: 0 }}>SHIFTOS</p>
-              <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· My Panel</p>
+              <p
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 15,
+                  letterSpacing: "2px",
+                  color: "#fff",
+                  lineHeight: 1,
+                  margin: 0,
+                }}
+              >
+                SHIFTOS
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: "#4b5563",
+                  marginTop: 2,
+                  marginBottom: 0,
+                }}
+              >
+                · My Panel
+              </p>
             </div>
           </div>
 
           {/* MAIN section */}
-          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>
+          <p
+            style={{
+              fontSize: 10,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              padding: "12px 16px 4px",
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            Main
+          </p>
           {[
-            { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-            { tab: "listings",  label: "Listings",  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: myListings.length || null },
-            { tab: "bookings",  label: "Bookings",  icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: appointments.length || null },
+            {
+              tab: "dashboard",
+              label: "Dashboard",
+              icon: (
+                <LayoutGrid style={{ width: 14, height: 14, flexShrink: 0 }} />
+              ),
+              badge: null,
+            },
+            {
+              tab: "listings",
+              label: "Listings",
+              icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />,
+              badge: myListings.length || null,
+            },
+            {
+              tab: "bookings",
+              label: "Bookings",
+              icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />,
+              badge: appointments.length || null,
+            },
           ].map(({ tab, label, icon, badge }) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 16px",
+                margin: "1px 8px",
+                borderRadius: 8,
+                cursor: "pointer",
+                position: "relative",
+                background:
+                  activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+                border:
+                  activeTab === tab
+                    ? "0.5px solid rgba(37,99,235,0.25)"
+                    : "0.5px solid transparent",
+                color: activeTab === tab ? "#93c5fd" : "#6b7280",
+                fontSize: 13,
+                fontWeight: 500,
+                width: "calc(100% - 16px)",
+                textAlign: "left",
+              }}
+            >
               {icon}
               <span style={{ flex: 1 }}>{label}</span>
-              {badge ? <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span> : null}
+              {badge ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    background: "rgba(37,99,235,0.2)",
+                    border: "1px solid rgba(37,99,235,0.3)",
+                    color: "#93c5fd",
+                    borderRadius: 99,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {badge}
+                </span>
+              ) : null}
             </button>
           ))}
 
           {/* CRM section */}
-          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>CRM</p>
+          <p
+            style={{
+              fontSize: 10,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              padding: "12px 16px 4px",
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            CRM
+          </p>
           {[
-            { tab: "leads",     label: "Leads",     icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-            { tab: "analytics", label: "Analytics", icon: <TrendingUp style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: null },
-            { tab: "enquiries", label: "Enquiries", icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />, badge: enquiries.filter(e => e.status === "new").length || null },
+            {
+              tab: "leads",
+              label: "Leads",
+              icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />,
+              badge: null,
+            },
+            {
+              tab: "analytics",
+              label: "Analytics",
+              icon: (
+                <TrendingUp style={{ width: 14, height: 14, flexShrink: 0 }} />
+              ),
+              badge: null,
+            },
+            {
+              tab: "enquiries",
+              label: "Enquiries",
+              icon: (
+                <MessageSquare
+                  style={{ width: 14, height: 14, flexShrink: 0 }}
+                />
+              ),
+              badge: enquiries.filter((e) => e.status === "new").length || null,
+            },
           ].map(({ tab, label, icon, badge }) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 16px",
+                margin: "1px 8px",
+                borderRadius: 8,
+                cursor: "pointer",
+                position: "relative",
+                background:
+                  activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+                border:
+                  activeTab === tab
+                    ? "0.5px solid rgba(37,99,235,0.25)"
+                    : "0.5px solid transparent",
+                color: activeTab === tab ? "#93c5fd" : "#6b7280",
+                fontSize: 13,
+                fontWeight: 500,
+                width: "calc(100% - 16px)",
+                textAlign: "left",
+              }}
+            >
               {icon}
               <span style={{ flex: 1 }}>{label}</span>
-              {badge ? <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span> : null}
+              {badge ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    background: "rgba(37,99,235,0.2)",
+                    border: "1px solid rgba(37,99,235,0.3)",
+                    color: "#93c5fd",
+                    borderRadius: 99,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {badge}
+                </span>
+              ) : null}
             </button>
           ))}
 
           {/* TEAM section */}
-          <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Team</p>
+          <p
+            style={{
+              fontSize: 10,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              padding: "12px 16px 4px",
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            Team
+          </p>
           {[
-            { tab: "team", label: "Team", icon: <Users style={{ width: 14, height: 14, flexShrink: 0 }} /> },
+            {
+              tab: "team",
+              label: "Team",
+              icon: <Users style={{ width: 14, height: 14, flexShrink: 0 }} />,
+            },
           ].map(({ tab, label, icon }) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer", position: "relative", background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent", border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent", color: activeTab === tab ? "#93c5fd" : "#6b7280", fontSize: 13, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left" }}>
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 16px",
+                margin: "1px 8px",
+                borderRadius: 8,
+                cursor: "pointer",
+                position: "relative",
+                background:
+                  activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+                border:
+                  activeTab === tab
+                    ? "0.5px solid rgba(37,99,235,0.25)"
+                    : "0.5px solid transparent",
+                color: activeTab === tab ? "#93c5fd" : "#6b7280",
+                fontSize: 13,
+                fontWeight: 500,
+                width: "calc(100% - 16px)",
+                textAlign: "left",
+              }}
+            >
               {icon}
               <span>{label}</span>
             </button>
           ))}
 
           {/* Bottom profile */}
-          <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#93c5fd", flexShrink: 0 }}>
+          <div
+            style={{
+              marginTop: "auto",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                background: "rgba(37,99,235,0.2)",
+                border: "1px solid rgba(37,99,235,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#93c5fd",
+                flexShrink: 0,
+              }}
+            >
               {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name || profile?.slug || "Salesman"}</p>
-              <p style={{ fontSize: 10, color: "#4b5563", margin: 0, textTransform: "capitalize" }}>{profile?.role || "salesman"}</p>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#e5e7eb",
+                  margin: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {profile?.full_name || profile?.slug || "Salesman"}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: "#4b5563",
+                  margin: 0,
+                  textTransform: "capitalize",
+                }}
+              >
+                {profile?.role || "salesman"}
+              </p>
             </div>
           </div>
         </nav>
       )}
 
       {/* ─── Right content pane ─── */}
-      <div style={{ flex: 1, minWidth: 0, background: "#05070e", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: "#05070e",
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+        }}
+      >
         {/* Sticky topbar */}
-        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(5,7,14,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: isMobile ? "12px 16px" : "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            background: "rgba(5,7,14,0.92)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            padding: isMobile ? "12px 16px" : "14px 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
           {isMobile ? (
             <>
-              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 28, height: 28, background: "#2563eb", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "'Bebas Neue', sans-serif", fontWeight: 700, color: "#fff", flexShrink: 0 }}>S</div>
-                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: "2px", color: "#fff", margin: 0 }}>SHIFTOS</p>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "#2563eb",
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontWeight: 700,
+                    color: "#fff",
+                    flexShrink: 0,
+                  }}
+                >
+                  S
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 15,
+                    letterSpacing: "2px",
+                    color: "#fff",
+                    margin: 0,
+                  }}
+                >
+                  SHIFTOS
+                </p>
               </div>
-              <button onClick={() => setNotifOpen(v => !v)} style={{ position: "relative", background: unreadCount > 0 ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.06)", border: unreadCount > 0 ? "1px solid rgba(59,130,246,0.3)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: unreadCount > 0 ? "#93c5fd" : "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                style={{
+                  position: "relative",
+                  background:
+                    unreadCount > 0
+                      ? "rgba(59,130,246,0.1)"
+                      : "rgba(255,255,255,0.06)",
+                  border:
+                    unreadCount > 0
+                      ? "1px solid rgba(59,130,246,0.3)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: unreadCount > 0 ? "#93c5fd" : "#94a3b8",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
                 <Bell size={16} />
                 {unreadCount > 0 && (
-                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #05070e" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -4,
+                      background: "#ef4444",
+                      color: "#fff",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      borderRadius: "50%",
+                      width: 15,
+                      height: 15,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "2px solid #05070e",
+                    }}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
                 )}
               </button>
             </>
           ) : (
             <>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
-                  {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: "#f1f5f9",
+                    letterSpacing: "-0.3px",
+                  }}
+                >
+                  {(() => {
+                    const h = new Date().getHours();
+                    return h < 12
+                      ? "Good morning"
+                      : h < 17
+                        ? "Good afternoon"
+                        : "Good evening";
+                  })()}
+                  , {profile?.full_name?.split(" ")[0] || "there"} 👋
                 </p>
-                <p style={{ margin: 0, fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                  {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}{profile?.dealership ? ` · ${profile.dealership}` : ""}
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    color: "#64748b",
+                    marginTop: 2,
+                  }}
+                >
+                  {new Date().toLocaleDateString("en-MY", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                  {profile?.dealership ? ` · ${profile.dealership}` : ""}
                 </p>
               </div>
-              <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, padding: "8px 14px", cursor: "pointer" }}>
+              <button
+                onClick={() => setShowAddLead(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#1d4ed8",
+                  border: "none",
+                  borderRadius: 8,
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 14px",
+                  cursor: "pointer",
+                }}
+              >
                 <Plus size={14} /> Add Lead
               </button>
-              <button onClick={() => setNotifOpen(v => !v)} style={{ position: "relative", background: unreadCount > 0 ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.06)", border: unreadCount > 0 ? "1px solid rgba(59,130,246,0.3)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: unreadCount > 0 ? "#93c5fd" : "#94a3b8", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                style={{
+                  position: "relative",
+                  background:
+                    unreadCount > 0
+                      ? "rgba(59,130,246,0.1)"
+                      : "rgba(255,255,255,0.06)",
+                  border:
+                    unreadCount > 0
+                      ? "1px solid rgba(59,130,246,0.3)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: unreadCount > 0 ? "#93c5fd" : "#94a3b8",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
                 <Bell size={16} />
                 {unreadCount > 0 && (
-                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #05070e" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -4,
+                      background: "#ef4444",
+                      color: "#fff",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      borderRadius: "50%",
+                      width: 15,
+                      height: 15,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "2px solid #05070e",
+                    }}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
                 )}
               </button>
-              <button onClick={handleLogout} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#64748b", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
                 <LogOut size={15} />
               </button>
             </>
@@ -2100,18 +4649,50 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {/* Mobile greeting banner */}
         {isMobile && (
-          <div style={{ padding: "12px 16px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "#f1f5f9" }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"} 👋
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "rgba(255,255,255,0.02)",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#f1f5f9",
+              }}
+            >
+              {(() => {
+                const h = new Date().getHours();
+                return h < 12
+                  ? "Good morning"
+                  : h < 17
+                    ? "Good afternoon"
+                    : "Good evening";
+              })()}
+              , {profile?.full_name?.split(" ")[0] || "there"} 👋
             </p>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>
-              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}{profile?.dealership ? ` · ${profile.dealership}` : ""}
+              {new Date().toLocaleDateString("en-MY", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+              {profile?.dealership ? ` · ${profile.dealership}` : ""}
             </p>
           </div>
         )}
 
         {/* Scrollable content */}
-        <div style={{ padding: isMobile ? "16px 12px" : 24, flex: 1, paddingBottom: isMobile ? 80 : 24 }}>
+        <div
+          style={{
+            padding: isMobile ? "16px 12px" : 24,
+            flex: 1,
+            paddingBottom: isMobile ? 80 : 24,
+          }}
+        >
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "bookings" && renderBookings()}
@@ -2124,41 +4705,247 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
       {/* FAB — mobile only */}
       {isMobile && (
-        <button onClick={() => setShowAddLead(true)} style={{ position: "fixed", bottom: 72, right: 16, zIndex: 40, width: 44, height: 44, borderRadius: "50%", background: "#2563eb", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(37,99,235,0.4)" }}>
+        <button
+          onClick={() => setShowAddLead(true)}
+          style={{
+            position: "fixed",
+            bottom: 72,
+            right: 16,
+            zIndex: 40,
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "#2563eb",
+            border: "none",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(37,99,235,0.4)",
+          }}
+        >
           <Plus size={20} />
         </button>
       )}
 
       {/* Add Lead modal */}
       {showAddLead && (
-        <div onClick={() => setShowAddLead(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: isMobile ? "16px 16px 0 0" : 12, width: isMobile ? "100%" : 480, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div
+          onClick={() => setShowAddLead(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.78)",
+            zIndex: 999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#111827",
+              borderRadius: isMobile ? "16px 16px 0 0" : 12,
+              width: isMobile ? "100%" : 480,
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Add Lead</p>
-                <button onClick={() => setShowAddLead(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={20} /></button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 20,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#f1f5f9",
+                  }}
+                >
+                  Add Lead
+                </p>
+                <button
+                  onClick={() => setShowAddLead(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                  }}
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 14 }}
+              >
                 <div>
-                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Name</label>
-                  <input value={addLeadForm.buyer_name} onChange={e => setAddLeadForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Buyer name" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                  <label
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Name
+                  </label>
+                  <input
+                    value={addLeadForm.buyer_name}
+                    onChange={(e) =>
+                      setAddLeadForm((p) => ({
+                        ...p,
+                        buyer_name: e.target.value,
+                      }))
+                    }
+                    placeholder="Buyer name"
+                    style={{
+                      width: "100%",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      padding: "9px 12px",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Phone</label>
-                  <input value={addLeadForm.phone} onChange={e => setAddLeadForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. 0123456789" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                  <label
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Phone
+                  </label>
+                  <input
+                    value={addLeadForm.phone}
+                    onChange={(e) =>
+                      setAddLeadForm((p) => ({ ...p, phone: e.target.value }))
+                    }
+                    placeholder="e.g. 0123456789"
+                    style={{
+                      width: "100%",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      padding: "9px 12px",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Car (optional)</label>
-                  <select value={addLeadForm.car_listing_id} onChange={e => setAddLeadForm(p => ({ ...p, car_listing_id: e.target.value }))} style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none" }}>
+                  <label
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Car (optional)
+                  </label>
+                  <select
+                    value={addLeadForm.car_listing_id}
+                    onChange={(e) =>
+                      setAddLeadForm((p) => ({
+                        ...p,
+                        car_listing_id: e.target.value,
+                      }))
+                    }
+                    style={{
+                      width: "100%",
+                      background: "#111827",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      padding: "9px 12px",
+                      outline: "none",
+                    }}
+                  >
                     <option value="">— no car selected —</option>
-                    {myListings.map(c => <option key={c.id} value={c.id}>{c.year} {c.brand} {c.model}</option>)}
+                    {myListings.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.year} {c.brand} {c.model}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Notes</label>
-                  <textarea value={addLeadForm.notes} onChange={e => setAddLeadForm(p => ({ ...p, notes: e.target.value }))} placeholder="Any notes..." rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+                  <label
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Notes
+                  </label>
+                  <textarea
+                    value={addLeadForm.notes}
+                    onChange={(e) =>
+                      setAddLeadForm((p) => ({ ...p, notes: e.target.value }))
+                    }
+                    placeholder="Any notes..."
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      padding: "9px 12px",
+                      outline: "none",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
-                <button onClick={handleAddLead} disabled={addLeadSaving || !addLeadForm.buyer_name} style={{ width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 600, background: addLeadSaving || !addLeadForm.buyer_name ? "rgba(255,255,255,0.05)" : "#1d4ed8", border: "none", color: addLeadSaving || !addLeadForm.buyer_name ? "#6b7280" : "#fff", cursor: addLeadSaving || !addLeadForm.buyer_name ? "not-allowed" : "pointer" }}>
+                <button
+                  onClick={handleAddLead}
+                  disabled={addLeadSaving || !addLeadForm.buyer_name}
+                  style={{
+                    width: "100%",
+                    padding: "11px 0",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background:
+                      addLeadSaving || !addLeadForm.buyer_name
+                        ? "rgba(255,255,255,0.05)"
+                        : "#1d4ed8",
+                    border: "none",
+                    color:
+                      addLeadSaving || !addLeadForm.buyer_name
+                        ? "#6b7280"
+                        : "#fff",
+                    cursor:
+                      addLeadSaving || !addLeadForm.buyer_name
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                >
                   {addLeadSaving ? "Saving..." : "Add Lead"}
                 </button>
               </div>
@@ -2170,28 +4957,138 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {/* Notification panel */}
       {notifOpen && (
         <>
-          <div onClick={() => setNotifOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
-          <div style={{ position: "fixed", top: isMobile ? 52 : 60, right: isMobile ? 8 : 16, zIndex: 46, width: isMobile ? "calc(100vw - 16px)" : 320, maxHeight: 420, display: "flex", flexDirection: "column", background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>Notifications</span>
+          <div
+            onClick={() => setNotifOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 45 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: isMobile ? 52 : 60,
+              right: isMobile ? 8 : 16,
+              zIndex: 46,
+              width: isMobile ? "calc(100vw - 16px)" : 320,
+              maxHeight: 420,
+              display: "flex",
+              flexDirection: "column",
+              background: "#0d1117",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 12,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>
+                Notifications
+              </span>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {unreadCount > 0 && (
-                  <button onClick={markAllNotifsRead} style={{ fontSize: 11, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Mark all read</button>
+                  <button
+                    onClick={markAllNotifsRead}
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Mark all read
+                  </button>
                 )}
-                <button onClick={() => setNotifOpen(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", display: "flex", padding: 0 }}><X size={16} /></button>
+                <button
+                  onClick={() => setNotifOpen(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                    display: "flex",
+                    padding: 0,
+                  }}
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
             <div style={{ overflowY: "auto", flex: 1 }}>
               {notifications.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#4b5563", padding: "24px 16px", textAlign: "center", margin: 0 }}>No notifications yet.</p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#4b5563",
+                    padding: "24px 16px",
+                    textAlign: "center",
+                    margin: 0,
+                  }}
+                >
+                  No notifications yet.
+                </p>
               ) : (
                 notifications.map((n) => (
-                  <div key={n.id} onClick={() => markNotifRead(n)} style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: n.is_read ? "transparent" : "rgba(59,130,246,0.05)", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    {!n.is_read && <div style={{ width: 6, height: 6, background: "#3b82f6", borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />}
+                  <div
+                    key={n.id}
+                    onClick={() => markNotifRead(n)}
+                    style={{
+                      padding: "12px 16px",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      background: n.is_read
+                        ? "transparent"
+                        : "rgba(59,130,246,0.05)",
+                      cursor: "pointer",
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    {!n.is_read && (
+                      <div
+                        style={{
+                          width: 6,
+                          height: 6,
+                          background: "#3b82f6",
+                          borderRadius: "50%",
+                          flexShrink: 0,
+                          marginTop: 5,
+                        }}
+                      />
+                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#f3f4f6" }}>{n.title || "Notification"}</p>
-                      <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>{n.body}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{timeAgo(n.created_at)}</p>
+                      <p
+                        style={{
+                          margin: "0 0 2px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#f3f4f6",
+                        }}
+                      >
+                        {n.title || "Notification"}
+                      </p>
+                      <p
+                        style={{
+                          margin: "0 0 4px",
+                          fontSize: 12,
+                          color: "#9ca3af",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {n.body}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
+                        {timeAgo(n.created_at)}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -2583,7 +5480,19 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
       {/* TikTok Studio modal */}
       {tiktokListing && (
-        <div style={isMobile ? { position: "fixed", inset: 0, zIndex: 9999, overflowY: "auto", borderRadius: 0 } : {}}>
+        <div
+          style={
+            isMobile
+              ? {
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 9999,
+                  overflowY: "auto",
+                  borderRadius: 0,
+                }
+              : {}
+          }
+        >
           <TikTokStudioV3
             listing={tiktokListing}
             onClose={() => setTiktokListing(null)}
