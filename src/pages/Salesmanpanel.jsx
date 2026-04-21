@@ -38,6 +38,10 @@ import {
   Droplets,
   Palette,
   MapPin,
+  Banknote,
+  CreditCard,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -186,6 +190,21 @@ export default function SalesmanPanel() {
   const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
   const [carDetailTab, setCarDetailTab] = useState("specs");
   const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
+
+  // ── loans
+  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
+  const [loanForm, setLoanForm] = useState({
+    lead_id: "", stock_unit_id: "", bank_name: "", loan_amount: "",
+    interest_rate: "", tenure_years: 7, monthly_payment: "", buyer_ic: "",
+    buyer_income: "", notes: "",
+  });
+  const [loanApplications, setLoanApplications] = useState([]);
+  const [loanLeads, setLoanLeads] = useState([]);
+  const [loanStockUnits, setLoanStockUnits] = useState([]);
+  const [loanSaving, setLoanSaving] = useState(false);
+  const [loanEditId, setLoanEditId] = useState(null);
+  const [loanEditStatus, setLoanEditStatus] = useState("");
+  const [loanEditCommission, setLoanEditCommission] = useState("");
 
   // ── stale leads (48h no contact, exclude won/lost)
   useEffect(() => {
@@ -508,6 +527,30 @@ Rules:
       supabase.removeChannel(listingsCh);
     };
   }, [userId]);
+
+  // ── loan data ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!profile?.id) return;
+    const dealerId = profile.dealer_id || profile.id;
+    supabase
+      .from("leads")
+      .select("id, buyer_name, phone")
+      .eq("dealer_id", dealerId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setLoanLeads(data || []));
+    supabase
+      .from("stock_units")
+      .select("id, brand, model, year, plate_number")
+      .eq("dealer_id", dealerId)
+      .then(({ data }) => setLoanStockUnits(data || []));
+    supabase
+      .from("loan_applications")
+      .select("*, leads(buyer_name, phone)")
+      .eq("salesman_id", profile.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setLoanApplications(data || []));
+  }, [profile?.id]);
   // ─────────────────────────────────────────────────────────────────────────
 
   const chartRefs = useRef({});
@@ -4867,6 +4910,436 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     </div>
   );
 
+  // ─── Loans ───────────────────────────────────────────────────────────────
+  const BANKS = [
+    { name: "Public Bank",     rate: 3.20, islamic: false },
+    { name: "CIMB Bank",       rate: 3.25, islamic: false },
+    { name: "Maybank",         rate: 3.30, islamic: false },
+    { name: "RHB Bank",        rate: 3.50, islamic: false },
+    { name: "Hong Leong Bank", rate: 3.50, islamic: false },
+    { name: "Affin Bank",      rate: 3.50, islamic: false },
+    { name: "Bank Muamalat",   rate: 3.60, islamic: true  },
+    { name: "Bank Islam",      rate: 3.60, islamic: true  },
+  ];
+
+  const fmtRM = (n) =>
+    "RM " + Number(n).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const calcBank = (bank) => {
+    const price    = parseFloat(loanCalc.carPrice)    || 0;
+    const dp       = parseFloat(loanCalc.downPayment) || 0;
+    const tenure   = parseInt(loanCalc.tenure)        || 1;
+    const loan     = Math.max(0, price - dp);
+    const interest = loan * (bank.rate / 100) * tenure;
+    const monthly  = loan > 0 ? (loan + interest) / (tenure * 12) : 0;
+    return { loan, interest, total: loan + interest, monthly };
+  };
+
+  const loanInputSx = {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 6,
+    color: "#fff",
+    padding: "8px 10px",
+    fontSize: 13,
+    outline: "none",
+    width: "100%",
+  };
+
+  const cardSx = {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 20,
+  };
+
+  const statusColors = {
+    Submitted: { bg: "rgba(59,130,246,.15)", border: "rgba(59,130,246,.3)",  color: "#93c5fd" },
+    Pending:   { bg: "rgba(251,191,36,.15)", border: "rgba(251,191,36,.3)",  color: "#fbbf24" },
+    Approved:  { bg: "rgba(34,197,94,.15)",  border: "rgba(34,197,94,.3)",   color: "#4ade80" },
+    Declined:  { bg: "rgba(239,68,68,.15)",  border: "rgba(239,68,68,.3)",   color: "#f87171" },
+  };
+
+  const submitLoan = async () => {
+    if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.tenure_years) return;
+    setLoanSaving(true);
+    const dealerId = profile?.dealer_id || profile?.id;
+    const { data, error } = await supabase.from("loan_applications").insert({
+      dealer_id:       dealerId,
+      salesman_id:     profile?.id,
+      lead_id:         loanForm.lead_id      || null,
+      stock_unit_id:   loanForm.stock_unit_id || null,
+      bank_name:       loanForm.bank_name,
+      loan_amount:     parseFloat(loanForm.loan_amount),
+      interest_rate:   parseFloat(loanForm.interest_rate),
+      tenure_years:    parseInt(loanForm.tenure_years),
+      monthly_payment: parseFloat(loanForm.monthly_payment),
+      buyer_ic:        loanForm.buyer_ic    || null,
+      buyer_income:    loanForm.buyer_income ? parseFloat(loanForm.buyer_income) : null,
+      notes:           loanForm.notes       || null,
+      status:          "Submitted",
+    }).select("*, leads(buyer_name, phone)").single();
+    setLoanSaving(false);
+    if (!error && data) {
+      setLoanApplications((prev) => [data, ...prev]);
+      setLoanForm({ lead_id: "", stock_unit_id: "", bank_name: "", loan_amount: "",
+        interest_rate: "", tenure_years: 7, monthly_payment: "", buyer_ic: "", buyer_income: "", notes: "" });
+    }
+  };
+
+  const saveStatus = async (id) => {
+    const updates = { status: loanEditStatus };
+    if (loanEditCommission !== "") updates.commission = parseFloat(loanEditCommission) || null;
+    await supabase.from("loan_applications").update(updates).eq("id", id);
+    setLoanApplications((prev) =>
+      prev.map((a) => a.id === id ? { ...a, ...updates } : a)
+    );
+    setLoanEditId(null);
+    setLoanEditStatus("");
+    setLoanEditCommission("");
+  };
+
+  const deleteLoan = async (id) => {
+    if (!window.confirm("Delete this loan application?")) return;
+    await supabase.from("loan_applications").delete().eq("id", id);
+    setLoanApplications((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const selectBank = (bank) => {
+    const { loan, interest, monthly } = calcBank(bank);
+    setLoanForm((f) => ({
+      ...f,
+      bank_name:       bank.name,
+      loan_amount:     String(Math.round(loan)),
+      interest_rate:   String(bank.rate),
+      tenure_years:    loanCalc.tenure,
+      monthly_payment: monthly.toFixed(2),
+      buyer_income:    loanCalc.income || f.buyer_income,
+    }));
+    setTimeout(() => {
+      document.getElementById("loan-form-section")?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
+  // recalc monthly when form fields change
+  const recalcLoanForm = (next) => {
+    const loan    = parseFloat(next.loan_amount)   || 0;
+    const rate    = parseFloat(next.interest_rate) || 0;
+    const tenure  = parseInt(next.tenure_years)    || 1;
+    const interest = loan * (rate / 100) * tenure;
+    const monthly  = loan > 0 ? ((loan + interest) / (tenure * 12)).toFixed(2) : "";
+    setLoanForm({ ...next, monthly_payment: monthly });
+  };
+
+  const calcRows = BANKS.map((b) => ({ ...b, ...calcBank(b) }));
+  const lowestMonthly = Math.min(...calcRows.map((r) => r.monthly).filter(Boolean));
+  const dpPct = loanCalc.carPrice
+    ? ((parseFloat(loanCalc.downPayment) || 0) / parseFloat(loanCalc.carPrice) * 100).toFixed(1)
+    : null;
+
+  const renderLoans = () => (
+    <div style={{ maxWidth: 900 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
+          <Banknote size={18} style={{ marginRight: 8, verticalAlign: "middle", color: "#dc2626" }} />
+          Loan Management
+        </h2>
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>
+          Compare banks, submit applications, track approvals.
+        </p>
+      </div>
+
+      {/* ── Section 1: Calculator ── */}
+      <div style={cardSx}>
+        <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Loan Comparison Calculator
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car Price (RM)</label>
+            <input type="number" placeholder="e.g. 85000" style={loanInputSx}
+              value={loanCalc.carPrice}
+              onChange={(e) => setLoanCalc((c) => ({ ...c, carPrice: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>
+              Down Payment (RM){dpPct ? <span style={{ color: "#4b5563" }}> · {dpPct}%</span> : null}
+            </label>
+            <input type="number" placeholder="e.g. 10000" style={loanInputSx}
+              value={loanCalc.downPayment}
+              onChange={(e) => setLoanCalc((c) => ({ ...c, downPayment: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Loan Tenure</label>
+            <select style={loanInputSx} value={loanCalc.tenure}
+              onChange={(e) => setLoanCalc((c) => ({ ...c, tenure: parseInt(e.target.value) }))}>
+              {[1,2,3,4,5,6,7].map((y) => (
+                <option key={y} value={y}>{y} year{y > 1 ? "s" : ""}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Buyer Monthly Income (RM) <span style={{ color: "#374151" }}>optional</span></label>
+            <input type="number" placeholder="e.g. 5000" style={loanInputSx}
+              value={loanCalc.income}
+              onChange={(e) => setLoanCalc((c) => ({ ...c, income: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Comparison table */}
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                {["Bank", "Rate", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {calcRows.map((row) => {
+                const isBest = row.monthly > 0 && row.monthly === lowestMonthly;
+                return (
+                  <tr key={row.name}
+                    style={{
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderLeft: isBest ? "3px solid #22c55e" : "3px solid transparent",
+                      background: isBest ? "rgba(34,197,94,.04)" : "transparent",
+                      transition: "background .15s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = isBest ? "rgba(34,197,94,.08)" : "rgba(255,255,255,.02)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = isBest ? "rgba(34,197,94,.04)" : "transparent"; }}
+                  >
+                    <td style={{ padding: "10px 10px", color: "#e5e7eb", fontWeight: 500 }}>
+                      {row.name}
+                      {row.islamic && <span style={{ marginLeft: 6, fontSize: 9, padding: "1px 5px", background: "rgba(251,191,36,.1)", border: "1px solid rgba(251,191,36,.25)", color: "#fbbf24", borderRadius: 99 }}>Islamic</span>}
+                      {isBest && <span style={{ marginLeft: 6, fontSize: 9, padding: "1px 5px", background: "rgba(34,197,94,.1)", border: "1px solid rgba(34,197,94,.25)", color: "#4ade80", borderRadius: 99 }}>Best</span>}
+                    </td>
+                    <td style={{ padding: "10px 10px", color: "#9ca3af" }}>{row.rate.toFixed(2)}%</td>
+                    <td style={{ padding: "10px 10px", color: "#fff", fontWeight: 600, fontFamily: "'Bebas Neue', sans-serif", fontSize: 15 }}>
+                      {row.monthly > 0 ? fmtRM(row.monthly) : "—"}
+                    </td>
+                    <td style={{ padding: "10px 10px", color: "#9ca3af" }}>{row.interest > 0 ? fmtRM(row.interest) : "—"}</td>
+                    <td style={{ padding: "10px 10px", color: "#9ca3af" }}>{row.total > 0 ? fmtRM(row.total) : "—"}</td>
+                    <td style={{ padding: "10px 10px" }}>
+                      <button
+                        onClick={() => selectBank(row)}
+                        style={{ background: "rgba(220,38,38,.15)", border: "1px solid rgba(220,38,38,.3)", color: "#f87171", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Select
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Section 2: Submission Form ── */}
+      <div id="loan-form-section" style={cardSx}>
+        <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Submit Loan Application
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Lead</label>
+            <select style={loanInputSx} value={loanForm.lead_id}
+              onChange={(e) => setLoanForm((f) => ({ ...f, lead_id: e.target.value }))}>
+              <option value="">— Select Lead —</option>
+              {loanLeads.map((l) => (
+                <option key={l.id} value={l.id}>{l.buyer_name}{l.phone ? ` · ${l.phone}` : ""}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car / Stock Unit</label>
+            <select style={loanInputSx} value={loanForm.stock_unit_id}
+              onChange={(e) => setLoanForm((f) => ({ ...f, stock_unit_id: e.target.value }))}>
+              <option value="">— Select Car —</option>
+              {loanStockUnits.map((u) => (
+                <option key={u.id} value={u.id}>{u.brand} {u.model} {u.year}{u.plate_number ? ` · ${u.plate_number}` : ""}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Selected Bank</label>
+            <select style={loanInputSx} value={loanForm.bank_name}
+              onChange={(e) => setLoanForm((f) => ({ ...f, bank_name: e.target.value }))}>
+              <option value="">— Select Bank —</option>
+              {BANKS.map((b) => (
+                <option key={b.name} value={b.name}>{b.name} ({b.rate}%{b.islamic ? " · Islamic" : ""})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Loan Amount (RM)</label>
+            <input type="number" placeholder="e.g. 75000" style={loanInputSx}
+              value={loanForm.loan_amount}
+              onChange={(e) => recalcLoanForm({ ...loanForm, loan_amount: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (%)</label>
+            <input type="number" step="0.01" placeholder="e.g. 3.25" style={loanInputSx}
+              value={loanForm.interest_rate}
+              onChange={(e) => recalcLoanForm({ ...loanForm, interest_rate: e.target.value })} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Tenure (years)</label>
+            <select style={loanInputSx} value={loanForm.tenure_years}
+              onChange={(e) => recalcLoanForm({ ...loanForm, tenure_years: e.target.value })}>
+              {[1,2,3,4,5,6,7].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Monthly Payment (RM)</label>
+            <input type="text" readOnly style={{ ...loanInputSx, background: "rgba(255,255,255,.02)", color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", fontSize: 15 }}
+              value={loanForm.monthly_payment ? fmtRM(loanForm.monthly_payment) : ""} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Buyer IC Number</label>
+            <input type="text" placeholder="e.g. 901231-10-1234" style={loanInputSx}
+              value={loanForm.buyer_ic}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_ic: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Buyer Monthly Income (RM)</label>
+            <input type="number" placeholder="e.g. 5000" style={loanInputSx}
+              value={loanForm.buyer_income}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_income: e.target.value }))} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Notes</label>
+            <textarea placeholder="e.g. Buyer prefers Islamic financing" rows={2}
+              style={{ ...loanInputSx, resize: "vertical" }}
+              value={loanForm.notes}
+              onChange={(e) => setLoanForm((f) => ({ ...f, notes: e.target.value }))} />
+          </div>
+        </div>
+        <button
+          onClick={submitLoan}
+          disabled={loanSaving || !loanForm.bank_name || !loanForm.loan_amount}
+          style={{
+            marginTop: 16, background: loanSaving ? "#374151" : "#dc2626",
+            border: "none", borderRadius: 7, color: "#fff", padding: "10px 24px",
+            fontSize: 13, fontWeight: 600, cursor: loanSaving ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+          }}
+        >
+          <Send size={14} />
+          {loanSaving ? "Submitting…" : "Submit Application"}
+        </button>
+      </div>
+
+      {/* ── Section 3: My Applications ── */}
+      <div style={cardSx}>
+        <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          My Loan Applications ({loanApplications.length})
+        </p>
+        {loanApplications.length === 0 ? (
+          <p style={{ color: "#374151", fontSize: 13, textAlign: "center", padding: "32px 0" }}>No applications yet.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  {["Buyer", "Car", "Bank", "Loan Amt", "Monthly", "Status", "Commission", "Date", ""].map((h) => (
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loanApplications.map((app) => {
+                  const sc = statusColors[app.status] || statusColors.Submitted;
+                  const isEditing = loanEditId === app.id;
+                  const unit = loanStockUnits.find((u) => u.id === app.stock_unit_id);
+                  return (
+                    <tr key={app.id}
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,.02)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <td style={{ padding: "10px 10px", color: "#e5e7eb", fontWeight: 500 }}>
+                        {app.leads?.buyer_name || "—"}<br />
+                        <span style={{ color: "#4b5563", fontSize: 11 }}>{app.leads?.phone || ""}</span>
+                      </td>
+                      <td style={{ padding: "10px 10px", color: "#9ca3af" }}>
+                        {unit ? `${unit.brand} ${unit.model} ${unit.year}` : "—"}
+                      </td>
+                      <td style={{ padding: "10px 10px", color: "#9ca3af", whiteSpace: "nowrap" }}>{app.bank_name}</td>
+                      <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{fmtRM(app.loan_amount)}</td>
+                      <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{fmtRM(app.monthly_payment)}</td>
+                      <td style={{ padding: "10px 10px" }}>
+                        {isEditing ? (
+                          <select style={{ ...loanInputSx, width: 110, fontSize: 11 }}
+                            value={loanEditStatus}
+                            onChange={(e) => setLoanEditStatus(e.target.value)}>
+                            {["Submitted","Pending","Approved","Declined"].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}>
+                            {app.status}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: "10px 10px" }}>
+                        {isEditing ? (
+                          <input type="number" placeholder="RM" style={{ ...loanInputSx, width: 90, fontSize: 11 }}
+                            value={loanEditCommission}
+                            onChange={(e) => setLoanEditCommission(e.target.value)} />
+                        ) : (
+                          <span style={{ color: app.commission ? "#4ade80" : "#374151", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>
+                            {app.commission ? fmtRM(app.commission) : "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: "10px 10px", color: "#4b5563", whiteSpace: "nowrap" }}>
+                        {new Date(app.created_at).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "2-digit" })}
+                      </td>
+                      <td style={{ padding: "10px 10px" }}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {isEditing ? (
+                            <>
+                              <button onClick={() => saveStatus(app.id)}
+                                style={{ background: "rgba(34,197,94,.15)", border: "1px solid rgba(34,197,94,.3)", color: "#4ade80", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
+                                Save
+                              </button>
+                              <button onClick={() => { setLoanEditId(null); setLoanEditStatus(""); setLoanEditCommission(""); }}
+                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#6b7280", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); setLoanEditCommission(app.commission ? String(app.commission) : ""); }}
+                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#9ca3af", borderRadius: 5, padding: "4px 7px", cursor: "pointer" }}>
+                                <Pencil size={11} />
+                              </button>
+                              <button onClick={() => deleteLoan(app.id)}
+                                style={{ background: "transparent", border: "1px solid rgba(239,68,68,.2)", color: "#f87171", borderRadius: 5, padding: "4px 7px", cursor: "pointer" }}>
+                                <Trash2 size={11} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderTeam = () => (
     <div
       style={{
@@ -4964,6 +5437,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               label: "Enquiries",
               icon: <MessageSquare size={18} />,
               badge: enquiries.filter((e) => e.status === "new").length || null,
+            },
+            {
+              tab: "loans",
+              label: "Loans",
+              icon: <Banknote size={18} />,
+              badge: null,
             },
             {
               tab: "team",
@@ -5221,6 +5700,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 />
               ),
               badge: enquiries.filter((e) => e.status === "new").length || null,
+            },
+            {
+              tab: "loans",
+              label: "Loans",
+              icon: <Banknote style={{ width: 14, height: 14, flexShrink: 0 }} />,
+              badge: null,
             },
           ].map(({ tab, label, icon, badge }) => (
             <button
@@ -5658,6 +6143,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {activeTab === "leads" && renderLeads()}
           {activeTab === "analytics" && renderAnalytics()}
           {activeTab === "enquiries" && renderEnquiries()}
+          {activeTab === "loans" && renderLoans()}
           {activeTab === "team" && renderTeam()}
         </div>
       </div>
