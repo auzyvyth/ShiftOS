@@ -16,45 +16,6 @@ const HDR_CSS = `
     transition: background 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
   }
 
-  /* ── Specular edge reflection — the iPhone glass rim light catch ── */
-  /* Primary: sharp bright arc, bright at centre, fades to nothing at edges */
-  .hdr-root::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 12%;
-    right: 12%;
-    height: 1px;
-    background: linear-gradient(90deg,
-      transparent            0%,
-      rgba(255,255,255,0.18) 18%,
-      rgba(255,255,255,0.58) 38%,
-      rgba(255,255,255,0.82) 50%,
-      rgba(255,255,255,0.58) 62%,
-      rgba(255,255,255,0.18) 82%,
-      transparent            100%
-    );
-    border-radius: 100%;
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  /* Secondary: wider, softer atmospheric glow beneath the sharp line */
-  .hdr-root::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(180deg,
-      rgba(255,255,255,0.06) 0%,
-      transparent            100%
-    );
-    border-radius: 22px 22px 0 0;
-    pointer-events: none;
-    z-index: 1;
-  }
 
   /* ── Glass states — no solid colours anywhere ── */
   .hdr-glass {
