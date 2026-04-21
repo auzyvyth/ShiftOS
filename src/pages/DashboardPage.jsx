@@ -14,6 +14,7 @@ import TikTokStudioV3 from "../components/TikTokStudioV3";
 import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
 import CRMPanel from "./CRMPanel";
+import SciFiLoader from "../components/SciFiLoader";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import RevOpsPage from "./RevOpsPage";
 import ServicesPage from "./ServicesPage";
@@ -5219,6 +5220,8 @@ export default function DashboardPage() {
   };
 
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
+
+  if (!profile) return <SciFiLoader />;
 
   if (!subLoading && status === 'expired') return (
     <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
