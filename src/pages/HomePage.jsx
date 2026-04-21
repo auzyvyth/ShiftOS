@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
+import SciFiLoader from "../components/SciFiLoader";
 import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
 import CarCard from "@/components/CarCard";
@@ -667,6 +668,8 @@ const HomePage = () => {
     borderTop: "1px solid rgba(255,255,255,0.05)",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
+
+  if (loading || tenantLoading) return <SciFiLoader />;
 
   return (
     <>
