@@ -28,7 +28,11 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
-import { getOrCreateSessionId, getSlugFromURL, trackEvent } from "../utils/analytics";
+import {
+  getOrCreateSessionId,
+  getSlugFromURL,
+  trackEvent,
+} from "../utils/analytics";
 import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
@@ -62,7 +66,14 @@ const isHotDeal = (c) => {
 };
 
 // ── Custom Select ─────────────────────────────────────────────────────────────
-function CustomSelect({ label, icon: Icon, value, onChange, options, placeholder }) {
+function CustomSelect({
+  label,
+  icon: Icon,
+  value,
+  onChange,
+  options,
+  placeholder,
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -87,7 +98,9 @@ function CustomSelect({ label, icon: Icon, value, onChange, options, placeholder
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          background: open ? "rgba(196,162,101,0.06)" : "rgba(255,255,255,0.03)",
+          background: open
+            ? "rgba(196,162,101,0.06)"
+            : "rgba(255,255,255,0.03)",
           border: `1px solid ${open ? "rgba(196,162,101,0.35)" : "rgba(255,255,255,0.08)"}`,
           borderRadius: "4px",
           padding: "13px 14px",
@@ -97,35 +110,86 @@ function CustomSelect({ label, icon: Icon, value, onChange, options, placeholder
           outline: "none",
         }}
       >
-        <Icon size={14} style={{ color: open ? "#C4A265" : "#52525A", flexShrink: 0, transition: "color 0.2s" }} />
+        <Icon
+          size={14}
+          style={{
+            color: open ? "#C4A265" : "#52525A",
+            flexShrink: 0,
+            transition: "color 0.2s",
+          }}
+        />
         <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-          <p style={{ color: "#52525A", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.12em", margin: "0 0 3px 0", fontWeight: 600 }}>
+          <p
+            style={{
+              color: "#52525A",
+              fontSize: "10px",
+              textTransform: "uppercase",
+              letterSpacing: "0.12em",
+              margin: "0 0 3px 0",
+              fontWeight: 600,
+            }}
+          >
             {label}
           </p>
-          <p style={{ color: value ? "#F0F0F0" : "#6B6B72", fontSize: "13px", fontWeight: value ? "600" : "400", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <p
+            style={{
+              color: value ? "#F0F0F0" : "#6B6B72",
+              fontSize: "13px",
+              fontWeight: value ? "600" : "400",
+              margin: 0,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {displayLabel}
           </p>
         </div>
-        <ChevronDown size={12} style={{ color: "#3A3A42", flexShrink: 0, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        <ChevronDown
+          size={12}
+          style={{
+            color: "#3A3A42",
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+          }}
+        />
       </button>
 
       {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 9999,
-          background: "#141416", backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.09)", borderRadius: "6px",
-          overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.7)",
-          animation: "dropIn 0.15s ease",
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: "#141416",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: "6px",
+            overflow: "hidden",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.7)",
+            animation: "dropIn 0.15s ease",
+          }}
+        >
           <button
             type="button"
-            onClick={() => { onChange(""); setOpen(false); }}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
             style={{
-              width: "100%", textAlign: "left", padding: "10px 16px",
+              width: "100%",
+              textAlign: "left",
+              padding: "10px 16px",
               background: !value ? "rgba(196,162,101,0.06)" : "transparent",
-              border: "none", borderBottom: "1px solid rgba(255,255,255,0.05)",
-              color: !value ? "#C4A265" : "#6B6B72", fontSize: "13px",
-              fontWeight: !value ? "600" : "400", cursor: "pointer",
+              border: "none",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              color: !value ? "#C4A265" : "#6B6B72",
+              fontSize: "13px",
+              fontWeight: !value ? "600" : "400",
+              cursor: "pointer",
               fontFamily: "'Outfit', sans-serif",
             }}
           >
@@ -137,20 +201,45 @@ function CustomSelect({ label, icon: Icon, value, onChange, options, placeholder
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => { onChange(opt.value); setOpen(false); }}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
                 style={{
-                  width: "100%", textAlign: "left", padding: "10px 16px",
-                  background: isSelected ? "rgba(196,162,101,0.06)" : "transparent",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 16px",
+                  background: isSelected
+                    ? "rgba(196,162,101,0.06)"
+                    : "transparent",
                   border: "none",
-                  borderBottom: i === options.length - 1 ? "none" : "1px solid rgba(255,255,255,0.04)",
-                  color: isSelected ? "#C4A265" : "#C0C0C6", fontSize: "13px",
-                  fontWeight: isSelected ? "600" : "400", cursor: "pointer",
+                  borderBottom:
+                    i === options.length - 1
+                      ? "none"
+                      : "1px solid rgba(255,255,255,0.04)",
+                  color: isSelected ? "#C4A265" : "#C0C0C6",
+                  fontSize: "13px",
+                  fontWeight: isSelected ? "600" : "400",
+                  cursor: "pointer",
                   fontFamily: "'Outfit', sans-serif",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
                 {opt.label}
-                {isSelected && <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#C4A265", display: "inline-block", flexShrink: 0 }} />}
+                {isSelected && (
+                  <span
+                    style={{
+                      width: "5px",
+                      height: "5px",
+                      borderRadius: "50%",
+                      background: "#C4A265",
+                      display: "inline-block",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
               </button>
             );
           })}
@@ -168,14 +257,27 @@ function FadeIn({ children, delay = 0, style = {} }) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setV(true); obs.disconnect(); } },
+      ([e]) => {
+        if (e.isIntersecting) {
+          setV(true);
+          obs.disconnect();
+        }
+      },
       { threshold: 0.08 },
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
   return (
-    <div ref={ref} style={{ opacity: v ? 1 : 0, transform: v ? "translateY(0)" : "translateY(20px)", transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`, ...style }}>
+    <div
+      ref={ref}
+      style={{
+        opacity: v ? 1 : 0,
+        transform: v ? "translateY(0)" : "translateY(20px)",
+        transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -184,11 +286,36 @@ function FadeIn({ children, delay = 0, style = {} }) {
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", overflow: "hidden" }}>
-      <div style={{ height: "200px", background: "linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
+    <div
+      style={{
+        background: "#111113",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "6px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          height: "200px",
+          background:
+            "linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer 1.5s infinite",
+        }}
+      />
       <div style={{ padding: "18px" }}>
         {[70, 50, 90, 100].map((w, i) => (
-          <div key={i} style={{ height: "10px", width: `${w}%`, background: "#1C1C1E", borderRadius: "4px", marginBottom: "10px", animation: "shimmer 1.5s infinite" }} />
+          <div
+            key={i}
+            style={{
+              height: "10px",
+              width: `${w}%`,
+              background: "#1C1C1E",
+              borderRadius: "4px",
+              marginBottom: "10px",
+              animation: "shimmer 1.5s infinite",
+            }}
+          />
         ))}
       </div>
     </div>
@@ -197,20 +324,37 @@ function SkeletonCard() {
 
 // ── Style constants ───────────────────────────────────────────────────────────
 const primaryBtn = {
-  display: "inline-flex", alignItems: "center", gap: "8px",
-  background: "#DC2626", border: "1px solid #DC2626",
-  color: "white", fontWeight: "600", fontSize: "14px",
-  padding: "13px 28px", borderRadius: "4px", textDecoration: "none",
-  fontFamily: "'Outfit', sans-serif", letterSpacing: "0.02em",
-  transition: "all 0.2s ease", position: "relative", overflow: "hidden",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  background: "#DC2626",
+  border: "1px solid #DC2626",
+  color: "white",
+  fontWeight: "600",
+  fontSize: "14px",
+  padding: "13px 28px",
+  borderRadius: "4px",
+  textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif",
+  letterSpacing: "0.02em",
+  transition: "all 0.2s ease",
+  position: "relative",
+  overflow: "hidden",
 };
 const waBtn = {
-  display: "inline-flex", alignItems: "center", gap: "8px",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
   background: "transparent",
   border: "1px solid rgba(37,211,102,0.3)",
-  color: "#4ade80", fontWeight: "600", fontSize: "14px",
-  padding: "13px 28px", borderRadius: "4px", textDecoration: "none",
-  fontFamily: "'Outfit', sans-serif", letterSpacing: "0.02em",
+  color: "#4ade80",
+  fontWeight: "600",
+  fontSize: "14px",
+  padding: "13px 28px",
+  borderRadius: "4px",
+  textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif",
+  letterSpacing: "0.02em",
   transition: "all 0.25s ease",
 };
 const glassCard = {
@@ -238,8 +382,14 @@ const HomePage = () => {
   // On main domain (no tenant), fetch superadmin WhatsApp so the CTA button works
   useEffect(() => {
     if (tenantLoading || !tenant?.id) return;
-    supabase.from('public_dealer_profiles').select('whatsapp_number').eq('id', tenant.id).maybeSingle()
-      .then(({ data }) => { if (data?.whatsapp_number) setSuperadminPhone(data.whatsapp_number); });
+    supabase
+      .from("public_dealer_profiles")
+      .select("whatsapp_number")
+      .eq("id", tenant.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.whatsapp_number) setSuperadminPhone(data.whatsapp_number);
+      });
   }, [tenant, tenantLoading]);
 
   // Capture ref slug from URL into sessionStorage on mount
@@ -250,12 +400,12 @@ const HomePage = () => {
   // Fire store_visit once per session — runs after tenant resolves (null on main site, profile on subdomain)
   useEffect(() => {
     if (tenantLoading) return; // wait for useTenant to finish — fires once when loading → false
-    const sessionKey = `sv_fired_${tenant?.id ?? 'main'}`;
+    const sessionKey = `sv_fired_${tenant?.id ?? "main"}`;
     if (sessionStorage.getItem(sessionKey)) return;
-    sessionStorage.setItem(sessionKey, '1');
-    trackEvent(supabase, 'store_visit', {
+    sessionStorage.setItem(sessionKey, "1");
+    trackEvent(supabase, "store_visit", {
       dealer_id: tenant?.id || null,
-      metadata: { source: getSlugFromURL() ? 'salesman_link' : 'organic' },
+      metadata: { source: getSlugFromURL() ? "salesman_link" : "organic" },
     });
   }, [tenantLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -264,12 +414,15 @@ const HomePage = () => {
     if (!tenant?.id) return;
     const slug = getRef();
     if (slug) {
-      supabase.from('analytics_events').insert({
-        event_type: 'page_view',
-        salesman_slug: slug,
-        dealer_id: tenant.id,
-        metadata: { page: window.location.pathname },
-      }).then(() => {});
+      supabase
+        .from("analytics_events")
+        .insert({
+          event_type: "page_view",
+          salesman_slug: slug,
+          dealer_id: tenant.id,
+          metadata: { page: window.location.pathname },
+        })
+        .then(() => {});
     }
   }, [tenant?.id]);
 
@@ -279,7 +432,10 @@ const HomePage = () => {
     const load = async () => {
       let query = supabase
         .from("car_listings")
-        .select(`${CAR_FIELDS}, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`, { count: "exact" })
+        .select(
+          `${CAR_FIELDS}, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
+          { count: "exact" },
+        )
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(30);
@@ -296,7 +452,11 @@ const HomePage = () => {
         setHotDeals(
           data
             .filter(isHotDeal)
-            .sort((a, b) => (b.original_price - b.selling_price) / b.original_price - (a.original_price - a.selling_price) / a.original_price)
+            .sort(
+              (a, b) =>
+                (b.original_price - b.selling_price) / b.original_price -
+                (a.original_price - a.selling_price) / a.original_price,
+            )
             .slice(0, 6),
         );
       }
@@ -319,11 +479,19 @@ const HomePage = () => {
     setTimeout(fetchSoldCount, 800);
     ch = supabase
       .channel("home")
-      .on("postgres_changes", { event: "*", schema: "public", table: "car_listings" }, load)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "car_listings" },
+        load,
+      )
       .subscribe();
     soldCh = supabase
       .channel("home_sold")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings" }, fetchSoldCount)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "car_listings" },
+        fetchSoldCount,
+      )
       .subscribe();
     return () => {
       if (ch) supabase.removeChannel(ch);
@@ -333,14 +501,16 @@ const HomePage = () => {
 
   useEffect(() => {
     async function checkDealerRedirect() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('subdomain, role')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("subdomain, role")
+        .eq("id", user.id)
         .maybeSingle();
-      if (profile?.role === 'dealer' && profile?.subdomain && !isSubdomain()) {
+      if (profile?.role === "dealer" && profile?.subdomain && !isSubdomain()) {
         window.location.href = `https://${profile.subdomain}.xdrive.my`;
       }
     }
@@ -359,25 +529,61 @@ const HomePage = () => {
   const HARDCODED_DEFAULT_WHY = {
     title: t("home.whyChoose.title"),
     items: [
-      { title: t("home.whyChoose.benefit1Title"), desc: t("home.whyChoose.benefit1Desc") },
-      { title: t("home.whyChoose.benefit2Title"), desc: t("home.whyChoose.benefit2Desc") },
-      { title: t("home.whyChoose.benefit3Title"), desc: t("home.whyChoose.benefit3Desc") },
-      { title: t("home.whyChoose.benefit4Title"), desc: t("home.whyChoose.benefit4Desc") },
+      {
+        title: t("home.whyChoose.benefit1Title"),
+        desc: t("home.whyChoose.benefit1Desc"),
+      },
+      {
+        title: t("home.whyChoose.benefit2Title"),
+        desc: t("home.whyChoose.benefit2Desc"),
+      },
+      {
+        title: t("home.whyChoose.benefit3Title"),
+        desc: t("home.whyChoose.benefit3Desc"),
+      },
+      {
+        title: t("home.whyChoose.benefit4Title"),
+        desc: t("home.whyChoose.benefit4Desc"),
+      },
     ],
   };
   const HARDCODED_DEFAULT_HOW = {
     title: t("home.howItWorks.title"),
     steps: [
-      { title: "Tell Us What You Need",    desc: "WhatsApp us your budget and must-haves." },
-      { title: "We Find the Best Options", desc: "We shortlist verified cars that match." },
-      { title: "Inspect & Test Drive",     desc: "Visit, inspect, and take it for a spin." },
-      { title: "Drive Away Happy",         desc: "Best deal negotiated, paperwork handled." },
+      {
+        title: "Tell Us What You Need",
+        desc: "WhatsApp us your budget and must-haves.",
+      },
+      {
+        title: "We Find the Best Options",
+        desc: "We shortlist verified cars that match.",
+      },
+      {
+        title: "Inspect & Test Drive",
+        desc: "Visit, inspect, and take it for a spin.",
+      },
+      {
+        title: "Drive Away Happy",
+        desc: "Best deal negotiated, paperwork handled.",
+      },
     ],
   };
   const HARDCODED_DEFAULT_TESTIMONIALS = [
-    { name: "Ahmad Faris",    location: "Kuala Lumpur", text: "Saved RM 8,000 on my Honda Civic. Best deal I could never have gotten myself." },
-    { name: "Siti Norzahira", location: "Selangor",     text: "Zero pressure, honest advice, best price in town. Will definitely come back." },
-    { name: "Rajendran K.",   location: "Penang",       text: "Found my perfect car in 3 days and saved thousands. Highly recommended." },
+    {
+      name: "Ahmad Faris",
+      location: "Kuala Lumpur",
+      text: "Saved RM 8,000 on my Honda Civic. Best deal I could never have gotten myself.",
+    },
+    {
+      name: "Siti Norzahira",
+      location: "Selangor",
+      text: "Zero pressure, honest advice, best price in town. Will definitely come back.",
+    },
+    {
+      name: "Rajendran K.",
+      location: "Penang",
+      text: "Found my perfect car in 3 days and saved thousands. Highly recommended.",
+    },
   ];
   const HARDCODED_DEFAULT_CTA = {
     title: t("home.cta.title"),
@@ -386,36 +592,72 @@ const HomePage = () => {
     secondary_label: t("home.cta.whatsappBtn"),
   };
 
-  const whyData          = tenant?.storefront_why          || HARDCODED_DEFAULT_WHY;
-  const howData          = tenant?.storefront_how          || HARDCODED_DEFAULT_HOW;
-  const testimonialsData = tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
-  const ctaData          = tenant?.storefront_cta          || HARDCODED_DEFAULT_CTA;
+  const whyData = tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
+  const howData = tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
+  const testimonialsData =
+    tenant?.storefront_testimonials || HARDCODED_DEFAULT_TESTIMONIALS;
+  const ctaData = tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
 
   const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
   const howIcons = [MessageCircle, Search, Shield, CheckCircle];
-  const howNums  = ["01", "02", "03", "04"];
+  const howNums = ["01", "02", "03", "04"];
 
-  const benefits     = (whyData.items || []).map((item, i) => ({ icon: whyIcons[i], title: item.title, desc: item.desc }));
-  const whyTitle     = whyData.title;
-  const steps        = (howData.steps || []).map((step, i) => ({ n: howNums[i], icon: howIcons[i], t: step.title, d: step.desc }));
-  const howTitle     = howData.title;
-  const testimonials = testimonialsData.map((item) => ({ name: item.name, loc: item.location, text: item.text, r: 5 }));
-  const ctaTitle          = ctaData.title;
-  const ctaSubtitle       = ctaData.subtitle;
-  const ctaPrimaryLabel   = ctaData.primary_label;
+  const benefits = (whyData.items || []).map((item, i) => ({
+    icon: whyIcons[i],
+    title: item.title,
+    desc: item.desc,
+  }));
+  const whyTitle = whyData.title;
+  const steps = (howData.steps || []).map((step, i) => ({
+    n: howNums[i],
+    icon: howIcons[i],
+    t: step.title,
+    d: step.desc,
+  }));
+  const howTitle = howData.title;
+  const testimonials = testimonialsData.map((item) => ({
+    name: item.name,
+    loc: item.location,
+    text: item.text,
+    r: 5,
+  }));
+  const ctaTitle = ctaData.title;
+  const ctaSubtitle = ctaData.subtitle;
+  const ctaPrimaryLabel = ctaData.primary_label;
   const ctaSecondaryLabel = ctaData.secondary_label;
 
   if (isSubdomain() && tenant === null && tenant !== undefined) {
     return (
-      <div style={{ background: '#0C0C0E', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Outfit', sans-serif" }}>
-        <p style={{ color: '#52525A', fontSize: 15 }}>This dealer page doesn't exist.</p>
-        <a href="https://xdrive.my" style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>← Browse all cars</a>
+      <div
+        style={{
+          background: "#0C0C0E",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'Outfit', sans-serif",
+        }}
+      >
+        <p style={{ color: "#52525A", fontSize: 15 }}>
+          This dealer page doesn't exist.
+        </p>
+        <a
+          href="https://xdrive.my"
+          style={{ color: "#DC2626", fontSize: 13, marginTop: 12 }}
+        >
+          ← Browse all cars
+        </a>
       </div>
     );
   }
 
   const soldDisplay =
-    soldCount !== null && soldCount > 0 ? `${soldCount}+` : soldCount === 0 ? "0" : "500+";
+    soldCount !== null && soldCount > 0
+      ? `${soldCount}+`
+      : soldCount === 0
+        ? "0"
+        : "500+";
 
   const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
   const secA = { background: "#0C0C0E" };
@@ -561,43 +803,67 @@ const HomePage = () => {
 
       <Helmet>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
-        <link rel="preconnect" href="https://lemdkdizdlcirhbzqlos.supabase.co" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        />
+        <link
+          rel="preconnect"
+          href="https://lemdkdizdlcirhbzqlos.supabase.co"
+        />
         <title>
           {profile
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
-            : 'XDrive — Buy & Sell Used Cars in Malaysia'}
+            : "XDrive — Buy & Sell Used Cars in Malaysia"}
         </title>
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-        <meta name="description" content={
-          profile
-            ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
-            : 'Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive.'
-        } />
-        <meta property="og:title" content={
-          profile
-            ? `${profile.site_name || profile.dealership} — Used Cars`
-            : 'XDrive — Used Cars in Malaysia'
-        } />
-        <meta property="og:image" content={profile?.site_logo_url || 'https://xdrive.my/og-default.jpg'} />
+        <meta
+          name="robots"
+          content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+        />
+        <meta
+          name="description"
+          content={
+            profile
+              ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
+              : "Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive."
+          }
+        />
+        <meta
+          property="og:title"
+          content={
+            profile
+              ? `${profile.site_name || profile.dealership} — Used Cars`
+              : "XDrive — Used Cars in Malaysia"
+          }
+        />
+        <meta
+          property="og:image"
+          content={profile?.site_logo_url || "https://xdrive.my/og-default.jpg"}
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="canonical" href="https://xdrive.my" />
         {!profile && (
-          <script type="application/ld+json">{JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Organization",
-            "name": "XDrive",
-            "url": "https://xdrive.my",
-            "logo": "https://xdrive.my/xdrivelogo.png",
-            "description": "Buy and sell verified used cars in Malaysia",
-            "areaServed": "MY",
-            "contactPoint": {
-              "@type": "ContactPoint",
-              "contactType": "Customer Service",
-              "availableLanguage": ["en", "ms"]
-            }
-          })}</script>
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "XDrive",
+              url: "https://xdrive.my",
+              logo: "https://xdrive.my/xdrivelogo.png",
+              description: "Buy and sell verified used cars in Malaysia",
+              areaServed: "MY",
+              contactPoint: {
+                "@type": "ContactPoint",
+                contactType: "Customer Service",
+                availableLanguage: ["en", "ms"],
+              },
+            })}
+          </script>
         )}
       </Helmet>
 
@@ -607,32 +873,77 @@ const HomePage = () => {
       <HeroCarousel siteName={siteName} stock={stock} />
 
       {/* ══════════ HERO VIDEO ══════════ */}
-      {tenant?.hero_video_enabled && tenant?.hero_video_url && getEmbedUrl(tenant.hero_video_url) && (
-        <section className="sec-pad" style={{ background: '#080C14', paddingTop: 40, paddingBottom: 40 }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px', textAlign: 'center' }}>
-            {tenant.hero_video_title && (
-              <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 700, color: '#f3f4f6', marginBottom: 20, fontFamily: "'DM Sans',sans-serif" }}>
-                {tenant.hero_video_title}
-              </h2>
-            )}
-            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-              <iframe
-                src={getEmbedUrl(tenant.hero_video_url)}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                allowFullScreen
-                title="Dealer video"
-              />
+      {tenant?.hero_video_enabled &&
+        tenant?.hero_video_url &&
+        getEmbedUrl(tenant.hero_video_url) && (
+          <section
+            className="sec-pad"
+            style={{ background: "#080C14", paddingTop: 40, paddingBottom: 40 }}
+          >
+            <div
+              style={{
+                maxWidth: 900,
+                margin: "0 auto",
+                padding: "0 16px",
+                textAlign: "center",
+              }}
+            >
+              {tenant.hero_video_title && (
+                <h2
+                  style={{
+                    fontSize: "clamp(20px,4vw,28px)",
+                    fontWeight: 700,
+                    color: "#f3f4f6",
+                    marginBottom: 20,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  {tenant.hero_video_title}
+                </h2>
+              )}
+              <div
+                style={{
+                  position: "relative",
+                  paddingBottom: "56.25%",
+                  height: 0,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                }}
+              >
+                <iframe
+                  src={getEmbedUrl(tenant.hero_video_url)}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                  allowFullScreen
+                  title="Dealer video"
+                />
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
       {/* ══════════ HOT DEALS ══════════ */}
       {(hotDeals.length > 0 || loading) && (
         <section className="sec-pad" style={secA}>
           <div style={wrap}>
             <FadeIn>
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "40px", flexWrap: "wrap", gap: "12px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "space-between",
+                  marginBottom: "40px",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
                 <div>
                   <p className="sec-eyebrow red">
                     <Flame size={10} style={{ marginRight: -4 }} /> Limited Time
@@ -647,7 +958,9 @@ const HomePage = () => {
             <div className="car-grid-hp">
               {loading
                 ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-                : hotDeals.map((c) => <CarCard key={c.id} car={c} ctaContext={ctaCtx} />)}
+                : hotDeals.map((c) => (
+                    <CarCard key={c.id} car={c} ctaContext={ctaCtx} />
+                  ))}
             </div>
           </div>
         </section>
@@ -657,7 +970,16 @@ const HomePage = () => {
       <section className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "40px", flexWrap: "wrap", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
+                marginBottom: "40px",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
               <div>
                 <p className="sec-eyebrow">Just Listed</p>
                 <h2 className="sec-title">{t("home.hotDeals.title")}</h2>
@@ -670,18 +992,28 @@ const HomePage = () => {
           <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
             {loading
               ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-              : featured.map((c) => <CarCard key={c.id} car={c} ctaContext={ctaCtx} />)}
+              : featured.map((c) => (
+                  <CarCard key={c.id} car={c} ctaContext={ctaCtx} />
+                ))}
           </div>
           <div style={{ textAlign: "center" }}>
             <Link
               to="/cars"
               className="ghost-outline"
               style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                color: "#C0C0C6", fontWeight: "600", fontSize: "13px",
-                padding: "12px 28px", borderRadius: "4px", textDecoration: "none",
-                transition: "all 0.2s ease", letterSpacing: "0.02em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#C0C0C6",
+                fontWeight: "600",
+                fontSize: "13px",
+                padding: "12px 28px",
+                borderRadius: "4px",
+                textDecoration: "none",
+                transition: "all 0.2s ease",
+                letterSpacing: "0.02em",
               }}
             >
               {t("home.hotDeals.viewAllBtn")} <ArrowRight size={14} />
@@ -700,19 +1032,39 @@ const HomePage = () => {
               { v: "RM 0", l: "Consultation Fee" },
             ].map((s, i, arr) => (
               <FadeIn key={i} delay={i * 0.08} style={{ flex: 1 }}>
-                <div style={{
-                  textAlign: "center", padding: "40px 16px",
-                  borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                }}>
-                  <p style={{
-                    fontFamily: "'Outfit', sans-serif",
-                    color: "#F0F0F0", fontSize: "clamp(1.8rem,5vw,2.6rem)",
-                    fontWeight: "700", letterSpacing: "-0.03em",
-                    lineHeight: 1, margin: "0 0 6px 0",
-                  }}>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px 16px",
+                    borderRight:
+                      i < arr.length - 1
+                        ? "1px solid rgba(255,255,255,0.05)"
+                        : "none",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "'Outfit', sans-serif",
+                      color: "#F0F0F0",
+                      fontSize: "clamp(1.8rem,5vw,2.6rem)",
+                      fontWeight: "700",
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1,
+                      margin: "0 0 6px 0",
+                    }}
+                  >
                     {s.v}
                   </p>
-                  <p style={{ color: "#3A3A42", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                  <p
+                    style={{
+                      color: "#3A3A42",
+                      fontSize: "10px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.14em",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
                     {s.l}
                   </p>
                 </div>
@@ -731,25 +1083,62 @@ const HomePage = () => {
               <h2 className="sec-title">{whyTitle}</h2>
             </div>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "1px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", overflow: "hidden" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+              gap: "1px",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "6px",
+              overflow: "hidden",
+            }}
+          >
             {benefits.map((b, i) => (
               <FadeIn key={i} delay={i * 0.07}>
                 <div
                   className="card-hover"
-                  style={{ background: "#0C0C0E", padding: "32px 28px", height: "100%", borderRight: "none" }}
+                  style={{
+                    background: "#0C0C0E",
+                    padding: "32px 28px",
+                    height: "100%",
+                    borderRight: "none",
+                  }}
                 >
-                  <div style={{
-                    width: "36px", height: "36px", borderRadius: "3px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.15)",
-                    marginBottom: "18px",
-                  }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "3px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(220,38,38,0.08)",
+                      border: "1px solid rgba(220,38,38,0.15)",
+                      marginBottom: "18px",
+                    }}
+                  >
                     <b.icon size={16} style={{ color: "#DC2626" }} />
                   </div>
-                  <h3 style={{ color: "#F0F0F0", fontSize: "14px", fontWeight: "600", margin: "0 0 8px 0", letterSpacing: "-0.01em" }}>
+                  <h3
+                    style={{
+                      color: "#F0F0F0",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      margin: "0 0 8px 0",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
                     {b.title}
                   </h3>
-                  <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
+                  <p
+                    style={{
+                      color: "#52525A",
+                      fontSize: "13px",
+                      lineHeight: "1.7",
+                      margin: 0,
+                    }}
+                  >
                     {b.desc}
                   </p>
                 </div>
@@ -768,25 +1157,72 @@ const HomePage = () => {
               <h2 className="sec-title">{howTitle}</h2>
             </div>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+              gap: "16px",
+            }}
+          >
             {steps.map((s, i) => (
               <FadeIn key={i} delay={i * 0.09}>
-                <div className="card-hover" style={{ ...glassCard, padding: "28px", position: "relative", overflow: "hidden", height: "100%" }}>
-                  <span style={{
-                    position: "absolute", top: "12px", right: "16px",
-                    fontFamily: "'Outfit', sans-serif", fontSize: "3.5rem",
-                    lineHeight: 1, color: "rgba(196,162,101,0.07)",
-                    userSelect: "none", pointerEvents: "none", fontWeight: "800",
-                  }}>
+                <div
+                  className="card-hover"
+                  style={{
+                    ...glassCard,
+                    padding: "28px",
+                    position: "relative",
+                    overflow: "hidden",
+                    height: "100%",
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "12px",
+                      right: "16px",
+                      fontFamily: "'Outfit', sans-serif",
+                      fontSize: "3.5rem",
+                      lineHeight: 1,
+                      color: "rgba(196,162,101,0.07)",
+                      userSelect: "none",
+                      pointerEvents: "none",
+                      fontWeight: "800",
+                    }}
+                  >
                     {s.n}
                   </span>
-                  <p style={{ color: "#C4A265", fontSize: "11px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 14px 0" }}>
+                  <p
+                    style={{
+                      color: "#C4A265",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      margin: "0 0 14px 0",
+                    }}
+                  >
                     {s.n}
                   </p>
-                  <h3 style={{ color: "#F0F0F0", fontSize: "14px", fontWeight: "600", margin: "0 0 8px 0", letterSpacing: "-0.01em" }}>
+                  <h3
+                    style={{
+                      color: "#F0F0F0",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      margin: "0 0 8px 0",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
                     {s.t}
                   </h3>
-                  <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
+                  <p
+                    style={{
+                      color: "#52525A",
+                      fontSize: "13px",
+                      lineHeight: "1.7",
+                      margin: 0,
+                    }}
+                  >
                     {s.d}
                   </p>
                 </div>
@@ -805,29 +1241,104 @@ const HomePage = () => {
               <h2 className="sec-title">{t("home.testimonials.title")}</h2>
             </div>
           </FadeIn>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+              gap: "16px",
+            }}
+          >
             {testimonials.map((item, i) => (
               <FadeIn key={i} delay={i * 0.1}>
-                <div style={{ ...glassCard, padding: "28px", height: "100%", display: "flex", flexDirection: "column" }}>
-                  <div style={{ display: "flex", gap: "2px", marginBottom: "16px" }}>
+                <div
+                  style={{
+                    ...glassCard,
+                    padding: "28px",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "2px",
+                      marginBottom: "16px",
+                    }}
+                  >
                     {[...Array(item.r)].map((_, j) => (
-                      <Star key={j} size={11} style={{ fill: "#C4A265", color: "#C4A265" }} />
+                      <Star
+                        key={j}
+                        size={11}
+                        style={{ fill: "#C4A265", color: "#C4A265" }}
+                      />
                     ))}
                   </div>
-                  <p style={{ color: "#9090A0", fontSize: "13px", lineHeight: "1.8", marginBottom: "20px", fontStyle: "italic", flex: 1 }}>
+                  <p
+                    style={{
+                      color: "#9090A0",
+                      fontSize: "13px",
+                      lineHeight: "1.8",
+                      marginBottom: "20px",
+                      fontStyle: "italic",
+                      flex: 1,
+                    }}
+                  >
                     "{item.text}"
                   </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div style={{
-                      width: "32px", height: "32px", borderRadius: "50%",
-                      background: "rgba(196,162,101,0.08)", border: "1px solid rgba(196,162,101,0.2)",
-                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    }}>
-                      <span style={{ color: "#C4A265", fontWeight: "700", fontSize: "13px" }}>{item.name[0]}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      paddingTop: "16px",
+                      borderTop: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        background: "rgba(196,162,101,0.08)",
+                        border: "1px solid rgba(196,162,101,0.2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#C4A265",
+                          fontWeight: "700",
+                          fontSize: "13px",
+                        }}
+                      >
+                        {item.name[0]}
+                      </span>
                     </div>
                     <div>
-                      <p style={{ color: "#F0F0F0", fontWeight: "600", fontSize: "13px", margin: "0 0 2px 0" }}>{item.name}</p>
-                      <p style={{ color: "#3A3A42", fontSize: "11px", margin: 0, display: "flex", alignItems: "center", gap: "3px" }}>
+                      <p
+                        style={{
+                          color: "#F0F0F0",
+                          fontWeight: "600",
+                          fontSize: "13px",
+                          margin: "0 0 2px 0",
+                        }}
+                      >
+                        {item.name}
+                      </p>
+                      <p
+                        style={{
+                          color: "#3A3A42",
+                          fontSize: "11px",
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "3px",
+                        }}
+                      >
                         <MapPin size={9} /> {item.loc}
                       </p>
                     </div>
@@ -843,38 +1354,101 @@ const HomePage = () => {
       <section className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
-            <div style={{
-              borderRadius: "6px", overflow: "hidden", position: "relative",
-              background: "#111113", border: "1px solid rgba(255,255,255,0.07)",
-              display: "flex", flexWrap: "wrap",
-            }}>
-              <div style={{ padding: "40px", flex: "1", minWidth: "240px", position: "relative", zIndex: 1 }}>
-                <div style={{
-                  width: "40px", height: "40px", borderRadius: "3px",
-                  background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px",
-                }}>
+            <div
+              style={{
+                borderRadius: "6px",
+                overflow: "hidden",
+                position: "relative",
+                background: "#111113",
+                border: "1px solid rgba(255,255,255,0.07)",
+                display: "flex",
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  padding: "40px",
+                  flex: "1",
+                  minWidth: "240px",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "3px",
+                    background: "rgba(220,38,38,0.08)",
+                    border: "1px solid rgba(220,38,38,0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "20px",
+                  }}
+                >
                   <Calculator size={18} style={{ color: "#DC2626" }} />
                 </div>
-                <h2 style={{ fontFamily: "'Outfit', sans-serif", color: "#F0F0F0", fontSize: "clamp(1.2rem,4vw,1.8rem)", fontWeight: "700", letterSpacing: "-0.025em", margin: "0 0 10px 0", lineHeight: 1.15 }}>
+                <h2
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    color: "#F0F0F0",
+                    fontSize: "clamp(1.2rem,4vw,1.8rem)",
+                    fontWeight: "700",
+                    letterSpacing: "-0.025em",
+                    margin: "0 0 10px 0",
+                    lineHeight: 1.15,
+                  }}
+                >
                   {t("home.budget.title")}
                 </h2>
-                <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: "0 0 24px 0" }}>
+                <p
+                  style={{
+                    color: "#52525A",
+                    fontSize: "13px",
+                    lineHeight: "1.7",
+                    margin: "0 0 24px 0",
+                  }}
+                >
                   {t("home.budget.subtitle")}
                 </p>
-                <Link to="/calculator" className="primary-btn" style={primaryBtn}>
+                <Link
+                  to="/calculator"
+                  className="primary-btn"
+                  style={primaryBtn}
+                >
                   <Calculator size={14} />
                   {t("home.budget.calcBtn")}
                 </Link>
               </div>
-              <div style={{ flex: "1", minWidth: "200px", minHeight: "180px", position: "relative" }}>
+              <div
+                style={{
+                  flex: "1",
+                  minWidth: "200px",
+                  minHeight: "180px",
+                  position: "relative",
+                }}
+              >
                 <img
                   src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=60"
                   alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.15, minHeight: "180px" }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    opacity: 0.15,
+                    minHeight: "180px",
+                  }}
                   loading="lazy"
                 />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right,#111113 0%,transparent 55%)" }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to right,#111113 0%,transparent 55%)",
+                  }}
+                />
               </div>
             </div>
           </FadeIn>
@@ -882,32 +1456,98 @@ const HomePage = () => {
       </section>
 
       {/* ══════════ FOR DEALERS ══════════ */}
-      <section className="sec-pad" style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <section
+        className="sec-pad"
+        style={{ ...secA, borderTop: "1px solid rgba(255,255,255,0.04)" }}
+      >
         <div style={wrap}>
           <FadeIn>
             <div
               className="for-dealers-inner"
               style={{
-                ...glassCard, padding: "40px",
-                display: "flex", flexWrap: "wrap", alignItems: "center",
-                justifyContent: "space-between", gap: "28px",
-                position: "relative", overflow: "hidden",
+                ...glassCard,
+                padding: "40px",
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "28px",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 85% 50%,rgba(196,162,101,0.03) 0%,transparent 60%)", pointerEvents: "none" }} />
-              <div style={{ flex: 1, minWidth: "220px", position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#DC2626", display: "inline-block", animation: "pulse-red 2.5s infinite" }} />
-                  <span style={{ color: "#DC2626", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.18em" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "radial-gradient(ellipse at 85% 50%,rgba(196,162,101,0.03) 0%,transparent 60%)",
+                  pointerEvents: "none",
+                }}
+              />
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: "220px",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "5px",
+                      height: "5px",
+                      borderRadius: "50%",
+                      background: "#DC2626",
+                      display: "inline-block",
+                      animation: "pulse-red 2.5s infinite",
+                    }}
+                  />
+                  <span
+                    style={{
+                      color: "#DC2626",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.18em",
+                    }}
+                  >
                     For Car Dealers
                   </span>
                 </div>
-                <h2 style={{ fontFamily: "'Outfit', sans-serif", color: "#F0F0F0", fontSize: "clamp(1.2rem,4vw,1.8rem)", fontWeight: "700", letterSpacing: "-0.025em", margin: "0 0 10px 0", lineHeight: 1.15 }}>
+                <h2
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    color: "#F0F0F0",
+                    fontSize: "clamp(1.2rem,4vw,1.8rem)",
+                    fontWeight: "700",
+                    letterSpacing: "-0.025em",
+                    margin: "0 0 10px 0",
+                    lineHeight: 1.15,
+                  }}
+                >
                   Run your dealership smarter with{" "}
                   <span style={{ color: "#DC2626" }}>ShiftOS.</span>
                 </h2>
-                <p style={{ color: "#52525A", fontSize: "13px", lineHeight: "1.7", margin: 0 }}>
-                  Manage listings, track your team, generate TikTok content, and grow sales — all from one dashboard built for Malaysian dealers.
+                <p
+                  style={{
+                    color: "#52525A",
+                    fontSize: "13px",
+                    lineHeight: "1.7",
+                    margin: 0,
+                  }}
+                >
+                  Manage listings, track your team, generate TikTok content, and
+                  grow sales — all from one dashboard built for Malaysian
+                  dealers.
                 </p>
               </div>
               <div style={{ flexShrink: 0, position: "relative", zIndex: 1 }}>
@@ -921,49 +1561,103 @@ const HomePage = () => {
       </section>
 
       {/* ══════════ FINAL CTA ══════════ */}
-      <section id="contact" className="sec-pad" style={{ ...secB, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "600px", height: "600px", background: "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)", pointerEvents: "none" }} />
-        <div style={{ ...wrap, maxWidth: "580px", textAlign: "center", position: "relative", zIndex: 1 }}>
+      <section
+        id="contact"
+        className="sec-pad"
+        style={{ ...secB, position: "relative", overflow: "hidden" }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%,-50%)",
+            width: "600px",
+            height: "600px",
+            background:
+              "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            ...wrap,
+            maxWidth: "580px",
+            textAlign: "center",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           <FadeIn>
-            <p className="sec-eyebrow" style={{ justifyContent: "center", marginBottom: "16px" }}>
+            <p
+              className="sec-eyebrow"
+              style={{ justifyContent: "center", marginBottom: "16px" }}
+            >
               Ready to Drive?
             </p>
-            <h2 style={{
-              fontFamily: "'Outfit', sans-serif", color: "#F0F0F0",
-              fontSize: "clamp(2rem,7vw,3.6rem)", fontWeight: "800",
-              letterSpacing: "-0.035em", lineHeight: 1.05, margin: "0 0 16px 0",
-            }}>
+            <h2
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                color: "#F0F0F0",
+                fontSize: "clamp(2rem,7vw,3.6rem)",
+                fontWeight: "800",
+                letterSpacing: "-0.035em",
+                lineHeight: 1.05,
+                margin: "0 0 16px 0",
+              }}
+            >
               {ctaTitle}
             </h2>
-            <p style={{ color: "#52525A", fontSize: "clamp(13px,3.5vw,15px)", lineHeight: "1.8", margin: "0 0 36px 0" }}>
+            <p
+              style={{
+                color: "#52525A",
+                fontSize: "clamp(13px,3.5vw,15px)",
+                lineHeight: "1.8",
+                margin: "0 0 36px 0",
+              }}
+            >
               {ctaSubtitle}
             </p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                flexWrap: "wrap",
+              }}
+            >
               <Link to="/cars" className="primary-btn" style={primaryBtn}>
                 {ctaPrimaryLabel} <ArrowRight size={14} />
               </Link>
               <a
-                href={buildWaUrl(
-                  ctaCtx.type !== 'loading' ? ctaCtx : { type: 'listing', profile: null, ref: null },
-                  tenant?.whatsapp_number || superadminPhone,
-                  ctaCtx.type === 'salesman'
-                    ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
-                    : `Hi ${siteName}, I need help finding a car`
-                ) || '#'}
+                href={
+                  buildWaUrl(
+                    ctaCtx.type !== "loading"
+                      ? ctaCtx
+                      : { type: "listing", profile: null, ref: null },
+                    tenant?.whatsapp_number || superadminPhone,
+                    ctaCtx.type === "salesman"
+                      ? `Hi, I need help finding a car — via ${ctaCtx.ref}`
+                      : `Hi ${siteName}, I need help finding a car`,
+                  ) || "#"
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="wa-btn-hp"
                 style={waBtn}
                 onClick={() => {
-                  supabase.from('whatsapp_enquiries').insert({
-                    dealer_id:     tenant?.id || null,
-                    listing_id:    null,
-                    buyer_name:    null,
-                    buyer_phone:   null,
-                    buyer_message: `General enquiry from homepage CTA`,
-                    source:        'homepage_cta',
-                    status:        'new',
-                  }).then(() => {});
+                  supabase
+                    .from("whatsapp_enquiries")
+                    .insert({
+                      dealer_id: tenant?.id || null,
+                      listing_id: null,
+                      buyer_name: null,
+                      buyer_phone: null,
+                      buyer_message: `General enquiry from homepage CTA`,
+                      source: "homepage_cta",
+                      status: "new",
+                    })
+                    .then(() => {});
                 }}
               >
                 <MessageCircle size={14} />

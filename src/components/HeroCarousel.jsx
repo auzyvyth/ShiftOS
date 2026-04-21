@@ -100,13 +100,13 @@ const HC_CSS = `
   }
 
   .hc-content-wrap {
-    max-width: 1400px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: clamp(80px, 12vh, 200px) 48px 140px;
+    padding: clamp(80px, 12vh, 200px) 48px clamp(100px, 10vh, 160px);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    gap: 48px;
+    gap: clamp(32px, 4vh, 56px);
     height: 100%;
     box-sizing: border-box;
   }
@@ -120,13 +120,13 @@ const HC_CSS = `
 
   .hc-text {
     flex: 1;
-    max-width: 48%;
+    max-width: 50%;
   }
 
   /* Right image card */
   .hc-glass-card {
     flex: 1;
-    max-width: 44%;
+    max-width: 46%;
     position: relative;
     border-radius: 20px;
     overflow: hidden;
@@ -136,7 +136,7 @@ const HC_CSS = `
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 32px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
     align-self: flex-end;
-    max-height: 360px;
+    max-height: 380px;
   }
 
   /* Card images: all stacked, active one shown */
@@ -156,8 +156,8 @@ const HC_CSS = `
   /* Spacer to maintain card height */
   .hc-card-spacer {
     width: 100%;
-    min-height: 290px;
-    max-height: 360px;
+    min-height: 300px;
+    max-height: 380px;
     display: block;
     visibility: hidden;
   }
@@ -190,7 +190,7 @@ const HC_CSS = `
 
   /* ── Car name ── */
   .hc-car-name {
-    font-size:clamp(1.8rem,4vw,3.2rem);
+    font-size:clamp(1.8rem,3vw,3.4rem);
     font-weight:800; letter-spacing:-0.02em; line-height:1.08;
     color:white; margin:0 0 18px;
     text-shadow:0 2px 24px rgba(0,0,0,0.4);
@@ -217,7 +217,7 @@ const HC_CSS = `
     color:rgba(255,255,255,0.35); margin-bottom:4px;
   }
   .hc-price-value {
-    font-size:clamp(1.1rem,2.5vw,1.6rem);
+    font-size:clamp(1.1rem,2.2vw,1.7rem);
     font-weight:700; color:white; letter-spacing:-0.01em;
   }
 
@@ -323,10 +323,10 @@ const HC_CSS = `
      TABLET
   ════════════════ */
   @media (max-width:1024px) {
-    .hc-content-wrap { padding:clamp(70px, 10vh, 160px) 32px 120px; gap:40px; }
+    .hc-content-wrap { padding:clamp(70px, 10vh, 160px) 32px 120px; gap:36px; }
     .hc-text { max-width:50%; }
-    .hc-glass-card { max-width:46%; max-height:320px; }
-    .hc-card-spacer { min-height:260px; max-height:320px; }
+    .hc-glass-card { max-width:46%; max-height:300px; }
+    .hc-card-spacer { min-height:250px; max-height:300px; }
     .hc-counter { left:32px; bottom:36px; }
     .hc-dots    { bottom:36px; }
     .hc-spacer  { height:0; }
@@ -436,7 +436,7 @@ const HC_CSS = `
   /* ── Hero search bar — sits above eyebrow on the left ── */
   .hc-search-bar {
     width: 100%;
-    max-width: 560px;
+    max-width: 520px;
     margin-bottom: 20px;
   }
   .hc-search-form {
@@ -492,6 +492,41 @@ const HC_CSS = `
   }
   .hc-search-btn:hover { background: #b91c1c; transform: translateY(-50%) scale(1.06); }
   .hc-search-btn svg { color: white; width: 15px; height: 15px; }
+
+  /* ════════════════
+     LARGE ≥1440px — content stays at 1280px, just scale elements slightly
+  ════════════════ */
+  @media (min-width:1440px) {
+    .hc-glass-card { max-height: clamp(340px, 36vh, 460px); border-radius: 22px; }
+    .hc-card-spacer { min-height: clamp(300px, 32vh, 420px); max-height: clamp(340px, 36vh, 460px); }
+    .hc-car-name { font-size: clamp(2.2rem, 3vw, 3.6rem); }
+    .hc-counter { left: 48px; }
+  }
+
+  /* ════════════════
+     XL ≥1920px — bigger type & card within the same 1280px container
+  ════════════════ */
+  @media (min-width:1920px) {
+    .hc-glass-card { max-height: 480px; border-radius: 24px; }
+    .hc-card-spacer { min-height: 420px; max-height: 480px; }
+    .hc-car-name { font-size: 3.8rem; margin-bottom: 22px; }
+    .hc-meta { gap: 10px; margin-bottom: 24px; }
+    .hc-meta-item { font-size: 13px; padding: 7px 16px; }
+    .hc-meta-item svg { width: 13px; height: 13px; }
+    .hc-price-label { font-size: 11px; }
+    .hc-price-value { font-size: 2rem; }
+    .hc-price-section { margin-bottom: 28px; }
+    .hc-ctas { gap: 14px; }
+    .hc-enquire, .hc-view { font-size: 15px; padding: 13px 28px; }
+    .hc-search-bar { max-width: 560px; margin-bottom: 26px; }
+    .hc-search-input { font-size: 16px; padding: 16px 58px 16px 50px; }
+    .hc-search-icon { width: 18px; height: 18px; left: 18px; }
+    .hc-search-btn { width: 44px; height: 44px; right: 8px; }
+    .hc-search-btn svg { width: 15px; height: 15px; }
+    .hc-eyebrow-label { font-size: 11px; }
+    .hc-counter { left: 48px; bottom: 56px; font-size: 11px; padding: 5px 14px; }
+    .hc-dots { bottom: 56px; }
+  }
 
   /* Tablet ≤1024px */
   @media (max-width:1024px) {
