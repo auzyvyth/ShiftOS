@@ -194,8 +194,10 @@ export default function SalesmanPanel() {
   // ── loans
   const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });
   const [loanForm, setLoanForm] = useState({
-    lead_id: "", stock_unit_id: "", bank_name: "", loan_amount: "",
-    interest_rate: "", tenure_years: 7, monthly_payment: "", buyer_ic: "",
+    buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
+    stock_unit_id: "", car_model: "", car_price: "",
+    bank_name: "", loan_amount: "", down_payment: "",
+    interest_rate: "", loan_tenure: 7, monthly_payment: "",
     buyer_income: "", notes: "",
   });
   const [loanApplications, setLoanApplications] = useState([]);
@@ -541,12 +543,12 @@ Rules:
       .then(({ data }) => setLoanLeads(data || []));
     supabase
       .from("stock_units")
-      .select("id, brand, model, year, plate_number")
+      .select("id, brand, model, year, registration_number")
       .eq("dealer_id", dealerId)
       .then(({ data }) => setLoanStockUnits(data || []));
     supabase
       .from("loan_applications")
-      .select("*, leads(buyer_name, phone)")
+      .select("*")
       .eq("salesman_id", profile.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setLoanApplications(data || []));
@@ -4962,35 +4964,46 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   };
 
   const submitLoan = async () => {
-    if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.tenure_years) return;
+    if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.loan_tenure) return;
     setLoanSaving(true);
     const dealerId = profile?.dealer_id || profile?.id;
+    const banksPayload = loanForm.bank_name ? [{
+      name:            loanForm.bank_name,
+      rate:            parseFloat(loanForm.interest_rate) || 0,
+      monthly_payment: parseFloat(loanForm.monthly_payment) || 0,
+      loan_amount:     parseFloat(loanForm.loan_amount) || 0,
+    }] : [];
     const { data, error } = await supabase.from("loan_applications").insert({
-      dealer_id:       dealerId,
-      salesman_id:     profile?.id,
-      lead_id:         loanForm.lead_id      || null,
-      stock_unit_id:   loanForm.stock_unit_id || null,
-      bank_name:       loanForm.bank_name,
-      loan_amount:     parseFloat(loanForm.loan_amount),
-      interest_rate:   parseFloat(loanForm.interest_rate),
-      tenure_years:    parseInt(loanForm.tenure_years),
-      monthly_payment: parseFloat(loanForm.monthly_payment),
-      buyer_ic:        loanForm.buyer_ic    || null,
-      buyer_income:    loanForm.buyer_income ? parseFloat(loanForm.buyer_income) : null,
-      notes:           loanForm.notes       || null,
-      status:          "Submitted",
-    }).select("*, leads(buyer_name, phone)").single();
+      dealer_id:              dealerId,
+      salesman_id:            profile?.id,
+      buyer_name:             loanForm.buyer_name  || null,
+      buyer_phone:            loanForm.buyer_phone || null,
+      buyer_ic:               loanForm.buyer_ic    || null,
+      buyer_employment_type:  loanForm.buyer_employment_type || null,
+      car_model:              loanForm.car_model   || null,
+      car_price:              loanForm.car_price   ? parseFloat(loanForm.car_price) : null,
+      loan_amount:            parseFloat(loanForm.loan_amount),
+      down_payment:           loanForm.down_payment ? parseFloat(loanForm.down_payment) : null,
+      loan_tenure:            parseInt(loanForm.loan_tenure),
+      banks:                  banksPayload,
+      notes:                  loanForm.notes || null,
+      status:                 "Submitted",
+    }).select("*").single();
     setLoanSaving(false);
     if (!error && data) {
       setLoanApplications((prev) => [data, ...prev]);
-      setLoanForm({ lead_id: "", stock_unit_id: "", bank_name: "", loan_amount: "",
-        interest_rate: "", tenure_years: 7, monthly_payment: "", buyer_ic: "", buyer_income: "", notes: "" });
+      setLoanForm({
+        buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
+        stock_unit_id: "", car_model: "", car_price: "",
+        bank_name: "", loan_amount: "", down_payment: "",
+        interest_rate: "", loan_tenure: 7, monthly_payment: "",
+        buyer_income: "", notes: "",
+      });
     }
   };
 
   const saveStatus = async (id) => {
     const updates = { status: loanEditStatus };
-    if (loanEditCommission !== "") updates.commission = parseFloat(loanEditCommission) || null;
     await supabase.from("loan_applications").update(updates).eq("id", id);
     setLoanApplications((prev) =>
       prev.map((a) => a.id === id ? { ...a, ...updates } : a)
@@ -5012,8 +5025,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       ...f,
       bank_name:       bank.name,
       loan_amount:     String(Math.round(loan)),
+      down_payment:    loanCalc.downPayment || f.down_payment,
+      car_price:       loanCalc.carPrice    || f.car_price,
       interest_rate:   String(bank.rate),
-      tenure_years:    loanCalc.tenure,
+      loan_tenure:     loanCalc.tenure,
       monthly_payment: monthly.toFixed(2),
       buyer_income:    loanCalc.income || f.buyer_income,
     }));
@@ -5026,7 +5041,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   const recalcLoanForm = (next) => {
     const loan    = parseFloat(next.loan_amount)   || 0;
     const rate    = parseFloat(next.interest_rate) || 0;
-    const tenure  = parseInt(next.tenure_years)    || 1;
+    const tenure  = parseInt(next.loan_tenure)     || 1;
     const interest = loan * (rate / 100) * tenure;
     const monthly  = loan > 0 ? ((loan + interest) / (tenure * 12)).toFixed(2) : "";
     setLoanForm({ ...next, monthly_payment: monthly });
@@ -5143,31 +5158,96 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Submit Loan Application
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+
+        {/* Buyer info */}
+        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Buyer Details</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
           <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Lead</label>
-            <select style={loanInputSx} value={loanForm.lead_id}
-              onChange={(e) => setLoanForm((f) => ({ ...f, lead_id: e.target.value }))}>
-              <option value="">— Select Lead —</option>
-              {loanLeads.map((l) => (
-                <option key={l.id} value={l.id}>{l.buyer_name}{l.phone ? ` · ${l.phone}` : ""}</option>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Full Name</label>
+            <input type="text" placeholder="e.g. Ahmad bin Ali" style={loanInputSx}
+              value={loanForm.buyer_name}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_name: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Phone</label>
+            <input type="text" placeholder="e.g. 0123456789" style={loanInputSx}
+              value={loanForm.buyer_phone}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>IC Number</label>
+            <input type="text" placeholder="e.g. 901231-10-1234" style={loanInputSx}
+              value={loanForm.buyer_ic}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_ic: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Employment Type</label>
+            <select style={loanInputSx} value={loanForm.buyer_employment_type}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_employment_type: e.target.value }))}>
+              {["Salaried","Self-Employed","Government","Part-Time","Retired"].map((t) => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car / Stock Unit</label>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Monthly Income (RM)</label>
+            <input type="number" placeholder="e.g. 5000" style={loanInputSx}
+              value={loanForm.buyer_income}
+              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_income: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Car info */}
+        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Car Details</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car (from Stock)</label>
             <select style={loanInputSx} value={loanForm.stock_unit_id}
-              onChange={(e) => setLoanForm((f) => ({ ...f, stock_unit_id: e.target.value }))}>
-              <option value="">— Select Car —</option>
+              onChange={(e) => {
+                const u = loanStockUnits.find((x) => x.id === e.target.value);
+                setLoanForm((f) => ({
+                  ...f,
+                  stock_unit_id: e.target.value,
+                  car_model: u ? `${u.brand} ${u.model} ${u.year}` : f.car_model,
+                  car_price: u?.asking_price ? String(u.asking_price) : f.car_price,
+                }));
+              }}>
+              <option value="">— Select from stock —</option>
               {loanStockUnits.map((u) => (
-                <option key={u.id} value={u.id}>{u.brand} {u.model} {u.year}{u.plate_number ? ` · ${u.plate_number}` : ""}</option>
+                <option key={u.id} value={u.id}>{u.brand} {u.model} {u.year}{u.registration_number ? ` · ${u.registration_number}` : ""}</option>
               ))}
             </select>
           </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car Model (or type manually)</label>
+            <input type="text" placeholder="e.g. Toyota Vios 2020" style={loanInputSx}
+              value={loanForm.car_model}
+              onChange={(e) => setLoanForm((f) => ({ ...f, car_model: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Car Price (RM)</label>
+            <input type="number" placeholder="e.g. 85000" style={loanInputSx}
+              value={loanForm.car_price}
+              onChange={(e) => setLoanForm((f) => ({ ...f, car_price: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Down Payment (RM)</label>
+            <input type="number" placeholder="e.g. 10000" style={loanInputSx}
+              value={loanForm.down_payment}
+              onChange={(e) => setLoanForm((f) => ({ ...f, down_payment: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Loan info */}
+        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Loan Details</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Selected Bank</label>
             <select style={loanInputSx} value={loanForm.bank_name}
-              onChange={(e) => setLoanForm((f) => ({ ...f, bank_name: e.target.value }))}>
+              onChange={(e) => {
+                const b = BANKS.find((x) => x.name === e.target.value);
+                recalcLoanForm({ ...loanForm, bank_name: e.target.value, interest_rate: b ? String(b.rate) : loanForm.interest_rate });
+              }}>
               <option value="">— Select Bank —</option>
               {BANKS.map((b) => (
                 <option key={b.name} value={b.name}>{b.name} ({b.rate}%{b.islamic ? " · Islamic" : ""})</option>
@@ -5188,8 +5268,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Tenure (years)</label>
-            <select style={loanInputSx} value={loanForm.tenure_years}
-              onChange={(e) => recalcLoanForm({ ...loanForm, tenure_years: e.target.value })}>
+            <select style={loanInputSx} value={loanForm.loan_tenure}
+              onChange={(e) => recalcLoanForm({ ...loanForm, loan_tenure: e.target.value })}>
               {[1,2,3,4,5,6,7].map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
@@ -5199,18 +5279,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Monthly Payment (RM)</label>
             <input type="text" readOnly style={{ ...loanInputSx, background: "rgba(255,255,255,.02)", color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", fontSize: 15 }}
               value={loanForm.monthly_payment ? fmtRM(loanForm.monthly_payment) : ""} />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Buyer IC Number</label>
-            <input type="text" placeholder="e.g. 901231-10-1234" style={loanInputSx}
-              value={loanForm.buyer_ic}
-              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_ic: e.target.value }))} />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Buyer Monthly Income (RM)</label>
-            <input type="number" placeholder="e.g. 5000" style={loanInputSx}
-              value={loanForm.buyer_income}
-              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_income: e.target.value }))} />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Notes</label>
@@ -5247,7 +5315,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  {["Buyer", "Car", "Bank", "Loan Amt", "Monthly", "Status", "Commission", "Date", ""].map((h) => (
+                  {["Buyer", "Car", "Bank", "Loan Amt", "Monthly", "Status", "Date", ""].map((h) => (
                     <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -5256,7 +5324,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 {loanApplications.map((app) => {
                   const sc = statusColors[app.status] || statusColors.Submitted;
                   const isEditing = loanEditId === app.id;
-                  const unit = loanStockUnits.find((u) => u.id === app.stock_unit_id);
+                  const bankEntry = Array.isArray(app.banks) && app.banks[0];
+                  const monthlyDisplay = bankEntry?.monthly_payment || 0;
                   return (
                     <tr key={app.id}
                       style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
@@ -5264,15 +5333,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
                       <td style={{ padding: "10px 10px", color: "#e5e7eb", fontWeight: 500 }}>
-                        {app.leads?.buyer_name || "—"}<br />
-                        <span style={{ color: "#4b5563", fontSize: 11 }}>{app.leads?.phone || ""}</span>
+                        {app.buyer_name || "—"}<br />
+                        <span style={{ color: "#4b5563", fontSize: 11 }}>{app.buyer_phone || ""}</span>
                       </td>
-                      <td style={{ padding: "10px 10px", color: "#9ca3af" }}>
-                        {unit ? `${unit.brand} ${unit.model} ${unit.year}` : "—"}
+                      <td style={{ padding: "10px 10px", color: "#9ca3af" }}>{app.car_model || "—"}</td>
+                      <td style={{ padding: "10px 10px", color: "#9ca3af", whiteSpace: "nowrap" }}>
+                        {bankEntry?.name || "—"}
+                        {bankEntry?.rate ? <span style={{ color: "#4b5563" }}> {bankEntry.rate}%</span> : null}
                       </td>
-                      <td style={{ padding: "10px 10px", color: "#9ca3af", whiteSpace: "nowrap" }}>{app.bank_name}</td>
-                      <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{fmtRM(app.loan_amount)}</td>
-                      <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{fmtRM(app.monthly_payment)}</td>
+                      <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{app.loan_amount ? fmtRM(app.loan_amount) : "—"}</td>
+                      <td style={{ padding: "10px 10px", color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{monthlyDisplay ? fmtRM(monthlyDisplay) : "—"}</td>
                       <td style={{ padding: "10px 10px" }}>
                         {isEditing ? (
                           <select style={{ ...loanInputSx, width: 110, fontSize: 11 }}
@@ -5285,17 +5355,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         ) : (
                           <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}>
                             {app.status}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 10px" }}>
-                        {isEditing ? (
-                          <input type="number" placeholder="RM" style={{ ...loanInputSx, width: 90, fontSize: 11 }}
-                            value={loanEditCommission}
-                            onChange={(e) => setLoanEditCommission(e.target.value)} />
-                        ) : (
-                          <span style={{ color: app.commission ? "#4ade80" : "#374151", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>
-                            {app.commission ? fmtRM(app.commission) : "—"}
                           </span>
                         )}
                       </td>
@@ -5317,7 +5376,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                             </>
                           ) : (
                             <>
-                              <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); setLoanEditCommission(app.commission ? String(app.commission) : ""); }}
+                              <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); setLoanEditCommission(""); }}
                                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#9ca3af", borderRadius: 5, padding: "4px 7px", cursor: "pointer" }}>
                                 <Pencil size={11} />
                               </button>
