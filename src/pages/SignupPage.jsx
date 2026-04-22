@@ -1,5 +1,8 @@
-import LoginPage from './LoginPage';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function SignupPage() {
-  return <LoginPage initialMode="register" />;
+  const navigate = useNavigate();
+  useEffect(() => { navigate('/onboarding', { replace: true }); }, []);
+  return null;
 }
