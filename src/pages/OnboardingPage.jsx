@@ -175,6 +175,7 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [authReady, setAuthReady] = useState(false);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
 
   // Signup state (used inside step 1 when not yet authenticated)
   const [signupEmail, setSignupEmail] = useState("");
@@ -230,6 +231,7 @@ export default function OnboardingPage() {
       const uid = data.session.user.id;
       setUserId(uid);
       setUserEmail(data.session.user.email);
+      setEmailConfirmed(!!data.session.user.email_confirmed_at);
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -396,7 +398,7 @@ export default function OnboardingPage() {
       const payload = isSalesman
         ? {
             id: userId,
-            email: userEmail,
+            email: userEmail || signupEmail,
             full_name: fullName.trim(),
             phone,
             role: "salesman",
@@ -416,7 +418,7 @@ export default function OnboardingPage() {
           }
         : {
             id: userId,
-            email: userEmail,
+            email: userEmail || signupEmail,
             full_name: fullName.trim(),
             phone,
             dealership: dealerName.trim(),
@@ -436,7 +438,7 @@ export default function OnboardingPage() {
       const { error: err } = await supabase.from("profiles").upsert(payload);
       if (err) throw err;
       setDone(true);
-      setTimeout(() => navigate(isSalesman ? "/salesman" : "/dashboard"), 2800);
+      setTimeout(() => navigate(isSalesman ? "/salesman-lite" : "/dashboard"), 2800);
     } catch (e) {
       setError(e.message);
       setSubmitting(false);
@@ -1487,7 +1489,7 @@ export default function OnboardingPage() {
                   </div>
                   <div className="review-row">
                     <span className="review-key">Email</span>
-                    <span className="review-val">{userEmail}</span>
+                    <span className="review-val">{userEmail || signupEmail}</span>
                   </div>
                 </div>
 
@@ -1628,33 +1630,30 @@ export default function OnboardingPage() {
                     </svg>
                   )}
                 </button>
-              ) : (
+              ) : emailConfirmed ? (
                 <button
                   className="ob-btn-primary"
                   disabled={submitting}
                   onClick={handleSubmit}
-                  style={
-                    submitting
-                      ? {}
-                      : {
-                          background: "var(--red)",
-                          boxShadow: "0 0 40px rgba(220,38,38,0.35)",
-                        }
-                  }
+                  style={submitting ? {} : { background: "var(--red)", boxShadow: "0 0 40px rgba(220,38,38,0.35)" }}
                 >
-                  {submitting ? "Activating…" : "Activate ShiftOS"}
+                  {submitting ? "Activating…" : "Go to Dashboard"}
                   {!submitting && (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                     </svg>
                   )}
+                </button>
+              ) : (
+                <button
+                  className="ob-btn-primary"
+                  onClick={() => setConfirmSent(true)}
+                  style={{ background: "#b45309", boxShadow: "0 0 40px rgba(180,83,9,0.3)" }}
+                >
+                  Verify Email to Access
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+                  </svg>
                 </button>
               )}
             </div>
