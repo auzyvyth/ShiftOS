@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
-import CarForm from "../components/CarForm";
+import CarFormLite from "../components/CarFormLite";
 import {
   LogOut,
   Copy,
@@ -210,7 +210,7 @@ export default function SalesmanLite() {
         .select(
           "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission",
         )
-        .eq("assigned_to", uid)
+        .eq("dealer_id", uid)
         .neq("status", "sold")
         .order("created_at", { ascending: false })
         .then(({ data: lst }) => setMyListings(lst || []));
@@ -655,11 +655,11 @@ export default function SalesmanLite() {
             padding: 16,
           }}
         >
-          <CarForm
+          <CarFormLite
             onCreate={(car) => {
               setMyListings((p) => [car, ...p]);
               setShowAddForm(false);
-              toast.success("Listing added!");
+              toast.success("Listing published!");
             }}
           />
         </div>
