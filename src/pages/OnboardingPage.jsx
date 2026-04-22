@@ -232,7 +232,6 @@ export default function OnboardingPage() {
       const sessionEmail = data.session.user.email;
       setUserId(uid);
       setUserEmail(sessionEmail);
-      setSignupEmail((prev) => prev || sessionEmail);
       setEmailConfirmed(!!data.session.user.email_confirmed_at);
       const { data: profile } = await supabase
         .from("profiles")
