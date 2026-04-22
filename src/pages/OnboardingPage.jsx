@@ -150,16 +150,45 @@ export default function OnboardingPage() {
   const [whatsapp, setWhatsapp] = useState("+60");
   const [website, setWebsite] = useState("");
 
-  // Step 4 — Review (read-only)
+  // Extra fields
+  const [ic, setIc] = useState("");
+  const [ssmNumber, setSsmNumber] = useState("");
+  const [profileData, setProfileData] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
         navigate("/login");
         return;
       }
-      setUserId(data.session.user.id);
+      const uid = data.session.user.id;
+      setUserId(uid);
       setUserEmail(data.session.user.email);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (!profile) return;
+      setProfileData(profile);
+      if (profile.full_name) setFullName(profile.full_name);
+      if (profile.phone) setPhone(profile.phone);
+      if (profile.dealership) setDealerName(profile.dealership);
+      if (profile.subdomain) {
+        setSubdomain(profile.subdomain);
+        subdomainTouched.current = true;
+      }
+      if (profile.location) {
+        const loc = profile.location;
+        const matchedState = STATES.find((s) => loc.includes(s));
+        if (matchedState) {
+          setState(matchedState);
+          const city = loc.replace(matchedState, "").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+          if (city) setCity(city);
+        }
+      }
     });
   }, []);
 
@@ -212,6 +241,11 @@ export default function OnboardingPage() {
         is_active: true,
         onboarding_complete: true,
         subdomain: subdomain,
+        ssm_number: ssmNumber || null,
+        ic: ic || null,
+        ic_submitted: !!(ic && ic.length > 0),
+        ic_deadline: ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        selected_plan: profileData?.selected_plan || "standard",
       });
       if (err) throw err;
       setDone(true);
@@ -905,6 +939,18 @@ export default function OnboardingPage() {
                     placeholder="+60123456789"
                     hint="WhatsApp-enabled number preferred"
                   />
+                  <Input
+                    label="IC Number (MyKad)"
+                    value={ic}
+                    onChange={setIc}
+                    placeholder="901231-10-1234"
+                    hint="You have 10 days to submit. Account terminated if not provided."
+                  />
+                  <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "10px 14px", marginTop: 4 }}>
+                    <p style={{ fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+                      ⏳ IC verification is optional now but required within 10 days. Unverified accounts are automatically terminated.
+                    </p>
+                  </div>
                   <div style={{ padding: "8px 0 4px" }}>
                     <p
                       style={{
@@ -1038,6 +1084,13 @@ export default function OnboardingPage() {
                       placeholder="e.g. Butterworth"
                     />
                   </div>
+                  <Input
+                    label="SSM Number"
+                    value={ssmNumber}
+                    onChange={setSsmNumber}
+                    placeholder="e.g. 1234567-A"
+                    hint="Required within 10 days for full verification"
+                  />
                 </div>
               </>
             )}
@@ -1111,6 +1164,18 @@ export default function OnboardingPage() {
                   />
                   14-Day Free Trial
                 </div>
+
+                {(() => {
+                  const planLabel = profileData?.selected_plan === "premium"
+                    ? "Premium — RM 2,500/mo"
+                    : "Standard — RM 1,000/mo";
+                  return (
+                    <div className="review-row" style={{ background: "rgba(220,38,38,0.04)", borderRadius: 8, marginBottom: 16, border: "1px solid rgba(220,38,38,0.12)" }}>
+                      <span className="review-key">Plan</span>
+                      <span className="review-val" style={{ color: "#f87171" }}>{planLabel}</span>
+                    </div>
+                  );
+                })()}
 
                 <div className="review-card">
                   <div className="review-card-header">
