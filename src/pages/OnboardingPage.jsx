@@ -1493,9 +1493,7 @@ export default function OnboardingPage() {
                   </div>
                   <div className="review-row">
                     <span className="review-key">Email</span>
-                    <span className="review-val">
-                      {signupEmail}
-                    </span>
+                    <span className="review-val">{signupEmail}</span>
                   </div>
                 </div>
 

@@ -2489,6 +2489,7 @@ function AnalyticsTab({ listings, profile }) {
   );
 }
 
+// FIXED: auth-first account creation
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
 function TeamTab({ managerDealership, dealerId }) {
   const [salespeople, setSalespeople] = useState([]);
@@ -2499,6 +2500,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [copiedPw, setCopiedPw] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newRole, setNewRole] = useState("salesman");
@@ -2512,6 +2514,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [phone, setPhone] = useState("+60");
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
+  const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
 
@@ -2593,7 +2596,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const resetForm = () => {
     setName("");
     setEmail("");
-    setPhone("");
+    setPhone("+60");
     setSlug("");
     setTempPw("");
     setAddError("");
@@ -2611,11 +2614,12 @@ function TeamTab({ managerDealership, dealerId }) {
       setAddError("Dealership required.");
       return;
     }
-    if (!n || !e || !s || !tempPw) {
+    const isSalesman = newRole === "salesman";
+    if (!n || !e || !s || (!isSalesman && !tempPw)) {
       setAddError("All fields required.");
       return;
     }
-    if (tempPw.length < 8) {
+    if (!isSalesman && tempPw.length < 8) {
       setAddError("Password min 8 chars.");
       return;
     }
@@ -2625,36 +2629,69 @@ function TeamTab({ managerDealership, dealerId }) {
     }
     setAddLoading(true);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const res = await fetch(`${SERVER_URL}/invites`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          full_name: n,
-          email: e,
-          phone: p,
-          dealership: managerDealership,
-          dealer_id: dealerId,
-          slug: s,
-          password: tempPw,
-          role: newRole,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAddError(json.message || "Failed.");
-        setAddLoading(false);
-        return;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (isSalesman) {
+        // Auth-first salesman creation via edge function
+        const res = await fetch(`${SERVER_URL}/create-salesman`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            email: e,
+            full_name: n,
+            phone: p,
+            slug: s,
+            dealer_id: dealerId,
+            plan: "salesman_full",
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setAddError(
+            data.error === "email_taken"
+              ? "Email already in use."
+              : data.message || data.error || "Failed to create account.",
+          );
+          setAddLoading(false);
+          return;
+        }
+        setShowAddForm(false);
+        setCreatedAccount({ full_name: n, email: e, temp_password: data.temp_password });
+        await fetchTeam();
+        resetForm();
+      } else {
+        // Non-salesman roles use existing invites function
+        const res = await fetch(`${SERVER_URL}/invites`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            full_name: n,
+            email: e,
+            phone: p,
+            dealership: managerDealership,
+            dealer_id: dealerId,
+            slug: s,
+            password: tempPw,
+            role: newRole,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setAddError(data.message || "Failed.");
+          setAddLoading(false);
+          return;
+        }
+        setSalespeople((prev) => [data.invite, ...prev]);
+        setAddSuccess(`${n} added successfully.`);
+        resetForm();
+        setShowAddForm(false);
       }
-      setSalespeople((p) => [json.invite, ...p]);
-      setAddSuccess(`${n} added successfully.`);
-      resetForm();
-      setShowAddForm(false);
     } catch {
       setAddError("Server unreachable.");
     }
@@ -3059,6 +3096,87 @@ function TeamTab({ managerDealership, dealerId }) {
           </div>
         </div>
       )}
+      {/* ── One-time Password Modal ── */}
+      {createdAccount && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+          style={{ background: "rgba(0,0,0,0.82)" }}
+        >
+          <div
+            className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md relative"
+            style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.22)" }}
+                >
+                  <Check className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-sm">Account Created</h3>
+                  <p className="text-gray-500 text-xs mt-0.5">Share these credentials with your salesman</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreatedAccount(null)}
+                className="text-gray-500 hover:text-white p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Name</p>
+                <p className="text-white text-sm font-medium">{createdAccount.full_name}</p>
+              </div>
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Email</p>
+                <p className="text-white text-sm font-medium">{createdAccount.email}</p>
+              </div>
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Temporary Password</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdAccount.temp_password);
+                      setCopiedPw(true);
+                      setTimeout(() => setCopiedPw(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all"
+                    style={copiedPw
+                      ? { color: "#34d399", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }
+                      : { color: "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    {copiedPw ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                  </button>
+                </div>
+                <p className="text-white text-base font-mono font-bold tracking-widest">{createdAccount.temp_password}</p>
+              </div>
+            </div>
+
+            <div
+              className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
+              style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.16)" }}
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-300/80 text-xs leading-relaxed">
+                This password will <span className="font-semibold text-amber-300">not be shown again</span>. Share it securely with your salesman now.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setCreatedAccount(null)}
+              className="btn-shimmer w-full px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+              style={T.btnRed}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
       {/* ── Message Team Panel ── */}
       {(() => {
         const MSG_ROLES = [
@@ -3324,19 +3442,34 @@ function TeamTab({ managerDealership, dealerId }) {
                         className={inputCls}
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
-                        Temp Password *
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Min 8 characters"
-                        value={tempPw}
-                        onChange={(e) => setTempPw(e.target.value)}
-                        autoComplete="off"
-                        className={inputCls}
-                      />
-                    </div>
+                    {newRole !== "salesman" && (
+                      <div>
+                        <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
+                          Temp Password *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Min 8 characters"
+                          value={tempPw}
+                          onChange={(e) => setTempPw(e.target.value)}
+                          autoComplete="off"
+                          className={inputCls}
+                        />
+                      </div>
+                    )}
+                    {newRole === "salesman" && (
+                      <div className="flex items-end">
+                        <div
+                          className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-400"
+                          style={{
+                            background: "rgba(52,211,153,0.06)",
+                            border: "1px solid rgba(52,211,153,0.18)",
+                          }}
+                        >
+                          Password auto-generated — shown once after creation.
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
@@ -3395,7 +3528,7 @@ function TeamTab({ managerDealership, dealerId }) {
                       className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
                       style={T.btnRed}
                     >
-                      {addLoading ? "Creating..." : "Add Salesman"}
+                      {addLoading ? "Creating..." : newRole === "salesman" ? "Create Salesman" : "Add Team Member"}
                     </button>
                   </div>
                 </div>
