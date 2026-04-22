@@ -1221,7 +1221,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         );
         const { data, error } = await supabase
           .from("car_listings")
-          .insert([{ dealer_id: dealerId, ...payload, status: "active" }])
+          .insert([{
+            dealer_id: dealerId,
+            ...payload,
+            status: "active",
+            // salesman_lite owns and sells their own listings
+            ...(profile?.role === "salesman" ? { assigned_to: profile.id, salesman_slug: profile.slug } : {}),
+          }])
           .select()
           .single();
         if (error) throw error;
