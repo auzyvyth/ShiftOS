@@ -175,9 +175,8 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [authReady, setAuthReady] = useState(false);
-  const [needsAccount, setNeedsAccount] = useState(false);
 
-  // Signup state
+  // Signup state (used inside step 1 when not yet authenticated)
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
@@ -225,7 +224,6 @@ export default function OnboardingPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
-        setNeedsAccount(true);
         setAuthReady(true);
         return;
       }
@@ -290,35 +288,25 @@ export default function OnboardingPage() {
 
   const handleSignup = async () => {
     setSignupError("");
-    if (!signupEmail.trim()) {
-      setSignupError("Email is required.");
-      return;
-    }
+    if (!signupEmail.trim()) { setSignupError("Email is required."); return; }
     if (!STRONG_PASSWORD_REGEX.test(signupPassword)) {
-      setSignupError(
-        "Password needs 8+ chars with uppercase, lowercase, number, and special character.",
-      );
+      setSignupError("Password needs 8+ chars with uppercase, lowercase, number, and special character.");
       return;
     }
-    if (signupPassword !== signupConfirm) {
-      setSignupError("Passwords do not match.");
-      return;
-    }
+    if (signupPassword !== signupConfirm) { setSignupError("Passwords do not match."); return; }
     setSignupLoading(true);
     const { data, error: err } = await supabase.auth.signUp({
       email: signupEmail.trim(),
       password: signupPassword,
     });
-    if (err) {
-      setSignupError(err.message);
-      setSignupLoading(false);
-      return;
-    }
+    if (err) { setSignupError(err.message); setSignupLoading(false); return; }
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
         email: signupEmail.trim(),
-        role: "dealer",
+        full_name: fullName.trim() || null,
+        phone: phone !== "+60" ? phone : null,
+        role: accountType === "salesman" ? "salesman" : "dealer",
         is_active: true,
         onboarding_complete: false,
       });
@@ -341,7 +329,15 @@ export default function OnboardingPage() {
   const canProceed = () => {
     if (step === 1) {
       if (!accountType) return false;
-      return fullName.trim().length >= 2 && phone.length >= 10;
+      if (fullName.trim().length < 2 || phone.length < 10) return false;
+      if (!userId) {
+        return (
+          signupEmail.trim().length > 0 &&
+          STRONG_PASSWORD_REGEX.test(signupPassword) &&
+          signupPassword === signupConfirm
+        );
+      }
+      return true;
     }
     if (accountType === "salesman") {
       if (step === 2)
@@ -502,9 +498,8 @@ export default function OnboardingPage() {
     },
   };
 
-  if (needsAccount) {
-    if (confirmSent) {
-      return (
+  if (confirmSent) {
+    return (
         <div style={sharedAuthStyles.root}>
           <div style={sharedAuthStyles.logo}>
             <div style={sharedAuthStyles.logoDot}>
@@ -622,186 +617,6 @@ export default function OnboardingPage() {
           </div>
         </div>
       );
-    }
-    return (
-      <div style={sharedAuthStyles.root}>
-        <div style={sharedAuthStyles.logo}>
-          <div style={sharedAuthStyles.logoDot}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
-          </div>
-          <span style={sharedAuthStyles.logoName}>ShiftOS</span>
-        </div>
-        <div style={sharedAuthStyles.card}>
-          <p
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 10,
-              letterSpacing: 3,
-              color: "#dc2626",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Create Account
-          </p>
-          <h2
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontWeight: 800,
-              fontSize: 32,
-              color: "#f0f0f0",
-              letterSpacing: -0.5,
-              marginBottom: 28,
-              lineHeight: 1.05,
-            }}
-          >
-            Start your
-            <br />
-            free trial.
-          </h2>
-          <div style={{ marginBottom: 14 }}>
-            <label style={sharedAuthStyles.label}>Email Address</label>
-            <input
-              type="email"
-              value={signupEmail}
-              onChange={(e) => setSignupEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoComplete="off"
-              style={sharedAuthStyles.input}
-              onFocus={(e) => (e.target.style.borderColor = "#dc2626")}
-              onBlur={(e) =>
-                (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-              }
-            />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={sharedAuthStyles.label}>Password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPw ? "text" : "password"}
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                placeholder="Min 8 characters"
-                style={{ ...sharedAuthStyles.input, paddingRight: 44 }}
-                onFocus={(e) => (e.target.style.borderColor = "#dc2626")}
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-                }
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((p) => !p)}
-                style={{
-                  position: "absolute",
-                  right: 14,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "rgba(255,255,255,0.25)",
-                  display: "flex",
-                }}
-              >
-                {showPw ? (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={sharedAuthStyles.label}>Confirm Password</label>
-            <input
-              type="password"
-              value={signupConfirm}
-              onChange={(e) => setSignupConfirm(e.target.value)}
-              placeholder="••••••••"
-              style={sharedAuthStyles.input}
-              onFocus={(e) => (e.target.style.borderColor = "#dc2626")}
-              onBlur={(e) =>
-                (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-              }
-            />
-          </div>
-          {signupError && (
-            <div
-              style={{
-                background: "rgba(220,38,38,0.08)",
-                border: "1px solid rgba(220,38,38,0.2)",
-                borderRadius: 6,
-                padding: "10px 14px",
-                color: "#f87171",
-                fontSize: 12,
-                marginBottom: 16,
-              }}
-            >
-              ⚠ {signupError}
-            </div>
-          )}
-          <button
-            onClick={handleSignup}
-            disabled={signupLoading}
-            style={{
-              ...sharedAuthStyles.btn,
-              opacity: signupLoading ? 0.5 : 1,
-              cursor: signupLoading ? "not-allowed" : "pointer",
-            }}
-          >
-            {signupLoading ? "Creating account…" : "Create Account →"}
-          </button>
-          <p
-            style={{
-              textAlign: "center",
-              fontSize: 11,
-              color: "rgba(255,255,255,0.2)",
-            }}
-          >
-            Already have an account?{" "}
-            <a
-              href="/login"
-              style={{ color: "#f87171", textDecoration: "none" }}
-            >
-              Sign in
-            </a>
-          </p>
-        </div>
-        <p
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.1)",
-            letterSpacing: 1,
-            textTransform: "uppercase",
-          }}
-        >
-          14-day free trial · No credit card required
-        </p>
-      </div>
-    );
   }
 
   // ── Main onboarding ────────────────────────────────────────────────────────
@@ -1218,19 +1033,63 @@ export default function OnboardingPage() {
                         placeholder="901231-10-1234"
                         hint="Optional now — required within 10 days or account is terminated."
                       />
-                      <div style={{ padding: "8px 0 4px" }}>
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "rgba(255,255,255,0.2)",
-                          }}
-                        >
-                          Signing in as{" "}
-                          <strong style={{ color: "rgba(255,255,255,0.4)" }}>
-                            {userEmail}
-                          </strong>
-                        </p>
-                      </div>
+                      {!userId && (
+                        <>
+                          <div className="ob-divider" />
+                          <Input
+                            label="Email Address"
+                            value={signupEmail}
+                            onChange={setSignupEmail}
+                            placeholder="you@example.com"
+                            type="email"
+                          />
+                          <div className={`inp-wrap ${signupPassword ? "inp-filled" : ""}`} style={{ paddingTop: 20 }}>
+                            <label className="inp-label">Password</label>
+                            <div style={{ position: "relative" }}>
+                              <input
+                                type={showPw ? "text" : "password"}
+                                value={signupPassword}
+                                onChange={(e) => setSignupPassword(e.target.value)}
+                                placeholder="Min 8 characters"
+                                className="inp-field"
+                                autoComplete="new-password"
+                                style={{ paddingRight: 40 }}
+                              />
+                              <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)", display: "flex", padding: 0 }}>
+                                {showPw
+                                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                }
+                              </button>
+                            </div>
+                            <div className="inp-line" />
+                            {signupPassword && !STRONG_PASSWORD_REGEX.test(signupPassword) && (
+                              <p className="inp-hint" style={{ color: "#f87171" }}>8+ chars with uppercase, lowercase, number, special character</p>
+                            )}
+                          </div>
+                          <Input
+                            label="Confirm Password"
+                            value={signupConfirm}
+                            onChange={setSignupConfirm}
+                            placeholder="••••••••"
+                            type="password"
+                            hint={signupConfirm && signupConfirm !== signupPassword ? "Passwords do not match" : undefined}
+                          />
+                          {signupError && (
+                            <div style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6, padding: "10px 14px", color: "#f87171", fontSize: 12, marginTop: 4 }}>
+                              ⚠ {signupError}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {userId && (
+                        <div style={{ padding: "8px 0 4px" }}>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+                            Signed in as{" "}
+                            <strong style={{ color: "rgba(255,255,255,0.4)" }}>{userEmail}</strong>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -1668,21 +1527,22 @@ export default function OnboardingPage() {
               {step < totalSteps ? (
                 <button
                   className="ob-btn-primary"
-                  disabled={!canProceed()}
-                  onClick={() => goTo(step + 1)}
+                  disabled={!canProceed() || signupLoading}
+                  onClick={() => {
+                    if (step === 1 && !userId) {
+                      handleSignup();
+                    } else {
+                      goTo(step + 1);
+                    }
+                  }}
                 >
-                  Continue
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
+                  {signupLoading ? "Creating account…" : "Continue"}
+                  {!signupLoading && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  )}
                 </button>
               ) : (
                 <button
