@@ -53,11 +53,11 @@ const TextInput = ({ id, type = 'text', placeholder, value, onChange, onFocusCha
   </div>
 );
 
-export default function LoginPage() {
+export default function LoginPage({ initialMode = 'login' }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(initialMode === 'register');
   const [unconfirmed, setUnconfirmed] = useState(searchParams.get('unconfirmed') === '1');
   const [focused, setFocused] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -115,7 +115,7 @@ export default function LoginPage() {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subdomain, role, dealer_id')
+      .select('subdomain, role, dealer_id, onboarding_complete')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -123,6 +123,10 @@ export default function LoginPage() {
     const role = profile?.role;
 
     if (role === 'superadmin' || role === 'dealer') {
+      if (profile?.onboarding_complete === false) {
+        window.location.href = 'https://xdrive.my/onboarding';
+        return;
+      }
       if (subdomain) {
         const { data: { session } } = await supabase.auth.getSession();
         const accessToken = session.access_token;
@@ -522,7 +526,7 @@ export default function LoginPage() {
               </button>
               {!isRegister && (
                 <a
-                  href="/register"
+                  href="/signup"
                   style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 4, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 4, color: '#f87171', fontSize: 13, fontWeight: 500, textDecoration: 'none', transition: 'background 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
