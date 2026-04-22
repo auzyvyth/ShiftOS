@@ -399,7 +399,7 @@ export default function OnboardingPage() {
       const payload = isSalesman
         ? {
             id: userId,
-            email: userEmail || signupEmail,
+            email: signupEmail || userEmail,
             full_name: fullName.trim(),
             phone,
             role: "salesman",
@@ -419,7 +419,7 @@ export default function OnboardingPage() {
           }
         : {
             id: userId,
-            email: userEmail || signupEmail,
+            email: signupEmail || userEmail,
             full_name: fullName.trim(),
             phone,
             dealership: dealerName.trim(),
@@ -1494,7 +1494,7 @@ export default function OnboardingPage() {
                   <div className="review-row">
                     <span className="review-key">Email</span>
                     <span className="review-val">
-                      {userEmail || signupEmail}
+                      {signupEmail}
                     </span>
                   </div>
                 </div>
