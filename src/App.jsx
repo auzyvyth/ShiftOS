@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import SalesmanPanel from "./pages/Salesmanpanel";
+import SalesmanLite from "./pages/SalesmanLite";
 import OnboardingPage from "./pages/OnboardingPage";
 import AdminPanel from "./pages/AdminPanel";
 import AdminPage from "./pages/AdminPage";
@@ -54,6 +55,7 @@ function App() {
         {/* Protected — XDrive */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/salesman" element={<SalesmanPanel />} />
+        <Route path="/salesman-lite" element={<SalesmanLite />} />
         <Route path="/manager" element={<ManagerPanel />} />
         <Route path="/accountant" element={<AccountantPanel />} />
         <Route path="/fi" element={<FIPanel />} />

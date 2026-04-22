@@ -115,7 +115,7 @@ export default function LoginPage() {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subdomain, role')
+      .select('subdomain, role, dealer_id')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -131,8 +131,13 @@ export default function LoginPage() {
       } else {
         window.location.href = 'https://xdrive.my/dashboard';
       }
+    } else if (role === 'salesman') {
+      if (profile?.dealer_id) {
+        window.location.href = 'https://xdrive.my/salesman';
+      } else {
+        window.location.href = 'https://xdrive.my/salesman-lite';
+      }
     } else {
-      // salesman
       window.location.href = 'https://xdrive.my/salesman';
     }
   };
