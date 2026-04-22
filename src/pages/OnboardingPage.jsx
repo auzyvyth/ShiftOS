@@ -240,6 +240,9 @@ export default function OnboardingPage() {
         return;
       }
       setProfileData(profile);
+      if (profile.role === "dealer" || profile.role === "superadmin")
+        setAccountType("dealership");
+      else if (profile.role === "salesman") setAccountType("salesman");
       if (profile.full_name) setFullName(profile.full_name);
       if (profile.phone) setPhone(profile.phone);
       if (profile.dealership) setDealerName(profile.dealership);
@@ -288,18 +291,33 @@ export default function OnboardingPage() {
 
   const handleSignup = async () => {
     setSignupError("");
-    if (!signupEmail.trim()) { setSignupError("Email is required."); return; }
-    if (!STRONG_PASSWORD_REGEX.test(signupPassword)) {
-      setSignupError("Password needs 8+ chars with uppercase, lowercase, number, and special character.");
+    if (!signupEmail.trim()) {
+      setSignupError("Email is required.");
       return;
     }
-    if (signupPassword !== signupConfirm) { setSignupError("Passwords do not match."); return; }
+    if (!STRONG_PASSWORD_REGEX.test(signupPassword)) {
+      setSignupError(
+        "Password needs 8+ chars with uppercase, lowercase, number, and special character.",
+      );
+      return;
+    }
+    if (signupPassword !== signupConfirm) {
+      setSignupError("Passwords do not match.");
+      return;
+    }
     setSignupLoading(true);
     const { data, error: err } = await supabase.auth.signUp({
       email: signupEmail.trim(),
       password: signupPassword,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      },
     });
-    if (err) { setSignupError(err.message); setSignupLoading(false); return; }
+    if (err) {
+      setSignupError(err.message);
+      setSignupLoading(false);
+      return;
+    }
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -500,123 +518,123 @@ export default function OnboardingPage() {
 
   if (confirmSent) {
     return (
-        <div style={sharedAuthStyles.root}>
-          <div style={sharedAuthStyles.logo}>
-            <div style={sharedAuthStyles.logoDot}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
-            </div>
-            <span style={sharedAuthStyles.logoName}>ShiftOS</span>
+      <div style={sharedAuthStyles.root}>
+        <div style={sharedAuthStyles.logo}>
+          <div style={sharedAuthStyles.logoDot}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
           </div>
-          <div style={{ ...sharedAuthStyles.card, textAlign: "center" }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                background: "rgba(220,38,38,0.12)",
-                border: "1px solid rgba(220,38,38,0.25)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 24px",
-              }}
-            >
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#f87171"
-                strokeWidth="1.5"
-              >
-                <path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
-              </svg>
-            </div>
-            <h2
-              style={{
-                fontFamily: "'Syne', sans-serif",
-                fontWeight: 800,
-                fontSize: 28,
-                color: "#f0f0f0",
-                letterSpacing: -0.5,
-                marginBottom: 12,
-              }}
-            >
-              Check your inbox
-            </h2>
-            <p
-              style={{
-                fontSize: 14,
-                color: "rgba(255,255,255,0.4)",
-                lineHeight: 1.6,
-                marginBottom: 8,
-              }}
-            >
-              We sent a confirmation link to
-            </p>
-            <p
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#f0f0f0",
-                marginBottom: 28,
-                wordBreak: "break-all",
-              }}
-            >
-              {signupEmail}
-            </p>
-            <p
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.25)",
-                lineHeight: 1.6,
-                marginBottom: 28,
-              }}
-            >
-              Click the link to activate your account, then sign in to continue
-              your setup.
-            </p>
-            {resendSent && (
-              <p style={{ fontSize: 12, color: "#4ade80", marginBottom: 16 }}>
-                Confirmation email resent!
-              </p>
-            )}
-            <button
-              onClick={async () => {
-                setResendLoading(true);
-                setResendSent(false);
-                await supabase.auth.resend({
-                  type: "signup",
-                  email: signupEmail,
-                });
-                setResendLoading(false);
-                setResendSent(true);
-              }}
-              disabled={resendLoading}
-              style={{
-                ...sharedAuthStyles.btn,
-                background: "rgba(220,38,38,0.08)",
-                border: "1px solid rgba(220,38,38,0.2)",
-                color: "#f87171",
-              }}
-            >
-              {resendLoading ? "Sending…" : "Resend confirmation email"}
-            </button>
-            <a
-              href="/login"
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.25)",
-                textDecoration: "none",
-              }}
-            >
-              Back to sign in
-            </a>
-          </div>
+          <span style={sharedAuthStyles.logoName}>ShiftOS</span>
         </div>
-      );
+        <div style={{ ...sharedAuthStyles.card, textAlign: "center" }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              background: "rgba(220,38,38,0.12)",
+              border: "1px solid rgba(220,38,38,0.25)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 24px",
+            }}
+          >
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#f87171"
+              strokeWidth="1.5"
+            >
+              <path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+            </svg>
+          </div>
+          <h2
+            style={{
+              fontFamily: "'Syne', sans-serif",
+              fontWeight: 800,
+              fontSize: 28,
+              color: "#f0f0f0",
+              letterSpacing: -0.5,
+              marginBottom: 12,
+            }}
+          >
+            Check your inbox
+          </h2>
+          <p
+            style={{
+              fontSize: 14,
+              color: "rgba(255,255,255,0.4)",
+              lineHeight: 1.6,
+              marginBottom: 8,
+            }}
+          >
+            We sent a confirmation link to
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#f0f0f0",
+              marginBottom: 28,
+              wordBreak: "break-all",
+            }}
+          >
+            {signupEmail}
+          </p>
+          <p
+            style={{
+              fontSize: 12,
+              color: "rgba(255,255,255,0.25)",
+              lineHeight: 1.6,
+              marginBottom: 28,
+            }}
+          >
+            Click the link to activate your account, then sign in to continue
+            your setup.
+          </p>
+          {resendSent && (
+            <p style={{ fontSize: 12, color: "#4ade80", marginBottom: 16 }}>
+              Confirmation email resent!
+            </p>
+          )}
+          <button
+            onClick={async () => {
+              setResendLoading(true);
+              setResendSent(false);
+              await supabase.auth.resend({
+                type: "signup",
+                email: signupEmail,
+              });
+              setResendLoading(false);
+              setResendSent(true);
+            }}
+            disabled={resendLoading}
+            style={{
+              ...sharedAuthStyles.btn,
+              background: "rgba(220,38,38,0.08)",
+              border: "1px solid rgba(220,38,38,0.2)",
+              color: "#f87171",
+            }}
+          >
+            {resendLoading ? "Sending…" : "Resend confirmation email"}
+          </button>
+          <a
+            href="/login"
+            style={{
+              fontSize: 12,
+              color: "rgba(255,255,255,0.25)",
+              textDecoration: "none",
+            }}
+          >
+            Back to sign in
+          </a>
+        </div>
+      </div>
+    );
   }
 
   // ── Main onboarding ────────────────────────────────────────────────────────
@@ -1033,61 +1051,110 @@ export default function OnboardingPage() {
                         placeholder="901231-10-1234"
                         hint="Optional now — required within 10 days or account is terminated."
                       />
-                      {!userId && (
-                        <>
-                          <div className="ob-divider" />
-                          <Input
-                            label="Email Address"
-                            value={signupEmail}
-                            onChange={setSignupEmail}
-                            placeholder="you@example.com"
-                            type="email"
+                      <div className="ob-divider" />
+                      <Input
+                        label="Email Address"
+                        value={signupEmail}
+                        onChange={setSignupEmail}
+                        placeholder="you@example.com"
+                        type="email"
+                      />
+                      <div
+                        className={`inp-wrap ${signupPassword ? "inp-filled" : ""}`}
+                        style={{ paddingTop: 20 }}
+                      >
+                        <label className="inp-label">Password</label>
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type={showPw ? "text" : "password"}
+                            value={signupPassword}
+                            onChange={(e) => setSignupPassword(e.target.value)}
+                            placeholder="Min 8 characters"
+                            className="inp-field"
+                            autoComplete="new-password"
+                            style={{ paddingRight: 40 }}
                           />
-                          <div className={`inp-wrap ${signupPassword ? "inp-filled" : ""}`} style={{ paddingTop: 20 }}>
-                            <label className="inp-label">Password</label>
-                            <div style={{ position: "relative" }}>
-                              <input
-                                type={showPw ? "text" : "password"}
-                                value={signupPassword}
-                                onChange={(e) => setSignupPassword(e.target.value)}
-                                placeholder="Min 8 characters"
-                                className="inp-field"
-                                autoComplete="new-password"
-                                style={{ paddingRight: 40 }}
-                              />
-                              <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)", display: "flex", padding: 0 }}>
-                                {showPw
-                                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                }
-                              </button>
-                            </div>
-                            <div className="inp-line" />
-                            {signupPassword && !STRONG_PASSWORD_REGEX.test(signupPassword) && (
-                              <p className="inp-hint" style={{ color: "#f87171" }}>8+ chars with uppercase, lowercase, number, special character</p>
+                          <button
+                            type="button"
+                            onClick={() => setShowPw((p) => !p)}
+                            style={{
+                              position: "absolute",
+                              right: 0,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "rgba(255,255,255,0.25)",
+                              display: "flex",
+                              padding: 0,
+                            }}
+                          >
+                            {showPw ? (
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              >
+                                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                              </svg>
+                            ) : (
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
                             )}
-                          </div>
-                          <Input
-                            label="Confirm Password"
-                            value={signupConfirm}
-                            onChange={setSignupConfirm}
-                            placeholder="••••••••"
-                            type="password"
-                            hint={signupConfirm && signupConfirm !== signupPassword ? "Passwords do not match" : undefined}
-                          />
-                          {signupError && (
-                            <div style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6, padding: "10px 14px", color: "#f87171", fontSize: 12, marginTop: 4 }}>
-                              ⚠ {signupError}
-                            </div>
+                          </button>
+                        </div>
+                        <div className="inp-line" />
+                        {signupPassword &&
+                          !STRONG_PASSWORD_REGEX.test(signupPassword) && (
+                            <p
+                              className="inp-hint"
+                              style={{ color: "#f87171" }}
+                            >
+                              8+ chars with uppercase, lowercase, number,
+                              special character
+                            </p>
                           )}
-                        </>
-                      )}
-                      {userId && (
-                        <div style={{ padding: "8px 0 4px" }}>
-                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-                            Signed in as{" "}
-                            <strong style={{ color: "rgba(255,255,255,0.4)" }}>{userEmail}</strong>
-                          </p>
+                      </div>
+                      <Input
+                        label="Confirm Password"
+                        value={signupConfirm}
+                        onChange={setSignupConfirm}
+                        placeholder="••••••••"
+                        type="password"
+                        hint={
+                          signupConfirm && signupConfirm !== signupPassword
+                            ? "Passwords do not match"
+                            : undefined
+                        }
+                      />
+                      {signupError && (
+                        <div
+                          style={{
+                            background: "rgba(220,38,38,0.08)",
+                            border: "1px solid rgba(220,38,38,0.2)",
+                            borderRadius: 6,
+                            padding: "10px 14px",
+                            color: "#f87171",
+                            fontSize: 12,
+                            marginTop: 4,
+                          }}
+                        >
+                          ⚠ {signupError}
                         </div>
                       )}
                     </div>
@@ -1538,7 +1605,14 @@ export default function OnboardingPage() {
                 >
                   {signupLoading ? "Creating account…" : "Continue"}
                   {!signupLoading && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
                       <line x1="5" y1="12" x2="19" y2="12" />
                       <polyline points="12 5 19 12 12 19" />
                     </svg>
