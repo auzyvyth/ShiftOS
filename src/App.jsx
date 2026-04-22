@@ -7,7 +7,6 @@ import CarsPage from "./pages/CarsPage";
 import CarDetailPage from "./pages/CarDetailPage";
 import CalculatorPage from "./pages/CalculatorPage";
 import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import SalesmanPanel from "./pages/Salesmanpanel";
@@ -49,7 +48,7 @@ function App() {
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/signup" element={<OnboardingPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/auth/confirm" element={<AuthConfirmPage />} />
