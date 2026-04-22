@@ -328,6 +328,8 @@ export default function OnboardingPage() {
         is_active: true,
         onboarding_complete: false,
       });
+      setUserId(data.user.id);
+      setUserEmail(signupEmail.trim());
     }
     setSignupLoading(false);
     setConfirmSent(true);
@@ -341,7 +343,7 @@ export default function OnboardingPage() {
       setStep(next);
       setVisible(true);
       setError("");
-    }, 320);
+    }, 160);
   };
 
   const canProceed = () => {
@@ -381,6 +383,14 @@ export default function OnboardingPage() {
     if (!userId) return;
     setSubmitting(true);
     setError("");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email_confirmed_at) {
+      setError("Please verify your email before activating. Check your inbox.");
+      setSubmitting(false);
+      return;
+    }
     try {
       const isSalesman = accountType === "salesman";
       const payload = isSalesman
@@ -734,9 +744,9 @@ export default function OnboardingPage() {
         /* ── Main ── */
         .ob-main { position: relative; z-index: 2; display: flex; flex-direction: column; padding: 48px 64px; overflow-y: auto; }
         .ob-progress { height: 2px; background: var(--border); border-radius: 999px; margin-bottom: 56px; overflow: hidden; flex-shrink: 0; }
-        .ob-progress-fill { height: 100%; background: linear-gradient(90deg, var(--red) 0%, rgba(220,38,38,0.6) 100%); border-radius: 999px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 0 12px var(--red-glow); }
+        .ob-progress-fill { height: 100%; background: linear-gradient(90deg, var(--red) 0%, rgba(220,38,38,0.6) 100%); border-radius: 999px; transition: width 0.3s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 0 12px var(--red-glow); }
 
-        .ob-content { flex: 1; max-width: 560px; transition: opacity 0.28s ease, transform 0.28s ease; }
+        .ob-content { flex: 1; max-width: 560px; transition: opacity 0.15s ease, transform 0.15s ease; }
         .ob-content.hidden-forward { opacity: 0; transform: translateX(32px); }
         .ob-content.hidden-back    { opacity: 0; transform: translateX(-32px); }
         .ob-content.visible        { opacity: 1; transform: translateX(0); }
