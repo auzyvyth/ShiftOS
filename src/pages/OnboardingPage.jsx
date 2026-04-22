@@ -122,6 +122,8 @@ function Select({ label, value, onChange, options }) {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -132,6 +134,19 @@ export default function OnboardingPage() {
   const [done, setDone] = useState(false);
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
+
+  // Account creation pre-step (shown when no session)
+  const [authReady, setAuthReady] = useState(false);
+  const [needsAccount, setNeedsAccount] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState("");
+  const [confirmSent, setConfirmSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   // Step 1 — Identity
   const [fullName, setFullName] = useState("");
@@ -158,7 +173,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
-        navigate("/login");
+        setNeedsAccount(true);
+        setAuthReady(true);
         return;
       }
       const uid = data.session.user.id;
@@ -189,8 +205,36 @@ export default function OnboardingPage() {
           if (city) setCity(city);
         }
       }
+      setAuthReady(true);
     });
   }, []);
+
+  const handleSignup = async () => {
+    setSignupError("");
+    if (!signupEmail.trim()) { setSignupError("Email is required."); return; }
+    if (!STRONG_PASSWORD_REGEX.test(signupPassword)) {
+      setSignupError("Password needs 8+ chars with uppercase, lowercase, number, and special character.");
+      return;
+    }
+    if (signupPassword !== signupConfirm) { setSignupError("Passwords do not match."); return; }
+    setSignupLoading(true);
+    const { data, error: err } = await supabase.auth.signUp({
+      email: signupEmail.trim(),
+      password: signupPassword,
+    });
+    if (err) { setSignupError(err.message); setSignupLoading(false); return; }
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        email: signupEmail.trim(),
+        role: "dealer",
+        is_active: true,
+        onboarding_complete: false,
+      });
+    }
+    setSignupLoading(false);
+    setConfirmSent(true);
+  };
 
   useEffect(() => {
     if (subdomainTouched.current) return;
@@ -257,6 +301,85 @@ export default function OnboardingPage() {
   };
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+
+  if (!authReady) return null;
+
+  if (needsAccount) {
+    if (confirmSent) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#080809", fontFamily: "'DM Sans', sans-serif" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 28, height: 28, background: "#dc2626", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 20px rgba(220,38,38,0.35)" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: 4, color: "#f0f0f0", textTransform: "uppercase" }}>ShiftOS</span>
+          </div>
+          <div style={{ width: "min(440px,100%)", background: "#0f0f11", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "48px 40px", textAlign: "center" }}>
+            <div style={{ width: 64, height: 64, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
+            </div>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 28, color: "#f0f0f0", letterSpacing: -0.5, marginBottom: 12 }}>Check your inbox</h2>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 8 }}>We sent a confirmation link to</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 28, wordBreak: "break-all" }}>{signupEmail}</p>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", lineHeight: 1.6, marginBottom: 28 }}>Click the link to activate your account, then sign in to continue your setup.</p>
+            {resendSent && <p style={{ fontSize: 12, color: "#4ade80", marginBottom: 16 }}>Confirmation email resent!</p>}
+            <button onClick={async () => { setResendLoading(true); setResendSent(false); await supabase.auth.resend({ type: "signup", email: signupEmail }); setResendLoading(false); setResendSent(true); }} disabled={resendLoading} style={{ width: "100%", padding: "13px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, color: "#f87171", fontSize: 13, fontWeight: 600, cursor: resendLoading ? "not-allowed" : "pointer", marginBottom: 16 }}>
+              {resendLoading ? "Sending…" : "Resend confirmation email"}
+            </button>
+            <a href="/login" style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", textDecoration: "none" }}>Back to sign in</a>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "24px 16px", background: "#080809", fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 28, height: 28, background: "#dc2626", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 20px rgba(220,38,38,0.35)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: 4, color: "#f0f0f0", textTransform: "uppercase" }}>ShiftOS</span>
+        </div>
+        <div style={{ width: "min(440px,100%)", background: "#0f0f11", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "40px", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
+          <p style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, letterSpacing: 3, color: "#dc2626", textTransform: "uppercase", marginBottom: 8 }}>Create Account</p>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 32, color: "#f0f0f0", letterSpacing: -0.5, marginBottom: 28, lineHeight: 1.05 }}>Start your<br/>free trial.</h2>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 8, fontFamily: "'Syne', sans-serif", fontWeight: 600 }}>Email Address</label>
+            <input type="email" value={signupEmail} onChange={e => setSignupEmail(e.target.value)} placeholder="you@example.com" autoComplete="off" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "13px 16px", color: "#f0f0f0", fontFamily: "'DM Sans', sans-serif", fontSize: 14, outline: "none" }} onFocus={e => e.target.style.borderColor = "#dc2626"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 8, fontFamily: "'Syne', sans-serif", fontWeight: 600 }}>Password</label>
+            <div style={{ position: "relative" }}>
+              <input type={showPw ? "text" : "password"} value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="Min 8 characters" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "13px 44px 13px 16px", color: "#f0f0f0", fontFamily: "'DM Sans', sans-serif", fontSize: 14, outline: "none" }} onFocus={e => e.target.style.borderColor = "#dc2626"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+              <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)", display: "flex" }}>
+                {showPw ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 8, fontFamily: "'Syne', sans-serif", fontWeight: 600 }}>Confirm Password</label>
+            <input type="password" value={signupConfirm} onChange={e => setSignupConfirm(e.target.value)} placeholder="••••••••" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "13px 16px", color: "#f0f0f0", fontFamily: "'DM Sans', sans-serif", fontSize: 14, outline: "none" }} onFocus={e => e.target.style.borderColor = "#dc2626"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+          </div>
+
+          {signupError && <div style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6, padding: "10px 14px", color: "#f87171", fontSize: 12, marginBottom: 16 }}>⚠ {signupError}</div>}
+
+          <button onClick={handleSignup} disabled={signupLoading} style={{ width: "100%", padding: "14px", background: "#dc2626", border: "none", borderRadius: 4, color: "#fff", fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", cursor: signupLoading ? "not-allowed" : "pointer", opacity: signupLoading ? 0.5 : 1, marginBottom: 16 }}>
+            {signupLoading ? "Creating account…" : "Create Account →"}
+          </button>
+
+          <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
+            Already have an account?{" "}
+            <a href="/login" style={{ color: "#f87171", textDecoration: "none" }}>Sign in</a>
+          </p>
+        </div>
+        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.1)", letterSpacing: 1, textTransform: "uppercase" }}>14-day free trial · No credit card required</p>
+      </div>
+    );
+  }
 
   return (
     <>
