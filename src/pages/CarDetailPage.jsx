@@ -397,9 +397,15 @@ export default function CarDetailPage() {
       dealer_id: car.dealer_id,
       metadata: { source: 'storefront', price: car.selling_price },
     });
-    if (car?.dealer_id) {
+    const { data: listing } = await supabase
+      .from('car_listings')
+      .select('dealer_id, assigned_to')
+      .eq('id', car.id)
+      .single();
+    if (listing) {
       const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
-        dealer_id: car.dealer_id,
+        dealer_id: listing.dealer_id,
+        salesman_id: listing.assigned_to,
         listing_id: car.id,
         buyer_name: enquiryForm.name,
         buyer_phone: enquiryForm.phone,
