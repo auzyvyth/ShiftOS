@@ -998,16 +998,31 @@ export default function CarDetailPage() {
 
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', margin: '16px 0 12px' }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                {(dealer?.site_logo_url || dealer?.avatar_url)
-                  ? <img src={dealer.site_logo_url || dealer.avatar_url} alt={dealerName} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                  : <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
-                }
-                <div>
-                  <p style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>{dealerName}</p>
-                  <p style={{ fontSize: '11px', color: '#6b7280' }}>Verified Dealer</p>
-                </div>
-              </div>
+              {(() => {
+                const isAgent = !!salesmanProfile;
+                const displayName = isAgent
+                  ? (salesmanProfile.full_name || 'Agent')
+                  : dealerName;
+                const avatarSrc = isAgent
+                  ? salesmanProfile.avatar_url
+                  : (dealer?.site_logo_url || dealer?.avatar_url);
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    {avatarSrc
+                      ? <img src={avatarSrc} alt={displayName} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      : <div style={{ width: 28, height: 28, borderRadius: '50%', background: isAgent ? '#1d4ed8' : 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                          {displayName[0]?.toUpperCase()}
+                        </div>
+                    }
+                    <div>
+                      <p style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>{displayName}</p>
+                      <p style={{ fontSize: '11px', color: isAgent ? '#60a5fa' : '#6b7280' }}>
+                        {isAgent ? 'Independent Agent' : 'Verified Dealer'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {listedDays !== null && (
                 <p style={{ fontSize: '11px', color: '#6b7280', marginTop: 10 }}>
