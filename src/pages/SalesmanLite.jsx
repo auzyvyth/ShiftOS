@@ -20,6 +20,8 @@ import {
   GitMerge,
   AlertCircle,
   CheckCircle2,
+  Trash2,
+  Send,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -109,6 +111,31 @@ const STAGE_COLOR = {
   },
 };
 
+const STAGE_WEIGHT = {
+  new: 1,
+  contacted: 2,
+  viewing_booked: 3,
+  test_drive: 4,
+  negotiating: 5,
+  deposit_taken: 6,
+};
+
+const getHeatScore = (lead) => {
+  const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
+  const daysStale = lead.updated_at
+    ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
+    : 0;
+  const penalty = Math.min(daysStale * 0.5, 3);
+  const score = stageWeight - penalty;
+  if (score >= 4)
+    return { score, emoji: "🔥", label: "hot", color: "#f87171" };
+  if (score >= 2)
+    return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
+  return { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
+};
+
+const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -137,6 +164,11 @@ export default function SalesmanLite() {
     stage: "new",
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [lostPromptId, setLostPromptId] = useState(null);
+  const [waModalLead, setWaModalLead] = useState(null);
+  const [waModalMessage, setWaModalMessage] = useState("");
+  const [waSending, setWaSending] = useState(false);
 
   // merge
   const [mergeCode, setMergeCode] = useState("");
@@ -228,7 +260,10 @@ export default function SalesmanLite() {
           .from("analytics_events")
           .select("event_type, car_id, car_name, created_at")
           .eq("salesman_slug", slug)
-          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          .gte(
+            "created_at",
+            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          )
           .then(({ data: evts }) => setAnalyticsEvents(evts || []));
       }
 
@@ -245,62 +280,94 @@ export default function SalesmanLite() {
 
           channelRef.current = supabase
             .channel("salesman-lite-rt-" + uid)
-            .on("postgres_changes", {
-              event: "*",
-              schema: "public",
-              table: "leads",
-              filter: `salesman_id=eq.${uid}`,
-            }, (payload) => {
-              if (payload.eventType === "INSERT")
-                setLeads((p) => [payload.new, ...p]);
-              if (payload.eventType === "UPDATE")
-                setLeads((p) =>
-                  p.map((l) => (l.id === payload.new.id ? { ...l, ...payload.new } : l))
-                );
-              if (payload.eventType === "DELETE")
-                setLeads((p) => p.filter((l) => l.id !== payload.old.id));
-            })
-            .on("postgres_changes", {
-              event: "INSERT",
-              schema: "public",
-              table: "salesman_notifications",
-              filter: `salesman_id=eq.${uid}`,
-            }, (payload) => {
-              toast(payload.new.title, { description: payload.new.body });
-            })
-            .on("postgres_changes", {
-              event: "*",
-              schema: "public",
-              table: "whatsapp_enquiries",
-              filter: `dealer_id=eq.${uid}`,
-            }, (payload) => {
-              if (payload.eventType === "INSERT") {
-                setEnquiries((p) => [payload.new, ...p]);
-                toast("New enquiry!", { description: payload.new.buyer_name || "Someone enquired" });
-              }
-              if (payload.eventType === "UPDATE")
-                setEnquiries((p) => p.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e));
-            })
-            .on("postgres_changes", {
-              event: "*",
-              schema: "public",
-              table: "appointments",
-              filter: `salesman_id=eq.${uid}`,
-            }, (payload) => {
-              if (payload.eventType === "INSERT") {
-                setAppointments((p) => [payload.new, ...p]);
-                toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
-              }
-              if (payload.eventType === "UPDATE")
-                setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
-            })
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "leads",
+                filter: `salesman_id=eq.${uid}`,
+              },
+              (payload) => {
+                if (payload.eventType === "INSERT")
+                  setLeads((p) => [payload.new, ...p]);
+                if (payload.eventType === "UPDATE")
+                  setLeads((p) =>
+                    p.map((l) =>
+                      l.id === payload.new.id ? { ...l, ...payload.new } : l,
+                    ),
+                  );
+                if (payload.eventType === "DELETE")
+                  setLeads((p) => p.filter((l) => l.id !== payload.old.id));
+              },
+            )
+            .on(
+              "postgres_changes",
+              {
+                event: "INSERT",
+                schema: "public",
+                table: "salesman_notifications",
+                filter: `salesman_id=eq.${uid}`,
+              },
+              (payload) => {
+                toast(payload.new.title, { description: payload.new.body });
+              },
+            )
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "whatsapp_enquiries",
+                filter: `dealer_id=eq.${uid}`,
+              },
+              (payload) => {
+                if (payload.eventType === "INSERT") {
+                  setEnquiries((p) => [payload.new, ...p]);
+                  toast("New enquiry!", {
+                    description: payload.new.buyer_name || "Someone enquired",
+                  });
+                }
+                if (payload.eventType === "UPDATE")
+                  setEnquiries((p) =>
+                    p.map((e) =>
+                      e.id === payload.new.id ? { ...e, ...payload.new } : e,
+                    ),
+                  );
+              },
+            )
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "appointments",
+                filter: `salesman_id=eq.${uid}`,
+              },
+              (payload) => {
+                if (payload.eventType === "INSERT") {
+                  setAppointments((p) => [payload.new, ...p]);
+                  toast("New booking!", {
+                    description: payload.new.buyer_name || "New appointment",
+                  });
+                }
+                if (payload.eventType === "UPDATE")
+                  setAppointments((p) =>
+                    p.map((a) =>
+                      a.id === payload.new.id ? { ...a, ...payload.new } : a,
+                    ),
+                  );
+              },
+            )
             .subscribe();
         });
 
       // fetch appointments
       supabase
         .from("appointments")
-        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, car_listings(brand, model, year)")
+        .select(
+          "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, car_listings(brand, model, year)",
+        )
         .eq("salesman_id", uid)
         .eq("dealer_id", uid)
         .order("appointment_date", { ascending: false })
@@ -309,7 +376,9 @@ export default function SalesmanLite() {
       // fetch enquiries
       supabase
         .from("whatsapp_enquiries")
-        .select("id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)")
+        .select(
+          "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
+        )
         .eq("dealer_id", uid)
         .order("created_at", { ascending: false })
         .then(({ data: enqs }) => setEnquiries(enqs || []));
@@ -345,34 +414,84 @@ export default function SalesmanLite() {
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
   };
 
-  const pingWA = async (lead) => {
+  const pingWA = (lead) => {
     const car = lead.car_listings;
     const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
     const name = lead.buyer_name || "kawan";
-    const phone = (lead.phone || "").replace(/\D/g, "");
-    const msg = encodeURIComponent(
-      `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`,
-    );
+    const defaultMsg = `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`;
+    setWaModalLead(lead);
+    setWaModalMessage(defaultMsg);
+  };
+
+  const sendWAFromModal = async () => {
+    if (!waModalLead) return;
+    setWaSending(true);
+    const phone = (waModalLead.phone || "").replace(/\D/g, "");
     if (phone) {
       window.open(
-        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
+        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMessage)}`,
         "_blank",
         "noopener,noreferrer",
       );
     }
     const now = new Date().toISOString();
-    await supabase.from("leads").update({ updated_at: now }).eq("id", lead.id);
+    await supabase
+      .from("leads")
+      .update({ updated_at: now })
+      .eq("id", waModalLead.id);
     await supabase.from("lead_activities").insert({
-      lead_id: lead.id,
+      lead_id: waModalLead.id,
       activity_type: "whatsapp_sent",
-      note: "Follow-up WA sent via stale nudge",
+      note: "Custom WA message sent",
       created_by: userId,
-      dealer_id: lead.dealer_id ?? null,
+      dealer_id: waModalLead.dealer_id ?? null,
     });
-    setStaleLeads((p) => p.filter((l) => l.id !== lead.id));
+    setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
     setLeads((p) =>
-      p.map((l) => (l.id === lead.id ? { ...l, updated_at: now } : l)),
+      p.map((l) =>
+        l.id === waModalLead.id ? { ...l, updated_at: now } : l,
+      ),
     );
+    setWaSending(false);
+    setWaModalLead(null);
+    setWaModalMessage("");
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    await supabase
+      .from("leads")
+      .update({ is_deleted: true })
+      .eq("id", leadId);
+    setLeads((p) => p.filter((l) => l.id !== leadId));
+    setDeleteConfirmId(null);
+  };
+
+  const handleLostReason = async (leadId, reason) => {
+    const lead = leads.find((l) => l.id === leadId);
+    const oldStage = lead?.stage ?? null;
+    const dealerId = lead?.dealer_id ?? null;
+    const now = new Date().toISOString();
+    await supabase
+      .from("leads")
+      .update({ stage: "lost", lost_reason: reason, updated_at: now })
+      .eq("id", leadId);
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "stage_changed",
+      from_stage: oldStage,
+      to_stage: "lost",
+      note: `Lost reason: ${reason}`,
+      created_by: userId,
+      dealer_id: dealerId,
+    });
+    setLeads((p) =>
+      p.map((l) =>
+        l.id === leadId
+          ? { ...l, stage: "lost", lost_reason: reason, updated_at: now }
+          : l,
+      ),
+    );
+    setLostPromptId(null);
   };
 
   const handleAddLead = async () => {
@@ -390,6 +509,7 @@ export default function SalesmanLite() {
         stage: "new",
         lead_source: "manual",
         is_deleted: false,
+        lost_reason: null,
       })
       .select()
       .single();
@@ -436,7 +556,9 @@ export default function SalesmanLite() {
       .update({ dealer_id: data.dealer_id })
       .eq("assigned_to", profile.id)
       .is("dealer_id", null);
-    await supabase.rpc("use_dealer_invite", { invite_code: mergeCode.trim().toUpperCase() });
+    await supabase.rpc("use_dealer_invite", {
+      invite_code: mergeCode.trim().toUpperCase(),
+    });
 
     setMergeStatus("success");
     setMergeMsg("Merged! Redirecting to full dashboard...");
@@ -501,7 +623,8 @@ export default function SalesmanLite() {
       tab: "bookings",
       label: "Bookings",
       icon: <Phone style={{ width: 14, height: 14 }} />,
-      badge: appointments.filter((a) => a.status === "confirmed").length || null,
+      badge:
+        appointments.filter((a) => a.status === "confirmed").length || null,
     },
     {
       tab: "merge",
@@ -534,7 +657,8 @@ export default function SalesmanLite() {
       tab: "bookings",
       label: "Bookings",
       icon: <Phone size={18} />,
-      badge: appointments.filter((a) => a.status === "confirmed").length || null,
+      badge:
+        appointments.filter((a) => a.status === "confirmed").length || null,
     },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
   ];
@@ -550,9 +674,11 @@ export default function SalesmanLite() {
       const d = new Date(a.appointment_date);
       if (isNaN(d)) return false;
       const today = new Date();
-      return d.getDate() === today.getDate() &&
-             d.getMonth() === today.getMonth() &&
-             d.getFullYear() === today.getFullYear();
+      return (
+        d.getDate() === today.getDate() &&
+        d.getMonth() === today.getMonth() &&
+        d.getFullYear() === today.getFullYear()
+      );
     }).length;
     const kpis = [
       { label: "Active Leads", value: activeLeads.length, color: "#93c5fd" },
@@ -564,25 +690,37 @@ export default function SalesmanLite() {
         warn: staleLeads.length > 0,
       },
       { label: "Appts Today", value: todayAppts, color: "#c084fc" },
-      { label: "New Enquiries", value: enquiries.filter((e) => e.status === "new").length, color: "#c084fc" },
+      {
+        label: "New Enquiries",
+        value: enquiries.filter((e) => e.status === "new").length,
+        color: "#c084fc",
+      },
     ];
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
       const views = carEvts.filter((e) => e.event_type === "car_view").length;
-      const waTaps = carEvts.filter((e) => e.event_type === "whatsapp_click").length;
+      const waTaps = carEvts.filter(
+        (e) => e.event_type === "whatsapp_click",
+      ).length;
       const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-    const totalViews = analyticsEvents.filter((e) => e.event_type === "car_view").length;
-    const totalWATaps = analyticsEvents.filter((e) => e.event_type === "whatsapp_click").length;
+    const totalViews = analyticsEvents.filter(
+      (e) => e.event_type === "car_view",
+    ).length;
+    const totalWATaps = analyticsEvents.filter(
+      (e) => e.event_type === "whatsapp_click",
+    ).length;
     const bestCVRStat = listingStats.reduce((best, s) => {
       if (s.cvr !== null && (best === null || s.cvr > best.cvr)) return s;
       return best;
     }, null);
-    const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
-    const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
+    const cvrColor = (cvr) =>
+      cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
+    const perfCarName = (car) =>
+      [car.year, car.brand, car.model].filter(Boolean).join(" ");
 
     return (
       <div>
@@ -644,66 +782,293 @@ export default function SalesmanLite() {
 
         {/* My Performance */}
         <div style={{ marginBottom: 24 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <p
+            style={{
+              margin: "0 0 12px",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
             My Performance (30d)
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
-            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Views</p>
-              <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#93c5fd" }}>{totalViews}</p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 11,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                Total Views
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 26,
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  letterSpacing: "1px",
+                  color: "#93c5fd",
+                }}
+              >
+                {totalViews}
+              </p>
             </div>
-            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>WA Taps</p>
-              <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#4ade80" }}>{totalWATaps}</p>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 11,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                WA Taps
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 26,
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  letterSpacing: "1px",
+                  color: "#4ade80",
+                }}
+              >
+                {totalWATaps}
+              </p>
             </div>
-            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Best CVR</p>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 11,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                Best CVR
+              </p>
               {bestCVRStat ? (
                 <>
-                  <p style={{ margin: "0 0 2px", fontSize: 22, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: cvrColor(bestCVRStat.cvr) }}>
+                  <p
+                    style={{
+                      margin: "0 0 2px",
+                      fontSize: 22,
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      letterSpacing: "1px",
+                      color: cvrColor(bestCVRStat.cvr),
+                    }}
+                  >
                     {bestCVRStat.cvr.toFixed(1)}%
                   </p>
-                  <p style={{ margin: 0, fontSize: 9, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 9,
+                      color: "#4b5563",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {perfCarName(bestCVRStat.car)}
                   </p>
                 </>
               ) : (
-                <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#374151" }}>—</p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 26,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    letterSpacing: "1px",
+                    color: "#374151",
+                  }}
+                >
+                  —
+                </p>
               )}
             </div>
           </div>
 
           {listingStats.length > 0 && (
-            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 42px 42px 42px 52px", padding: "7px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.06em" }}>Listing</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>Views</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>WA</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>Enq</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "right" }}>CVR</p>
-              </div>
-              {listingStats.map(({ car, views, waTaps, enqCount, cvr }, idx) => (
-                <div
-                  key={car.id}
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 42px 42px 42px 52px",
+                  padding: "7px 12px",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <p
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 42px 42px 42px 52px",
-                    padding: "8px 12px",
-                    alignItems: "center",
-                    borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#374151",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
                   }}
                 >
-                  <p style={{ margin: 0, fontSize: 11, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 6 }}>
-                    {perfCarName(car)}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#93c5fd", textAlign: "center" }}>{views}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4ade80", textAlign: "center" }}>{waTaps}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#c084fc", textAlign: "center" }}>{enqCount}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textAlign: "right", color: cvr !== null ? cvrColor(cvr) : "#374151" }}>
-                    {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
-                  </p>
-                </div>
-              ))}
+                  Listing
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#374151",
+                    textAlign: "center",
+                  }}
+                >
+                  Views
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#374151",
+                    textAlign: "center",
+                  }}
+                >
+                  WA
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#374151",
+                    textAlign: "center",
+                  }}
+                >
+                  Enq
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#374151",
+                    textAlign: "right",
+                  }}
+                >
+                  CVR
+                </p>
+              </div>
+              {listingStats.map(
+                ({ car, views, waTaps, enqCount, cvr }, idx) => (
+                  <div
+                    key={car.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 42px 42px 42px 52px",
+                      padding: "8px 12px",
+                      alignItems: "center",
+                      borderBottom:
+                        idx < listingStats.length - 1
+                          ? "1px solid rgba(255,255,255,0.04)"
+                          : "none",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 11,
+                        color: "#e5e7eb",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        paddingRight: 6,
+                      }}
+                    >
+                      {perfCarName(car)}
+                    </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#93c5fd",
+                        textAlign: "center",
+                      }}
+                    >
+                      {views}
+                    </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#4ade80",
+                        textAlign: "center",
+                      }}
+                    >
+                      {waTaps}
+                    </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#c084fc",
+                        textAlign: "center",
+                      }}
+                    >
+                      {enqCount}
+                    </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textAlign: "right",
+                        color: cvr !== null ? cvrColor(cvr) : "#374151",
+                      }}
+                    >
+                      {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
+                    </p>
+                  </div>
+                ),
+              )}
             </div>
           )}
         </div>
@@ -1038,8 +1403,15 @@ export default function SalesmanLite() {
   // ── RENDER LEADS ──────────────────────────────────────────────────────────
 
   const renderLeads = () => {
-    const activeStages = LEAD_STAGES.filter((s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won");
-    const lostLeads = leads.filter((l) => l.stage === "lost" || l.stage === "closed_lost" || l.stage === "closed_won");
+    const activeStages = LEAD_STAGES.filter(
+      (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
+    );
+    const lostLeads = leads.filter(
+      (l) =>
+        l.stage === "lost" ||
+        l.stage === "closed_lost" ||
+        l.stage === "closed_won",
+    );
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
@@ -1050,9 +1422,16 @@ export default function SalesmanLite() {
         ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
         : null;
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
-      const nextStage = LEAD_STAGES
-        .filter((s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost")
-        .find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
+      const nextStage = LEAD_STAGES.filter(
+        (s) =>
+          s !== "lost" &&
+          s !== "won" &&
+          s !== "closed_won" &&
+          s !== "closed_lost",
+      ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
+      const heat = getHeatScore(lead);
+      const isConfirmingDelete = deleteConfirmId === lead.id;
+      const isPromptingLost = lostPromptId === lead.id;
 
       return (
         <div
@@ -1080,10 +1459,58 @@ export default function SalesmanLite() {
                 fontWeight: 600,
                 color: "#e5e7eb",
                 lineHeight: 1.3,
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
               {lead.buyer_name || "—"}
             </p>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
+              <span
+                title={`${heat.label} · score ${heat.score.toFixed(1)}`}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: heat.color,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 99,
+                  padding: "1px 6px",
+                  lineHeight: 1.4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {heat.emoji} {heat.score.toFixed(1)}
+              </span>
+              <button
+                onClick={() => {
+                  setLostPromptId(null);
+                  setDeleteConfirmId(lead.id);
+                }}
+                title="Delete lead"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  padding: 2,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
           </div>
           <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
             Added {timeAgo(lead.created_at)}
@@ -1125,13 +1552,39 @@ export default function SalesmanLite() {
               "{lead.notes}"
             </p>
           )}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {nextStage && lead.stage !== "won" && (
+          {isConfirmingDelete ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexWrap: "wrap",
+                padding: "4px 0",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>
+                Delete?
+              </span>
               <button
-                onClick={() => updateLeadStage(lead.id, nextStage)}
+                onClick={() => handleDeleteLead(lead.id)}
                 style={{
                   fontSize: 10,
-                  padding: "3px 7px",
+                  padding: "3px 9px",
+                  borderRadius: 5,
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#f87171",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 9px",
                   borderRadius: 5,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -1139,42 +1592,132 @@ export default function SalesmanLite() {
                   cursor: "pointer",
                 }}
               >
-                → {nextStage.replace(/_/g, " ")}
+                No
               </button>
-            )}
-            {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
+            </div>
+          ) : isPromptingLost ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                flexWrap: "wrap",
+                padding: "4px 0",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "#9ca3af",
+                  fontWeight: 600,
+                  marginRight: 2,
+                }}
+              >
+                Why lost?
+              </span>
+              {LOST_REASONS.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => handleLostReason(lead.id, r)}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 8px",
+                    borderRadius: 99,
+                    background: "rgba(148,163,184,0.08)",
+                    border: "1px solid rgba(148,163,184,0.2)",
+                    color: "#cbd5e1",
+                    cursor: "pointer",
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
               <button
-                onClick={() => updateLeadStage(lead.id, "won")}
+                onClick={() => setLostPromptId(null)}
                 style={{
                   fontSize: 10,
                   padding: "3px 7px",
                   borderRadius: 5,
-                  background: "rgba(34,197,94,0.08)",
-                  border: "1px solid rgba(34,197,94,0.2)",
-                  color: "#4ade80",
+                  background: "transparent",
+                  border: "none",
+                  color: "#4b5563",
                   cursor: "pointer",
                 }}
               >
-                → Won
+                ✕
               </button>
-            )}
-            {lead.phone && (
-              <button
-                onClick={() => pingWA(lead)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 7px",
-                  borderRadius: 5,
-                  background: "rgba(37,211,102,0.1)",
-                  border: "1px solid rgba(37,211,102,0.2)",
-                  color: "#4ade80",
-                  cursor: "pointer",
-                }}
-              >
-                WA
-              </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {nextStage && lead.stage !== "won" && (
+                <button
+                  onClick={() => updateLeadStage(lead.id, nextStage)}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 7px",
+                    borderRadius: 5,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                  }}
+                >
+                  → {nextStage.replace(/_/g, " ")}
+                </button>
+              )}
+              {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
+                <button
+                  onClick={() => updateLeadStage(lead.id, "won")}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 7px",
+                    borderRadius: 5,
+                    background: "rgba(34,197,94,0.08)",
+                    border: "1px solid rgba(34,197,94,0.2)",
+                    color: "#4ade80",
+                    cursor: "pointer",
+                  }}
+                >
+                  → Won
+                </button>
+              )}
+              {lead.stage !== "won" && (
+                <button
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setLostPromptId(lead.id);
+                  }}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 7px",
+                    borderRadius: 5,
+                    background: "rgba(148,163,184,0.06)",
+                    border: "1px solid rgba(148,163,184,0.18)",
+                    color: "#9ca3af",
+                    cursor: "pointer",
+                  }}
+                >
+                  → Lost
+                </button>
+              )}
+              {lead.phone && (
+                <button
+                  onClick={() => pingWA(lead)}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 7px",
+                    borderRadius: 5,
+                    background: "rgba(37,211,102,0.1)",
+                    border: "1px solid rgba(37,211,102,0.2)",
+                    color: "#4ade80",
+                    cursor: "pointer",
+                  }}
+                >
+                  WA
+                </button>
+              )}
+            </div>
+          )}
         </div>
       );
     };
@@ -1236,7 +1779,11 @@ export default function SalesmanLite() {
         >
           {activeStages.map((stage) => {
             const sc = STAGE_COLOR[stage] || {};
-            const stageLeads = leads.filter((l) => l.stage === stage);
+            const stageLeads = leads
+              .filter((l) => l.stage === stage)
+              .sort(
+                (a, b) => getHeatScore(b).score - getHeatScore(a).score,
+              );
             return (
               <div
                 key={stage}
@@ -1352,16 +1899,69 @@ export default function SalesmanLite() {
                       opacity: 0.65,
                     }}
                   >
-                    <p
+                    <div
                       style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#9ca3af",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 6,
                       }}
                     >
-                      {lead.buyer_name || "—"}
-                    </p>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#9ca3af",
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {lead.buyer_name || "—"}
+                      </p>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {lead.lost_reason && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              padding: "1px 7px",
+                              borderRadius: 99,
+                              background: "rgba(148,163,184,0.08)",
+                              border: "1px solid rgba(148,163,184,0.2)",
+                              color: "#cbd5e1",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {lead.lost_reason}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setDeleteConfirmId(lead.id)}
+                          title="Delete lead"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#4b5563",
+                            cursor: "pointer",
+                            padding: 2,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
                     <p
                       style={{
                         margin: "2px 0 0",
@@ -1371,6 +1971,56 @@ export default function SalesmanLite() {
                     >
                       {timeAgo(lead.created_at)}
                     </p>
+                    {deleteConfirmId === lead.id && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginTop: 6,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#f87171",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Delete?
+                        </span>
+                        <button
+                          onClick={() => handleDeleteLead(lead.id)}
+                          style={{
+                            fontSize: 10,
+                            padding: "3px 9px",
+                            borderRadius: 5,
+                            background: "rgba(239,68,68,0.12)",
+                            border: "1px solid rgba(239,68,68,0.3)",
+                            color: "#f87171",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(null)}
+                          style={{
+                            fontSize: 10,
+                            padding: "3px 9px",
+                            borderRadius: 5,
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            color: "#6b7280",
+                            cursor: "pointer",
+                          }}
+                        >
+                          No
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1385,11 +2035,20 @@ export default function SalesmanLite() {
 
   const renderEnquiries = () => (
     <div>
-      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+      <p
+        style={{
+          margin: "0 0 16px",
+          fontSize: 16,
+          fontWeight: 600,
+          color: "#f1f5f9",
+        }}
+      >
         Enquiries ({enquiries.length})
       </p>
       {enquiries.length === 0 && (
-        <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+        <div
+          style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
+        >
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
           <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
         </div>
@@ -1398,23 +2057,78 @@ export default function SalesmanLite() {
         {enquiries.map((enq) => {
           const car = enq.car_listings;
           return (
-            <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
-                <span style={{
-                  fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0,
-                  background: enq.status === "new" ? "rgba(96,165,250,0.12)" : "rgba(34,197,94,0.12)",
-                  border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : "rgba(34,197,94,0.3)"}`,
-                  color: enq.status === "new" ? "#93c5fd" : "#4ade80",
-                  textTransform: "capitalize",
-                }}>
+            <div
+              key={enq.id}
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginBottom: 4,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#e5e7eb",
+                  }}
+                >
+                  {enq.buyer_name || "—"}
+                </p>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 7px",
+                    borderRadius: 99,
+                    flexShrink: 0,
+                    background:
+                      enq.status === "new"
+                        ? "rgba(96,165,250,0.12)"
+                        : "rgba(34,197,94,0.12)",
+                    border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : "rgba(34,197,94,0.3)"}`,
+                    color: enq.status === "new" ? "#93c5fd" : "#4ade80",
+                    textTransform: "capitalize",
+                  }}
+                >
                   {enq.status}
                 </span>
               </div>
-              {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-              {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
+              {car && (
+                <p
+                  style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}
+                >
+                  {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                </p>
+              )}
+              {enq.buyer_phone && (
+                <p
+                  style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}
+                >
+                  📞 {enq.buyer_phone}
+                </p>
+              )}
               {enq.buyer_message && (
-                <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p
+                  style={{
+                    margin: "0 0 8px",
+                    fontSize: 11,
+                    color: "#4b5563",
+                    fontStyle: "italic",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   "{enq.buyer_message}"
                 </p>
               )}
@@ -1424,11 +2138,27 @@ export default function SalesmanLite() {
                     onClick={() => {
                       const phone = enq.buyer_phone.replace(/\D/g, "");
                       const enqCar = enq.car_listings;
-                      const carName = enqCar ? `${enqCar.brand} ${enqCar.model}` : "kereta";
-                      const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`);
-                      window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                      const carName = enqCar
+                        ? `${enqCar.brand} ${enqCar.model}`
+                        : "kereta";
+                      const msg = encodeURIComponent(
+                        `Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`,
+                      );
+                      window.open(
+                        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
                     }}
-                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(37,211,102,0.1)",
+                      border: "1px solid rgba(37,211,102,0.2)",
+                      color: "#4ade80",
+                      cursor: "pointer",
+                    }}
                   >
                     WA Reply
                   </button>
@@ -1436,16 +2166,33 @@ export default function SalesmanLite() {
                 {enq.status === "new" && (
                   <button
                     onClick={async () => {
-                      await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
-                      setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+                      await supabase
+                        .from("whatsapp_enquiries")
+                        .update({ status: "responded" })
+                        .eq("id", enq.id);
+                      setEnquiries((p) =>
+                        p.map((e) =>
+                          e.id === enq.id ? { ...e, status: "responded" } : e,
+                        ),
+                      );
                     }}
-                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "#6b7280",
+                      cursor: "pointer",
+                    }}
                   >
                     Mark Responded
                   </button>
                 )}
               </div>
-              <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
+              <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>
+                {timeAgo(enq.created_at)}
+              </p>
             </div>
           );
         })}
@@ -1457,11 +2204,20 @@ export default function SalesmanLite() {
 
   const renderBookings = () => (
     <div>
-      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+      <p
+        style={{
+          margin: "0 0 16px",
+          fontSize: 16,
+          fontWeight: 600,
+          color: "#f1f5f9",
+        }}
+      >
         Bookings ({appointments.length})
       </p>
       {appointments.length === 0 && (
-        <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+        <div
+          style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
+        >
           <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
           <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
         </div>
@@ -1469,39 +2225,131 @@ export default function SalesmanLite() {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {appointments.map((apt) => {
           const car = apt.car_listings;
-          const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-          const dateStr = aptDate && !isNaN(aptDate)
-            ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
-            : "—";
-          const timeStr = aptDate && !isNaN(aptDate)
-            ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
-            : "";
+          const aptDate = apt.appointment_date
+            ? new Date(apt.appointment_date)
+            : null;
+          const dateStr =
+            aptDate && !isNaN(aptDate)
+              ? aptDate.toLocaleDateString("en-MY", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "—";
+          const timeStr =
+            aptDate && !isNaN(aptDate)
+              ? aptDate.toLocaleTimeString("en-MY", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
           return (
-            <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{apt.buyer_name || "—"}</p>
-                <span style={{
-                  fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0,
-                  background: apt.status === "confirmed" ? "rgba(34,197,94,0.12)" : "rgba(251,191,36,0.12)",
-                  border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
-                  color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
-                  textTransform: "capitalize",
-                }}>
+            <div
+              key={apt.id}
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginBottom: 4,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#e5e7eb",
+                  }}
+                >
+                  {apt.buyer_name || "—"}
+                </p>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 7px",
+                    borderRadius: 99,
+                    flexShrink: 0,
+                    background:
+                      apt.status === "confirmed"
+                        ? "rgba(34,197,94,0.12)"
+                        : "rgba(251,191,36,0.12)",
+                    border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
+                    color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
+                    textTransform: "capitalize",
+                  }}
+                >
                   {apt.status}
                 </span>
               </div>
-              <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>📅 {dateStr}{timeStr && ` · ${timeStr}`}</p>
-              {car && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-              {apt.buyer_phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>}
-              {apt.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
+              <p
+                style={{
+                  margin: "0 0 2px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#93c5fd",
+                }}
+              >
+                📅 {dateStr}
+                {timeStr && ` · ${timeStr}`}
+              </p>
+              {car && (
+                <p
+                  style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}
+                >
+                  {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                </p>
+              )}
+              {apt.buyer_phone && (
+                <p
+                  style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}
+                >
+                  📞 {apt.buyer_phone}
+                </p>
+              )}
+              {apt.notes && (
+                <p
+                  style={{
+                    margin: "0 0 6px",
+                    fontSize: 10,
+                    color: "#4b5563",
+                    fontStyle: "italic",
+                  }}
+                >
+                  "{apt.notes}"
+                </p>
+              )}
               {apt.buyer_phone && (
                 <button
                   onClick={() => {
                     const phone = apt.buyer_phone.replace(/\D/g, "");
-                    const msg = encodeURIComponent(`Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`);
-                    window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                    const msg = encodeURIComponent(
+                      `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`,
+                    );
+                    window.open(
+                      `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
                   }}
-                  style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 9px",
+                    borderRadius: 6,
+                    background: "rgba(37,211,102,0.1)",
+                    border: "1px solid rgba(37,211,102,0.2)",
+                    color: "#4ade80",
+                    cursor: "pointer",
+                  }}
                 >
                   WA Reminder
                 </button>
@@ -1759,6 +2607,152 @@ export default function SalesmanLite() {
             >
               {addLeadSaving ? "Saving..." : "Add Lead"}
             </button>
+          </div>
+        </div>
+      </div>
+    );
+
+  // ── WA MESSAGE MODAL ──────────────────────────────────────────────────────
+
+  const renderWAModal = () =>
+    waModalLead && (
+      <div
+        onClick={() => !waSending && setWaModalLead(null)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.78)",
+          zIndex: 999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "#111827",
+            borderRadius: isMobile ? "16px 16px 0 0" : 12,
+            width: isMobile ? "100%" : 480,
+            maxHeight: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#f1f5f9",
+                  }}
+                >
+                  Send WhatsApp
+                </p>
+                <p
+                  style={{
+                    margin: "2px 0 0",
+                    fontSize: 11,
+                    color: "#6b7280",
+                  }}
+                >
+                  To {waModalLead.buyer_name || "—"}
+                  {waModalLead.phone ? ` · ${waModalLead.phone}` : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => setWaModalLead(null)}
+                disabled={waSending}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#6b7280",
+                  cursor: waSending ? "not-allowed" : "pointer",
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <label
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Message
+            </label>
+            <textarea
+              value={waModalMessage}
+              onChange={(e) => setWaModalMessage(e.target.value)}
+              rows={6}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8,
+                color: "#e5e7eb",
+                fontSize: 13,
+                padding: "10px 12px",
+                outline: "none",
+                boxSizing: "border-box",
+                fontFamily: "'DM Sans', sans-serif",
+                resize: "vertical",
+                lineHeight: 1.5,
+              }}
+            />
+            <button
+              onClick={sendWAFromModal}
+              disabled={
+                !waModalMessage.trim() || !waModalLead.phone || waSending
+              }
+              style={{
+                marginTop: 16,
+                width: "100%",
+                padding: "10px",
+                borderRadius: 8,
+                background: "#16a34a",
+                border: "none",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                opacity:
+                  !waModalMessage.trim() || !waModalLead.phone || waSending
+                    ? 0.6
+                    : 1,
+              }}
+            >
+              <Send size={13} />
+              {waSending ? "Sending..." : "Send WhatsApp"}
+            </button>
+            {!waModalLead.phone && (
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  fontSize: 11,
+                  color: "#f87171",
+                  textAlign: "center",
+                }}
+              >
+                No phone number on this lead.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -2254,6 +3248,7 @@ export default function SalesmanLite() {
       )}
 
       {renderAddLeadModal()}
+      {renderWAModal()}
     </div>
   );
 }
