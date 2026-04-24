@@ -2,39 +2,181 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-const STATES = ["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"];
-const DEALER_TYPES = ["Independent Dealer","Franchise Dealer","Used Car Lot","Car Rental","Multi-Brand Showroom"];
-const FLEET = ["1–5 cars","6–15 cars","16–30 cars","31–50 cars","50+ cars"];
+const STATES = [
+  "Johor",
+  "Kedah",
+  "Kelantan",
+  "Kuala Lumpur",
+  "Labuan",
+  "Melaka",
+  "Negeri Sembilan",
+  "Pahang",
+  "Penang",
+  "Perak",
+  "Perlis",
+  "Putrajaya",
+  "Sabah",
+  "Sarawak",
+  "Selangor",
+  "Terengganu",
+];
+const DEALER_TYPES = [
+  "Independent Dealer",
+  "Franchise Dealer",
+  "Used Car Lot",
+  "Car Rental",
+  "Multi-Brand Showroom",
+];
+const FLEET = ["1–5 cars", "6–15 cars", "16–30 cars", "31–50 cars", "50+ cars"];
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 function buildStages(accountType, hasUser) {
   const s = [
-    { id:"type",   field:"accountType", q:"I'm signing up as…",    type:"cards" },
-    { id:"name",   field:"fullName",    q:"What's your name?",      type:"text",  ph:"Ahmad bin Abdullah" },
-    { id:"phone",  field:"phone",       q:"Your WhatsApp number?",  type:"tel",   ph:"+60123456789" },
-    { id:"ic",     field:"ic",          q:"IC number (MyKad)?",     type:"text",  ph:"901231-10-1234", opt:true, hint:"Optional now — required within 10 days or account is terminated." },
+    {
+      id: "type",
+      field: "accountType",
+      q: "I'm signing up as…",
+      type: "cards",
+    },
+    {
+      id: "name",
+      field: "fullName",
+      q: "What's your name?",
+      type: "text",
+      ph: "Ahmad bin Abdullah",
+    },
+    {
+      id: "phone",
+      field: "phone",
+      q: "Your WhatsApp number?",
+      type: "tel",
+      ph: "+60123456789",
+    },
+    {
+      id: "ic",
+      field: "ic",
+      q: "IC number (MyKad)?",
+      type: "text",
+      ph: "901231-10-1234",
+      opt: true,
+      hint: "Optional now — required within 10 days or account is terminated.",
+    },
   ];
-  if (!hasUser) s.push(
-    { id:"email", field:"email",    q:"Email address?",         type:"email", ph:"you@example.com" },
-    { id:"pw",    field:"password", q:"Create a password",      type:"pw",    ph:"Min 8 chars, mixed + symbol" },
-    { id:"cpw",   field:"confirm",  q:"Confirm your password",  type:"pw",    ph:"Repeat it" },
-  );
-  if (accountType === "dealership") s.push(
-    { id:"dname",  field:"dealerName",  q:"Dealership name?",     type:"text",  ph:"Fast Track Auto Sdn Bhd" },
-    { id:"dtype",  field:"dealerType",  q:"Type of dealership?",  type:"pills", options:DEALER_TYPES },
-    { id:"dstate", field:"state",       q:"Which state?",          type:"sel",   options:STATES },
-    { id:"dcity",  field:"city",        q:"City or area?",         type:"text",  ph:"e.g. Butterworth", opt:true },
-    { id:"sub",    field:"subdomain",   q:"Your XDrive URL",       type:"sub",   ph:"yourbrand", hint:"Letters & numbers only · min 3 chars" },
-    { id:"ssm",    field:"ssmNumber",   q:"SSM number?",           type:"text",  ph:"e.g. 1234567-A", opt:true, hint:"Required within 10 days for full verification." },
-    { id:"fleet",  field:"fleetSize",   q:"Current fleet size?",   type:"pills", options:FLEET },
-  );
-  if (accountType === "salesman") s.push(
-    { id:"sbrand", field:"salesmanBrand", q:"Your name or brand?",  type:"text",  ph:"Ahmad Motors", hint:"Appears on your XDrive profile and listings." },
-    { id:"sslug",  field:"salesmanSlug",  q:"Your profile URL",      type:"slug",  ph:"yourname", hint:"xdrive.my/s/yourname" },
-    { id:"sstate", field:"salesmanState", q:"Which state?",          type:"sel",   options:STATES },
-    { id:"scity",  field:"salesmanCity",  q:"City or area?",         type:"text",  ph:"e.g. Cheras", opt:true },
-  );
-  s.push({ id:"review", q:"Ready to activate.", type:"review" });
+  if (!hasUser)
+    s.push(
+      {
+        id: "email",
+        field: "email",
+        q: "Email address?",
+        type: "email",
+        ph: "you@example.com",
+      },
+      {
+        id: "pw",
+        field: "password",
+        q: "Create a password",
+        type: "pw",
+        ph: "Min 8 chars, mixed + symbol",
+      },
+      {
+        id: "cpw",
+        field: "confirm",
+        q: "Confirm your password",
+        type: "pw",
+        ph: "Repeat it",
+      },
+    );
+  if (accountType === "dealership")
+    s.push(
+      {
+        id: "dname",
+        field: "dealerName",
+        q: "Dealership name?",
+        type: "text",
+        ph: "Fast Track Auto Sdn Bhd",
+      },
+      {
+        id: "dtype",
+        field: "dealerType",
+        q: "Type of dealership?",
+        type: "pills",
+        options: DEALER_TYPES,
+      },
+      {
+        id: "dstate",
+        field: "state",
+        q: "Which state?",
+        type: "sel",
+        options: STATES,
+      },
+      {
+        id: "dcity",
+        field: "city",
+        q: "City or area?",
+        type: "text",
+        ph: "e.g. Butterworth",
+        opt: true,
+      },
+      {
+        id: "sub",
+        field: "subdomain",
+        q: "Your XDrive URL",
+        type: "sub",
+        ph: "yourbrand",
+        hint: "Letters & numbers only · min 3 chars",
+      },
+      {
+        id: "ssm",
+        field: "ssmNumber",
+        q: "SSM number?",
+        type: "text",
+        ph: "e.g. 1234567-A",
+        opt: true,
+        hint: "Required within 10 days for full verification.",
+      },
+      {
+        id: "fleet",
+        field: "fleetSize",
+        q: "Current fleet size?",
+        type: "pills",
+        options: FLEET,
+      },
+    );
+  if (accountType === "salesman")
+    s.push(
+      {
+        id: "sbrand",
+        field: "salesmanBrand",
+        q: "Your name or brand?",
+        type: "text",
+        ph: "Ahmad Motors",
+        hint: "Appears on your XDrive profile and listings.",
+      },
+      {
+        id: "sslug",
+        field: "salesmanSlug",
+        q: "Your profile URL",
+        type: "slug",
+        ph: "yourname",
+        hint: "xdrive.my/s/yourname",
+      },
+      {
+        id: "sstate",
+        field: "salesmanState",
+        q: "Which state?",
+        type: "sel",
+        options: STATES,
+      },
+      {
+        id: "scity",
+        field: "salesmanCity",
+        q: "City or area?",
+        type: "text",
+        ph: "e.g. Cheras",
+        opt: true,
+      },
+    );
+  s.push({ id: "review", q: "Ready to activate.", type: "review" });
   return s;
 }
 
@@ -60,12 +202,26 @@ export default function OnboardingPage() {
   const slugTouched = useRef(false);
 
   const [v, setV] = useState({
-    accountType:"", fullName:"", phone:"+60", ic:"",
-    email:"", password:"", confirm:"",
-    dealerName:"", dealerType:"", state:"", city:"", subdomain:"", ssmNumber:"", fleetSize:"",
-    salesmanBrand:"", salesmanSlug:"", salesmanState:"", salesmanCity:"",
+    accountType: "",
+    fullName: "",
+    phone: "+60",
+    ic: "",
+    email: "",
+    password: "",
+    confirm: "",
+    dealerName: "",
+    dealerType: "",
+    state: "",
+    city: "",
+    subdomain: "",
+    ssmNumber: "",
+    fleetSize: "",
+    salesmanBrand: "",
+    salesmanSlug: "",
+    salesmanState: "",
+    salesmanCity: "",
   });
-  const upd = (k) => (val) => setV(p => ({ ...p, [k]: val }));
+  const upd = (k) => (val) => setV((p) => ({ ...p, [k]: val }));
 
   const stages = buildStages(v.accountType, !!userId);
   const si = Math.min(idx, stages.length - 1);
@@ -75,36 +231,64 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { setAuthReady(true); return; }
+      if (!data.session) {
+        setAuthReady(true);
+        return;
+      }
       const uid = data.session.user.id;
-      setUserId(uid); setUserEmail(data.session.user.email);
+      setUserId(uid);
+      setUserEmail(data.session.user.email);
       setEmailConfirmed(!!data.session.user.email_confirmed_at);
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", uid)
+        .maybeSingle();
       if (prof) {
         setProfileData(prof);
         const updates = {};
-        if (prof.role === "dealer" || prof.role === "superadmin") updates.accountType = "dealership";
+        if (prof.role === "dealer" || prof.role === "superadmin")
+          updates.accountType = "dealership";
         else if (prof.role === "salesman") updates.accountType = "salesman";
         if (prof.full_name) updates.fullName = prof.full_name;
         if (prof.phone) updates.phone = prof.phone;
         if (prof.dealership) updates.dealerName = prof.dealership;
-        if (prof.subdomain) { updates.subdomain = prof.subdomain; subTouched.current = true; }
-        if (prof.location) {
-          const ms = STATES.find(s => prof.location.includes(s));
-          if (ms) { updates.state = ms; const c = prof.location.replace(ms,"").replace(/^,\s*/,"").trim(); if (c) updates.city = c; }
+        if (prof.subdomain) {
+          updates.subdomain = prof.subdomain;
+          subTouched.current = true;
         }
-        if (Object.keys(updates).length) setV(p => ({ ...p, ...updates }));
+        if (prof.location) {
+          const ms = STATES.find((s) => prof.location.includes(s));
+          if (ms) {
+            updates.state = ms;
+            const c = prof.location.replace(ms, "").replace(/^,\s*/, "").trim();
+            if (c) updates.city = c;
+          }
+        }
+        if (Object.keys(updates).length) setV((p) => ({ ...p, ...updates }));
       }
       setAuthReady(true);
     });
   }, []);
 
   useEffect(() => {
-    if (!subTouched.current) upd("subdomain")(v.dealerName.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20));
+    if (!subTouched.current)
+      upd("subdomain")(
+        v.dealerName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 20),
+      );
   }, [v.dealerName]);
 
   useEffect(() => {
-    if (!slugTouched.current) upd("salesmanSlug")(v.fullName.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20));
+    if (!slugTouched.current)
+      upd("salesmanSlug")(
+        v.fullName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 20),
+      );
   }, [v.fullName]);
 
   useEffect(() => {
@@ -116,76 +300,149 @@ export default function OnboardingPage() {
     if (loading) return false;
     if (stage.opt) return true;
     switch (stage.id) {
-      case "type":  return !!v.accountType;
-      case "name":  return v.fullName.trim().length >= 2;
-      case "phone": return v.phone.replace(/\D/g,"").length >= 9;
-      case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email);
-      case "pw":    return STRONG_PW.test(v.password);
-      case "cpw":   return v.confirm === v.password && v.confirm.length > 0;
-      case "dname": return v.dealerName.trim().length >= 2;
-      case "dtype": return !!v.dealerType;
-      case "dstate":return !!v.state;
-      case "sub":   return /^[a-z0-9]{3,20}$/.test(v.subdomain);
-      case "fleet": return !!v.fleetSize;
-      case "sbrand":return v.salesmanBrand.trim().length >= 2;
-      case "sslug": return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
-      case "sstate":return !!v.salesmanState;
-      case "review":return !loading;
-      default: return true;
+      case "type":
+        return !!v.accountType;
+      case "name":
+        return v.fullName.trim().length >= 2;
+      case "phone":
+        return v.phone.replace(/\D/g, "").length >= 9;
+      case "email":
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email);
+      case "pw":
+        return STRONG_PW.test(v.password);
+      case "cpw":
+        return v.confirm === v.password && v.confirm.length > 0;
+      case "dname":
+        return v.dealerName.trim().length >= 2;
+      case "dtype":
+        return !!v.dealerType;
+      case "dstate":
+        return !!v.state;
+      case "sub":
+        return /^[a-z0-9]{3,20}$/.test(v.subdomain);
+      case "fleet":
+        return !!v.fleetSize;
+      case "sbrand":
+        return v.salesmanBrand.trim().length >= 2;
+      case "sslug":
+        return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
+      case "sstate":
+        return !!v.salesmanState;
+      case "review":
+        return !loading;
+      default:
+        return true;
     }
   };
 
-  const goNext = () => { setDir("fwd"); setAnimKey(k => k+1); setIdx(i => Math.min(i+1, stages.length-1)); setError(""); };
-  const goPrev = () => { if (si === 0) return; setDir("bk"); setAnimKey(k => k+1); setIdx(i => i-1); setError(""); };
+  const goNext = () => {
+    setDir("fwd");
+    setAnimKey((k) => k + 1);
+    setIdx((i) => Math.min(i + 1, stages.length - 1));
+    setError("");
+  };
+  const goPrev = () => {
+    if (si === 0) return;
+    setDir("bk");
+    setAnimKey((k) => k + 1);
+    setIdx((i) => i - 1);
+    setError("");
+  };
 
   const advance = async () => {
     if (!canAdvance()) return;
     if (stage.id === "cpw") {
-      setLoading(true); setError("");
+      setLoading(true);
+      setError("");
       const { data, error: err } = await supabase.auth.signUp({
-        email: v.email.trim(), password: v.password,
+        email: v.email.trim(),
+        password: v.password,
         options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
       });
-      if (err) { setError(err.message); setLoading(false); return; }
+      if (err) {
+        setError(err.message);
+        setLoading(false);
+        return;
+      }
       if (data.user) {
         await supabase.from("profiles").upsert({
-          id: data.user.id, email: v.email.trim(),
+          id: data.user.id,
+          email: v.email.trim(),
           full_name: v.fullName.trim() || null,
           phone: v.phone !== "+60" ? v.phone : null,
           role: v.accountType === "salesman" ? "salesman" : "dealer",
-          is_active: true, onboarding_complete: false,
+          is_active: true,
+          onboarding_complete: false,
         });
-        setUserId(data.user.id); setUserEmail(v.email.trim());
+        setUserId(data.user.id);
+        setUserEmail(v.email.trim());
       }
-      setLoading(false); setConfirmSent(true); return;
+      setLoading(false);
+      setConfirmSent(true);
+      return;
     }
     if (stage.id === "review") {
       if (!userId) return;
-      setLoading(true); setError("");
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email_confirmed_at) { setError("Please verify your email first."); setLoading(false); return; }
+      setLoading(true);
+      setError("");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.email_confirmed_at) {
+        setError("Please verify your email first.");
+        setLoading(false);
+        return;
+      }
       try {
         const isS = v.accountType === "salesman";
-        const payload = isS ? {
-          id: userId, email: v.email || userEmail, full_name: v.fullName.trim(), phone: v.phone,
-          role:"salesman", is_active:true, onboarding_complete:true,
-          slug: v.salesmanSlug, dealership: v.salesmanBrand.trim(),
-          location: v.salesmanCity ? `${v.salesmanCity}, ${v.salesmanState}` : v.salesmanState,
-          ic: v.ic||null, ic_submitted:!!v.ic, ic_deadline: v.ic?null:new Date(Date.now()+10*24*60*60*1000).toISOString(),
-          selected_plan: profileData?.selected_plan||"standard",
-        } : {
-          id: userId, email: v.email || userEmail, full_name: v.fullName.trim(), phone: v.phone,
-          dealership: v.dealerName.trim(), location: v.city?`${v.city}, ${v.state}`:v.state,
-          role:"dealer", is_active:true, onboarding_complete:true,
-          subdomain: v.subdomain, ssm_number: v.ssmNumber||null,
-          ic: v.ic||null, ic_submitted:!!v.ic, ic_deadline: v.ic?null:new Date(Date.now()+10*24*60*60*1000).toISOString(),
-          selected_plan: profileData?.selected_plan||"standard",
-        };
+        const payload = isS
+          ? {
+              id: userId,
+              email: v.email || userEmail,
+              full_name: v.fullName.trim(),
+              phone: v.phone,
+              role: "salesman",
+              is_active: true,
+              onboarding_complete: true,
+              slug: v.salesmanSlug,
+              dealership: v.salesmanBrand.trim(),
+              location: v.salesmanCity
+                ? `${v.salesmanCity}, ${v.salesmanState}`
+                : v.salesmanState,
+              ic: v.ic || null,
+              ic_submitted: !!v.ic,
+              ic_deadline: v.ic
+                ? null
+                : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+              selected_plan: profileData?.selected_plan || "standard",
+            }
+          : {
+              id: userId,
+              email: v.email || userEmail,
+              full_name: v.fullName.trim(),
+              phone: v.phone,
+              dealership: v.dealerName.trim(),
+              location: v.city ? `${v.city}, ${v.state}` : v.state,
+              role: "dealer",
+              is_active: true,
+              onboarding_complete: true,
+              subdomain: v.subdomain,
+              ssm_number: v.ssmNumber || null,
+              ic: v.ic || null,
+              ic_submitted: !!v.ic,
+              ic_deadline: v.ic
+                ? null
+                : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+              selected_plan: profileData?.selected_plan || "standard",
+            };
         const { error: err } = await supabase.from("profiles").upsert(payload);
         if (err) throw err;
         setDone(true);
         setTimeout(() => navigate(isS ? "/salesman-lite" : "/dashboard"), 2600);
-      } catch (e) { setError(e.message); setLoading(false); }
+      } catch (e) {
+        setError(e.message);
+        setLoading(false);
+      }
       return;
     }
     goNext();
@@ -193,7 +450,11 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const h = (e) => {
-      if (e.key === "Enter" && !e.shiftKey && !["cards","pills","sel"].includes(stage.type)) {
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        !["cards", "pills", "sel"].includes(stage.type)
+      ) {
         e.preventDefault();
         if (canAdvance()) advance();
       }
@@ -203,76 +464,255 @@ export default function OnboardingPage() {
   });
 
   const setField = (newVal) => {
-    if (stage.id === "sub") { subTouched.current = true; upd("subdomain")(newVal.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20)); }
-    else if (stage.id === "sslug") { slugTouched.current = true; upd("salesmanSlug")(newVal.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20)); }
-    else upd(stage.field)(newVal);
+    if (stage.id === "sub") {
+      subTouched.current = true;
+      upd("subdomain")(
+        newVal
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 20),
+      );
+    } else if (stage.id === "sslug") {
+      slugTouched.current = true;
+      upd("salesmanSlug")(
+        newVal
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 20),
+      );
+    } else upd(stage.field)(newVal);
   };
 
   if (!authReady) return null;
 
-  if (confirmSent) return (
-    <>
-      <style>{CSS}</style>
-      <div className="ob-root" style={{justifyContent:"center",alignItems:"center",display:"flex"}}>
-        <div style={{width:"min(420px,90%)",textAlign:"center"}}>
-          <div className="ob-logo" style={{justifyContent:"center",marginBottom:32}}><div className="ob-lm">⚡</div><span className="ob-lt">SHIFTOS</span></div>
-          <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px",fontSize:28}}>✉</div>
-          <h2 style={{fontFamily:"'Bebas Neue',cursive",fontSize:40,letterSpacing:3,color:"#E8EDF5",marginBottom:12}}>CHECK YOUR INBOX</h2>
-          <p style={{color:"rgba(232,237,245,0.4)",fontSize:13,marginBottom:6}}>Confirmation link sent to</p>
-          <p style={{color:"#E8EDF5",fontWeight:600,fontSize:14,marginBottom:24,wordBreak:"break-all"}}>{v.email}</p>
-          <p style={{color:"rgba(232,237,245,0.2)",fontSize:12,lineHeight:1.7,marginBottom:28}}>Click the link to activate your account, then sign in to continue setup.</p>
-          {resendSent && <p style={{color:"#4ade80",fontSize:12,marginBottom:12}}>↺ Email resent!</p>}
-          <button className="ob-btn-ghost" style={{width:"100%",marginBottom:14}} onClick={async()=>{setResendLoading(true);setResendSent(false);await supabase.auth.resend({type:"signup",email:v.email});setResendLoading(false);setResendSent(true);}} disabled={resendLoading}>
-            {resendLoading?"SENDING…":"RESEND CONFIRMATION EMAIL"}
-          </button>
-          <a href="/login" style={{fontSize:12,color:"rgba(232,237,245,0.2)",textDecoration:"none",fontFamily:"'Azeret Mono',monospace"}}>← Back to sign in</a>
+  if (confirmSent)
+    return (
+      <>
+        <style>{CSS}</style>
+        <div
+          className="ob-root"
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            display: "flex",
+          }}
+        >
+          <div style={{ width: "min(420px,90%)", textAlign: "center" }}>
+            <div
+              className="ob-logo"
+              style={{ justifyContent: "center", marginBottom: 32 }}
+            >
+              <div className="ob-lm">⚡</div>
+              <span className="ob-lt">SHIFTOS</span>
+            </div>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "rgba(220,38,38,0.1)",
+                border: "1px solid rgba(220,38,38,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px",
+                fontSize: 28,
+              }}
+            >
+              ✉
+            </div>
+            <h2
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: 40,
+                letterSpacing: 3,
+                color: "#E8EDF5",
+                marginBottom: 12,
+              }}
+            >
+              CHECK YOUR INBOX
+            </h2>
+            <p
+              style={{
+                color: "rgba(232,237,245,0.4)",
+                fontSize: 13,
+                marginBottom: 6,
+              }}
+            >
+              Confirmation link sent to
+            </p>
+            <p
+              style={{
+                color: "#E8EDF5",
+                fontWeight: 600,
+                fontSize: 14,
+                marginBottom: 24,
+                wordBreak: "break-all",
+              }}
+            >
+              {v.email}
+            </p>
+            <p
+              style={{
+                color: "rgba(232,237,245,0.2)",
+                fontSize: 12,
+                lineHeight: 1.7,
+                marginBottom: 28,
+              }}
+            >
+              Click the link to activate your account, then sign in to continue
+              setup.
+            </p>
+            {resendSent && (
+              <p style={{ color: "#4ade80", fontSize: 12, marginBottom: 12 }}>
+                ↺ Email resent!
+              </p>
+            )}
+            <button
+              className="ob-btn-ghost"
+              style={{ width: "100%", marginBottom: 14 }}
+              onClick={async () => {
+                setResendLoading(true);
+                setResendSent(false);
+                await supabase.auth.resend({ type: "signup", email: v.email });
+                setResendLoading(false);
+                setResendSent(true);
+              }}
+              disabled={resendLoading}
+            >
+              {resendLoading ? "SENDING…" : "RESEND CONFIRMATION EMAIL"}
+            </button>
+            <a
+              href="/login"
+              style={{
+                fontSize: 12,
+                color: "rgba(232,237,245,0.2)",
+                textDecoration: "none",
+                fontFamily: "'Azeret Mono',monospace",
+              }}
+            >
+              ← Back to sign in
+            </a>
+          </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
 
-  if (done) return (
-    <>
-      <style>{CSS}</style>
-      <div className="ob-root" style={{justifyContent:"center",alignItems:"center",display:"flex"}}>
-        <div style={{textAlign:"center"}}>
-          <div className="ob-done-ring"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:"clamp(52px,8vw,88px)",letterSpacing:4,color:"#E8EDF5",lineHeight:1,marginTop:24,animation:"wUp .6s ease both"}}>ACTIVATED</div>
-          <p style={{fontFamily:"'Azeret Mono',monospace",fontSize:12,color:"rgba(232,237,245,0.4)",marginTop:14,letterSpacing:1,animation:"wUp .6s ease .3s both"}}>
-            {v.accountType==="salesman"?"Launching salesman panel…":"Launching your command center…"}
-          </p>
+  if (done)
+    return (
+      <>
+        <style>{CSS}</style>
+        <div
+          className="ob-root"
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            display: "flex",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div className="ob-done-ring">
+              <svg
+                width="36"
+                height="36"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#dc2626"
+                strokeWidth="1.5"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div
+              style={{
+                fontFamily: "'Bebas Neue',cursive",
+                fontSize: "clamp(52px,8vw,88px)",
+                letterSpacing: 4,
+                color: "#E8EDF5",
+                lineHeight: 1,
+                marginTop: 24,
+                animation: "wUp .6s ease both",
+              }}
+            >
+              ACTIVATED
+            </div>
+            <p
+              style={{
+                fontFamily: "'Azeret Mono',monospace",
+                fontSize: 12,
+                color: "rgba(232,237,245,0.4)",
+                marginTop: 14,
+                letterSpacing: 1,
+                animation: "wUp .6s ease .3s both",
+              }}
+            >
+              {v.accountType === "salesman"
+                ? "Launching salesman panel…"
+                : "Launching your command center…"}
+            </p>
+          </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
 
-  const isAutoAdv = ["cards","pills","sel"].includes(stage.type);
+  const isAutoAdv = ["cards", "pills", "sel"].includes(stage.type);
   const isReview = stage.id === "review";
 
   return (
     <>
       <style>{CSS}</style>
       <div className="ob-root">
-        <div className="ob-tape"><div className="ob-tf" style={{width:`${progress}%`}}/></div>
+        <div className="ob-tape">
+          <div className="ob-tf" style={{ width: `${progress}%` }} />
+        </div>
 
         <div className="ob-topbar">
-          <div className="ob-logo"><div className="ob-lm">⚡</div><span className="ob-lt">SHIFTOS</span></div>
-          <span className="ob-counter">{String(si+1).padStart(2,"0")} / {String(stages.length).padStart(2,"0")}</span>
+          <div className="ob-logo">
+            <div className="ob-lm">⚡</div>
+            <span className="ob-lt">SHIFTOS</span>
+          </div>
+          <span className="ob-counter">
+            {String(si + 1).padStart(2, "0")} /{" "}
+            {String(stages.length).padStart(2, "0")}
+          </span>
         </div>
 
         <div className="ob-body">
           <div className="ob-stage" key={animKey} data-dir={dir}>
             <p className="ob-eyebrow">
-              {stage.opt?"OPTIONAL":isReview?"14-DAY FREE TRIAL — NO CARD REQUIRED":stage.id==="type"?"WELCOME":"QUESTION"}
+              {stage.opt
+                ? "OPTIONAL"
+                : isReview
+                  ? "14-DAY FREE TRIAL — NO CARD REQUIRED"
+                  : stage.id === "type"
+                    ? "WELCOME"
+                    : "QUESTION"}
             </p>
             <h1 className="ob-q">{stage.q}</h1>
 
             {/* Cards */}
-            {stage.type==="cards" && (
+            {stage.type === "cards" && (
               <div className="ob-cards">
-                {[{val:"dealership",label:"Dealership",sub:"A business with a team"},{val:"salesman",label:"Sole Salesman",sub:"An individual selling independently"}].map(c=>(
-                  <button key={c.val} className={`ob-card${v.accountType===c.val?" ob-card-on":""}`}
-                    onClick={()=>{upd("accountType")(c.val);setTimeout(()=>goNext(),220);}}>
+                {[
+                  {
+                    val: "dealership",
+                    label: "Dealership",
+                    sub: "A business with a team",
+                  },
+                  {
+                    val: "salesman",
+                    label: "Sole Salesman",
+                    sub: "An individual selling independently",
+                  },
+                ].map((c) => (
+                  <button
+                    key={c.val}
+                    className={`ob-card${v.accountType === c.val ? " ob-card-on" : ""}`}
+                    onClick={() => {
+                      upd("accountType")(c.val);
+                      setTimeout(() => goNext(), 220);
+                    }}
+                  >
                     <div className="ob-card-label">{c.label}</div>
                     <div className="ob-card-sub">{c.sub}</div>
                   </button>
@@ -281,11 +721,17 @@ export default function OnboardingPage() {
             )}
 
             {/* Pills */}
-            {stage.type==="pills" && (
+            {stage.type === "pills" && (
               <div className="ob-pills">
-                {stage.options.map(opt=>(
-                  <button key={opt} className={`ob-pill${val===opt?" ob-pill-on":""}`}
-                    onClick={()=>{upd(stage.field)(opt);setTimeout(()=>goNext(),200);}}>
+                {stage.options.map((opt) => (
+                  <button
+                    key={opt}
+                    className={`ob-pill${val === opt ? " ob-pill-on" : ""}`}
+                    onClick={() => {
+                      upd(stage.field)(opt);
+                      setTimeout(() => goNext(), 200);
+                    }}
+                  >
                     {opt}
                   </button>
                 ))}
@@ -293,94 +739,207 @@ export default function OnboardingPage() {
             )}
 
             {/* Select */}
-            {stage.type==="sel" && (
+            {stage.type === "sel" && (
               <div className="ob-inp-wrap">
-                <select ref={inputRef} className="ob-inp ob-sel" value={val}
-                  onChange={e=>{const nv=e.target.value;upd(stage.field)(nv);if(nv)setTimeout(()=>goNext(),150);}}>
+                <select
+                  ref={inputRef}
+                  className="ob-inp ob-sel"
+                  value={val}
+                  onChange={(e) => {
+                    const nv = e.target.value;
+                    upd(stage.field)(nv);
+                    if (nv) setTimeout(() => goNext(), 150);
+                  }}
+                >
                   <option value="">— select state —</option>
-                  {stage.options.map(o=><option key={o} value={o}>{o}</option>)}
+                  {stage.options.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
                 </select>
-                <svg className="ob-sel-arr" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg
+                  className="ob-sel-arr"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </div>
             )}
 
             {/* Subdomain / slug */}
-            {(stage.type==="sub"||stage.type==="slug") && (
+            {(stage.type === "sub" || stage.type === "slug") && (
               <div className="ob-inp-wrap">
                 <div className="ob-url-row">
-                  <span className="ob-url-pre">{stage.type==="sub"?"xdrive.my /":"xdrive.my/s /"}</span>
-                  <input ref={inputRef} className="ob-inp ob-inp-url" value={val} onChange={e=>setField(e.target.value)} placeholder={stage.ph} autoComplete="off"/>
+                  <span className="ob-url-pre">
+                    {stage.type === "sub" ? "xdrive.my /" : "xdrive.my/s /"}
+                  </span>
+                  <input
+                    ref={inputRef}
+                    className="ob-inp ob-inp-url"
+                    value={val}
+                    onChange={(e) => setField(e.target.value)}
+                    placeholder={stage.ph}
+                    autoComplete="off"
+                  />
                 </div>
-                {val&&!/^[a-z0-9]{3,20}$/.test(val)&&<p className="ob-verr">Min 3 chars · letters & numbers only</p>}
+                {val && !/^[a-z0-9]{3,20}$/.test(val) && (
+                  <p className="ob-verr">
+                    Min 3 chars · letters & numbers only
+                  </p>
+                )}
               </div>
             )}
 
             {/* Password */}
-            {stage.type==="pw" && (
-              <div className="ob-inp-wrap" style={{position:"relative"}}>
-                <input ref={inputRef} type={showPw?"text":"password"} className="ob-inp" value={val}
-                  onChange={e=>setField(e.target.value)} placeholder={stage.ph}
-                  autoComplete={stage.id==="pw"?"new-password":"off"}/>
-                <button className="ob-eye" type="button" onClick={()=>setShowPw(p=>!p)}>{showPw?"◉":"○"}</button>
-                {stage.id==="pw"&&val&&!STRONG_PW.test(val)&&<p className="ob-verr">8+ chars · uppercase · lowercase · number · special char</p>}
-                {stage.id==="cpw"&&val&&val!==v.password&&<p className="ob-verr">Passwords don't match</p>}
+            {stage.type === "pw" && (
+              <div className="ob-inp-wrap" style={{ position: "relative" }}>
+                <input
+                  ref={inputRef}
+                  type={showPw ? "text" : "password"}
+                  className="ob-inp"
+                  value={val}
+                  onChange={(e) => setField(e.target.value)}
+                  placeholder={stage.ph}
+                  autoComplete={stage.id === "pw" ? "new-password" : "off"}
+                />
+                <button
+                  className="ob-eye"
+                  type="button"
+                  onClick={() => setShowPw((p) => !p)}
+                >
+                  {showPw ? "◉" : "○"}
+                </button>
+                {stage.id === "pw" && val && !STRONG_PW.test(val) && (
+                  <p className="ob-verr">
+                    8+ chars · uppercase · lowercase · number · special char
+                  </p>
+                )}
+                {stage.id === "cpw" && val && val !== v.password && (
+                  <p className="ob-verr">Passwords don't match</p>
+                )}
               </div>
             )}
 
             {/* Text / email / tel */}
-            {["text","email","tel"].includes(stage.type) && (
+            {["text", "email", "tel"].includes(stage.type) && (
               <div className="ob-inp-wrap">
-                <input ref={inputRef} type={stage.type==="tel"?"tel":stage.type} className="ob-inp" value={val}
-                  onChange={e=>setField(e.target.value)} placeholder={stage.ph} autoComplete="off"/>
+                <input
+                  ref={inputRef}
+                  type={stage.type === "tel" ? "tel" : stage.type}
+                  className="ob-inp"
+                  value={val}
+                  onChange={(e) => setField(e.target.value)}
+                  placeholder={stage.ph}
+                  autoComplete="off"
+                />
               </div>
             )}
 
             {/* Review */}
             {isReview && (
               <div className="ob-review">
-                <RR k="Name" v_={v.fullName}/><RR k="Email" v_={v.email||userEmail}/><RR k="Phone" v_={v.phone}/>
-                {v.accountType==="dealership"&&<>
-                  <RR k="Dealership" v_={v.dealerName}/><RR k="Type" v_={v.dealerType}/>
-                  <RR k="Location" v_={v.city?`${v.city}, ${v.state}`:v.state}/>
-                  <RR k="XDrive URL" v_={`${v.subdomain}.xdrive.my`} accent="#f87171"/>
-                  <RR k="Fleet" v_={v.fleetSize}/>
-                </>}
-                {v.accountType==="salesman"&&<>
-                  <RR k="Brand" v_={v.salesmanBrand}/>
-                  <RR k="Location" v_={v.salesmanCity?`${v.salesmanCity}, ${v.salesmanState}`:v.salesmanState}/>
-                  <RR k="Profile URL" v_={`xdrive.my/s/${v.salesmanSlug}`} accent="#93c5fd"/>
-                </>}
+                <RR k="Name" v_={v.fullName} />
+                <RR k="Email" v_={v.email || userEmail} />
+                <RR k="Phone" v_={v.phone} />
+                {v.accountType === "dealership" && (
+                  <>
+                    <RR k="Dealership" v_={v.dealerName} />
+                    <RR k="Type" v_={v.dealerType} />
+                    <RR
+                      k="Location"
+                      v_={v.city ? `${v.city}, ${v.state}` : v.state}
+                    />
+                    <RR
+                      k="XDrive URL"
+                      v_={`${v.subdomain}.xdrive.my`}
+                      accent="#f87171"
+                    />
+                    <RR k="Fleet" v_={v.fleetSize} />
+                  </>
+                )}
+                {v.accountType === "salesman" && (
+                  <>
+                    <RR k="Brand" v_={v.salesmanBrand} />
+                    <RR
+                      k="Location"
+                      v_={
+                        v.salesmanCity
+                          ? `${v.salesmanCity}, ${v.salesmanState}`
+                          : v.salesmanState
+                      }
+                    />
+                    <RR
+                      k="Profile URL"
+                      v_={`xdrive.my/s/${v.salesmanSlug}`}
+                      accent="#93c5fd"
+                    />
+                  </>
+                )}
               </div>
             )}
 
-            {stage.hint&&<p className="ob-hint">{stage.hint}</p>}
-            {error&&<p className="ob-err">⚠ {error}</p>}
+            {stage.hint && <p className="ob-hint">{stage.hint}</p>}
+            {error && <p className="ob-err">⚠ {error}</p>}
           </div>
         </div>
 
         <div className="ob-bottom">
-          <button className="ob-back" onClick={goPrev} disabled={si===0}>← BACK</button>
-          {!isAutoAdv&&(
-            isReview ? (
-              emailConfirmed
-                ? <button className="ob-btn-act" onClick={advance} disabled={loading}>{loading?"ACTIVATING…":"ACTIVATE NOW ⚡"}</button>
-                : <button className="ob-btn-verify" onClick={()=>setConfirmSent(true)}>VERIFY EMAIL FIRST ✉</button>
+          <button className="ob-back" onClick={goPrev} disabled={si === 0}>
+            ← BACK
+          </button>
+          {!isAutoAdv &&
+            (isReview ? (
+              emailConfirmed ? (
+                <button
+                  className="ob-btn-act"
+                  onClick={advance}
+                  disabled={loading}
+                >
+                  {loading ? "ACTIVATING…" : "ACTIVATE NOW ⚡"}
+                </button>
+              ) : (
+                <button
+                  className="ob-btn-verify"
+                  onClick={() => setConfirmSent(true)}
+                >
+                  VERIFY EMAIL FIRST ✉
+                </button>
+              )
             ) : (
-              <div className="ob-enter" style={{opacity:canAdvance()?1:0.3,pointerEvents:canAdvance()?"auto":"none"}} onClick={advance}>
-                <span>{stage.opt?"SKIP OR CONTINUE":"CONTINUE"}</span>
+              <div
+                className="ob-enter"
+                style={{
+                  opacity: canAdvance() ? 1 : 0.3,
+                  pointerEvents: canAdvance() ? "auto" : "none",
+                }}
+                onClick={advance}
+              >
+                <span>{stage.opt ? "SKIP OR CONTINUE" : "CONTINUE"}</span>
                 <kbd>ENTER ↵</kbd>
               </div>
-            )
-          )}
+            ))}
         </div>
       </div>
     </>
   );
 }
 
-function RR({k,v_,accent}){
-  if(!v_) return null;
-  return <div className="ob-rr"><span className="ob-rr-k">{k}</span><span className="ob-rr-v" style={accent?{color:accent}:{}}>{v_}</span></div>;
+function RR({ k, v_, accent }) {
+  if (!v_) return null;
+  return (
+    <div className="ob-rr">
+      <span className="ob-rr-k">{k}</span>
+      <span className="ob-rr-v" style={accent ? { color: accent } : {}}>
+        {v_}
+      </span>
+    </div>
+  );
 }
 
 const CSS = `
