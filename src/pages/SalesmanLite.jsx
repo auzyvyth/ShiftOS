@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Trash2,
   Send,
+  Pencil,
+  Settings,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -127,8 +129,7 @@ const getHeatScore = (lead) => {
     : 0;
   const penalty = Math.min(daysStale * 0.5, 3);
   const score = stageWeight - penalty;
-  if (score >= 4)
-    return { score, emoji: "🔥", label: "hot", color: "#f87171" };
+  if (score >= 4) return { score, emoji: "🔥", label: "hot", color: "#f87171" };
   if (score >= 2)
     return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
   return { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
@@ -167,8 +168,14 @@ export default function SalesmanLite() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
-  const [waModalMessage, setWaModalMessage] = useState("");
-  const [waSending, setWaSending] = useState(false);
+  const [waModalMsg, setWaModalMessage] = useState("");
+
+  // settings
+  const [settingsForm, setSettingsForm] = useState({
+    full_name: "",
+    whatsapp_number: "",
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   // merge
   const [mergeCode, setMergeCode] = useState("");
@@ -193,6 +200,15 @@ export default function SalesmanLite() {
       ),
     );
   }, [leads]);
+
+  useEffect(() => {
+    if (profile) {
+      setSettingsForm({
+        full_name: profile.full_name || "",
+        whatsapp_number: profile.whatsapp_number || "",
+      });
+    }
+  }, [profile]);
 
   // auth + profile
   useEffect(() => {
@@ -246,7 +262,7 @@ export default function SalesmanLite() {
       supabase
         .from("car_listings")
         .select(
-          "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission",
+          "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, created_at, location, vin",
         )
         .eq("dealer_id", uid)
         .neq("status", "sold")
@@ -423,45 +439,8 @@ export default function SalesmanLite() {
     setWaModalMessage(defaultMsg);
   };
 
-  const sendWAFromModal = async () => {
-    if (!waModalLead) return;
-    setWaSending(true);
-    const phone = (waModalLead.phone || "").replace(/\D/g, "");
-    if (phone) {
-      window.open(
-        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMessage)}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
-    const now = new Date().toISOString();
-    await supabase
-      .from("leads")
-      .update({ updated_at: now })
-      .eq("id", waModalLead.id);
-    await supabase.from("lead_activities").insert({
-      lead_id: waModalLead.id,
-      activity_type: "whatsapp_sent",
-      note: "Custom WA message sent",
-      created_by: userId,
-      dealer_id: waModalLead.dealer_id ?? null,
-    });
-    setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
-    setLeads((p) =>
-      p.map((l) =>
-        l.id === waModalLead.id ? { ...l, updated_at: now } : l,
-      ),
-    );
-    setWaSending(false);
-    setWaModalLead(null);
-    setWaModalMessage("");
-  };
-
   const handleDeleteLead = async (leadId) => {
-    await supabase
-      .from("leads")
-      .update({ is_deleted: true })
-      .eq("id", leadId);
+    await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
     setLeads((p) => p.filter((l) => l.id !== leadId));
     setDeleteConfirmId(null);
   };
@@ -623,13 +602,17 @@ export default function SalesmanLite() {
       tab: "bookings",
       label: "Bookings",
       icon: <Phone style={{ width: 14, height: 14 }} />,
-      badge:
-        appointments.filter((a) => a.status === "confirmed").length || null,
+      badge: appointments.filter((a) => a.status === "pending").length || null,
     },
     {
       tab: "merge",
       label: "Join Dealership",
       icon: <GitMerge style={{ width: 14, height: 14 }} />,
+    },
+    {
+      tab: "settings",
+      label: "Settings",
+      icon: <Settings style={{ width: 14, height: 14 }} />,
     },
   ];
 
@@ -657,10 +640,10 @@ export default function SalesmanLite() {
       tab: "bookings",
       label: "Bookings",
       icon: <Phone size={18} />,
-      badge:
-        appointments.filter((a) => a.status === "confirmed").length || null,
+      badge: appointments.filter((a) => a.status === "pending").length || null,
     },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
+    { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
   ];
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
@@ -1270,6 +1253,12 @@ export default function SalesmanLite() {
         {myListings.map((car) => {
           const img = Array.isArray(car.images) ? car.images[0] : null;
           const copied = listingCopied[car.id];
+          const daysInStock = car.created_at
+            ? Math.floor(
+                (Date.now() - new Date(car.created_at).getTime()) / 86400000,
+              )
+            : null;
+          const vinShort = car.vin ? `···${car.vin.slice(-6)}` : null;
           return (
             <div
               key={car.id}
@@ -1297,6 +1286,7 @@ export default function SalesmanLite() {
                 </div>
               )}
               <div style={{ flex: 1, padding: "12px 14px", minWidth: 0 }}>
+                {/* top row: name | status + edit */}
                 <div
                   style={{
                     display: "flex",
@@ -1313,32 +1303,63 @@ export default function SalesmanLite() {
                       fontWeight: 600,
                       color: "#e5e7eb",
                       lineHeight: 1.3,
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                   </p>
-                  <span
+                  <div
                     style={{
-                      fontSize: 10,
-                      padding: "2px 7px",
-                      borderRadius: 99,
-                      background:
-                        car.status === "available"
-                          ? "rgba(34,197,94,0.12)"
-                          : "rgba(251,191,36,0.12)",
-                      border: `1px solid ${car.status === "available" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
-                      color: car.status === "available" ? "#4ade80" : "#fbbf24",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                       flexShrink: 0,
-                      textTransform: "capitalize",
                     }}
                   >
-                    {car.status}
-                  </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 7px",
+                        borderRadius: 99,
+                        background:
+                          car.status === "available"
+                            ? "rgba(34,197,94,0.12)"
+                            : "rgba(251,191,36,0.12)",
+                        border: `1px solid ${car.status === "available" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
+                        color:
+                          car.status === "available" ? "#4ade80" : "#fbbf24",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {car.status}
+                    </span>
+                    <button
+                      onClick={() => toast.info("Edit coming soon")}
+                      title="Edit listing"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#4b5563",
+                        cursor: "pointer",
+                        padding: 2,
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
                 </div>
+
+                {/* price */}
                 {car.selling_price && (
                   <p
                     style={{
-                      margin: "0 0 8px",
+                      margin: "0 0 6px",
                       fontSize: 12,
                       fontWeight: 600,
                       color: "#60a5fa",
@@ -1347,6 +1368,50 @@ export default function SalesmanLite() {
                     RM {Number(car.selling_price).toLocaleString("en-MY")}
                   </p>
                 )}
+
+                {/* meta chips */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "3px 8px",
+                    marginBottom: 8,
+                  }}
+                >
+                  {daysInStock !== null && (
+                    <span style={{ fontSize: 10, color: "#4b5563" }}>
+                      🕓 {daysInStock}d in stock
+                    </span>
+                  )}
+                  {car.mileage && (
+                    <span style={{ fontSize: 10, color: "#4b5563" }}>
+                      {Number(car.mileage).toLocaleString()} km
+                    </span>
+                  )}
+                  {car.colour && (
+                    <span style={{ fontSize: 10, color: "#4b5563" }}>
+                      {car.colour}
+                    </span>
+                  )}
+                  {car.location && (
+                    <span style={{ fontSize: 10, color: "#4b5563" }}>
+                      📍 {car.location}
+                    </span>
+                  )}
+                  {vinShort && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#374151",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {vinShort}
+                    </span>
+                  )}
+                </div>
+
+                {/* action buttons */}
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
                     onClick={() => copyListingLink(car)}
@@ -1702,7 +1767,15 @@ export default function SalesmanLite() {
               )}
               {lead.phone && (
                 <button
-                  onClick={() => pingWA(lead)}
+                  onClick={() => {
+                    const car = lead.car_listings;
+                    const carName = car
+                      ? `${car.brand} ${car.model}`
+                      : "kereta tu";
+                    const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
+                    setWaModalMsg(msg);
+                    setWaModalLead(lead);
+                  }}
                   style={{
                     fontSize: 10,
                     padding: "3px 7px",
@@ -1781,9 +1854,7 @@ export default function SalesmanLite() {
             const sc = STAGE_COLOR[stage] || {};
             const stageLeads = leads
               .filter((l) => l.stage === stage)
-              .sort(
-                (a, b) => getHeatScore(b).score - getHeatScore(a).score,
-              );
+              .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
             return (
               <div
                 key={stage}
@@ -2132,7 +2203,7 @@ export default function SalesmanLite() {
                   "{enq.buyer_message}"
                 </p>
               )}
-              <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {enq.buyer_phone && (
                   <button
                     onClick={() => {
@@ -2189,6 +2260,57 @@ export default function SalesmanLite() {
                     Mark Responded
                   </button>
                 )}
+                {enq.status === "converted" ? (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(34,197,94,0.1)",
+                      border: "1px solid rgba(34,197,94,0.2)",
+                      color: "#4ade80",
+                    }}
+                  >
+                    In Pipeline ✓
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      await supabase.from("leads").insert({
+                        salesman_id: userId,
+                        dealer_id: null,
+                        buyer_name: enq.buyer_name,
+                        phone: enq.buyer_phone,
+                        notes: enq.buyer_message,
+                        car_listing_id: enq.listing_id || null,
+                        stage: "new",
+                        lead_source: "enquiry",
+                        is_deleted: false,
+                      });
+                      await supabase
+                        .from("whatsapp_enquiries")
+                        .update({ status: "converted" })
+                        .eq("id", enq.id);
+                      setEnquiries((p) =>
+                        p.map((e) =>
+                          e.id === enq.id ? { ...e, status: "converted" } : e,
+                        ),
+                      );
+                      toast.success("Added to lead pipeline!");
+                    }}
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(96,165,250,0.1)",
+                      border: "1px solid rgba(96,165,250,0.2)",
+                      color: "#93c5fd",
+                      cursor: "pointer",
+                    }}
+                  >
+                    → Add to Pipeline
+                  </button>
+                )}
               </div>
               <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>
                 {timeAgo(enq.created_at)}
@@ -2202,164 +2324,393 @@ export default function SalesmanLite() {
 
   // ── RENDER BOOKINGS ───────────────────────────────────────────────────────
 
-  const renderBookings = () => (
-    <div>
-      <p
-        style={{
-          margin: "0 0 16px",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#f1f5f9",
-        }}
-      >
-        Bookings ({appointments.length})
-      </p>
-      {appointments.length === 0 && (
-        <div
-          style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
+  const renderBookings = () => {
+    const [editingReminder, setEditingReminder] = React.useState(null);
+    const [reminderMsg, setReminderMsg] = React.useState("");
+
+    return (
+      <div>
+        <p
+          style={{
+            margin: "0 0 16px",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#f1f5f9",
+          }}
         >
-          <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+          Bookings ({appointments.length})
+        </p>
+        {appointments.length === 0 && (
+          <div
+            style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
+          >
+            <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+            <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {appointments.map((apt) => {
+            const car = apt.car_listings;
+            const aptDate = apt.appointment_date
+              ? new Date(apt.appointment_date)
+              : null;
+            const dateStr =
+              aptDate && !isNaN(aptDate)
+                ? aptDate.toLocaleDateString("en-MY", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—";
+            const timeStr =
+              aptDate && !isNaN(aptDate)
+                ? aptDate.toLocaleTimeString("en-MY", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "";
+            const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
+
+            return (
+              <div
+                key={apt.id}
+                style={{
+                  background: "#0d1117",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 2,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#e5e7eb",
+                    }}
+                  >
+                    {apt.buyer_name || "—"}
+                  </p>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 99,
+                      flexShrink: 0,
+                      background:
+                        apt.status === "confirmed"
+                          ? "rgba(34,197,94,0.12)"
+                          : "rgba(251,191,36,0.12)",
+                      border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
+                      color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {apt.status}
+                  </span>
+                </div>
+                {apt.created_at && (
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 10,
+                      color: "#374151",
+                    }}
+                  >
+                    Booked {timeAgo(apt.created_at)} ·{" "}
+                    {new Date(apt.created_at).toLocaleDateString("en-MY", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
+                <p
+                  style={{
+                    margin: "0 0 2px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#93c5fd",
+                  }}
+                >
+                  📅 {dateStr}
+                  {timeStr && ` · ${timeStr}`}
+                </p>
+                {car && (
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 11,
+                      color: "#6b7280",
+                    }}
+                  >
+                    {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                  </p>
+                )}
+                {apt.buyer_phone && (
+                  <p
+                    style={{
+                      margin: "0 0 6px",
+                      fontSize: 11,
+                      color: "#4b5563",
+                    }}
+                  >
+                    📞 {apt.buyer_phone}
+                  </p>
+                )}
+                {apt.notes && (
+                  <p
+                    style={{
+                      margin: "0 0 6px",
+                      fontSize: 10,
+                      color: "#4b5563",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    "{apt.notes}"
+                  </p>
+                )}
+                {apt.buyer_phone &&
+                  (editingReminder === apt.id ? (
+                    <div style={{ marginTop: 4 }}>
+                      <textarea
+                        value={reminderMsg}
+                        onChange={(e) => setReminderMsg(e.target.value)}
+                        rows={3}
+                        style={{
+                          width: "100%",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 7,
+                          color: "#e5e7eb",
+                          fontSize: 11,
+                          padding: "8px 10px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                          fontFamily: "'DM Sans', sans-serif",
+                          resize: "vertical",
+                          lineHeight: 1.5,
+                          marginBottom: 6,
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => {
+                            const phone = apt.buyer_phone.replace(/\D/g, "");
+                            window.open(
+                              `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
+                            setEditingReminder(null);
+                          }}
+                          style={{
+                            fontSize: 10,
+                            padding: "3px 9px",
+                            borderRadius: 6,
+                            background: "rgba(37,211,102,0.1)",
+                            border: "1px solid rgba(37,211,102,0.2)",
+                            color: "#4ade80",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Send
+                        </button>
+                        <button
+                          onClick={() => setEditingReminder(null)}
+                          style={{
+                            fontSize: 10,
+                            padding: "3px 9px",
+                            borderRadius: 6,
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            color: "#6b7280",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingReminder(apt.id);
+                        setReminderMsg(defaultReminder);
+                      }}
+                      style={{
+                        fontSize: 10,
+                        padding: "3px 9px",
+                        borderRadius: 6,
+                        background: "rgba(37,211,102,0.1)",
+                        border: "1px solid rgba(37,211,102,0.2)",
+                        color: "#4ade80",
+                        cursor: "pointer",
+                      }}
+                    >
+                      WA Reminder
+                    </button>
+                  ))}
+              </div>
+            );
+          })}
         </div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {appointments.map((apt) => {
-          const car = apt.car_listings;
-          const aptDate = apt.appointment_date
-            ? new Date(apt.appointment_date)
-            : null;
-          const dateStr =
-            aptDate && !isNaN(aptDate)
-              ? aptDate.toLocaleDateString("en-MY", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "—";
-          const timeStr =
-            aptDate && !isNaN(aptDate)
-              ? aptDate.toLocaleTimeString("en-MY", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "";
-          return (
-            <div
-              key={apt.id}
+      </div>
+    );
+  };
+
+  // ── RENDER SETTINGS ──────────────────────────────────────────────────────
+
+  const renderSettings = () => {
+    const inputStyle = {
+      width: "100%",
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      borderRadius: 8,
+      color: "#e5e7eb",
+      fontSize: 13,
+      padding: "10px 12px",
+      outline: "none",
+      boxSizing: "border-box",
+      fontFamily: "'DM Sans', sans-serif",
+    };
+
+    const handleSave = async () => {
+      setSettingsSaving(true);
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: settingsForm.full_name,
+          whatsapp_number: settingsForm.whatsapp_number,
+        })
+        .eq("id", userId);
+      setProfile((p) => ({
+        ...p,
+        full_name: settingsForm.full_name,
+        whatsapp_number: settingsForm.whatsapp_number,
+      }));
+      setSettingsSaving(false);
+      toast.success("Profile updated");
+    };
+
+    return (
+      <div style={{ maxWidth: 480 }}>
+        <p
+          style={{
+            margin: "0 0 20px",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#f1f5f9",
+          }}
+        >
+          Profile Settings
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label
               style={{
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                padding: "12px 14px",
+                fontSize: 11,
+                color: "#6b7280",
+                display: "block",
+                marginBottom: 6,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  marginBottom: 4,
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#e5e7eb",
-                  }}
-                >
-                  {apt.buyer_name || "—"}
-                </p>
-                <span
-                  style={{
-                    fontSize: 10,
-                    padding: "2px 7px",
-                    borderRadius: 99,
-                    flexShrink: 0,
-                    background:
-                      apt.status === "confirmed"
-                        ? "rgba(34,197,94,0.12)"
-                        : "rgba(251,191,36,0.12)",
-                    border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
-                    color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {apt.status}
-                </span>
-              </div>
-              <p
-                style={{
-                  margin: "0 0 2px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#93c5fd",
-                }}
-              >
-                📅 {dateStr}
-                {timeStr && ` · ${timeStr}`}
-              </p>
-              {car && (
-                <p
-                  style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}
-                >
-                  {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-                </p>
-              )}
-              {apt.buyer_phone && (
-                <p
-                  style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}
-                >
-                  📞 {apt.buyer_phone}
-                </p>
-              )}
-              {apt.notes && (
-                <p
-                  style={{
-                    margin: "0 0 6px",
-                    fontSize: 10,
-                    color: "#4b5563",
-                    fontStyle: "italic",
-                  }}
-                >
-                  "{apt.notes}"
-                </p>
-              )}
-              {apt.buyer_phone && (
-                <button
-                  onClick={() => {
-                    const phone = apt.buyer_phone.replace(/\D/g, "");
-                    const msg = encodeURIComponent(
-                      `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`,
-                    );
-                    window.open(
-                      `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  }}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 9px",
-                    borderRadius: 6,
-                    background: "rgba(37,211,102,0.1)",
-                    border: "1px solid rgba(37,211,102,0.2)",
-                    color: "#4ade80",
-                    cursor: "pointer",
-                  }}
-                >
-                  WA Reminder
-                </button>
-              )}
-            </div>
-          );
-        })}
+              Full Name
+            </label>
+            <input
+              value={settingsForm.full_name}
+              onChange={(e) =>
+                setSettingsForm((p) => ({ ...p, full_name: e.target.value }))
+              }
+              placeholder="Your full name"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              WhatsApp Number
+            </label>
+            <input
+              value={settingsForm.whatsapp_number}
+              onChange={(e) =>
+                setSettingsForm((p) => ({
+                  ...p,
+                  whatsapp_number: e.target.value,
+                }))
+              }
+              placeholder="e.g. 60123456789"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label
+              style={{
+                fontSize: 11,
+                color: "#6b7280",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Username / Slug
+            </label>
+            <input
+              value={profile?.slug || ""}
+              readOnly
+              style={{
+                ...inputStyle,
+                color: "#4b5563",
+                cursor: "not-allowed",
+                background: "rgba(255,255,255,0.02)",
+              }}
+            />
+            <p
+              style={{
+                margin: "5px 0 0",
+                fontSize: 10,
+                color: "#374151",
+              }}
+            >
+              Contact support to change your username.
+            </p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={settingsSaving}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              background: "#2563eb",
+              border: "none",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: settingsSaving ? "not-allowed" : "pointer",
+              opacity: settingsSaving ? 0.6 : 1,
+            }}
+          >
+            {settingsSaving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ── RENDER MERGE ──────────────────────────────────────────────────────────
 
@@ -2617,143 +2968,140 @@ export default function SalesmanLite() {
   const renderWAModal = () =>
     waModalLead && (
       <div
-        onClick={() => !waSending && setWaModalLead(null)}
+        onClick={() => setWaModalLead(null)}
         style={{
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.78)",
           zIndex: 999,
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "center",
           justifyContent: "center",
+          padding: "0 16px",
         }}
       >
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
             background: "#111827",
-            borderRadius: isMobile ? "16px 16px 0 0" : 12,
-            width: isMobile ? "100%" : 480,
-            maxHeight: "85vh",
-            display: "flex",
-            flexDirection: "column",
+            borderRadius: 12,
+            width: "90%",
+            maxWidth: 440,
+            padding: 24,
           }}
         >
-          <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
-            <div
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
+            <p
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 14,
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: "#f1f5f9",
-                  }}
-                >
-                  Send WhatsApp
-                </p>
-                <p
-                  style={{
-                    margin: "2px 0 0",
-                    fontSize: 11,
-                    color: "#6b7280",
-                  }}
-                >
-                  To {waModalLead.buyer_name || "—"}
-                  {waModalLead.phone ? ` · ${waModalLead.phone}` : ""}
-                </p>
-              </div>
-              <button
-                onClick={() => setWaModalLead(null)}
-                disabled={waSending}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#6b7280",
-                  cursor: waSending ? "not-allowed" : "pointer",
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <label
-              style={{
-                fontSize: 11,
-                color: "#6b7280",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Message
-            </label>
-            <textarea
-              value={waModalMessage}
-              onChange={(e) => setWaModalMessage(e.target.value)}
-              rows={6}
-              style={{
-                width: "100%",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8,
-                color: "#e5e7eb",
-                fontSize: 13,
-                padding: "10px 12px",
-                outline: "none",
-                boxSizing: "border-box",
-                fontFamily: "'DM Sans', sans-serif",
-                resize: "vertical",
-                lineHeight: 1.5,
-              }}
-            />
-            <button
-              onClick={sendWAFromModal}
-              disabled={
-                !waModalMessage.trim() || !waModalLead.phone || waSending
-              }
-              style={{
-                marginTop: 16,
-                width: "100%",
-                padding: "10px",
-                borderRadius: 8,
-                background: "#16a34a",
-                border: "none",
-                color: "#fff",
-                fontSize: 13,
+                margin: 0,
+                fontSize: 15,
                 fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                opacity:
-                  !waModalMessage.trim() || !waModalLead.phone || waSending
-                    ? 0.6
-                    : 1,
+                color: "#f1f5f9",
               }}
             >
-              <Send size={13} />
-              {waSending ? "Sending..." : "Send WhatsApp"}
+              Send WA Message
+            </p>
+            <button
+              onClick={() => setWaModalLead(null)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#6b7280",
+                cursor: "pointer",
+                padding: 2,
+              }}
+            >
+              <X size={18} />
             </button>
-            {!waModalLead.phone && (
-              <p
-                style={{
-                  margin: "10px 0 0",
-                  fontSize: 11,
-                  color: "#f87171",
-                  textAlign: "center",
-                }}
-              >
-                No phone number on this lead.
-              </p>
-            )}
           </div>
+          <textarea
+            value={waModalMsg}
+            onChange={(e) => setWaModalMsg(e.target.value)}
+            rows={5}
+            style={{
+              width: "100%",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+              color: "#e5e7eb",
+              fontSize: 13,
+              padding: "10px 12px",
+              outline: "none",
+              boxSizing: "border-box",
+              fontFamily: "'DM Sans', sans-serif",
+              resize: "vertical",
+              lineHeight: 1.5,
+            }}
+          />
+          <button
+            onClick={async () => {
+              const phone = (waModalLead.phone || "").replace(/\D/g, "");
+              if (phone) {
+                window.open(
+                  `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }
+              const now = new Date().toISOString();
+              await supabase
+                .from("leads")
+                .update({ updated_at: now })
+                .eq("id", waModalLead.id);
+              await supabase.from("lead_activities").insert({
+                lead_id: waModalLead.id,
+                activity_type: "whatsapp_sent",
+                note: "WA message sent",
+                created_by: userId,
+                dealer_id: waModalLead.dealer_id ?? null,
+              });
+              setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
+              setLeads((p) =>
+                p.map((l) =>
+                  l.id === waModalLead.id ? { ...l, updated_at: now } : l,
+                ),
+              );
+              setWaModalLead(null);
+            }}
+            disabled={!waModalMsg.trim() || !waModalLead.phone}
+            style={{
+              marginTop: 12,
+              width: "100%",
+              padding: "10px",
+              borderRadius: 8,
+              background: "#16a34a",
+              border: "none",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor:
+                !waModalMsg.trim() || !waModalLead.phone
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: !waModalMsg.trim() || !waModalLead.phone ? 0.6 : 1,
+            }}
+          >
+            Send
+          </button>
+          {!waModalLead.phone && (
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 11,
+                color: "#f87171",
+                textAlign: "center",
+              }}
+            >
+              No phone number on this lead.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -3218,6 +3566,7 @@ export default function SalesmanLite() {
           {activeTab === "enquiries" && renderEnquiries()}
           {activeTab === "bookings" && renderBookings()}
           {activeTab === "merge" && renderMerge()}
+          {activeTab === "settings" && renderSettings()}
         </div>
       </div>
 
