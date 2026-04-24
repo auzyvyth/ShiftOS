@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,7 +33,10 @@ function useWindowSize() {
 }
 
 const timeAgo = (iso) => {
-  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const s = Math.floor((Date.now() - d) / 1000);
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
@@ -140,6 +143,10 @@ export default function SalesmanLite() {
   const [mergeStatus, setMergeStatus] = useState("idle");
   const [mergeMsg, setMergeMsg] = useState("");
 
+  const channelRef = useRef(null);
+  const [appointments, setAppointments] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+
   // stale leads (48h)
   useEffect(() => {
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
@@ -191,13 +198,11 @@ export default function SalesmanLite() {
 
       if (role !== "salesman") {
         navigate(ROLE_ROUTES[role] ?? "/dashboard", { replace: true });
-        setLoading(false);
         return;
       }
 
       if (profileData.dealer_id) {
         navigate("/salesman", { replace: true });
-        setLoading(false);
         return;
       }
 
@@ -225,9 +230,85 @@ export default function SalesmanLite() {
         .then(({ data: lds }) => {
           setLeads(lds || []);
           setLeadsLoading(false);
+
+          channelRef.current = supabase
+            .channel("salesman-lite-rt-" + uid)
+            .on("postgres_changes", {
+              event: "*",
+              schema: "public",
+              table: "leads",
+              filter: `salesman_id=eq.${uid}`,
+            }, (payload) => {
+              if (payload.eventType === "INSERT")
+                setLeads((p) => [payload.new, ...p]);
+              if (payload.eventType === "UPDATE")
+                setLeads((p) =>
+                  p.map((l) => (l.id === payload.new.id ? { ...l, ...payload.new } : l))
+                );
+              if (payload.eventType === "DELETE")
+                setLeads((p) => p.filter((l) => l.id !== payload.old.id));
+            })
+            .on("postgres_changes", {
+              event: "INSERT",
+              schema: "public",
+              table: "salesman_notifications",
+              filter: `salesman_id=eq.${uid}`,
+            }, (payload) => {
+              toast(payload.new.title, { description: payload.new.body });
+            })
+            .on("postgres_changes", {
+              event: "*",
+              schema: "public",
+              table: "whatsapp_enquiries",
+              filter: `dealer_id=eq.${uid}`,
+            }, (payload) => {
+              if (payload.eventType === "INSERT") {
+                setEnquiries((p) => [payload.new, ...p]);
+                toast("New enquiry!", { description: payload.new.buyer_name || "Someone enquired" });
+              }
+              if (payload.eventType === "UPDATE")
+                setEnquiries((p) => p.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e));
+            })
+            .on("postgres_changes", {
+              event: "*",
+              schema: "public",
+              table: "appointments",
+              filter: `salesman_id=eq.${uid}`,
+            }, (payload) => {
+              if (payload.eventType === "INSERT") {
+                setAppointments((p) => [payload.new, ...p]);
+                toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
+              }
+              if (payload.eventType === "UPDATE")
+                setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
+            })
+            .subscribe();
         });
+
+      // fetch appointments
+      supabase
+        .from("appointments")
+        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, car_listings(brand, model, year)")
+        .eq("salesman_id", uid)
+        .eq("dealer_id", uid)
+        .order("appointment_date", { ascending: false })
+        .then(({ data: apts }) => setAppointments(apts || []));
+
+      // fetch enquiries
+      supabase
+        .from("whatsapp_enquiries")
+        .select("id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)")
+        .eq("dealer_id", uid)
+        .order("created_at", { ascending: false })
+        .then(({ data: enqs }) => setEnquiries(enqs || []));
     });
   }, [navigate]);
+
+  useEffect(() => {
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -235,10 +316,20 @@ export default function SalesmanLite() {
   };
 
   const updateLeadStage = async (leadId, stage) => {
+    const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
+    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
     await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "stage_changed",
+      from_stage: oldStage,
+      to_stage: stage,
+      created_by: userId,
+      dealer_id: dealerId,
+    });
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
   };
 
@@ -259,6 +350,13 @@ export default function SalesmanLite() {
     }
     const now = new Date().toISOString();
     await supabase.from("leads").update({ updated_at: now }).eq("id", lead.id);
+    await supabase.from("lead_activities").insert({
+      lead_id: lead.id,
+      activity_type: "whatsapp_sent",
+      note: "Follow-up WA sent via stale nudge",
+      created_by: userId,
+      dealer_id: lead.dealer_id ?? null,
+    });
     setStaleLeads((p) => p.filter((l) => l.id !== lead.id));
     setLeads((p) =>
       p.map((l) => (l.id === lead.id ? { ...l, updated_at: now } : l)),
@@ -326,10 +424,7 @@ export default function SalesmanLite() {
       .update({ dealer_id: data.dealer_id })
       .eq("assigned_to", profile.id)
       .is("dealer_id", null);
-    await supabase
-      .from("dealer_invites")
-      .update({ used: true })
-      .eq("code", mergeCode.trim().toUpperCase());
+    await supabase.rpc("use_dealer_invite", { invite_code: mergeCode.trim().toUpperCase() });
 
     setMergeStatus("success");
     setMergeMsg("Merged! Redirecting to full dashboard...");
@@ -385,6 +480,18 @@ export default function SalesmanLite() {
       badge: leads.filter((l) => l.stage !== "lost").length || null,
     },
     {
+      tab: "enquiries",
+      label: "Enquiries",
+      icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+      badge: enquiries.filter((e) => e.status === "new").length || null,
+    },
+    {
+      tab: "bookings",
+      label: "Bookings",
+      icon: <Phone style={{ width: 14, height: 14 }} />,
+      badge: appointments.filter((a) => a.status === "confirmed").length || null,
+    },
+    {
       tab: "merge",
       label: "Join Dealership",
       icon: <GitMerge style={{ width: 14, height: 14 }} />,
@@ -405,6 +512,18 @@ export default function SalesmanLite() {
       icon: <User size={18} />,
       badge: leads.filter((l) => l.stage !== "lost").length || null,
     },
+    {
+      tab: "enquiries",
+      label: "Enquiries",
+      icon: <MessageSquare size={18} />,
+      badge: enquiries.filter((e) => e.status === "new").length || null,
+    },
+    {
+      tab: "bookings",
+      label: "Bookings",
+      icon: <Phone size={18} />,
+      badge: appointments.filter((a) => a.status === "confirmed").length || null,
+    },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
   ];
 
@@ -414,6 +533,15 @@ export default function SalesmanLite() {
     const activeLeads = leads.filter(
       (l) => l.stage !== "lost" && l.stage !== "closed_lost",
     );
+    const todayAppts = appointments.filter((a) => {
+      if (!a.appointment_date) return false;
+      const d = new Date(a.appointment_date);
+      if (isNaN(d)) return false;
+      const today = new Date();
+      return d.getDate() === today.getDate() &&
+             d.getMonth() === today.getMonth() &&
+             d.getFullYear() === today.getFullYear();
+    }).length;
     const kpis = [
       { label: "Active Leads", value: activeLeads.length, color: "#93c5fd" },
       { label: "My Listings", value: myListings.length, color: "#4ade80" },
@@ -423,6 +551,8 @@ export default function SalesmanLite() {
         color: "#fb923c",
         warn: staleLeads.length > 0,
       },
+      { label: "Appts Today", value: todayAppts, color: "#c084fc" },
+      { label: "New Enquiries", value: enquiries.filter((e) => e.status === "new").length, color: "#c084fc" },
     ];
 
     return (
@@ -442,7 +572,7 @@ export default function SalesmanLite() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)",
             gap: 10,
             marginBottom: 24,
           }}
@@ -813,8 +943,8 @@ export default function SalesmanLite() {
   // ── RENDER LEADS ──────────────────────────────────────────────────────────
 
   const renderLeads = () => {
-    const activeStages = LEAD_STAGES.filter((s) => s !== "lost");
-    const lostLeads = leads.filter((l) => l.stage === "lost");
+    const activeStages = LEAD_STAGES.filter((s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won");
+    const lostLeads = leads.filter((l) => l.stage === "lost" || l.stage === "closed_lost" || l.stage === "closed_won");
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
@@ -825,9 +955,9 @@ export default function SalesmanLite() {
         ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
         : null;
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
-      const nextStage = LEAD_STAGES.filter(
-        (s) => s !== "lost" && s !== "won",
-      ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
+      const nextStage = LEAD_STAGES
+        .filter((s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost")
+        .find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
 
       return (
         <div
@@ -1155,6 +1285,138 @@ export default function SalesmanLite() {
       </div>
     );
   };
+
+  // ── RENDER ENQUIRIES ─────────────────────────────────────────────────────
+
+  const renderEnquiries = () => (
+    <div>
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+        Enquiries ({enquiries.length})
+      </p>
+      {enquiries.length === 0 && (
+        <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+          <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+          <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {enquiries.map((enq) => {
+          const car = enq.car_listings;
+          return (
+            <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
+                <span style={{
+                  fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0,
+                  background: enq.status === "new" ? "rgba(96,165,250,0.12)" : "rgba(34,197,94,0.12)",
+                  border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : "rgba(34,197,94,0.3)"}`,
+                  color: enq.status === "new" ? "#93c5fd" : "#4ade80",
+                  textTransform: "capitalize",
+                }}>
+                  {enq.status}
+                </span>
+              </div>
+              {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+              {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
+              {enq.buyer_message && (
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  "{enq.buyer_message}"
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 6 }}>
+                {enq.buyer_phone && (
+                  <button
+                    onClick={() => {
+                      const phone = enq.buyer_phone.replace(/\D/g, "");
+                      const enqCar = enq.car_listings;
+                      const carName = enqCar ? `${enqCar.brand} ${enqCar.model}` : "kereta";
+                      const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`);
+                      window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                    }}
+                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  >
+                    WA Reply
+                  </button>
+                )}
+                {enq.status === "new" && (
+                  <button
+                    onClick={async () => {
+                      await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
+                      setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+                    }}
+                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+                  >
+                    Mark Responded
+                  </button>
+                )}
+              </div>
+              <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ── RENDER BOOKINGS ───────────────────────────────────────────────────────
+
+  const renderBookings = () => (
+    <div>
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+        Bookings ({appointments.length})
+      </p>
+      {appointments.length === 0 && (
+        <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+          <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+          <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {appointments.map((apt) => {
+          const car = apt.car_listings;
+          const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+          const dateStr = aptDate && !isNaN(aptDate)
+            ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+            : "—";
+          const timeStr = aptDate && !isNaN(aptDate)
+            ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
+            : "";
+          return (
+            <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{apt.buyer_name || "—"}</p>
+                <span style={{
+                  fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0,
+                  background: apt.status === "confirmed" ? "rgba(34,197,94,0.12)" : "rgba(251,191,36,0.12)",
+                  border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
+                  color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
+                  textTransform: "capitalize",
+                }}>
+                  {apt.status}
+                </span>
+              </div>
+              <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>📅 {dateStr}{timeStr && ` · ${timeStr}`}</p>
+              {car && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+              {apt.buyer_phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>}
+              {apt.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
+              {apt.buyer_phone && (
+                <button
+                  onClick={() => {
+                    const phone = apt.buyer_phone.replace(/\D/g, "");
+                    const msg = encodeURIComponent(`Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`);
+                    window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                  }}
+                  style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                >
+                  WA Reminder
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   // ── RENDER MERGE ──────────────────────────────────────────────────────────
 
@@ -1864,6 +2126,8 @@ export default function SalesmanLite() {
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "leads" && renderLeads()}
+          {activeTab === "enquiries" && renderEnquiries()}
+          {activeTab === "bookings" && renderBookings()}
           {activeTab === "merge" && renderMerge()}
         </div>
       </div>

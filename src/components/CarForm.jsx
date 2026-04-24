@@ -1226,7 +1226,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             ...payload,
             status: "active",
             // salesman_lite owns and sells their own listings
-            ...(profile?.role === "salesman" ? { assigned_to: profile.id, salesman_slug: profile.slug } : {}),
+            ...(profile?.role === "salesman" ? { assigned_to: profile.id } : {}),
           }])
           .select()
           .single();
