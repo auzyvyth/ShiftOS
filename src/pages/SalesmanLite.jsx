@@ -24,6 +24,12 @@ import {
   Send,
   Pencil,
   Settings,
+  Bell,
+  TrendingUp,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -178,6 +184,18 @@ export default function SalesmanLite() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
+
+  // notifications
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  // enquiry templates
+  const [openTemplateId, setOpenTemplateId] = useState(null);
+  const [templateToast, setTemplateToast] = useState(null);
+
+  // listings sort/filter
+  const [sortBy, setSortBy] = useState("newest");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   // merge
   const [mergeCode, setMergeCode] = useState("");
@@ -343,6 +361,7 @@ export default function SalesmanLite() {
               },
               (payload) => {
                 toast(payload.new.title, { description: payload.new.body });
+                setNotifications((p) => [payload.new, ...p]);
               },
             )
             .on(
@@ -398,12 +417,21 @@ export default function SalesmanLite() {
       supabase
         .from("appointments")
         .select(
-          "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, car_listings(brand, model, year)",
+          "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)",
         )
         .eq("salesman_id", uid)
         .eq("dealer_id", uid)
         .order("appointment_date", { ascending: false })
         .then(({ data: apts }) => setAppointments(apts || []));
+
+      // fetch notifications
+      supabase
+        .from("salesman_notifications")
+        .select("id, title, body, is_read, created_at")
+        .eq("salesman_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(30)
+        .then(({ data: notifs }) => setNotifications(notifs || []));
 
       // fetch enquiries
       supabase
@@ -487,6 +515,74 @@ export default function SalesmanLite() {
       ),
     );
     setLostPromptId(null);
+  };
+
+  // ── notifications ──────────────────────────────────────────────────────────
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const markNotifRead = async (notif) => {
+    if (notif.is_read) return;
+    await supabase
+      .from("salesman_notifications")
+      .update({ is_read: true })
+      .eq("id", notif.id);
+    setNotifications((p) =>
+      p.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)),
+    );
+  };
+
+  const markAllNotifsRead = async () => {
+    const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
+    if (!ids.length) return;
+    await supabase
+      .from("salesman_notifications")
+      .update({ is_read: true })
+      .in("id", ids);
+    setNotifications((p) => p.map((n) => ({ ...n, is_read: true })));
+  };
+
+  // ── enquiry templates ──────────────────────────────────────────────────────
+
+  const buildTemplate = (enq, key) => {
+    const car = enq.car_listings;
+    const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
+    const name = enq.buyer_name || "kawan";
+    const templates = {
+      chat: `Hi ${name}! Saya tengok you ada enquiry pasal ${carName}. Boleh kita chat sekejap? Saya ada details lagi yang boleh share 😊`,
+      test_drive: `Hi ${name}! Best tak kalau you cuba drive sendiri ${carName} tu dulu? Test drive free je — bila you free? 🚗`,
+      budget: `Hi ${name}! Thanks for your interest in ${carName}. Boleh tahu budget range you macam mana? Saya try cari yang paling sesuai untuk you 💪`,
+      deposit: `Hi ${name}! Just to update, ada beberapa orang interested dalam ${carName} ni. Kalau nak reserve, boleh deposit kecik dulu — kereta terus hold untuk you 🔒`,
+    };
+    return templates[key] || "";
+  };
+
+  const fireTemplate = (enq, key) => {
+    const msg = buildTemplate(enq, key);
+    navigator.clipboard.writeText(msg).catch(() => {});
+    const phone = (enq.buyer_phone || "").replace(/\D/g, "");
+    if (phone) {
+      window.open(
+        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+    setTemplateToast(enq.id + "_" + key);
+    setTimeout(() => setTemplateToast(null), 2000);
+    setOpenTemplateId(null);
+  };
+
+  // ── appointment status ─────────────────────────────────────────────────────
+
+  const updateApptStatus = async (apptId, status) => {
+    await supabase
+      .from("appointments")
+      .update({ status })
+      .eq("id", apptId);
+    setAppointments((p) =>
+      p.map((a) => (a.id === apptId ? { ...a, status } : a)),
+    );
   };
 
   const handleAddLead = async () => {
@@ -661,6 +757,85 @@ export default function SalesmanLite() {
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
     { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
   ];
+
+  // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
+
+  const renderNotifPanel = () =>
+    notifOpen && (
+      <div
+        onClick={() => setNotifOpen(false)}
+        style={{
+          position: "fixed", inset: 0, zIndex: 998,
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: isMobile ? 60 : 58,
+            right: isMobile ? 8 : 24,
+            width: 320,
+            maxHeight: 420,
+            background: "#111827",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 12,
+            zIndex: 999,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+          }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
+              Notifications {unreadCount > 0 && (
+                <span style={{ marginLeft: 6, fontSize: 10, background: "#ef4444", color: "#fff", borderRadius: 99, padding: "1px 6px" }}>
+                  {unreadCount}
+                </span>
+              )}
+            </p>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllNotifsRead}
+                style={{ background: "none", border: "none", fontSize: 10, color: "#60a5fa", cursor: "pointer", padding: 0 }}
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {notifications.length === 0 && (
+              <p style={{ margin: 0, padding: "24px 16px", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
+                No notifications yet.
+              </p>
+            )}
+            {notifications.map((n) => (
+              <div
+                key={n.id}
+                onClick={() => markNotifRead(n)}
+                style={{
+                  padding: "12px 16px",
+                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  background: n.is_read ? "transparent" : "rgba(96,165,250,0.06)",
+                  cursor: "pointer",
+                }}
+              >
+                <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: n.is_read ? "#9ca3af" : "#f1f5f9" }}>
+                  {n.title}
+                </p>
+                {n.body && (
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>{n.body}</p>
+                )}
+                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{timeAgo(n.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
@@ -1154,6 +1329,61 @@ export default function SalesmanLite() {
           </div>
         )}
 
+        {/* Activity feed */}
+        {(() => {
+          const feed = [
+            ...appointments.slice(0, 5).map((a) => ({
+              type: "booking",
+              label: `${a.buyer_name || "Someone"} booked a viewing`,
+              sub: a.car_listings ? `${a.car_listings.brand} ${a.car_listings.model}` : "",
+              ts: a.created_at,
+              dot: "#60a5fa",
+            })),
+            ...enquiries.slice(0, 5).map((e) => ({
+              type: "enquiry",
+              label: `${e.buyer_name || "Someone"} enquired`,
+              sub: e.car_listings ? `${e.car_listings.brand} ${e.car_listings.model}` : "",
+              ts: e.created_at,
+              dot: "#4ade80",
+            })),
+            ...leads.filter((l) => l.stage === "won").slice(0, 3).map((l) => ({
+              type: "won",
+              label: `${l.buyer_name || "Lead"} marked won`,
+              sub: l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "",
+              ts: l.updated_at,
+              dot: "#fbbf24",
+            })),
+          ]
+            .filter((f) => f.ts)
+            .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+            .slice(0, 8);
+
+          if (!feed.length) return null;
+          return (
+            <div style={{ marginTop: 20 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Recent Activity
+              </p>
+              <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+                {feed.map((f, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px",
+                    borderBottom: i < feed.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: f.dot, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</p>
+                      {f.sub && <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{f.sub}</p>}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(f.ts)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* No-dealer banner */}
         <div
           style={{
@@ -1254,6 +1484,47 @@ export default function SalesmanLite() {
         </div>
       )}
 
+      {/* sort + filter controls */}
+      {myListings.length > 0 && !showAddForm && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+          {[
+            { key: "newest", label: "Newest" },
+            { key: "price_desc", label: "Price ↓" },
+            { key: "price_asc", label: "Price ↑" },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSortBy(key)}
+              style={{
+                fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                background: sortBy === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${sortBy === key ? "rgba(37,99,235,0.4)" : "rgba(255,255,255,0.08)"}`,
+                color: sortBy === key ? "#93c5fd" : "#6b7280",
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)", alignSelf: "center", margin: "0 2px" }} />
+          {["all", "available", "reserved", "pending"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              style={{
+                fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                background: filterStatus === s ? "rgba(255,255,255,0.08)" : "transparent",
+                border: `1px solid ${filterStatus === s ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.06)"}`,
+                color: filterStatus === s ? "#e5e7eb" : "#6b7280",
+                cursor: "pointer", textTransform: "capitalize",
+              }}
+            >
+              {s === "all" ? "All" : s}
+            </button>
+          ))}
+        </div>
+      )}
+
       {myListings.length === 0 && !showAddForm && (
         <div
           style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
@@ -1266,7 +1537,16 @@ export default function SalesmanLite() {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {myListings.map((car) => {
+        {(() => {
+          let filtered = [...myListings];
+          if (filterStatus !== "all")
+            filtered = filtered.filter((c) => c.status === filterStatus);
+          if (sortBy === "price_desc")
+            filtered.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
+          else if (sortBy === "price_asc")
+            filtered.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
+          return filtered;
+        })().map((car) => {
           const img = Array.isArray(car.images) ? car.images[0] : null;
           const copied = listingCopied[car.id];
           const daysInStock = car.created_at
@@ -1482,6 +1762,10 @@ export default function SalesmanLite() {
   );
 
   // ── RENDER LEADS ──────────────────────────────────────────────────────────
+
+  // ── NOTE: the listings map above uses an IIFE for sort/filter.
+  // The closing is intentionally at the myListings.map level; the outer
+  // (() => { ... })().map() chain closes correctly.
 
   const renderLeads = () => {
     const activeStages = LEAD_STAGES.filter(
@@ -2250,6 +2534,28 @@ export default function SalesmanLite() {
                     WA Reply
                   </button>
                 )}
+                {enq.buyer_phone && (
+                  <button
+                    onClick={() =>
+                      setOpenTemplateId(
+                        openTemplateId === enq.id ? null : enq.id,
+                      )
+                    }
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: openTemplateId === enq.id
+                        ? "rgba(167,139,250,0.15)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`,
+                      color: openTemplateId === enq.id ? "#c084fc" : "#6b7280",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Templates
+                  </button>
+                )}
                 {enq.status === "new" && (
                   <button
                     onClick={async () => {
@@ -2328,6 +2634,40 @@ export default function SalesmanLite() {
                   </button>
                 )}
               </div>
+              {openTemplateId === enq.id && (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                  {[
+                    { key: "chat",       label: "Let's Chat",      color: "#4ade80" },
+                    { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
+                    { key: "budget",     label: "What's Budget?",  color: "#fbbf24" },
+                    { key: "deposit",    label: "Deposit to Hold", color: "#f87171" },
+                  ].map(({ key, label, color }) => {
+                    const toastKey = enq.id + "_" + key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => fireTemplate(enq, key)}
+                        style={{
+                          textAlign: "left",
+                          fontSize: 11,
+                          padding: "7px 10px",
+                          borderRadius: 7,
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                          color: templateToast === toastKey ? color : "#9ca3af",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                        {templateToast === toastKey ? "✓ Sent!" : label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>
                 {timeAgo(enq.created_at)}
               </p>
@@ -2341,243 +2681,183 @@ export default function SalesmanLite() {
   // ── RENDER BOOKINGS ───────────────────────────────────────────────────────
 
   const renderBookings = () => {
-    return (
-      <div>
-        <p
+    const isToday = (iso) => {
+      if (!iso) return false;
+      const d = new Date(iso);
+      const t = new Date();
+      return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+    };
+    const isNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
+
+    const todayApts = appointments.filter((a) => isToday(a.appointment_date));
+    const upcomingApts = appointments.filter((a) => !isToday(a.appointment_date));
+
+    const statusColors = {
+      confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
+      pending:   { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
+      cancelled: { bg: "rgba(239,68,68,0.12)",  border: "rgba(239,68,68,0.3)",  tx: "#f87171" },
+      rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+    };
+
+    const renderApptCard = (apt) => {
+      const car = apt.car_listings;
+      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+      const dateStr = aptDate && !isNaN(aptDate)
+        ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+        : "—";
+      const timeStr = aptDate && !isNaN(aptDate)
+        ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
+      const sc = statusColors[apt.status] || statusColors.pending;
+
+      return (
+        <div
+          key={apt.id}
           style={{
-            margin: "0 0 16px",
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#f1f5f9",
+            background: "#0d1117",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            padding: "12px 14px",
           }}
         >
-          Bookings ({appointments.length})
-        </p>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {apt.buyer_name || "—"}
+              </p>
+              {isNew(apt.created_at) && (
+                <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", flexShrink: 0, letterSpacing: "0.05em" }}>
+                  NEW
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+              {apt.status}
+            </span>
+          </div>
+          {apt.created_at && (
+            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
+              Booked {timeAgo(apt.created_at)} · {new Date(apt.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+            </p>
+          )}
+          <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>
+            📅 {dateStr}{timeStr && ` · ${timeStr}`}
+          </p>
+          {car && (
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
+              {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+            </p>
+          )}
+          {apt.buyer_phone && (
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>
+          )}
+          {apt.notes && (
+            <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>
+          )}
+          {/* status actions */}
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: apt.buyer_phone ? 6 : 0 }}>
+            {apt.status !== "confirmed" && (
+              <button onClick={() => updateApptStatus(apt.id, "confirmed")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+                Confirm
+              </button>
+            )}
+            {apt.status !== "cancelled" && (
+              <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
+                Cancel
+              </button>
+            )}
+            {apt.status !== "rescheduled" && (
+              <button onClick={() => updateApptStatus(apt.id, "rescheduled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>
+                Reschedule
+              </button>
+            )}
+          </div>
+          {/* WA reminder */}
+          {apt.buyer_phone &&
+            (editingReminder === apt.id ? (
+              <div style={{ marginTop: 4 }}>
+                <textarea
+                  value={reminderMsg}
+                  onChange={(e) => setReminderMsg(e.target.value)}
+                  rows={3}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5, marginBottom: 6 }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      const phone = apt.buyer_phone.replace(/\D/g, "");
+                      window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer");
+                      setEditingReminder(null);
+                    }}
+                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  >
+                    Send
+                  </button>
+                  <button onClick={() => setEditingReminder(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditingReminder(apt.id); setReminderMsg(defaultReminder); }}
+                style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+              >
+                WA Reminder
+              </button>
+            ))}
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+            Bookings ({appointments.length})
+          </p>
+          <div style={{ display: "flex", gap: 6 }}>
+            {["confirmed", "pending"].map((s) => {
+              const count = appointments.filter((a) => a.status === s).length;
+              if (!count) return null;
+              const sc = statusColors[s];
+              return (
+                <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+                  {count} {s}
+                </span>
+              );
+            })}
+          </div>
+        </div>
         {appointments.length === 0 && (
-          <div
-            style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
-          >
+          <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
             <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {appointments.map((apt) => {
-            const car = apt.car_listings;
-            const aptDate = apt.appointment_date
-              ? new Date(apt.appointment_date)
-              : null;
-            const dateStr =
-              aptDate && !isNaN(aptDate)
-                ? aptDate.toLocaleDateString("en-MY", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "—";
-            const timeStr =
-              aptDate && !isNaN(aptDate)
-                ? aptDate.toLocaleTimeString("en-MY", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "";
-            const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
-
-            return (
-              <div
-                key={apt.id}
-                style={{
-                  background: "#0d1117",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    marginBottom: 2,
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#e5e7eb",
-                    }}
-                  >
-                    {apt.buyer_name || "—"}
-                  </p>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      padding: "2px 7px",
-                      borderRadius: 99,
-                      flexShrink: 0,
-                      background:
-                        apt.status === "confirmed"
-                          ? "rgba(34,197,94,0.12)"
-                          : "rgba(251,191,36,0.12)",
-                      border: `1px solid ${apt.status === "confirmed" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
-                      color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
-                      textTransform: "capitalize",
-                    }}
-                  >
-                    {apt.status}
-                  </span>
-                </div>
-                {apt.created_at && (
-                  <p
-                    style={{
-                      margin: "0 0 4px",
-                      fontSize: 10,
-                      color: "#374151",
-                    }}
-                  >
-                    Booked {timeAgo(apt.created_at)} ·{" "}
-                    {new Date(apt.created_at).toLocaleDateString("en-MY", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                )}
-                <p
-                  style={{
-                    margin: "0 0 2px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#93c5fd",
-                  }}
-                >
-                  📅 {dateStr}
-                  {timeStr && ` · ${timeStr}`}
-                </p>
-                {car && (
-                  <p
-                    style={{
-                      margin: "0 0 4px",
-                      fontSize: 11,
-                      color: "#6b7280",
-                    }}
-                  >
-                    {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-                  </p>
-                )}
-                {apt.buyer_phone && (
-                  <p
-                    style={{
-                      margin: "0 0 6px",
-                      fontSize: 11,
-                      color: "#4b5563",
-                    }}
-                  >
-                    📞 {apt.buyer_phone}
-                  </p>
-                )}
-                {apt.notes && (
-                  <p
-                    style={{
-                      margin: "0 0 6px",
-                      fontSize: 10,
-                      color: "#4b5563",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    "{apt.notes}"
-                  </p>
-                )}
-                {apt.buyer_phone &&
-                  (editingReminder === apt.id ? (
-                    <div style={{ marginTop: 4 }}>
-                      <textarea
-                        value={reminderMsg}
-                        onChange={(e) => setReminderMsg(e.target.value)}
-                        rows={3}
-                        style={{
-                          width: "100%",
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: 7,
-                          color: "#e5e7eb",
-                          fontSize: 11,
-                          padding: "8px 10px",
-                          outline: "none",
-                          boxSizing: "border-box",
-                          fontFamily: "'DM Sans', sans-serif",
-                          resize: "vertical",
-                          lineHeight: 1.5,
-                          marginBottom: 6,
-                        }}
-                      />
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={() => {
-                            const phone = apt.buyer_phone.replace(/\D/g, "");
-                            window.open(
-                              `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`,
-                              "_blank",
-                              "noopener,noreferrer",
-                            );
-                            setEditingReminder(null);
-                          }}
-                          style={{
-                            fontSize: 10,
-                            padding: "3px 9px",
-                            borderRadius: 6,
-                            background: "rgba(37,211,102,0.1)",
-                            border: "1px solid rgba(37,211,102,0.2)",
-                            color: "#4ade80",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Send
-                        </button>
-                        <button
-                          onClick={() => setEditingReminder(null)}
-                          style={{
-                            fontSize: 10,
-                            padding: "3px 9px",
-                            borderRadius: 6,
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "#6b7280",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setEditingReminder(apt.id);
-                        setReminderMsg(defaultReminder);
-                      }}
-                      style={{
-                        fontSize: 10,
-                        padding: "3px 9px",
-                        borderRadius: 6,
-                        background: "rgba(37,211,102,0.1)",
-                        border: "1px solid rgba(37,211,102,0.2)",
-                        color: "#4ade80",
-                        cursor: "pointer",
-                      }}
-                    >
-                      WA Reminder
-                    </button>
-                  ))}
-              </div>
-            );
-          })}
-        </div>
+        {todayApts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+              <Calendar size={11} /> Today ({todayApts.length})
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {todayApts.map(renderApptCard)}
+            </div>
+          </div>
+        )}
+        {upcomingApts.length > 0 && (
+          <div>
+            {todayApts.length > 0 && (
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Upcoming
+              </p>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {upcomingApts.map(renderApptCard)}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3490,6 +3770,30 @@ export default function SalesmanLite() {
               </p>
               <div style={{ flex: 1 }} />
               <button
+                onClick={() => setNotifOpen((v) => !v)}
+                style={{
+                  position: "relative",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  marginRight: 6,
+                }}
+              >
+                <Bell size={15} />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: 5, right: 5,
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "#ef4444",
+                  }} />
+                )}
+              </button>
+              <button
                 onClick={handleLogout}
                 style={{
                   background: "rgba(255,255,255,0.04)",
@@ -3543,6 +3847,30 @@ export default function SalesmanLite() {
                   · Lite Panel
                 </p>
               </div>
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                style={{
+                  position: "relative",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  marginRight: 6,
+                }}
+              >
+                <Bell size={15} />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: 5, right: 5,
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "#ef4444",
+                  }} />
+                )}
+              </button>
               <button
                 onClick={() => setShowAddLead(true)}
                 style={{
@@ -3611,6 +3939,7 @@ export default function SalesmanLite() {
 
       {renderAddLeadModal()}
       {renderWAModal()}
+      {renderNotifPanel()}
     </div>
   );
 }
