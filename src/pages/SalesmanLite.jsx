@@ -176,6 +176,8 @@ export default function SalesmanLite() {
     whatsapp_number: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [editingReminder, setEditingReminder] = useState(null);
+  const [reminderMsg, setReminderMsg] = useState("");
 
   // merge
   const [mergeCode, setMergeCode] = useState("");
@@ -258,7 +260,7 @@ export default function SalesmanLite() {
       setProfile(profileData);
       setLoading(false);
 
-      // fetch listings
+      // fetch listings (with fallback if optional columns don't exist yet)
       supabase
         .from("car_listings")
         .select(
@@ -267,7 +269,21 @@ export default function SalesmanLite() {
         .eq("dealer_id", uid)
         .neq("status", "sold")
         .order("created_at", { ascending: false })
-        .then(({ data: lst }) => setMyListings(lst || []));
+        .then(({ data: lst, error }) => {
+          if (error) {
+            supabase
+              .from("car_listings")
+              .select(
+                "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, created_at",
+              )
+              .eq("dealer_id", uid)
+              .neq("status", "sold")
+              .order("created_at", { ascending: false })
+              .then(({ data: lst2 }) => setMyListings(lst2 || []));
+          } else {
+            setMyListings(lst || []);
+          }
+        });
 
       // fetch analytics events (30d, scoped by salesman slug)
       const slug = profileData.slug;
@@ -2325,9 +2341,6 @@ export default function SalesmanLite() {
   // ── RENDER BOOKINGS ───────────────────────────────────────────────────────
 
   const renderBookings = () => {
-    const [editingReminder, setEditingReminder] = React.useState(null);
-    const [reminderMsg, setReminderMsg] = React.useState("");
-
     return (
       <div>
         <p
