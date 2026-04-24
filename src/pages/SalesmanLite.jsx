@@ -146,6 +146,7 @@ export default function SalesmanLite() {
   const channelRef = useRef(null);
   const [appointments, setAppointments] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
+  const [analyticsEvents, setAnalyticsEvents] = useState([]);
 
   // stale leads (48h)
   useEffect(() => {
@@ -219,6 +220,17 @@ export default function SalesmanLite() {
         .neq("status", "sold")
         .order("created_at", { ascending: false })
         .then(({ data: lst }) => setMyListings(lst || []));
+
+      // fetch analytics events (30d, scoped by salesman slug)
+      const slug = profileData.slug;
+      if (slug) {
+        supabase
+          .from("analytics_events")
+          .select("event_type, car_id, car_name, created_at")
+          .eq("salesman_slug", slug)
+          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          .then(({ data: evts }) => setAnalyticsEvents(evts || []));
+      }
 
       // fetch leads
       supabase
@@ -555,6 +567,23 @@ export default function SalesmanLite() {
       { label: "New Enquiries", value: enquiries.filter((e) => e.status === "new").length, color: "#c084fc" },
     ];
 
+    const listingStats = myListings.map((car) => {
+      const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
+      const views = carEvts.filter((e) => e.event_type === "car_view").length;
+      const waTaps = carEvts.filter((e) => e.event_type === "whatsapp_click").length;
+      const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
+      const cvr = views > 0 ? (waTaps / views) * 100 : null;
+      return { car, views, waTaps, enqCount, cvr };
+    });
+    const totalViews = analyticsEvents.filter((e) => e.event_type === "car_view").length;
+    const totalWATaps = analyticsEvents.filter((e) => e.event_type === "whatsapp_click").length;
+    const bestCVRStat = listingStats.reduce((best, s) => {
+      if (s.cvr !== null && (best === null || s.cvr > best.cvr)) return s;
+      return best;
+    }, null);
+    const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
+    const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
+
     return (
       <div>
         <p
@@ -611,6 +640,72 @@ export default function SalesmanLite() {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* My Performance */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            My Performance (30d)
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
+            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Views</p>
+              <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#93c5fd" }}>{totalViews}</p>
+            </div>
+            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>WA Taps</p>
+              <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#4ade80" }}>{totalWATaps}</p>
+            </div>
+            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>Best CVR</p>
+              {bestCVRStat ? (
+                <>
+                  <p style={{ margin: "0 0 2px", fontSize: 22, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: cvrColor(bestCVRStat.cvr) }}>
+                    {bestCVRStat.cvr.toFixed(1)}%
+                  </p>
+                  <p style={{ margin: 0, fontSize: 9, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {perfCarName(bestCVRStat.car)}
+                  </p>
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 26, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "1px", color: "#374151" }}>—</p>
+              )}
+            </div>
+          </div>
+
+          {listingStats.length > 0 && (
+            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 42px 42px 42px 52px", padding: "7px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.06em" }}>Listing</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>Views</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>WA</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "center" }}>Enq</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151", textAlign: "right" }}>CVR</p>
+              </div>
+              {listingStats.map(({ car, views, waTaps, enqCount, cvr }, idx) => (
+                <div
+                  key={car.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 42px 42px 42px 52px",
+                    padding: "8px 12px",
+                    alignItems: "center",
+                    borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 11, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 6 }}>
+                    {perfCarName(car)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#93c5fd", textAlign: "center" }}>{views}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4ade80", textAlign: "center" }}>{waTaps}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#c084fc", textAlign: "center" }}>{enqCount}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textAlign: "right", color: cvr !== null ? cvrColor(cvr) : "#374151" }}>
+                    {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stale nudges */}
