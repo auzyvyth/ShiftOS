@@ -21,6 +21,7 @@ import AccountsPanel from "./pages/AccountsPanel";
 import ShiftOSPage from "./pages/ShiftOSPage";
 import MindMapPage from "./pages/MindMapPage";
 import DealerSlugRedirect from "./pages/DealerSlugRedirect";
+import SalesmanProfilePage from "./pages/SalesmanProfilePage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
 import "./i18n/config";
 
@@ -69,6 +70,7 @@ function App() {
         <Route path="/mindmap" element={<MindMapPage />} />
 
         {/* Dealer slug catch-all — redirects to subdomain */}
+        <Route path="/s/:slug" element={<SalesmanProfilePage />} />
         <Route path="/:dealerSlug" element={<DealerSlugRedirect />} />
       </Routes>
     </Router>

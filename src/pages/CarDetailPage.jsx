@@ -129,6 +129,7 @@ export default function CarDetailPage() {
   const [loading, setLoading]     = useState(true);
   const [notFound, setNotFound]   = useState(false);
   const [similarCars, setSimilarCars] = useState([]);
+  const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
   const [activeIdx,  setActiveIdx]  = useState(0);
@@ -255,6 +256,14 @@ export default function CarDetailPage() {
           .select('dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug')
           .eq('id', carData.dealer_id).maybeSingle();
         setDealer(d);
+
+        const { data: salesmanData } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url, job_title, whatsapp_number, slug, plan')
+          .eq('id', carData.dealer_id)
+          .eq('role', 'salesman')
+          .maybeSingle();
+        setSalesmanProfile(salesmanData);
       }
       const refSlug = getRef();
       if (refSlug && carData.dealer_id) {
@@ -1329,6 +1338,66 @@ export default function CarDetailPage() {
             </div>
           </div>
         )}
+
+        {/* ── listed by (salesman card) ── */}
+        {salesmanProfile && (() => {
+          const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
+          const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
+          const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
+          return (
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 52px' }}>
+              <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#374151', fontWeight: 600, marginBottom: 10 }}>
+                Listed by
+              </p>
+              <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 16, maxWidth: 360 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  {salesmanProfile.avatar_url ? (
+                    <img
+                      src={salesmanProfile.avatar_url}
+                      alt={salesmanProfile.full_name}
+                      style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#1d4ed8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff' }}>
+                      {(salesmanProfile.full_name || 'S')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: 'white', margin: 0 }}>
+                      {salesmanProfile.full_name || 'Agent'}
+                    </p>
+                    {salesmanProfile.job_title && (
+                      <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
+                        {salesmanProfile.job_title}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: '#374151', margin: '2px 0 0' }}>
+                      Independent Agent · XDrive
+                    </p>
+                  </div>
+                </div>
+                {waHref && (
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'block', width: '100%', background: '#25D366', color: 'white', borderRadius: 8, padding: '11px 0', fontWeight: 600, fontSize: 13, fontFamily: "'DM Sans',sans-serif", textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
+                  >
+                    Chat with {firstName}
+                  </a>
+                )}
+                {salesmanProfile.plan === 'salesman_full' && salesmanProfile.slug && (
+                  <Link
+                    to={`/s/${salesmanProfile.slug}`}
+                    style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}
+                  >
+                    View all listings →
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── similar listings ── */}
         {similarCars.length > 0 && (
