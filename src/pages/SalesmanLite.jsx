@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import CarFormLite from "../components/CarFormLite";
+import CarForm from "../components/CarForm";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
   LogOut,
@@ -234,6 +235,7 @@ export default function SalesmanLite() {
 
   // TikTok Studio
   const [tiktokListing, setTiktokListing] = useState(null);
+  const [editListing, setEditListing] = useState(null);
 
   // broadcast
   const [broadcastCar, setBroadcastCar] = useState(null);
@@ -330,15 +332,19 @@ export default function SalesmanLite() {
       setLoading(false);
 
       // fetch listings with full columns for car detail popup
-      supabase
-        .from("car_listings")
-        .select(
-          "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
-        )
-        .eq("dealer_id", uid)
-        .neq("status", "sold")
-        .order("created_at", { ascending: false })
-        .then(({ data: lst }) => setMyListings(lst || []));
+      {
+        const listingsQuery = supabase
+          .from("car_listings")
+          .select(
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+          )
+          .eq("assigned_to", uid)
+          .neq("status", "sold")
+          .order("created_at", { ascending: false });
+        if (profileData.dealer_id)
+          listingsQuery.eq("dealer_id", profileData.dealer_id);
+        listingsQuery.then(({ data: lst }) => setMyListings(lst || []));
+      }
 
       // fetch analytics events (30d, scoped by salesman slug)
       const slug = profileData.slug;
@@ -2242,6 +2248,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         }}
                       >
                         TikTok
+                      </button>
+                      <button
+                        onClick={() => setEditListing(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(56,189,248,0.08)",
+                          border: "1px solid rgba(56,189,248,0.25)",
+                          color: "#64b4ff",
+                          cursor: "pointer",
+                          textAlign: "center",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Pencil size={10} />
+                        Edit
                       </button>
                     </div>
                   </div>
@@ -5995,6 +6021,80 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       )}
 
       {/* TikTok Studio modal */}
+      {editListing && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+          style={{ background: "rgba(0,0,0,0.82)" }}
+        >
+          <div
+            style={{
+              background: "#0d1117",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: isMobile ? "16px 16px 0 0" : 16,
+              width: "100%",
+              maxWidth: 672,
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 20px",
+                borderBottom: "1px solid rgba(255,255,255,0.07)",
+                flexShrink: 0,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontWeight: 600,
+                    color: "#f1f5f9",
+                    fontSize: 15,
+                  }}
+                >
+                  Edit Listing
+                </p>
+                <p
+                  style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}
+                >
+                  {editListing.brand} {editListing.model}{" "}
+                  {editListing.variant || ""}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditListing(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  padding: 4,
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
+              <CarForm
+                listing={editListing}
+                onUpdate={(updated) => {
+                  setMyListings((p) =>
+                    p.map((l) => (l.id === updated.id ? updated : l)),
+                  );
+                  setEditListing(null);
+                }}
+                onCreate={() => {}}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {tiktokListing && (
         <div
           style={
