@@ -336,13 +336,13 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
