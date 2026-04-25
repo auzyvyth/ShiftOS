@@ -337,7 +337,7 @@ export default function SalesmanLite() {
         .select(
           "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
         )
-        .eq("assigned_to", uid)
+        .or(`assigned_to.eq.${uid},dealer_id.eq.${uid}`)
         .order("created_at", { ascending: false })
         .then(({ data: lst }) => setMyListings(lst || []));
 
