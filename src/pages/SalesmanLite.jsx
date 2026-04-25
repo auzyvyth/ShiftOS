@@ -332,14 +332,30 @@ export default function SalesmanLite() {
       setLoading(false);
 
       // fetch listings with full columns for car detail popup
-      supabase
-        .from("car_listings")
-        .select(
-          "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
-        )
-        .or(`assigned_to.eq.${uid},dealer_id.eq.${uid}`)
-        .order("created_at", { ascending: false })
-        .then(({ data: lst }) => setMyListings(lst || []));
+      Promise.all([
+        supabase
+          .from("car_listings")
+          .select(
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+          )
+          .eq("assigned_to", uid),
+        supabase
+          .from("car_listings")
+          .select(
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+          )
+          .eq("dealer_id", uid),
+      ]).then(([r1, r2]) => {
+        const seen = new Set();
+        const merged = [...(r1.data || []), ...(r2.data || [])]
+          .filter((c) => {
+            if (seen.has(c.id)) return false;
+            seen.add(c.id);
+            return true;
+          })
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setMyListings(merged);
+      });
 
       // fetch analytics events (30d, scoped by salesman slug)
       const slug = profileData.slug;
