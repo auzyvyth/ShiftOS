@@ -23,6 +23,8 @@ import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
+import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
+import AISalesManager from '../components/AISalesManager';
 import {
   Car,
   PlusCircle,
@@ -5240,6 +5242,8 @@ export default function DashboardPage() {
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
+  const { snapshot, loading: snapshotLoading } = useDealerSnapshot(userId);
+
   const TITLES = {
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
@@ -5255,6 +5259,7 @@ export default function DashboardPage() {
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
     revops:    { title: "RevOps",    sub: "Revenue operations & deal health" },
     services:  { title: "Services",  sub: "Add-ons & product catalogue" },
+    ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
   };
 
   const NAV = [
@@ -5262,6 +5267,7 @@ export default function DashboardPage() {
     { id: "add", Icon: PlusCircle, label: "Add Listing" },
     { id: "crm", Icon: MessageCircle, label: "CRM" },
     { id: "analytics", Icon: BarChart2, label: "Analytics" },
+    { id: "ai_manager", Icon: Bot, label: "AI Sales Manager" },
     { id: "team", Icon: Users, label: "Team" },
     { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
     { id: "stock", Icon: Package, label: "Stock" },
@@ -6016,6 +6022,17 @@ export default function DashboardPage() {
           )}
           {activeTab === "analytics" && (
             <AnalyticsTab listings={listings} profile={profile} />
+          )}
+          {activeTab === "ai_manager" && snapshot && (
+            <AISalesManager
+              snapshot={snapshot}
+              dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
+            />
+          )}
+          {activeTab === "ai_manager" && !snapshot && (
+            <div className="flex items-center justify-center h-64 text-gray-600 text-sm">
+              Loading dealer data...
+            </div>
           )}
           {activeTab === "team" && (
             <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} />
