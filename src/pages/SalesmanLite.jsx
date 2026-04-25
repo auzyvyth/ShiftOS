@@ -332,19 +332,14 @@ export default function SalesmanLite() {
       setLoading(false);
 
       // fetch listings with full columns for car detail popup
-      {
-        const listingsQuery = supabase
-          .from("car_listings")
-          .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
-          )
-          .eq("assigned_to", uid)
-          .neq("status", "sold")
-          .order("created_at", { ascending: false });
-        if (profileData.dealer_id)
-          listingsQuery.eq("dealer_id", profileData.dealer_id);
-        listingsQuery.then(({ data: lst }) => setMyListings(lst || []));
-      }
+      supabase
+        .from("car_listings")
+        .select(
+          "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
+        )
+        .eq("assigned_to", uid)
+        .order("created_at", { ascending: false })
+        .then(({ data: lst }) => setMyListings(lst || []));
 
       // fetch analytics events (30d, scoped by salesman slug)
       const slug = profileData.slug;
@@ -703,8 +698,7 @@ export default function SalesmanLite() {
     await supabase
       .from("car_listings")
       .update({ dealer_id: data.dealer_id })
-      .eq("assigned_to", profile.id)
-      .is("dealer_id", null);
+      .eq("assigned_to", profile.id);
     await supabase.rpc("use_dealer_invite", {
       invite_code: mergeCode.trim().toUpperCase(),
     });
