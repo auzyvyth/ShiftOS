@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import CarFormLite from "../components/CarFormLite";
+import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
   LogOut,
   Copy,
@@ -30,6 +31,15 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
+  ZoomIn,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Droplets,
+  Palette,
+  Gauge,
+  Sparkles,
+  Eye,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -143,6 +153,21 @@ const getHeatScore = (lead) => {
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
 
+function StatusBadge({ status }) {
+  const styles = {
+    available: "bg-green-500/15 text-green-400 border-green-500/30",
+    reserved: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+    pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  };
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize flex-shrink-0 ${styles[status] ?? "bg-gray-700 text-gray-400 border-gray-600"}`}
+    >
+      {status}
+    </span>
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -196,6 +221,32 @@ export default function SalesmanLite() {
   // listings sort/filter
   const [sortBy, setSortBy] = useState("newest");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // per-listing analytics (carStatsMap)
+  const [carStatsMap, setCarStatsMap] = useState({});
+  const [cvrHover, setCvrHover] = useState(null);
+
+  // car detail popup
+  const [selectedCar, setSelectedCar] = useState(null);
+  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
+  const [carDetailTab, setCarDetailTab] = useState("specs");
+  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
+
+  // TikTok Studio
+  const [tiktokListing, setTiktokListing] = useState(null);
+
+  // broadcast
+  const [broadcastCar, setBroadcastCar] = useState(null);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastProgress, setBroadcastProgress] = useState(null);
+  const [broadcastDone, setBroadcastDone] = useState(false);
+
+  // AI caption
+  const [aiCaptionCar, setAiCaptionCar] = useState(null);
+  const [aiCaptions, setAiCaptions] = useState({});
+  const [aiCaptionLoading, setAiCaptionLoading] = useState(false);
+  const [aiCaptionTab, setAiCaptionTab] = useState("wa");
+  const [captionCopied, setCaptionCopied] = useState(false);
 
   // merge
   const [mergeCode, setMergeCode] = useState("");
@@ -278,30 +329,16 @@ export default function SalesmanLite() {
       setProfile(profileData);
       setLoading(false);
 
-      // fetch listings (with fallback if optional columns don't exist yet)
+      // fetch listings with full columns for car detail popup
       supabase
         .from("car_listings")
         .select(
-          "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, created_at, location, vin",
+          "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, location, vin",
         )
         .eq("dealer_id", uid)
         .neq("status", "sold")
         .order("created_at", { ascending: false })
-        .then(({ data: lst, error }) => {
-          if (error) {
-            supabase
-              .from("car_listings")
-              .select(
-                "id, slug, year, brand, model, variant, selling_price, status, images, colour, mileage, transmission, created_at",
-              )
-              .eq("dealer_id", uid)
-              .neq("status", "sold")
-              .order("created_at", { ascending: false })
-              .then(({ data: lst2 }) => setMyListings(lst2 || []));
-          } else {
-            setMyListings(lst || []);
-          }
-        });
+        .then(({ data: lst }) => setMyListings(lst || []));
 
       // fetch analytics events (30d, scoped by salesman slug)
       const slug = profileData.slug;
@@ -315,6 +352,24 @@ export default function SalesmanLite() {
             new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           )
           .then(({ data: evts }) => setAnalyticsEvents(evts || []));
+
+        // build per-listing stats map for CVR heatmap
+        supabase
+          .from("analytics_events")
+          .select("car_id, event_type")
+          .eq("salesman_slug", slug)
+          .then(({ data: evtData }) => {
+            const map = {};
+            (evtData || []).forEach((e) => {
+              if (!e.car_id) return;
+              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
+              if (["car_view", "link_visit"].includes(e.event_type))
+                map[e.car_id].views++;
+              if (["whatsapp_click", "call_click"].includes(e.event_type))
+                map[e.car_id].enquiries++;
+            });
+            setCarStatsMap(map);
+          });
       }
 
       // fetch leads
@@ -576,10 +631,7 @@ export default function SalesmanLite() {
   // ── appointment status ─────────────────────────────────────────────────────
 
   const updateApptStatus = async (apptId, status) => {
-    await supabase
-      .from("appointments")
-      .update({ status })
-      .eq("id", apptId);
+    await supabase.from("appointments").update({ status }).eq("id", apptId);
     setAppointments((p) =>
       p.map((a) => (a.id === apptId ? { ...a, status } : a)),
     );
@@ -656,32 +708,114 @@ export default function SalesmanLite() {
     setTimeout(() => navigate("/salesman"), 2500);
   };
 
-  const copyListingLink = (car) => {
-    const url = `https://xdrive.my/cars/${car.slug}`;
-    navigator.clipboard.writeText(url);
-    setListingCopied((p) => ({ ...p, [car.id]: "link" }));
-    setTimeout(() => setListingCopied((p) => ({ ...p, [car.id]: null })), 2000);
+  const handleListingCopy = (car, type) => {
+    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+    let text = link;
+    if (type === "wa") {
+      const price = Number(car.selling_price || 0);
+      text = [
+        `🚗 ${car.year} ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""}`,
+        `💰 RM ${price.toLocaleString()}`,
+        `📍 ${car.city || car.location || "Malaysia"}`,
+        `🔢 ${car.mileage ? Number(car.mileage).toLocaleString() + " km" : "—"} · ${car.colour || "—"} · ${car.transmission || "—"}`,
+        ``,
+        `✅ Condition: ${car.condition || "Good"}`,
+        ``,
+        `Berminat? Whatsapp saya sekarang 👇`,
+        link,
+      ].join("\n");
+    }
+    navigator.clipboard.writeText(text);
+    setListingCopied((prev) => ({ ...prev, [car.id]: type }));
+    setTimeout(
+      () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),
+      1500,
+    );
   };
 
-  const openWACaption = (car) => {
-    const url = `https://xdrive.my/cars/${car.slug}`;
+  const generateAiCaptions = async (car) => {
+    setAiCaptionCar(car);
+    setAiCaptionTab("wa");
+    setCaptionCopied(false);
+    if (aiCaptions[car.id]) return;
+    setAiCaptionLoading(true);
+    const name = [car.year, car.brand, car.model, car.variant]
+      .filter(Boolean)
+      .join(" ");
     const price = car.selling_price
       ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-      : "";
-    const msg = encodeURIComponent(
-      `🚗 *${car.year || ""} ${car.brand} ${car.model}*\n${price ? `💰 ${price}\n` : ""}📋 ${car.mileage ? `${Number(car.mileage).toLocaleString()} km · ` : ""}${car.transmission || ""}\n\n🔗 ${url}`,
-    );
-    const waPhone = (profile?.whatsapp_number || "").replace(/\D/g, "");
-    if (waPhone) {
-      window.open(
-        `https://wa.me/${waPhone.startsWith("6") ? waPhone : "6" + waPhone}?text=${msg}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else {
-      navigator.clipboard.writeText(decodeURIComponent(msg));
-      toast.success("WA caption copied!");
+      : null;
+    const mileage = car.mileage
+      ? `${Number(car.mileage).toLocaleString()} km`
+      : null;
+    const prompt = `You are a car dealer social media assistant in Malaysia. Generate two captions for this car listing in JSON format only.
+
+Car: ${name}${price ? `, ${price}` : ""}${mileage ? `, ${mileage}` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.colour ? `, ${car.colour}` : ""}
+
+Return valid JSON only (no markdown, no code block), exactly this shape:
+{"wa":"<WhatsApp caption — friendly Manglish, 3–5 lines, includes price, condition, CTA to WhatsApp. Use emojis.>","tiktok":"<TikTok caption — punchy, 1–2 lines max, hype energy, relevant hashtags at end>"}`;
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: { prompt },
+      });
+      if (error) throw error;
+      const raw =
+        data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
+      const parsed = JSON.parse(raw);
+      setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
+    } catch {
+      setAiCaptions((p) => ({
+        ...p,
+        [car.id]: {
+          wa: "Couldn't generate caption. Please try again.",
+          tiktok: "Couldn't generate caption. Please try again.",
+        },
+      }));
+    } finally {
+      setAiCaptionLoading(false);
     }
+  };
+
+  const openBroadcast = (car) => {
+    const name = [car.year, car.brand, car.model, car.variant]
+      .filter(Boolean)
+      .join(" ");
+    const price = car.selling_price
+      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+      : null;
+    const link = car.slug ? `https://xdrive.my/cars/${car.slug}` : null;
+    const msg = [
+      `Hi! 👋 Tengok ni — ${name} dah ada dalam lineup kita!`,
+      price ? `💰 Harga: ${price}` : null,
+      `Kereta ni memang worth it — jangan sampai kena kebas orang lain 😬`,
+      link ? `🔗 Details: ${link}` : null,
+      `\nInterested? Whatsapp saya terus, boleh discuss!`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    setBroadcastCar(car);
+    setBroadcastMsg(msg);
+    setBroadcastProgress(null);
+    setBroadcastDone(false);
+  };
+
+  const runBroadcast = (eligibleLeads) => {
+    const capped = eligibleLeads.slice(0, 10);
+    setBroadcastProgress({ current: 0, total: capped.length });
+    capped.forEach((lead, i) => {
+      setTimeout(() => {
+        const phone = (lead.phone || "").replace(/\D/g, "");
+        if (phone) {
+          window.open(
+            `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(broadcastMsg)}`,
+            "_blank",
+            "noopener,noreferrer",
+          );
+        }
+        setBroadcastProgress({ current: i + 1, total: capped.length });
+        if (i === capped.length - 1) setBroadcastDone(true);
+      }, i * 600);
+    });
   };
 
   // ── TABS ──────────────────────────────────────────────────────────────────
@@ -765,7 +899,9 @@ export default function SalesmanLite() {
       <div
         onClick={() => setNotifOpen(false)}
         style={{
-          position: "fixed", inset: 0, zIndex: 998,
+          position: "fixed",
+          inset: 0,
+          zIndex: 998,
         }}
       >
         <div
@@ -786,13 +922,35 @@ export default function SalesmanLite() {
             boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
           }}
         >
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
-          }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
-              Notifications {unreadCount > 0 && (
-                <span style={{ marginLeft: 6, fontSize: 10, background: "#ef4444", color: "#fff", borderRadius: 99, padding: "1px 6px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#f1f5f9",
+              }}
+            >
+              Notifications{" "}
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 10,
+                    background: "#ef4444",
+                    color: "#fff",
+                    borderRadius: 99,
+                    padding: "1px 6px",
+                  }}
+                >
                   {unreadCount}
                 </span>
               )}
@@ -800,7 +958,14 @@ export default function SalesmanLite() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllNotifsRead}
-                style={{ background: "none", border: "none", fontSize: 10, color: "#60a5fa", cursor: "pointer", padding: 0 }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: 10,
+                  color: "#60a5fa",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
               >
                 Mark all read
               </button>
@@ -808,7 +973,15 @@ export default function SalesmanLite() {
           </div>
           <div style={{ overflowY: "auto", flex: 1 }}>
             {notifications.length === 0 && (
-              <p style={{ margin: 0, padding: "24px 16px", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
+              <p
+                style={{
+                  margin: 0,
+                  padding: "24px 16px",
+                  fontSize: 12,
+                  color: "#4b5563",
+                  textAlign: "center",
+                }}
+              >
                 No notifications yet.
               </p>
             )}
@@ -819,17 +992,36 @@ export default function SalesmanLite() {
                 style={{
                   padding: "12px 16px",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  background: n.is_read ? "transparent" : "rgba(96,165,250,0.06)",
+                  background: n.is_read
+                    ? "transparent"
+                    : "rgba(96,165,250,0.06)",
                   cursor: "pointer",
                 }}
               >
-                <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: n.is_read ? "#9ca3af" : "#f1f5f9" }}>
+                <p
+                  style={{
+                    margin: "0 0 2px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: n.is_read ? "#9ca3af" : "#f1f5f9",
+                  }}
+                >
                   {n.title}
                 </p>
                 {n.body && (
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>{n.body}</p>
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 11,
+                      color: "#4b5563",
+                    }}
+                  >
+                    {n.body}
+                  </p>
                 )}
-                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{timeAgo(n.created_at)}</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>
+                  {timeAgo(n.created_at)}
+                </p>
               </div>
             ))}
           </div>
@@ -1335,24 +1527,33 @@ export default function SalesmanLite() {
             ...appointments.slice(0, 5).map((a) => ({
               type: "booking",
               label: `${a.buyer_name || "Someone"} booked a viewing`,
-              sub: a.car_listings ? `${a.car_listings.brand} ${a.car_listings.model}` : "",
+              sub: a.car_listings
+                ? `${a.car_listings.brand} ${a.car_listings.model}`
+                : "",
               ts: a.created_at,
               dot: "#60a5fa",
             })),
             ...enquiries.slice(0, 5).map((e) => ({
               type: "enquiry",
               label: `${e.buyer_name || "Someone"} enquired`,
-              sub: e.car_listings ? `${e.car_listings.brand} ${e.car_listings.model}` : "",
+              sub: e.car_listings
+                ? `${e.car_listings.brand} ${e.car_listings.model}`
+                : "",
               ts: e.created_at,
               dot: "#4ade80",
             })),
-            ...leads.filter((l) => l.stage === "won").slice(0, 3).map((l) => ({
-              type: "won",
-              label: `${l.buyer_name || "Lead"} marked won`,
-              sub: l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "",
-              ts: l.updated_at,
-              dot: "#fbbf24",
-            })),
+            ...leads
+              .filter((l) => l.stage === "won")
+              .slice(0, 3)
+              .map((l) => ({
+                type: "won",
+                label: `${l.buyer_name || "Lead"} marked won`,
+                sub: l.car_listings
+                  ? `${l.car_listings.brand} ${l.car_listings.model}`
+                  : "",
+                ts: l.updated_at,
+                dot: "#fbbf24",
+              })),
           ]
             .filter((f) => f.ts)
             .sort((a, b) => new Date(b.ts) - new Date(a.ts))
@@ -1361,22 +1562,80 @@ export default function SalesmanLite() {
           if (!feed.length) return null;
           return (
             <div style={{ marginTop: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <p
+                style={{
+                  margin: "0 0 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#374151",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
                 Recent Activity
               </p>
-              <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+              <div
+                style={{
+                  background: "#0d1117",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                }}
+              >
                 {feed.map((f, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px",
-                    borderBottom: i < feed.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                  }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: f.dot, flexShrink: 0 }} />
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      borderBottom:
+                        i < feed.length - 1
+                          ? "1px solid rgba(255,255,255,0.04)"
+                          : "none",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: f.dot,
+                        flexShrink: 0,
+                      }}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</p>
-                      {f.sub && <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{f.sub}</p>}
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 12,
+                          color: "#e5e7eb",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {f.label}
+                      </p>
+                      {f.sub && (
+                        <p
+                          style={{ margin: 0, fontSize: 10, color: "#4b5563" }}
+                        >
+                          {f.sub}
+                        </p>
+                      )}
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(f.ts)}</p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 10,
+                        color: "#374151",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {timeAgo(f.ts)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -1429,341 +1688,1484 @@ export default function SalesmanLite() {
 
   // ── RENDER LISTINGS ───────────────────────────────────────────────────────
 
-  const renderListings = () => (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <p
-          style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}
-        >
-          My Listings ({myListings.length})
-        </p>
-        <button
-          onClick={() => setShowAddForm((v) => !v)}
+  const renderListings = () => {
+    const enriched = myListings.map((car) => {
+      const stats = carStatsMap[car.id] ?? {};
+      const views = stats.views || 0;
+      const enqs = stats.enquiries || 0;
+      const cvr = views > 0 ? (enqs / views) * 100 : null;
+      const isHot = cvr !== null && cvr > 6 && views > 3;
+      const isStale = views > 10 && (cvr === null || cvr === 0);
+      return { car, views, enqs, cvr, isHot, isStale };
+    });
+
+    const hotCount = enriched.filter((e) => e.isHot).length;
+    const staleCount = enriched.filter((e) => e.isStale).length;
+    const activeCount = myListings.filter(
+      (c) => c.status === "available",
+    ).length;
+
+    const filtered =
+      filterStatus === "all"
+        ? enriched
+        : enriched.filter((e) => e.car.status === filterStatus);
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === "price_desc")
+        return (b.car.selling_price || 0) - (a.car.selling_price || 0);
+      if (sortBy === "price_asc")
+        return (a.car.selling_price || 0) - (b.car.selling_price || 0);
+      return 0;
+    });
+
+    const SEL_STYLE = (active) => ({
+      fontSize: 11,
+      padding: "5px 11px",
+      borderRadius: 7,
+      cursor: "pointer",
+      background: active ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)",
+      border: active
+        ? "1px solid rgba(59,130,246,0.4)"
+        : "1px solid rgba(255,255,255,0.08)",
+      color: active ? "#93c5fd" : "#6b7280",
+      fontWeight: active ? 600 : 400,
+    });
+
+    return (
+      <div>
+        {/* Header row with Add button */}
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            background: "#1d4ed8",
-            border: "none",
-            borderRadius: 8,
-            color: "#fff",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "7px 12px",
-            cursor: "pointer",
+            justifyContent: "space-between",
+            marginBottom: 12,
           }}
         >
-          <Plus size={13} /> {showAddForm ? "Cancel" : "Add Listing"}
-        </button>
-      </div>
-
-      {showAddForm && (
-        <div
-          style={{
-            marginBottom: 24,
-            background: "#0d1117",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <CarFormLite
-            onCreate={(car) => {
-              setMyListings((p) => [car, ...p]);
-              setShowAddForm(false);
-              toast.success("Listing published!");
+          <p
+            style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 600,
+              color: "#f1f5f9",
             }}
-          />
-        </div>
-      )}
-
-      {/* sort + filter controls */}
-      {myListings.length > 0 && !showAddForm && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-          {[
-            { key: "newest", label: "Newest" },
-            { key: "price_desc", label: "Price ↓" },
-            { key: "price_asc", label: "Price ↑" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setSortBy(key)}
-              style={{
-                fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                background: sortBy === key ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${sortBy === key ? "rgba(37,99,235,0.4)" : "rgba(255,255,255,0.08)"}`,
-                color: sortBy === key ? "#93c5fd" : "#6b7280",
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)", alignSelf: "center", margin: "0 2px" }} />
-          {["all", "available", "reserved", "pending"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              style={{
-                fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                background: filterStatus === s ? "rgba(255,255,255,0.08)" : "transparent",
-                border: `1px solid ${filterStatus === s ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-                color: filterStatus === s ? "#e5e7eb" : "#6b7280",
-                cursor: "pointer", textTransform: "capitalize",
-              }}
-            >
-              {s === "all" ? "All" : s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {myListings.length === 0 && !showAddForm && (
-        <div
-          style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
-        >
-          <Car size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-          <p style={{ margin: 0, fontSize: 13 }}>
-            No listings yet — add your first car above.
+          >
+            My Listings ({myListings.length})
           </p>
+          <button
+            onClick={() => setShowAddForm((v) => !v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#1d4ed8",
+              border: "none",
+              borderRadius: 8,
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 12px",
+              cursor: "pointer",
+            }}
+          >
+            <Plus size={13} /> {showAddForm ? "Cancel" : "Add Listing"}
+          </button>
         </div>
-      )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {(() => {
-          let filtered = [...myListings];
-          if (filterStatus !== "all")
-            filtered = filtered.filter((c) => c.status === filterStatus);
-          if (sortBy === "price_desc")
-            filtered.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
-          else if (sortBy === "price_asc")
-            filtered.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
-          return filtered;
-        })().map((car) => {
-          const img = Array.isArray(car.images) ? car.images[0] : null;
-          const copied = listingCopied[car.id];
-          const daysInStock = car.created_at
-            ? Math.floor(
-                (Date.now() - new Date(car.created_at).getTime()) / 86400000,
-              )
-            : null;
-          const vinShort = car.vin ? `···${car.vin.slice(-6)}` : null;
-          return (
+        {showAddForm && (
+          <div
+            style={{
+              marginBottom: 24,
+              background: "#0d1117",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <CarFormLite
+              onCreate={(car) => {
+                setMyListings((p) => [car, ...p]);
+                setShowAddForm(false);
+                toast.success("Listing published!");
+              }}
+            />
+          </div>
+        )}
+
+        {myListings.length > 0 && !showAddForm && (
+          <>
+            {/* Summary strip */}
             <div
-              key={car.id}
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 14,
+                padding: "10px 14px",
                 background: "#0d1117",
                 border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 10,
-                overflow: "hidden",
-                display: "flex",
-                gap: 0,
               }}
             >
-              {img && (
-                <div style={{ width: 90, flexShrink: 0, background: "#111" }}>
-                  <img
-                    src={img}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </div>
-              )}
-              <div style={{ flex: 1, padding: "12px 14px", minWidth: 0 }}>
-                {/* top row: name | status + edit */}
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
+                  {activeCount}
+                </span>{" "}
+                active
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
+              </span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#ef4444", fontWeight: 600 }}>
+                  🔥 {hotCount}
+                </span>{" "}
+                hot
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
+                ·
+              </span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                <span style={{ color: "#6b7280", fontWeight: 600 }}>
+                  💤 {staleCount}
+                </span>{" "}
+                stale
+              </span>
+            </div>
+
+            {/* Sort / filter strip */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 14,
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
+                Sort:
+              </span>
+              <button
+                style={SEL_STYLE(sortBy === "newest")}
+                onClick={() => setSortBy("newest")}
+              >
+                Newest
+              </button>
+              <button
+                style={SEL_STYLE(sortBy === "price_desc")}
+                onClick={() => setSortBy("price_desc")}
+              >
+                Price ↓
+              </button>
+              <button
+                style={SEL_STYLE(sortBy === "price_asc")}
+                onClick={() => setSortBy("price_asc")}
+              >
+                Price ↑
+              </button>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
+                Status:
+              </span>
+              {["all", "available", "reserved", "pending"].map((s) => (
+                <button
+                  key={s}
+                  style={SEL_STYLE(filterStatus === s)}
+                  onClick={() => setFilterStatus(s)}
+                >
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {myListings.length === 0 && !showAddForm ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              padding: "52px 24px",
+              background: "#0d1117",
+              border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: 14,
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Car size={24} color="#374151" />
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#4b5563",
+              }}
+            >
+              No listings yet
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: "#374151",
+                textAlign: "center",
+                maxWidth: 260,
+                lineHeight: 1.6,
+              }}
+            >
+              Add your first car using the button above.
+            </p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 0",
+              color: "#374151",
+              fontSize: 13,
+            }}
+          >
+            No listings match this filter.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fill,minmax(260px,1fr))",
+              gap: 14,
+            }}
+          >
+            {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
+              const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+              const img = car.images?.[0];
+              const name = [car.year, car.brand, car.model, car.variant]
+                .filter(Boolean)
+                .join(" ");
+              const price = car.selling_price
+                ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
+                : "—";
+              const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
+              const isHovering = cvrHover === car.id;
+              return (
                 <div
+                  key={car.id}
                   style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: 6,
-                    marginBottom: 4,
+                    background: "#0d1117",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    overflow: "hidden",
                   }}
                 >
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#e5e7eb",
-                      lineHeight: 1.3,
-                      flex: 1,
-                      minWidth: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: "2px 7px",
-                        borderRadius: 99,
-                        background:
-                          car.status === "available"
-                            ? "rgba(34,197,94,0.12)"
-                            : "rgba(251,191,36,0.12)",
-                        border: `1px solid ${car.status === "available" ? "rgba(34,197,94,0.3)" : "rgba(251,191,36,0.3)"}`,
-                        color:
-                          car.status === "available" ? "#4ade80" : "#fbbf24",
-                        textTransform: "capitalize",
+                  {img ? (
+                    <img
+                      src={img}
+                      alt={name}
+                      onClick={() => {
+                        setSelectedCar(car);
+                        setCarDetailImgIdx(0);
+                        setCarDetailTab("specs");
                       }}
-                    >
-                      {car.status}
-                    </span>
-                    <button
-                      onClick={() => toast.info("Edit coming soon")}
-                      title="Edit listing"
                       style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "#4b5563",
+                        width: "100%",
+                        height: 150,
+                        objectFit: "cover",
                         cursor: "pointer",
-                        padding: 2,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => {
+                        setSelectedCar(car);
+                        setCarDetailImgIdx(0);
+                        setCarDetailTab("specs");
+                      }}
+                      style={{
+                        width: "100%",
+                        height: 150,
+                        background: "rgba(255,255,255,0.04)",
                         display: "flex",
                         alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
                       }}
                     >
-                      <Pencil size={12} />
-                    </button>
+                      <Car size={32} color="#374151" />
+                    </div>
+                  )}
+                  <div style={{ padding: "12px 14px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <p
+                        onClick={() => {
+                          setSelectedCar(car);
+                          setCarDetailImgIdx(0);
+                          setCarDetailTab("specs");
+                        }}
+                        style={{
+                          margin: 0,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#e5e7eb",
+                          lineHeight: 1.3,
+                          flex: 1,
+                          marginRight: 8,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {name}
+                      </p>
+                      <StatusBadge status={car.status} />
+                    </div>
+                    <p
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#60a5fa",
+                      }}
+                    >
+                      {price}
+                    </p>
+                    <p
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 11,
+                        color: "#4b5563",
+                      }}
+                    >
+                      {[
+                        car.mileage
+                          ? `${Number(car.mileage).toLocaleString()} km`
+                          : null,
+                        car.transmission,
+                        car.colour,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+
+                    {/* CVR heatmap bar */}
+                    <div
+                      style={{ marginBottom: 10, position: "relative" }}
+                      onMouseEnter={() => setCvrHover(car.id)}
+                      onMouseLeave={() => setCvrHover(null)}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, color: "#4b5563" }}>
+                          {views} views · {enqs} enquiries
+                        </span>
+                        {isHot && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "#ef4444",
+                              fontWeight: 600,
+                            }}
+                          >
+                            🔥 Hot
+                          </span>
+                        )}
+                        {isStale && !isHot && (
+                          <span style={{ fontSize: 10, color: "#6b7280" }}>
+                            💤 Stale
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 99,
+                          background: "rgba(255,255,255,0.06)",
+                          overflow: "visible",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${cvrFill}%`,
+                            background: isHot ? "#ef4444" : "#3b82f6",
+                            borderRadius: 99,
+                            transition: "width 0.3s",
+                          }}
+                        />
+                      </div>
+                      {isHovering && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: "calc(100% + 6px)",
+                            left: 0,
+                            background: "#1e293b",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: 7,
+                            padding: "5px 10px",
+                            fontSize: 11,
+                            color: "#e2e8f0",
+                            whiteSpace: "nowrap",
+                            zIndex: 10,
+                            pointerEvents: "none",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                          }}
+                        >
+                          {views} views · {enqs} enquiries ·{" "}
+                          <span
+                            style={{
+                              color: isHot ? "#ef4444" : "#60a5fa",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {cvrLabel}% CVR
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div
+                      style={{
+                        display: isMobile ? "grid" : "flex",
+                        gridTemplateColumns: isMobile ? "1fr 1fr" : undefined,
+                        gap: 6,
+                        flexWrap: isMobile ? undefined : "wrap",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleListingCopy(car, "link")}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background:
+                            listingCopied[car.id] === "link"
+                              ? "rgba(34,197,94,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color:
+                            listingCopied[car.id] === "link"
+                              ? "#4ade80"
+                              : "#9ca3af",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        {listingCopied[car.id] === "link"
+                          ? "✓ Copied"
+                          : "Copy Link"}
+                      </button>
+                      <button
+                        onClick={() => handleListingCopy(car, "wa")}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color: "#9ca3af",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        WA Caption
+                      </button>
+                      <button
+                        onClick={() => openBroadcast(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(249,115,22,0.1)",
+                          border: "1px solid rgba(249,115,22,0.25)",
+                          color: "#fb923c",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Broadcast
+                      </button>
+                      <button
+                        onClick={() => generateAiCaptions(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(168,85,247,0.1)",
+                          border: "1px solid rgba(168,85,247,0.25)",
+                          color: "#c084fc",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        AI Caption
+                      </button>
+                      <button
+                        onClick={() => setTiktokListing(car)}
+                        style={{
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "rgba(239,68,68,0.1)",
+                          border: "1px solid rgba(239,68,68,0.25)",
+                          color: "#f87171",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        TikTok
+                      </button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-                {/* price */}
-                {car.selling_price && (
-                  <p
+  // ── CAR DETAIL POPUP ──────────────────────────────────────────────────────
+
+  const renderCarDetailPopup = () => {
+    const car = selectedCar;
+    if (!car) return null;
+    const parseTags = (str) => {
+      if (!str) return [];
+      return str
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+    const images =
+      Array.isArray(car.images) && car.images.length > 0 ? car.images : [];
+    const sp = car.selling_price || 0;
+    const op = car.original_price || null;
+    const saving = op && op > sp ? op - sp : 0;
+    const monthly =
+      sp > 0 ? Math.round((sp * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
+    const stats = carStatsMap[car.id] ?? {};
+    const views = stats.views || 0;
+    const enqs = stats.enquiries || 0;
+    const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
+    const features = parseTags(car.features);
+    const options = parseTags(car.options);
+
+    const close = () => {
+      setSelectedCar(null);
+      setCarDetailImgIdx(0);
+      setCarDetailTab("specs");
+      setCarDetailLbOpen(false);
+    };
+
+    const navBtn = (side, onClick) => (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        style={{
+          position: "absolute",
+          [side]: 8,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 30,
+          height: 30,
+          borderRadius: 6,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#9ca3af",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {side === "left" ? (
+          <ChevronLeft size={14} />
+        ) : (
+          <ChevronRight size={14} />
+        )}
+      </button>
+    );
+
+    const actionBtn = (label, color, bg, border, onClick) => (
+      <button
+        onClick={onClick}
+        style={{
+          width: "100%",
+          background: bg,
+          border: `1px solid ${border}`,
+          borderRadius: 6,
+          padding: "10px 12px",
+          fontSize: 12,
+          fontWeight: 500,
+          color,
+          cursor: "pointer",
+          textAlign: "left",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        {label}
+      </button>
+    );
+
+    return (
+      <>
+        <div
+          onClick={close}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            background: "rgba(0,0,0,0.82)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            overflowY: "auto",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              margin: isMobile ? 0 : "24px auto",
+              maxWidth: isMobile ? "100vw" : 1000,
+              width: isMobile ? "100vw" : "calc(100vw - 48px)",
+              height: isMobile ? "100dvh" : undefined,
+              maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)",
+              background: "rgba(11,11,15,0.99)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: isMobile ? 0 : 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            <button
+              onClick={close}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                zIndex: 10,
+                width: 36,
+                height: 36,
+                borderRadius: 6,
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#9ca3af",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <X size={16} />
+            </button>
+
+            <div
+              style={{
+                display: "flex",
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                flexDirection: isMobile ? "column" : "row",
+              }}
+            >
+              {/* LEFT — gallery + details */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: isMobile ? 16 : 24,
+                  borderRight: isMobile
+                    ? "none"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  overflowY: isMobile ? "visible" : "auto",
+                }}
+              >
+                {images.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div
+                      style={{
+                        width: 60,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 5,
+                        maxHeight: isMobile ? 180 : 300,
+                        overflowY: "auto",
+                      }}
+                    >
+                      {images.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setCarDetailImgIdx(i)}
+                          style={{
+                            width: 60,
+                            height: 44,
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            background: "#0d0d0d",
+                            border:
+                              i === carDetailImgIdx
+                                ? "1px solid rgba(59,130,246,0.6)"
+                                : "1px solid rgba(255,255,255,0.08)",
+                            overflow: "hidden",
+                            opacity: i === carDetailImgIdx ? 1 : 0.45,
+                          }}
+                        >
+                          <img
+                            src={img}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              display: "block",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        position: "relative",
+                        background: "#0d0d0d",
+                        borderRadius: 6,
+                        overflow: "hidden",
+                        height: isMobile ? 180 : 300,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <img
+                        src={images[carDetailImgIdx]}
+                        alt=""
+                        onClick={() => setCarDetailLbOpen(true)}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          objectFit: "contain",
+                          cursor: "zoom-in",
+                          display: "block",
+                        }}
+                      />
+                      {images.length > 1 && (
+                        <>
+                          {navBtn("left", () =>
+                            setCarDetailImgIdx(
+                              (i) => (i - 1 + images.length) % images.length,
+                            ),
+                          )}
+                          {navBtn("right", () =>
+                            setCarDetailImgIdx((i) => (i + 1) % images.length),
+                          )}
+                        </>
+                      )}
+                      <button
+                        onClick={() => setCarDetailLbOpen(true)}
+                        style={{
+                          position: "absolute",
+                          bottom: 8,
+                          right: 8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          background: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(8px)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          color: "#9ca3af",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <ZoomIn size={13} />
+                      </button>
+                      {images.length > 1 && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            bottom: 8,
+                            left: 8,
+                            fontSize: 10,
+                            color: "#9ca3af",
+                            background: "rgba(0,0,0,0.55)",
+                            borderRadius: 4,
+                            padding: "2px 7px",
+                          }}
+                        >
+                          {carDetailImgIdx + 1} / {images.length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
                     style={{
-                      margin: "0 0 6px",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#60a5fa",
+                      height: isMobile ? 160 : 260,
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    RM {Number(car.selling_price).toLocaleString("en-MY")}
-                  </p>
+                    <Car size={40} color="#374151" />
+                  </div>
                 )}
 
-                {/* meta chips */}
+                {/* Car header */}
+                <div style={{ marginTop: 18 }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      margin: 0,
+                    }}
+                  >
+                    {car.brand}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 300,
+                      color: "#f3f4f6",
+                      margin: "4px 0 0",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {car.model}
+                    {car.variant ? ` ${car.variant}` : ""}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#6b7280",
+                      margin: "6px 0 0",
+                    }}
+                  >
+                    {[car.year, car.body_type, car.transmission, car.fuel_type]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  {(car.city || car.state) && (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#6b7280",
+                        margin: "4px 0 0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <MapPin size={11} />{" "}
+                      {[car.city, car.state].filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                {/* Price */}
+                <div style={{ marginTop: 12 }}>
+                  <p
+                    style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 32,
+                      color: "#f3f4f6",
+                      margin: 0,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {sp ? `RM ${sp.toLocaleString("en-MY")}` : "—"}
+                  </p>
+                  {saving > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginTop: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "#374151",
+                          textDecoration: "line-through",
+                        }}
+                      >
+                        RM {op.toLocaleString("en-MY")}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "#93c5fd",
+                          background: "rgba(59,130,246,0.12)",
+                          border: "1px solid rgba(59,130,246,0.25)",
+                          borderRadius: 4,
+                          padding: "1px 6px",
+                        }}
+                      >
+                        SAVE RM {saving.toLocaleString("en-MY")}
+                      </span>
+                    </div>
+                  )}
+                  {monthly > 0 && (
+                    <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                      Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr ·
+                      3.5% p.a.
+                    </p>
+                  )}
+                </div>
+
+                {/* Specs strip */}
                 <div
                   style={{
                     display: "flex",
-                    flexWrap: "wrap",
-                    gap: "3px 8px",
-                    marginBottom: 8,
+                    borderTop: "1px solid rgba(255,255,255,0.05)",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    margin: "16px 0",
+                    padding: "12px 0",
+                    gap: 0,
+                    overflowX: "auto",
                   }}
                 >
-                  {daysInStock !== null && (
-                    <span style={{ fontSize: 10, color: "#4b5563" }}>
-                      🕓 {daysInStock}d in stock
-                    </span>
-                  )}
-                  {car.mileage && (
-                    <span style={{ fontSize: 10, color: "#4b5563" }}>
-                      {Number(car.mileage).toLocaleString()} km
-                    </span>
-                  )}
-                  {car.colour && (
-                    <span style={{ fontSize: 10, color: "#4b5563" }}>
-                      {car.colour}
-                    </span>
-                  )}
-                  {car.location && (
-                    <span style={{ fontSize: 10, color: "#4b5563" }}>
-                      📍 {car.location}
-                    </span>
-                  )}
-                  {vinShort && (
-                    <span
+                  {[
+                    {
+                      Icon: Gauge,
+                      label: "Mileage",
+                      value: car.mileage
+                        ? `${Number(car.mileage).toLocaleString()} km`
+                        : "—",
+                    },
+                    {
+                      Icon: Settings,
+                      label: "Engine",
+                      value: car.engine_cc
+                        ? `${Number(car.engine_cc).toLocaleString()} cc`
+                        : "—",
+                    },
+                    {
+                      Icon: ChevronRight,
+                      label: "Transmission",
+                      value: car.transmission || "—",
+                    },
+                    {
+                      Icon: Droplets,
+                      label: "Fuel",
+                      value: car.fuel_type || "—",
+                    },
+                    {
+                      Icon: Palette,
+                      label: "Colour",
+                      value: car.colour || "—",
+                    },
+                  ].map(({ Icon, label, value }, i, arr) => (
+                    <div
+                      key={label}
                       style={{
-                        fontSize: 10,
-                        color: "#374151",
-                        fontFamily: "monospace",
+                        flex: "1 0 70px",
+                        textAlign: "center",
+                        padding: "0 10px",
+                        borderRight:
+                          i < arr.length - 1
+                            ? "1px solid rgba(255,255,255,0.05)"
+                            : "none",
                       }}
                     >
-                      {vinShort}
-                    </span>
-                  )}
+                      <Icon
+                        size={13}
+                        color="#6b7280"
+                        style={{ marginBottom: 4 }}
+                      />
+                      <p
+                        style={{
+                          fontSize: 9,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.12em",
+                          color: "#6b7280",
+                          marginBottom: 3,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#f3f4f6", margin: 0 }}>
+                        {value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
 
-                {/* action buttons */}
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    onClick={() => copyListingLink(car)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      fontSize: 11,
-                      padding: "4px 9px",
-                      borderRadius: 6,
-                      background:
-                        copied === "link"
-                          ? "rgba(34,197,94,0.1)"
-                          : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${copied === "link" ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.08)"}`,
-                      color: copied === "link" ? "#4ade80" : "#6b7280",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {copied === "link" ? (
-                      <Check size={11} />
+                {/* Tabs */}
+                <div
+                  style={{
+                    display: "flex",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    marginBottom: 16,
+                  }}
+                >
+                  {["specs", "features", "options"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setCarDetailTab(tab)}
+                      style={{
+                        padding: "8px 16px",
+                        fontSize: 12,
+                        color: carDetailTab === tab ? "#f3f4f6" : "#6b7280",
+                        borderBottom:
+                          carDetailTab === tab
+                            ? "2px solid #ef4444"
+                            : "2px solid transparent",
+                        background: "none",
+                        border: "none",
+                        borderBottom:
+                          carDetailTab === tab
+                            ? "2px solid #ef4444"
+                            : "2px solid transparent",
+                        cursor: "pointer",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {carDetailTab === "specs" && (
+                  <div>
+                    {[
+                      { k: "Year", v: car.year || "—" },
+                      { k: "Condition", v: car.condition || "—" },
+                      { k: "Body Type", v: car.body_type || "—" },
+                      { k: "Colour", v: car.colour || "—" },
+                      {
+                        k: "Mileage",
+                        v: car.mileage
+                          ? `${Number(car.mileage).toLocaleString()} km`
+                          : "—",
+                      },
+                      { k: "Transmission", v: car.transmission || "—" },
+                      { k: "Fuel Type", v: car.fuel_type || "—" },
+                      {
+                        k: "Location",
+                        v:
+                          [car.city, car.state].filter(Boolean).join(", ") ||
+                          "—",
+                      },
+                    ].map(({ k, v }) => (
+                      <div
+                        key={k}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "10px 0",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>
+                          {k}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                          {v}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {carDetailTab === "features" && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {features.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "#6b7280" }}>
+                        No features listed.
+                      </p>
                     ) : (
-                      <Copy size={11} />
+                      features.map((f, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 12,
+                            color: "#9ca3af",
+                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 4,
+                            padding: "4px 10px",
+                          }}
+                        >
+                          {f}
+                        </span>
+                      ))
                     )}
-                    Copy Link
-                  </button>
-                  <button
-                    onClick={() => openWACaption(car)}
+                  </div>
+                )}
+
+                {carDetailTab === "options" && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {options.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "#6b7280" }}>
+                        No options listed.
+                      </p>
+                    ) : (
+                      options.map((o, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 12,
+                            color: "#9ca3af",
+                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 4,
+                            padding: "4px 10px",
+                          }}
+                        >
+                          {o}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT — actions + CVR */}
+              <div
+                style={{
+                  flex: isMobile ? "none" : "0 0 200px",
+                  width: isMobile ? "100%" : undefined,
+                  padding: isMobile ? "12px 16px 32px" : 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  borderTop: isMobile
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "none",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: "#6b7280",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  Actions
+                </p>
+                {actionBtn(
+                  <>
+                    <Copy size={13} style={{ flexShrink: 0 }} /> Copy Link
+                  </>,
+                  listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af",
+                  listingCopied[car.id] === "link"
+                    ? "rgba(34,197,94,0.08)"
+                    : "rgba(255,255,255,0.04)",
+                  listingCopied[car.id] === "link"
+                    ? "rgba(34,197,94,0.3)"
+                    : "rgba(255,255,255,0.08)",
+                  () => handleListingCopy(car, "link"),
+                )}
+                {actionBtn(
+                  <>
+                    <MessageSquare size={13} style={{ flexShrink: 0 }} /> WA
+                    Caption
+                  </>,
+                  "#4ade80",
+                  "rgba(37,211,102,0.06)",
+                  "rgba(37,211,102,0.2)",
+                  () => handleListingCopy(car, "wa"),
+                )}
+                {actionBtn(
+                  <>
+                    <Sparkles size={13} style={{ flexShrink: 0 }} /> AI Caption
+                  </>,
+                  "#c084fc",
+                  "rgba(168,85,247,0.08)",
+                  "rgba(168,85,247,0.25)",
+                  () => {
+                    generateAiCaptions(car);
+                    close();
+                  },
+                )}
+                {actionBtn(
+                  <>
+                    <Bell size={13} style={{ flexShrink: 0 }} /> Broadcast
+                  </>,
+                  "#fb923c",
+                  "rgba(249,115,22,0.08)",
+                  "rgba(249,115,22,0.25)",
+                  () => {
+                    openBroadcast(car);
+                    close();
+                  },
+                )}
+                {actionBtn(
+                  <>
+                    <Eye size={13} style={{ flexShrink: 0 }} /> TikTok Studio
+                  </>,
+                  "#f87171",
+                  "rgba(239,68,68,0.08)",
+                  "rgba(239,68,68,0.25)",
+                  () => {
+                    setTiktokListing(car);
+                    close();
+                  },
+                )}
+
+                {/* Performance */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
+                >
+                  <p
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      fontSize: 11,
-                      padding: "4px 9px",
-                      borderRadius: 6,
-                      background: "rgba(37,211,102,0.08)",
-                      border: "1px solid rgba(37,211,102,0.2)",
-                      color: "#4ade80",
-                      cursor: "pointer",
+                      fontSize: 10,
+                      color: "#6b7280",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      margin: "0 0 8px",
                     }}
                   >
-                    <MessageSquare size={11} />
-                    WA Caption
-                  </button>
+                    Performance
+                  </p>
+                  {[
+                    { label: "Views", val: views, color: "#60a5fa" },
+                    { label: "Enquiries", val: enqs, color: "#fbbf24" },
+                    {
+                      label: "CVR",
+                      val: cvr !== null ? `${cvr}%` : "—",
+                      color: "#4ade80",
+                    },
+                  ].map(({ label, val, color }) => (
+                    <div
+                      key={label}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#6b7280" }}>
+                        {label}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color }}>
+                        {val}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Status */}
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 10,
+                      color: "#6b7280",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Status
+                  </p>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textTransform: "capitalize",
+                      color:
+                        car.status === "available"
+                          ? "#4ade80"
+                          : car.status === "sold"
+                            ? "#9ca3af"
+                            : "#fbbf24",
+                    }}
+                  >
+                    {car.status || "active"}
+                  </span>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+          </div>
+        </div>
+
+        {/* Lightbox */}
+        {carDetailLbOpen && images.length > 0 && (
+          <div
+            onClick={() => setCarDetailLbOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 300,
+              background: "rgba(0,0,0,0.96)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <button
+              onClick={() => setCarDetailLbOpen(false)}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: "#e5e5e5",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10,
+              }}
+            >
+              <X size={18} />
+            </button>
+            {images.length > 1 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 20,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  background: "rgba(0,0,0,0.5)",
+                  borderRadius: 20,
+                  padding: "4px 12px",
+                }}
+              >
+                {carDetailImgIdx + 1} / {images.length}
+              </span>
+            )}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarDetailImgIdx(
+                    (i) => (i - 1 + images.length) % images.length,
+                  );
+                }}
+                style={{
+                  position: "absolute",
+                  left: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#e5e5e5",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ChevronLeft size={22} />
+              </button>
+            )}
+            <img
+              src={images[carDetailImgIdx]}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: "calc(100vw - 120px)",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: 4,
+                display: "block",
+              }}
+            />
+            {images.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarDetailImgIdx((i) => (i + 1) % images.length);
+                }}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#e5e5e5",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ChevronRight size={22} />
+              </button>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
 
   // ── RENDER LEADS ──────────────────────────────────────────────────────────
-
-  // ── NOTE: the listings map above uses an IIFE for sort/filter.
   // The closing is intentionally at the myListings.map level; the outer
   // (() => { ... })().map() chain closes correctly.
 
@@ -2545,9 +3947,10 @@ export default function SalesmanLite() {
                       fontSize: 10,
                       padding: "3px 9px",
                       borderRadius: 6,
-                      background: openTemplateId === enq.id
-                        ? "rgba(167,139,250,0.15)"
-                        : "rgba(255,255,255,0.05)",
+                      background:
+                        openTemplateId === enq.id
+                          ? "rgba(167,139,250,0.15)"
+                          : "rgba(255,255,255,0.05)",
                       border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`,
                       color: openTemplateId === enq.id ? "#c084fc" : "#6b7280",
                       cursor: "pointer",
@@ -2635,12 +4038,31 @@ export default function SalesmanLite() {
                 )}
               </div>
               {openTemplateId === enq.id && (
-                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
                   {[
-                    { key: "chat",       label: "Let's Chat",      color: "#4ade80" },
-                    { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
-                    { key: "budget",     label: "What's Budget?",  color: "#fbbf24" },
-                    { key: "deposit",    label: "Deposit to Hold", color: "#f87171" },
+                    { key: "chat", label: "Let's Chat", color: "#4ade80" },
+                    {
+                      key: "test_drive",
+                      label: "Book Test Drive",
+                      color: "#60a5fa",
+                    },
+                    {
+                      key: "budget",
+                      label: "What's Budget?",
+                      color: "#fbbf24",
+                    },
+                    {
+                      key: "deposit",
+                      label: "Deposit to Hold",
+                      color: "#f87171",
+                    },
                   ].map(({ key, label, color }) => {
                     const toastKey = enq.id + "_" + key;
                     return (
@@ -2661,7 +4083,15 @@ export default function SalesmanLite() {
                           gap: 6,
                         }}
                       >
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: color,
+                            flexShrink: 0,
+                          }}
+                        />
                         {templateToast === toastKey ? "✓ Sent!" : label}
                       </button>
                     );
@@ -2685,29 +4115,64 @@ export default function SalesmanLite() {
       if (!iso) return false;
       const d = new Date(iso);
       const t = new Date();
-      return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+      return (
+        d.getDate() === t.getDate() &&
+        d.getMonth() === t.getMonth() &&
+        d.getFullYear() === t.getFullYear()
+      );
     };
-    const isNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
+    const isNew = (iso) =>
+      iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
     const todayApts = appointments.filter((a) => isToday(a.appointment_date));
-    const upcomingApts = appointments.filter((a) => !isToday(a.appointment_date));
+    const upcomingApts = appointments.filter(
+      (a) => !isToday(a.appointment_date),
+    );
 
     const statusColors = {
-      confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
-      pending:   { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
-      cancelled: { bg: "rgba(239,68,68,0.12)",  border: "rgba(239,68,68,0.3)",  tx: "#f87171" },
-      rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+      confirmed: {
+        bg: "rgba(34,197,94,0.12)",
+        border: "rgba(34,197,94,0.3)",
+        tx: "#4ade80",
+      },
+      pending: {
+        bg: "rgba(251,191,36,0.12)",
+        border: "rgba(251,191,36,0.3)",
+        tx: "#fbbf24",
+      },
+      cancelled: {
+        bg: "rgba(239,68,68,0.12)",
+        border: "rgba(239,68,68,0.3)",
+        tx: "#f87171",
+      },
+      rescheduled: {
+        bg: "rgba(167,139,250,0.12)",
+        border: "rgba(167,139,250,0.3)",
+        tx: "#c084fc",
+      },
     };
 
     const renderApptCard = (apt) => {
       const car = apt.car_listings;
-      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const dateStr = aptDate && !isNaN(aptDate)
-        ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
-        : "—";
-      const timeStr = aptDate && !isNaN(aptDate)
-        ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })
-        : "";
+      const aptDate = apt.appointment_date
+        ? new Date(apt.appointment_date)
+        : null;
+      const dateStr =
+        aptDate && !isNaN(aptDate)
+          ? aptDate.toLocaleDateString("en-MY", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "—";
+      const timeStr =
+        aptDate && !isNaN(aptDate)
+          ? aptDate.toLocaleTimeString("en-MY", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "";
       const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then! 😊`;
       const sc = statusColors[apt.status] || statusColors.pending;
 
@@ -2721,28 +4186,89 @@ export default function SalesmanLite() {
             padding: "12px 14px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 2,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#e5e7eb",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {apt.buyer_name || "—"}
               </p>
               {isNew(apt.created_at) && (
-                <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", flexShrink: 0, letterSpacing: "0.05em" }}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    padding: "1px 5px",
+                    borderRadius: 99,
+                    background: "rgba(96,165,250,0.15)",
+                    border: "1px solid rgba(96,165,250,0.3)",
+                    color: "#93c5fd",
+                    flexShrink: 0,
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   NEW
                 </span>
               )}
             </div>
-            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+            <span
+              style={{
+                fontSize: 10,
+                padding: "2px 7px",
+                borderRadius: 99,
+                flexShrink: 0,
+                background: sc.bg,
+                border: `1px solid ${sc.border}`,
+                color: sc.tx,
+                textTransform: "capitalize",
+              }}
+            >
               {apt.status}
             </span>
           </div>
           {apt.created_at && (
             <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
-              Booked {timeAgo(apt.created_at)} · {new Date(apt.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+              Booked {timeAgo(apt.created_at)} ·{" "}
+              {new Date(apt.created_at).toLocaleDateString("en-MY", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
             </p>
           )}
-          <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>
-            📅 {dateStr}{timeStr && ` · ${timeStr}`}
+          <p
+            style={{
+              margin: "0 0 2px",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#93c5fd",
+            }}
+          >
+            📅 {dateStr}
+            {timeStr && ` · ${timeStr}`}
           </p>
           {car && (
             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
@@ -2750,25 +4276,76 @@ export default function SalesmanLite() {
             </p>
           )}
           {apt.buyer_phone && (
-            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>
+              📞 {apt.buyer_phone}
+            </p>
           )}
           {apt.notes && (
-            <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>
+            <p
+              style={{
+                margin: "0 0 6px",
+                fontSize: 10,
+                color: "#4b5563",
+                fontStyle: "italic",
+              }}
+            >
+              "{apt.notes}"
+            </p>
           )}
           {/* status actions */}
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: apt.buyer_phone ? 6 : 0 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 5,
+              flexWrap: "wrap",
+              marginBottom: apt.buyer_phone ? 6 : 0,
+            }}
+          >
             {apt.status !== "confirmed" && (
-              <button onClick={() => updateApptStatus(apt.id, "confirmed")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+              <button
+                onClick={() => updateApptStatus(apt.id, "confirmed")}
+                style={{
+                  fontSize: 10,
+                  padding: "2px 8px",
+                  borderRadius: 5,
+                  background: "rgba(34,197,94,0.08)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  color: "#4ade80",
+                  cursor: "pointer",
+                }}
+              >
                 Confirm
               </button>
             )}
             {apt.status !== "cancelled" && (
-              <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
+              <button
+                onClick={() => updateApptStatus(apt.id, "cancelled")}
+                style={{
+                  fontSize: 10,
+                  padding: "2px 8px",
+                  borderRadius: 5,
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  color: "#f87171",
+                  cursor: "pointer",
+                }}
+              >
                 Cancel
               </button>
             )}
             {apt.status !== "rescheduled" && (
-              <button onClick={() => updateApptStatus(apt.id, "rescheduled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>
+              <button
+                onClick={() => updateApptStatus(apt.id, "rescheduled")}
+                style={{
+                  fontSize: 10,
+                  padding: "2px 8px",
+                  borderRadius: 5,
+                  background: "rgba(167,139,250,0.08)",
+                  border: "1px solid rgba(167,139,250,0.2)",
+                  color: "#c084fc",
+                  cursor: "pointer",
+                }}
+              >
                 Reschedule
               </button>
             )}
@@ -2781,28 +4358,76 @@ export default function SalesmanLite() {
                   value={reminderMsg}
                   onChange={(e) => setReminderMsg(e.target.value)}
                   rows={3}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5, marginBottom: 6 }}
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 7,
+                    color: "#e5e7eb",
+                    fontSize: 11,
+                    padding: "8px 10px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    fontFamily: "'DM Sans', sans-serif",
+                    resize: "vertical",
+                    lineHeight: 1.5,
+                    marginBottom: 6,
+                  }}
                 />
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
                     onClick={() => {
                       const phone = apt.buyer_phone.replace(/\D/g, "");
-                      window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer");
+                      window.open(
+                        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
                       setEditingReminder(null);
                     }}
-                    style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(37,211,102,0.1)",
+                      border: "1px solid rgba(37,211,102,0.2)",
+                      color: "#4ade80",
+                      cursor: "pointer",
+                    }}
                   >
                     Send
                   </button>
-                  <button onClick={() => setEditingReminder(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                  <button
+                    onClick={() => setEditingReminder(null)}
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "#6b7280",
+                      cursor: "pointer",
+                    }}
+                  >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               <button
-                onClick={() => { setEditingReminder(apt.id); setReminderMsg(defaultReminder); }}
-                style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                onClick={() => {
+                  setEditingReminder(apt.id);
+                  setReminderMsg(defaultReminder);
+                }}
+                style={{
+                  fontSize: 10,
+                  padding: "3px 9px",
+                  borderRadius: 6,
+                  background: "rgba(37,211,102,0.1)",
+                  border: "1px solid rgba(37,211,102,0.2)",
+                  color: "#4ade80",
+                  cursor: "pointer",
+                }}
               >
                 WA Reminder
               </button>
@@ -2813,8 +4438,22 @@ export default function SalesmanLite() {
 
     return (
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 600,
+              color: "#f1f5f9",
+            }}
+          >
             Bookings ({appointments.length})
           </p>
           <div style={{ display: "flex", gap: 6 }}>
@@ -2823,7 +4462,18 @@ export default function SalesmanLite() {
               if (!count) return null;
               const sc = statusColors[s];
               return (
-                <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+                <span
+                  key={s}
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 8px",
+                    borderRadius: 99,
+                    background: sc.bg,
+                    border: `1px solid ${sc.border}`,
+                    color: sc.tx,
+                    textTransform: "capitalize",
+                  }}
+                >
                   {count} {s}
                 </span>
               );
@@ -2831,14 +4481,28 @@ export default function SalesmanLite() {
           </div>
         </div>
         {appointments.length === 0 && (
-          <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+          <div
+            style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
+          >
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
             <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
           </div>
         )}
         {todayApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+            <p
+              style={{
+                margin: "0 0 8px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#fbbf24",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
               <Calendar size={11} /> Today ({todayApts.length})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2849,7 +4513,16 @@ export default function SalesmanLite() {
         {upcomingApts.length > 0 && (
           <div>
             {todayApts.length > 0 && (
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <p
+                style={{
+                  margin: "0 0 8px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#374151",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
                 Upcoming
               </p>
             )}
@@ -3786,11 +5459,17 @@ export default function SalesmanLite() {
               >
                 <Bell size={15} />
                 {unreadCount > 0 && (
-                  <span style={{
-                    position: "absolute", top: 5, right: 5,
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "#ef4444",
-                  }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 5,
+                      right: 5,
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#ef4444",
+                    }}
+                  />
                 )}
               </button>
               <button
@@ -3864,11 +5543,17 @@ export default function SalesmanLite() {
               >
                 <Bell size={15} />
                 {unreadCount > 0 && (
-                  <span style={{
-                    position: "absolute", top: 5, right: 5,
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "#ef4444",
-                  }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 5,
+                      right: 5,
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#ef4444",
+                    }}
+                  />
                 )}
               </button>
               <button
@@ -3940,6 +5625,396 @@ export default function SalesmanLite() {
       {renderAddLeadModal()}
       {renderWAModal()}
       {renderNotifPanel()}
+      {renderCarDetailPopup()}
+
+      {/* Broadcast modal */}
+      {broadcastCar &&
+        (() => {
+          const eligible = leads.filter(
+            (l) =>
+              l.stage !== "won" &&
+              l.stage !== "lost" &&
+              (l.phone || "").replace(/\D/g, "").length > 0,
+          );
+          const capped = eligible.slice(0, 10);
+          const carName = [
+            broadcastCar.year,
+            broadcastCar.brand,
+            broadcastCar.model,
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <div
+              onClick={() => {
+                if (!broadcastProgress || broadcastDone) setBroadcastCar(null);
+              }}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.78)",
+                zIndex: 999,
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#111827",
+                  borderRadius: "16px 16px 0 0",
+                  width: "100%",
+                  maxWidth: 480,
+                  padding: 24,
+                  paddingBottom: 36,
+                }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4 text-orange-400" />
+                    <p className="text-white font-semibold text-sm">
+                      Broadcast to Leads
+                    </p>
+                  </div>
+                  {(!broadcastProgress || broadcastDone) && (
+                    <button
+                      onClick={() => setBroadcastCar(null)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-gray-400 text-xs mb-4">{carName}</p>
+
+                <div
+                  className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg"
+                  style={{
+                    background: "rgba(249,115,22,0.08)",
+                    border: "1px solid rgba(249,115,22,0.2)",
+                  }}
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-orange-300">
+                    {eligible.length === 0
+                      ? "No active leads with a phone number to broadcast to."
+                      : eligible.length > 10
+                        ? `This will open ${capped.length} WhatsApp tabs (capped from ${eligible.length} — only first 10 will be contacted).`
+                        : `This will open ${capped.length} WhatsApp tab${capped.length !== 1 ? "s" : ""}.`}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <span
+                    className="text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(255,255,255,0.07)",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    {eligible.length} eligible lead
+                    {eligible.length !== 1 ? "s" : ""} (not won/lost)
+                  </span>
+                </div>
+
+                <textarea
+                  value={broadcastMsg}
+                  onChange={(e) => setBroadcastMsg(e.target.value)}
+                  disabled={!!broadcastProgress && !broadcastDone}
+                  rows={7}
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 10,
+                    color: "#e5e7eb",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    padding: "10px 12px",
+                    resize: "vertical",
+                    outline: "none",
+                    marginBottom: 12,
+                    fontFamily: "inherit",
+                  }}
+                />
+
+                {broadcastDone ? (
+                  <div className="flex items-center gap-2 justify-center py-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <p className="text-green-400 text-sm font-medium">
+                      All {capped.length} tabs opened!
+                    </p>
+                  </div>
+                ) : broadcastProgress ? (
+                  <div className="text-center py-2">
+                    <p className="text-orange-300 text-sm font-medium">
+                      Opening {broadcastProgress.current} of{" "}
+                      {broadcastProgress.total}…
+                    </p>
+                    <div
+                      className="mt-2 rounded-full overflow-hidden"
+                      style={{
+                        height: 4,
+                        background: "rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%`,
+                          background: "#f97316",
+                          transition: "width 0.3s ease",
+                          borderRadius: 9999,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() =>
+                      eligible.length > 0 && runBroadcast(eligible)
+                    }
+                    disabled={eligible.length === 0}
+                    style={{
+                      width: "100%",
+                      padding: "11px 0",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background:
+                        eligible.length === 0
+                          ? "rgba(255,255,255,0.05)"
+                          : "rgba(249,115,22,0.18)",
+                      border:
+                        eligible.length === 0
+                          ? "1px solid rgba(255,255,255,0.08)"
+                          : "1px solid rgba(249,115,22,0.4)",
+                      color: eligible.length === 0 ? "#6b7280" : "#fb923c",
+                      cursor: eligible.length === 0 ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Send className="w-4 h-4" />
+                    Open WA for each lead
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* AI Caption modal */}
+      {aiCaptionCar && (
+        <div
+          onClick={() => setAiCaptionCar(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.78)",
+            zIndex: 999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#111827",
+              borderRadius: "16px 16px 0 0",
+              width: "100%",
+              maxWidth: 480,
+              padding: 24,
+              paddingBottom: 36,
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-white font-semibold text-sm">
+                  AI Caption Writer
+                </p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {[aiCaptionCar.year, aiCaptionCar.brand, aiCaptionCar.model]
+                    .filter(Boolean)
+                    .join(" ")}
+                </p>
+              </div>
+              <button
+                onClick={() => setAiCaptionCar(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              {["wa", "tiktok"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setAiCaptionTab(tab);
+                    setCaptionCopied(false);
+                  }}
+                  style={{
+                    padding: "6px 16px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border:
+                      aiCaptionTab === tab
+                        ? "1px solid rgba(168,85,247,0.5)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                    background:
+                      aiCaptionTab === tab
+                        ? "rgba(168,85,247,0.15)"
+                        : "rgba(255,255,255,0.04)",
+                    color: aiCaptionTab === tab ? "#c084fc" : "#9ca3af",
+                  }}
+                >
+                  {tab === "wa" ? "WhatsApp" : "TikTok"}
+                </button>
+              ))}
+            </div>
+
+            {aiCaptionLoading ? (
+              <div className="space-y-2">
+                {[70, 90, 55, 80].map((w, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 18,
+                      width: `${w}%`,
+                      background: "rgba(255,255,255,0.07)",
+                      borderRadius: 4,
+                      animation: "pulse 1.5s infinite",
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <textarea
+                value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? ""}
+                onChange={(e) =>
+                  setAiCaptions((p) => ({
+                    ...p,
+                    [aiCaptionCar.id]: {
+                      ...p[aiCaptionCar.id],
+                      [aiCaptionTab]: e.target.value,
+                    },
+                  }))
+                }
+                rows={6}
+                style={{
+                  width: "100%",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 10,
+                  color: "#e5e7eb",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  padding: "10px 12px",
+                  resize: "vertical",
+                  outline: "none",
+                }}
+              />
+            )}
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => {
+                  const text =
+                    aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "";
+                  navigator.clipboard.writeText(text);
+                  setCaptionCopied(true);
+                  setTimeout(() => setCaptionCopied(false), 2000);
+                }}
+                disabled={aiCaptionLoading || !aiCaptions[aiCaptionCar.id]}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: captionCopied
+                    ? "rgba(34,197,94,0.15)"
+                    : "rgba(168,85,247,0.15)",
+                  border: captionCopied
+                    ? "1px solid rgba(34,197,94,0.4)"
+                    : "1px solid rgba(168,85,247,0.4)",
+                  color: captionCopied ? "#4ade80" : "#c084fc",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {captionCopied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {captionCopied ? "Copied!" : "Copy"}
+              </button>
+              <button
+                onClick={() => {
+                  setAiCaptions((p) => {
+                    const next = { ...p };
+                    delete next[aiCaptionCar.id];
+                    return next;
+                  });
+                  generateAiCaptions(aiCaptionCar);
+                }}
+                disabled={aiCaptionLoading}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#9ca3af",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TikTok Studio modal */}
+      {tiktokListing && (
+        <div
+          style={
+            isMobile
+              ? {
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 9999,
+                  overflowY: "auto",
+                  borderRadius: 0,
+                }
+              : {}
+          }
+        >
+          <TikTokStudioV3
+            listing={tiktokListing}
+            onClose={() => setTiktokListing(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
