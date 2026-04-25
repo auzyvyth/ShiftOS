@@ -40,6 +40,10 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   const [waTemplate, setWaTemplate] = useState(DEFAULT_ENQUIRY_TEMPLATE);
   const [editedMsg, setEditedMsg] = useState("");
   const [templateSaving, setTemplateSaving] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachMessages, setCoachMessages] = useState([]);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [stockData, setStockData] = useState(null);
   const [dealerProfile, setDealerProfile] = useState(null);
 
   const statusMeta = {
@@ -175,6 +179,16 @@ function EnquiriesTab({ userId, onOpenDoc }) {
       setEditedMsg(populateTemplate(waTemplate, selected, dealerProfile));
   }, [selected?.id, waTemplate, dealerProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!selected?.listing_id) { setStockData(null); return; }
+    supabase
+      .from('stock_units')
+      .select('purchase_price, recon_cost, asking_price, status')
+      .eq('listing_id', selected.listing_id)
+      .maybeSingle()
+      .then(({ data }) => setStockData(data || null));
+  }, [selected?.listing_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const StatusBadge = ({ status }) => {
     const m = statusMeta[status] || statusMeta.new;
     return (
@@ -196,10 +210,85 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     );
   };
 
+  function buildCoachPrompt(enquiry, stock, dealer) {
+    const car = enquiry.listing;
+    const carLabel = car ? `${car.brand} ${car.model}` : 'this car';
+    const askingPrice = car?.selling_price || stock?.asking_price || 0;
+    const costPrice = (stock?.purchase_price || 0) + (stock?.recon_cost || 0);
+    const gpRoom = askingPrice && costPrice ? askingPrice - costPrice : null;
+    const daysSinceEnquiry = enquiry.created_at
+      ? Math.floor((Date.now() - new Date(enquiry.created_at)) / 86400000)
+      : 0;
+
+    return `You are a Negotiation Coach whispering advice to a Malaysian car salesman mid-deal.
+
+Deal context:
+- Car: ${carLabel}
+- Asking price: RM${askingPrice.toLocaleString()}
+- Cost basis (purchase + recon): ${costPrice ? `RM${costPrice.toLocaleString()}` : 'unknown'}
+- Gross profit room: ${gpRoom ? `RM${gpRoom.toLocaleString()}` : 'unknown'}
+- Buyer name: ${enquiry.buyer_name || 'unknown'}
+- Buyer message: "${enquiry.buyer_message || 'none'}"
+- Enquiry notes: "${enquiry.notes || 'none'}"
+- Days since enquiry: ${daysSinceEnquiry}
+- Current status: ${enquiry.status || 'new'}
+- Dealer: ${dealer?.dealership || 'dealer'}
+
+Your job:
+1. Read the situation and give the salesman a sharp tactical edge
+2. If GP room is known, suggest specific RM concessions — never go below cost
+3. Identify buyer signals from the message and notes
+4. Suggest exact words the salesman can say or WhatsApp
+5. If the lead is cold (2+ days), suggest a re-engagement line
+6. Speak directly to the salesman — "you", not "the salesman"
+7. Be concise. Max 80 words unless asked to elaborate.
+8. Casual tone — like a senior colleague whispering, not a textbook
+
+Never reveal the cost basis or GP room to the buyer. That's internal only.`;
+  }
+
+  const sendCoachMessage = async (userMsg) => {
+    if (!selected || coachLoading) return;
+    const newHistory = [...coachMessages, { role: 'user', content: userMsg }];
+    setCoachMessages(newHistory);
+    setCoachLoading(true);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: buildCoachPrompt(selected, stockData, dealerProfile),
+          messages: newHistory,
+        }),
+      });
+      const data = await res.json();
+      const reply = data?.content?.[0]?.text ?? 'Could not load advice.';
+      setCoachMessages([...newHistory, { role: 'assistant', content: reply }]);
+    } catch {
+      setCoachMessages([...newHistory, { role: 'assistant', content: 'Connection error.' }]);
+    }
+    setCoachLoading(false);
+  };
+
   const openDetail = (e) => {
     setSelected(e);
     setNotes(e.notes || "");
+    setCoachOpen(false);
+    setCoachMessages([]);
+    setTimeout(() => { setCoachOpen(true); }, 300);
   };
+
+  useEffect(() => {
+    if (!coachOpen || !selected || coachMessages.length > 0) return;
+    sendCoachMessage('Read this enquiry and give me your quick read of the situation and what I should do next.');
+  }, [coachOpen, selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
@@ -954,6 +1043,179 @@ function EnquiriesTab({ userId, onOpenDoc }) {
                   </div>
                 </div>
               )}
+
+              {/* ── Negotiation Coach ── */}
+              <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 8 }}>
+                <button
+                  onClick={() => {
+                    setCoachOpen(p => !p);
+                    if (!coachOpen && coachMessages.length === 0) {
+                      setTimeout(() => sendCoachMessage('Read this enquiry and give me your quick read of the situation and what I should do next.'), 100);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: coachOpen ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${coachOpen ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    cursor: 'pointer',
+                    fontFamily: "'DM Sans', sans-serif",
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #dc2626, #7f1d1d)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0,
+                    }}>NC</div>
+                    <div style={{ textAlign: 'left' }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Negotiation Coach</p>
+                      <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>AI advice for this deal</p>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 18, color: '#6b7280', lineHeight: 1 }}>{coachOpen ? '−' : '+'}</span>
+                </button>
+
+                {coachOpen && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{
+                      maxHeight: 280, overflowY: 'auto',
+                      display: 'flex', flexDirection: 'column', gap: 10,
+                      marginBottom: 10, padding: '4px 2px',
+                    }}>
+                      {coachMessages.length === 0 && !coachLoading && (
+                        <p style={{ fontSize: 12, color: '#4b5563', textAlign: 'center', padding: '16px 0' }}>
+                          Loading situation read...
+                        </p>
+                      )}
+                      {coachMessages.map((m, i) => (
+                        <div key={i} style={{
+                          display: 'flex',
+                          justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                          gap: 8, alignItems: 'flex-end',
+                        }}>
+                          {m.role === 'assistant' && (
+                            <div style={{
+                              width: 22, height: 22, borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #dc2626, #7f1d1d)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 8, fontWeight: 700, color: '#fff', flexShrink: 0,
+                            }}>NC</div>
+                          )}
+                          <div style={{
+                            maxWidth: '85%',
+                            background: m.role === 'user' ? '#1d4ed8' : 'rgba(255,255,255,0.06)',
+                            border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: m.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                            padding: '8px 12px', fontSize: 13, lineHeight: 1.55,
+                            color: m.role === 'user' ? '#fff' : '#d1d5db',
+                            whiteSpace: 'pre-wrap',
+                          }}>
+                            {m.content}
+                          </div>
+                        </div>
+                      ))}
+                      {coachLoading && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                          <div style={{
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #dc2626, #7f1d1d)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 8, fontWeight: 700, color: '#fff', flexShrink: 0,
+                          }}>NC</div>
+                          <div style={{
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '12px 12px 12px 4px',
+                            padding: '10px 14px', display: 'flex', gap: 4, alignItems: 'center',
+                          }}>
+                            {[0, 1, 2].map(i => (
+                              <div key={i} style={{
+                                width: 5, height: 5, borderRadius: '50%',
+                                background: '#dc2626',
+                                animation: 'pulse 1.2s ease-in-out infinite',
+                                animationDelay: `${i * 0.2}s`,
+                              }} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                      {[
+                        'How much can I drop?',
+                        'Buyer is ghosting me',
+                        'They said too expensive',
+                        'What should I WhatsApp them?',
+                      ].map(q => (
+                        <button
+                          key={q}
+                          onClick={() => sendCoachMessage(q)}
+                          disabled={coachLoading}
+                          style={{
+                            fontSize: 11, color: '#9ca3af',
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 20, padding: '4px 10px',
+                            cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                            transition: 'all 0.15s',
+                          }}
+                        >{q}</button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <textarea
+                        rows={2}
+                        placeholder="Ask the coach..."
+                        disabled={coachLoading}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            const val = e.target.value.trim();
+                            if (val) { sendCoachMessage(val); e.target.value = ''; }
+                          }
+                        }}
+                        style={{
+                          flex: 1, background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: 10, padding: '8px 12px',
+                          fontSize: 13, color: '#f3f4f6',
+                          fontFamily: "'DM Sans', sans-serif",
+                          resize: 'none', outline: 'none', lineHeight: 1.5,
+                        }}
+                      />
+                      <button
+                        onClick={e => {
+                          const ta = e.currentTarget.previousSibling;
+                          const val = ta.value.trim();
+                          if (val && !coachLoading) { sendCoachMessage(val); ta.value = ''; }
+                        }}
+                        disabled={coachLoading}
+                        style={{
+                          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                          background: coachLoading ? '#1f2937' : '#dc2626',
+                          border: 'none', cursor: coachLoading ? 'default' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13"/>
+                          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
