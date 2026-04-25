@@ -750,6 +750,7 @@ export default function CarDetailPage() {
             min-width: 0; max-width: 100%; flex: none; width: 100%;
             padding: 28px 20px; justify-content: flex-start;
             border-left: none; border-top: 1px solid rgba(255,255,255,0.05);
+            overflow-y: visible; overflow: visible;
           }
           .cdp-details { flex-direction: column; gap: 40px; padding: 40px 20px 60px; }
           .cdp-details-right { min-width: 0; width: 100%; max-width: 480px; }
