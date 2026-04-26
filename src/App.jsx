@@ -23,6 +23,7 @@ import MindMapPage from "./pages/MindMapPage";
 import DealerSlugRedirect from "./pages/DealerSlugRedirect";
 import SalesmanProfilePage from "./pages/SalesmanProfilePage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
+import ImportStockPage from "./pages/ImportStockPage";
 import "./i18n/config";
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
 
         {/* Protected — XDrive */}
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
         <Route path="/salesman" element={<SalesmanPanel />} />
         <Route path="/salesman-lite" element={<SalesmanLite />} />
         <Route path="/manager" element={<ManagerPanel />} />
