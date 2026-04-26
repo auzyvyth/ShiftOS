@@ -91,6 +91,7 @@ import {
   Printer,
   CheckSquare,
   Wrench,
+  Upload,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -4021,6 +4022,7 @@ function ListingDetailDrawer({
 
 // ─── StockTab ─────────────────────────────────────────────────────────────────
 function StockTab({ userId, listings }) {
+  const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -4150,7 +4152,10 @@ function StockTab({ userId, listings }) {
       <div className="rounded-xl overflow-hidden" style={T.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => navigate('/dashboard/import-stock')} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
+          </div>
         </div>
         {/* Available / Sold tab toggle */}
         <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
