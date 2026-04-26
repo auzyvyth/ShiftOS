@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -5423,6 +5424,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   );
 
   return (
+    <>
+    <SuspendedBanner />
     <div
       style={{
         display: "flex",
@@ -7006,5 +7009,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
       )}
     </div>
+    </>
   );
 }

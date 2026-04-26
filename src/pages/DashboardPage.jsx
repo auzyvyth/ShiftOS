@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
@@ -5377,6 +5378,7 @@ export default function DashboardPage() {
 
   return (
     <>
+    <SuspendedBanner />
     <Helmet>
       <meta name="robots" content="noindex, nofollow" />
     </Helmet>
