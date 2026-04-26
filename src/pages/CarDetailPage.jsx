@@ -808,7 +808,7 @@ export default function CarDetailPage() {
                 className={`cdp-main-img cdp-slide-${slideDir}`}
                 src={images[activeIdx]}
                 alt={carTitle}
-                fetchpriority={activeIdx === 0 ? 'high' : 'auto'}
+                fetchPriority={activeIdx === 0 ? 'high' : 'auto'}
                 loading={activeIdx === 0 ? 'eager' : 'lazy'}
                 style={{ opacity: 0, transform: 'scale(1.04)', transition: 'opacity 1.2s ease, transform 6s ease' }}
                 onClick={() => setLbOpen(true)}

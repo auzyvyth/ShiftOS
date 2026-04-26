@@ -944,7 +944,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                 alt=""
                 className={`hc-bg-img${i === idx ? " active" : ""}`}
                 loading={i === 0 ? "eager" : "lazy"}
-                fetchpriority={i === 0 ? "high" : "auto"}
+                fetchPriority={i === 0 ? "high" : "auto"}
               />
             ) : null,
           )}

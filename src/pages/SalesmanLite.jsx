@@ -3511,7 +3511,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       ? `${car.brand} ${car.model}`
                       : "kereta tu";
                     const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
-                    setWaModalMsg(msg);
+                    setWaModalMessage(msg);
                     setWaModalLead(lead);
                   }}
                   style={{
@@ -5025,7 +5025,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
           <textarea
             value={waModalMsg}
-            onChange={(e) => setWaModalMsg(e.target.value)}
+            onChange={(e) => setWaModalMessage(e.target.value)}
             rows={5}
             style={{
               width: "100%",
