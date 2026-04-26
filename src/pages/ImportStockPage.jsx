@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
-import { supabase } from '../supabaseClient';
-import StepIndicator from '../components/ImportStockPage/StepIndicator';
-import Step1Upload from '../components/ImportStockPage/Step1Upload';
-import Step2Preview from '../components/ImportStockPage/Step2Preview';
-import Step3Import from '../components/ImportStockPage/Step3Import';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { supabase } from "../supabaseClient";
+import StepIndicator from "../components/ImportStockPage/StepIndicator";
+import Step1Upload from "../components/ImportStockPage/Step1Upload";
+import Step2Preview from "../components/ImportStockPage/Step2Preview";
+import Step3Import from "../components/ImportStockPage/Step3Import";
 
-const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_API = "https://api.anthropic.com/v1/messages";
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","description":""}
@@ -25,7 +25,7 @@ async function extractSheetId(url) {
 async function readFileAsBase64(file) {
   return new Promise((res, rej) => {
     const reader = new FileReader();
-    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onload = () => res(reader.result.split(",")[1]);
     reader.onerror = rej;
     reader.readAsDataURL(file);
   });
@@ -34,50 +34,75 @@ async function readFileAsBase64(file) {
 async function buildClaudeMessages(file, sheetsUrl) {
   if (sheetsUrl) {
     const id = await extractSheetId(sheetsUrl);
-    if (!id) throw new Error('Could not parse spreadsheet ID from URL');
+    if (!id) throw new Error("Could not parse spreadsheet ID from URL");
     const csvUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
     const res = await fetch(csvUrl);
-    if (!res.ok) throw new Error('Could not fetch Google Sheet — make sure it is set to "Anyone with the link can view"');
+    if (!res.ok)
+      throw new Error(
+        'Could not fetch Google Sheet — make sure it is set to "Anyone with the link can view"',
+      );
     const csv = await res.text();
-    return [{ role: 'user', content: `Here is the spreadsheet data in CSV format:\n\n${csv}` }];
+    return [
+      {
+        role: "user",
+        content: `Here is the spreadsheet data in CSV format:\n\n${csv}`,
+      },
+    ];
   }
 
-  const ext = file.name.split('.').pop().toLowerCase();
+  const ext = file.name.split(".").pop().toLowerCase();
 
-  if (ext === 'xlsx') {
+  if (ext === "xlsx") {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
+    const wb = XLSX.read(buf, { type: "array" });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    return [{ role: 'user', content: `Here is the spreadsheet data as JSON:\n\n${JSON.stringify(json)}` }];
+    const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    return [
+      {
+        role: "user",
+        content: `Here is the spreadsheet data as JSON:\n\n${JSON.stringify(json)}`,
+      },
+    ];
   }
 
-  if (ext === 'pdf') {
+  if (ext === "pdf") {
     const b64 = await readFileAsBase64(file);
-    return [{
-      role: 'user',
-      content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-        { type: 'text', text: 'Extract all car listings from this PDF document.' },
-      ],
-    }];
+    return [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: b64,
+            },
+          },
+          {
+            type: "text",
+            text: "Extract all car listings from this PDF document.",
+          },
+        ],
+      },
+    ];
   }
 
-  throw new Error('Unsupported file type');
+  throw new Error("Unsupported file type");
 }
 
 async function callClaude(messages) {
   const key = import.meta.env.VITE_ANTHROPIC_API_KEY;
   const res = await fetch(CLAUDE_API, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages,
@@ -88,13 +113,13 @@ async function callClaude(messages) {
     throw new Error(err?.error?.message || `Claude API error ${res.status}`);
   }
   const data = await res.json();
-  const text = data?.content?.[0]?.text ?? '';
+  const text = data?.content?.[0]?.text ?? "";
   try {
     return JSON.parse(text);
   } catch {
     const match = text.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
-    throw new Error('Could not parse JSON from Claude response');
+    throw new Error("Could not parse JSON from Claude response");
   }
 }
 
@@ -105,14 +130,15 @@ export default function ImportStockPage() {
   const [rows, setRows] = useState([]);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(null);
-  const [importError, setImportError] = useState('');
+  const [importError, setImportError] = useState("");
 
   const handleStep1 = async ({ file, sheetsUrl }) => {
     setLoading(true);
     try {
       const messages = await buildClaudeMessages(file, sheetsUrl);
       const parsed = await callClaude(messages);
-      if (!Array.isArray(parsed)) throw new Error('Unexpected response format from AI');
+      if (!Array.isArray(parsed))
+        throw new Error("Unexpected response format from AI");
       setRows(parsed);
       setStep(2);
     } catch (e) {
@@ -128,13 +154,15 @@ export default function ImportStockPage() {
 
   const handleImport = async () => {
     setImporting(true);
-    setImportError('');
+    setImportError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
       const now = new Date().toISOString();
-      const records = rows.map(r => ({
+      const records = rows.map((r) => ({
         brand: r.brand || null,
         model: r.model || null,
         year: r.year ? Number(r.year) : null,
@@ -147,36 +175,50 @@ export default function ImportStockPage() {
         condition: r.condition || null,
         description: r.description || null,
         dealer_id: user.id,
-        status: 'active',
+        status: "active",
         created_at: now,
       }));
 
-      const { error } = await supabase.from('car_listings').insert(records);
+      const { error } = await supabase.from("car_listings").insert(records);
       if (error) throw error;
       setImported(records.length);
     } catch (e) {
-      setImportError(e.message || 'Import failed');
+      setImportError(e.message || "Import failed");
     }
     setImporting(false);
   };
 
   return (
-    <div className="min-h-screen font-['DM_Sans',sans-serif]" style={{ background: '#080C14' }}>
+    <div
+      className="min-h-screen font-['DM_Sans',sans-serif]"
+      style={{ background: "#080C14" }}
+    >
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Import Stock</h1>
-          <p className="text-sm text-gray-500 mt-1">Upload a spreadsheet or PDF and let AI extract your listings</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Upload a spreadsheet or PDF and let AI extract your listings
+          </p>
         </div>
 
         <StepIndicator current={step} />
 
         <div
           className="rounded-2xl p-6"
-          style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
         >
           {step === 1 && <Step1Upload onNext={handleStep1} loading={loading} />}
-          {step === 2 && <Step2Preview rows={rows} onBack={() => setStep(1)} onNext={handleStep2} />}
+          {step === 2 && (
+            <Step2Preview
+              rows={rows}
+              onBack={() => setStep(1)}
+              onNext={handleStep2}
+            />
+          )}
           {step === 3 && (
             <Step3Import
               rows={rows}
@@ -184,7 +226,7 @@ export default function ImportStockPage() {
               imported={imported}
               error={importError}
               onImport={handleImport}
-              onDone={() => navigate('/dashboard')}
+              onDone={() => navigate("/dashboard")}
             />
           )}
         </div>

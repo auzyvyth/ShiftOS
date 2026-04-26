@@ -1408,9 +1408,9 @@ export function LayerPropertiesPanel({
           <PropRow label="Style">
             <div style={{ display: "flex", gap: 4 }}>
               {[
-                [<AlignLeft size={11} />, "left"],
-                [<AlignCenter size={11} />, "center"],
-                [<AlignRight size={11} />, "right"],
+                [<AlignLeft key="left-icon" size={11} />, "left"],
+                [<AlignCenter key="center-icon" size={11} />, "center"],
+                [<AlignRight key="right-icon" size={11} />, "right"],
               ].map(([icon, val]) => (
                 <button
                   key={val}
@@ -1538,19 +1538,19 @@ export function LayerPropertiesPanel({
         style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}
       >
         {[
-          [<ChevronsUp size={11} />, "Front", () => uc({ zIndex: Z_FRONT })],
+          [<ChevronsUp key="front-icon" size={11} />, "Front", () => uc({ zIndex: Z_FRONT })],
           [
-            <ChevronUp size={11} />,
+            <ChevronUp key="fwd-icon" size={11} />,
             "Fwd +1",
             () => uc({ zIndex: clamp(curZ + 1, 1, 199) }),
           ],
           [
-            <ChevronDown size={11} />,
+            <ChevronDown key="back-icon" size={11} />,
             "Back -1",
             () => uc({ zIndex: clamp(curZ - 1, 1, 199) }),
           ],
           [
-            <ChevronsDown size={11} />,
+            <ChevronsDown key="behind-icon" size={11} />,
             "Behind",
             () => uc({ zIndex: Z_BELOW_TEMPLATE }),
           ],

@@ -59,7 +59,7 @@ export default function AdminPanel() {
         .select("*")
         .eq("id", data.session.user.id)
         .maybeSingle();
-      if (!p || p.role !== "admin") {
+      if (!p || !["admin", "superadmin"].includes(p.role)) {
         navigate("/login");
         return;
       }

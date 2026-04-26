@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { X, MessageCircle, Save, FileText, PlusCircle } from "lucide-react";
+import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import LeadsPage from "./LeadsPage";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -2340,6 +2339,333 @@ function BookingsTab({ userId, listings, salesmen }) {
   );
 }
 
+// ─── Pipeline heatmap constants ───────────────────────────────────────────────
+const timeAgo = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+};
+
+const LEAD_STAGES = [
+  "new", "contacted", "viewing_booked", "test_drive",
+  "negotiating", "deposit_taken", "won", "lost", "closed_won", "closed_lost",
+];
+
+const STAGE_COLOR = {
+  new:           { bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.3)",  tx: "#93c5fd" },
+  contacted:     { bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.3)",  tx: "#fbbf24" },
+  viewing_booked:{ bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+  test_drive:    { bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.3)",  tx: "#34d399" },
+  negotiating:   { bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)",  tx: "#fb923c" },
+  deposit_taken: { bg: "rgba(34,197,94,0.12)",   border: "rgba(34,197,94,0.3)",   tx: "#4ade80" },
+  won:           { bg: "rgba(34,197,94,0.18)",   border: "rgba(34,197,94,0.4)",   tx: "#4ade80" },
+  lost:          { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+};
+
+const STAGE_WEIGHT = {
+  new: 1, contacted: 2, viewing_booked: 3,
+  test_drive: 4, negotiating: 5, deposit_taken: 6,
+};
+
+const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+
+const getHeatScore = (lead) => {
+  const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
+  const daysStale = lead.updated_at
+    ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
+    : 0;
+  const score = stageWeight - Math.min(daysStale * 0.5, 3);
+  if (score >= 4) return { score, emoji: "🔥", label: "hot",  color: "#f87171" };
+  if (score >= 2) return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
+  return           { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
+};
+
+// ─── PipelinePanel ─────────────────────────────────────────────────────────────
+function PipelinePanel({ userId }) {
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [lostOpen, setLostOpen] = useState(false);
+  const [showAddLead, setShowAddLead] = useState(false);
+  const [addLeadForm, setAddLeadForm] = useState({ buyer_name: "", phone: "", notes: "" });
+  const [addLeadSaving, setAddLeadSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [lostPromptId, setLostPromptId] = useState(null);
+  const [waModalLead, setWaModalLead] = useState(null);
+  const [waModalMsg, setWaModalMessage] = useState("");
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("leads")
+      .select("*, car_listings(brand, model, year, selling_price)")
+      .eq("dealer_id", userId)
+      .eq("is_deleted", false)
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => { setLeads(data || []); setLeadsLoading(false); });
+
+    const ch = supabase
+      .channel("crm-pipeline-" + userId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${userId}` }, (payload) => {
+        if (payload.eventType === "INSERT") setLeads((p) => [payload.new, ...p]);
+        if (payload.eventType === "UPDATE") setLeads((p) => p.map((l) => l.id === payload.new.id ? { ...l, ...payload.new } : l));
+        if (payload.eventType === "DELETE") setLeads((p) => p.filter((l) => l.id !== payload.old.id));
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateLeadStage = async (leadId, stage) => {
+    const lead = leads.find((l) => l.id === leadId);
+    await supabase.from("leads").update({ stage, updated_at: new Date().toISOString() }).eq("id", leadId);
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId, activity_type: "stage_changed",
+      from_stage: lead?.stage ?? null, to_stage: stage,
+      created_by: userId, dealer_id: userId,
+    });
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, stage } : l));
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    setLeads((p) => p.filter((l) => l.id !== leadId));
+    setDeleteConfirmId(null);
+  };
+
+  const handleLostReason = async (leadId, reason) => {
+    const lead = leads.find((l) => l.id === leadId);
+    const now = new Date().toISOString();
+    await supabase.from("leads").update({ stage: "lost", lost_reason: reason, updated_at: now }).eq("id", leadId);
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId, activity_type: "stage_changed",
+      from_stage: lead?.stage ?? null, to_stage: "lost",
+      note: `Lost reason: ${reason}`, created_by: userId, dealer_id: userId,
+    });
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, stage: "lost", lost_reason: reason, updated_at: now } : l));
+    setLostPromptId(null);
+  };
+
+  const handleAddLead = async () => {
+    setAddLeadSaving(true);
+    const { data } = await supabase
+      .from("leads")
+      .insert({ dealer_id: userId, buyer_name: addLeadForm.buyer_name, phone: addLeadForm.phone, notes: addLeadForm.notes, stage: "new", lead_source: "manual", is_deleted: false })
+      .select().single();
+    if (data) setLeads((p) => [data, ...p]);
+    setAddLeadSaving(false);
+    setShowAddLead(false);
+    setAddLeadForm({ buyer_name: "", phone: "", notes: "" });
+  };
+
+  const activeStages = LEAD_STAGES.filter((s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won");
+  const lostLeads = leads.filter((l) => l.stage === "lost" || l.stage === "closed_lost" || l.stage === "closed_won");
+
+  const renderLeadCard = (lead) => {
+    const car = lead.car_listings;
+    const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+    const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+    const stageIdx = LEAD_STAGES.indexOf(lead.stage);
+    const nextStage = LEAD_STAGES.filter((s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost")
+      .find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
+    const heat = getHeatScore(lead);
+    const isConfirmingDelete = deleteConfirmId === lead.id;
+    const isPromptingLost = lostPromptId === lead.id;
+
+    return (
+      <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 2 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {lead.buyer_name || "—"}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <span title={`${heat.label} · score ${heat.score.toFixed(1)}`} style={{ fontSize: 10, fontWeight: 600, color: heat.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 99, padding: "1px 6px", lineHeight: 1.4, whiteSpace: "nowrap" }}>
+              {heat.emoji} {heat.score.toFixed(1)}
+            </span>
+            <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(lead.id); }} title="Delete lead" style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+        <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Added {timeAgo(lead.created_at)}</p>
+        {carName && <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>{carName}</p>}
+        {carPrice && <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#60a5fa" }}>{carPrice}</p>}
+        {lead.phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
+        {lead.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{lead.notes}"</p>}
+
+        {isConfirmingDelete ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "4px 0" }}>
+            <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
+            <button onClick={() => handleDeleteLead(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>Yes</button>
+            <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
+          </div>
+        ) : isPromptingLost ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", padding: "4px 0" }}>
+            <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+            {LOST_REASONS.map((r) => (
+              <button key={r} onClick={() => handleLostReason(lead.id, r)} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer" }}>{r}</button>
+            ))}
+            <button onClick={() => setLostPromptId(null)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {nextStage && lead.stage !== "won" && (
+              <button onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                → {nextStage.replace(/_/g, " ")}
+              </button>
+            )}
+            {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
+              <button onClick={() => updateLeadStage(lead.id, "won")} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>→ Won</button>
+            )}
+            {lead.stage !== "won" && (
+              <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(lead.id); }} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(148,163,184,0.06)", border: "1px solid rgba(148,163,184,0.18)", color: "#9ca3af", cursor: "pointer" }}>→ Lost</button>
+            )}
+            {lead.phone && (
+              <button onClick={() => { const car = lead.car_listings; const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${car ? `${car.brand} ${car.model}` : "kereta tu"} tu? Jom kita discuss lagi 😊`; setWaModalMessage(msg); setWaModalLead(lead); }} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (leadsLoading) return <p style={{ color: "#6b7280", fontSize: 13, padding: 16 }}>Loading pipeline...</p>;
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+          Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
+        </p>
+        <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
+          <Plus size={13} /> Add Lead
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+        {activeStages.map((stage) => {
+          const sc = STAGE_COLOR[stage] || {};
+          const stageLeads = leads.filter((l) => l.stage === stage).sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+          return (
+            <div key={stage} style={{ minWidth: 190, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
+                  {stage.replace(/_/g, " ")}
+                </span>
+                <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
+                  {stageLeads.length}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {stageLeads.length === 0 && (
+                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                  </div>
+                )}
+                {stageLeads.map((lead) => renderLeadCard(lead))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {lostLeads.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <button onClick={() => setLostOpen((o) => !o)} style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>Lost ({lostLeads.length})</span>
+            <span style={{ fontSize: 12, color: "#374151" }}>{lostOpen ? "▲" : "▼"}</span>
+          </button>
+          {lostOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {lostLeads.map((lead) => (
+                <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", opacity: 0.65 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#9ca3af", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {lead.buyer_name || "—"}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      {lead.lost_reason && (
+                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", whiteSpace: "nowrap" }}>
+                          {lead.lost_reason}
+                        </span>
+                      )}
+                      <button onClick={() => setDeleteConfirmId(lead.id)} title="Delete lead" style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(lead.created_at)}</p>
+                  {deleteConfirmId === lead.id && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
+                      <button onClick={() => handleDeleteLead(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>Yes</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Lead Modal */}
+      {showAddLead && (
+        <div onClick={() => setShowAddLead(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Add Lead</p>
+                <button onClick={() => setShowAddLead(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {[{ key: "buyer_name", label: "Name", placeholder: "Buyer name" }, { key: "phone", label: "Phone", placeholder: "e.g. 0123456789" }, { key: "notes", label: "Notes", placeholder: "Any notes..." }].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
+                    <input value={addLeadForm[key]} onChange={(e) => setAddLeadForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleAddLead} disabled={!addLeadForm.buyer_name || addLeadSaving} style={{ marginTop: 20, width: "100%", padding: "10px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: !addLeadForm.buyer_name || addLeadSaving ? 0.6 : 1 }}>
+                {addLeadSaving ? "Saving..." : "Add Lead"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WA Modal */}
+      {waModalLead && (
+        <div onClick={() => setWaModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 440, padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#f1f5f9" }}>Send WA Message</p>
+              <button onClick={() => setWaModalLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}><X size={18} /></button>
+            </div>
+            <textarea value={waModalMsg} onChange={(e) => setWaModalMessage(e.target.value)} rows={5} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5 }} />
+            <button
+              onClick={async () => {
+                const phone = (waModalLead.phone || "").replace(/\D/g, "");
+                if (phone) window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`, "_blank", "noopener,noreferrer");
+                const now = new Date().toISOString();
+                await supabase.from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
+                setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
+                setWaModalLead(null);
+              }}
+              disabled={!waModalMsg.trim() || !waModalLead.phone}
+              style={{ marginTop: 12, width: "100%", padding: "10px", borderRadius: 8, background: "#16a34a", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: !waModalMsg.trim() || !waModalLead.phone ? "not-allowed" : "pointer", opacity: !waModalMsg.trim() || !waModalLead.phone ? 0.6 : 1 }}
+            >Send</button>
+            {!waModalLead.phone && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#f87171", textAlign: "center" }}>No phone number on this lead.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── CRM tab bar styles ────────────────────────────────────────────────────────
 const CRM_CSS = `
   .crm-tabs {
@@ -2384,7 +2710,6 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
     { id: "pipeline", label: "Pipeline" },
     { id: "enquiries", label: "Enquiries" },
     { id: "bookings", label: "Bookings" },
-    { id: "leads", label: "Leads" },
   ];
 
   return (
@@ -2413,17 +2738,7 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
 
       {/* Tab content */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        {tab === "pipeline" && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              minHeight: "calc(100vh - 200px)",
-            }}
-          >
-            <LeadsPage />
-          </div>
-        )}
+        {tab === "pipeline" && <PipelinePanel userId={userId} />}
         {tab === "enquiries" && (
           <EnquiriesTab userId={userId} onOpenDoc={onOpenDoc} />
         )}
@@ -2433,17 +2748,6 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
             listings={listings}
             salesmen={salesmen}
           />
-        )}
-        {tab === "leads" && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              minHeight: "calc(100vh - 200px)",
-            }}
-          >
-            <LeadsPage />
-          </div>
         )}
       </div>
     </div>
