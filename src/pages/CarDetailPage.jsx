@@ -378,7 +378,7 @@ export default function CarDetailPage() {
 
   /* ── Call ── */
   function handleCall() {
-    const phone = dealer?.whatsapp_number?.replace(/\D/g, '');
+    const phone = contactPhone?.replace(/\D/g, '');
     if (!phone) return;
     trackEvent(supabase, 'call_click', {
       car_id: car.id,
@@ -417,7 +417,7 @@ export default function CarDetailPage() {
       if (enqErr) console.error('[handleEnquirySubmit] insert error:', enqErr.message, enqErr);
     }
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
-    window.open(buildWaUrl(ctaCtx, dealer?.whatsapp_number, message), '_blank');
+    window.open(buildWaUrl(ctaCtx, contactPhone, message), '_blank');
     setShowEnquiryModal(false);
     setEnquirySubmitting(false);
     setEnquiryForm({ name: '', phone: '' });
@@ -472,6 +472,7 @@ export default function CarDetailPage() {
   );
 
   const images     = car.images?.length ? car.images : ['/placeholder-car.jpg'];
+  const contactPhone = dealer?.whatsapp_number || salesmanProfile?.whatsapp_number || null;
   const isRecon    = car.is_recon;
   const isHot      = car.original_price && car.original_price > 0 && car.selling_price > 0 && car.selling_price <= car.original_price * 0.97;
   const saving     = isHot ? car.original_price - car.selling_price : 0;
@@ -950,14 +951,14 @@ export default function CarDetailPage() {
               </button>
 
               <div style={{ display:'flex', gap:7, marginTop:7 }}>
-                {dealer?.whatsapp_number && (
+                {contactPhone && (
                   <button onClick={handleCall}
                     style={{ flex:1, background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s' }}>
                     <Phone size={13} /> Call
                   </button>
                 )}
                 <button onClick={() => bookingRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })}
-                  style={{ flex:dealer?.whatsapp_number ? 1 : undefined, width:dealer?.whatsapp_number ? undefined : '100%', background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s' }}>
+                  style={{ flex:contactPhone ? 1 : undefined, width:contactPhone ? undefined : '100%', background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s' }}>
                   Book Visit
                 </button>
               </div>
@@ -1329,7 +1330,7 @@ export default function CarDetailPage() {
       {/* ── mobile sticky bar ── */}
       <div className="cdp-mobile-bar">
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
-        {dealer?.whatsapp_number && (
+        {contactPhone && (
           <button className="cdp-mobile-bar-book" onClick={handleCall}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
             <Phone size={14} /> Call

@@ -177,6 +177,12 @@ export default function SalesmanLite() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [newBookingsCount, setNewBookingsCount] = useState(0);
+
+  function switchTab(tab) {
+    if (tab === "bookings") setNewBookingsCount(0);
+    setActiveTab(tab);
+  }
 
   // listings
   const [myListings, setMyListings] = useState([]);
@@ -470,6 +476,7 @@ export default function SalesmanLite() {
               (payload) => {
                 if (payload.eventType === "INSERT") {
                   setAppointments((p) => [payload.new, ...p]);
+                  setNewBookingsCount((c) => c + 1);
                   toast("New booking!", {
                     description: payload.new.buyer_name || "New appointment",
                   });
@@ -864,7 +871,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       tab: "bookings",
       label: "Bookings",
       icon: <Phone style={{ width: 14, height: 14 }} />,
-      badge: appointments.filter((a) => a.status === "pending").length || null,
+      badge: newBookingsCount || null,
     },
     {
       tab: "merge",
@@ -902,7 +909,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       tab: "bookings",
       label: "Bookings",
       icon: <Phone size={18} />,
-      badge: appointments.filter((a) => a.status === "pending").length || null,
+      badge: newBookingsCount || null,
     },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
     { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
@@ -5175,7 +5182,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => switchTab(tab)}
                 style={{
                   flex: 1,
                   display: "flex",
@@ -5318,7 +5325,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => switchTab(tab)}
               style={{
                 display: "flex",
                 alignItems: "center",
