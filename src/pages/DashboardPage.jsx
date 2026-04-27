@@ -1816,30 +1816,52 @@ function AnalyticsTab({ listings, profile }) {
     if (!profile?.id) return;
     const dealerId = getDealerIdFromProfile(profile);
     if (!dealerId) return;
-    supabase
-      .from("analytics_events")
-      .select("*")
-      .eq("dealer_id", dealerId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setEvents(data || []);
-        setEventsLoading(false);
-      });
+    // Also pull events where dealer_id is null but car_id belongs to this dealer
+    // (covers main-domain visits where dealer_id wasn't attached to store_visit)
+    Promise.all([
+      supabase
+        .from("analytics_events")
+        .select("*")
+        .eq("dealer_id", dealerId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("car_listings")
+        .select("id")
+        .eq("dealer_id", dealerId)
+        .in("status", ["active", "reserved", "sold"]),
+    ]).then(([eventsRes, listingsRes]) => {
+      const directEvents = eventsRes.data || [];
+      const dealerCarIds = new Set((listingsRes.data || []).map(l => l.id));
+      // No-dealer_id events that reference one of this dealer's cars (deduped by id)
+      const seenIds = new Set(directEvents.map(e => e.id));
+      setEvents(directEvents);
+      setEventsLoading(false);
+      // Fetch orphan events (null dealer_id but car_id matches) separately to avoid large OR query
+      if (dealerCarIds.size > 0) {
+        supabase
+          .from("analytics_events")
+          .select("*")
+          .is("dealer_id", null)
+          .in("car_id", [...dealerCarIds])
+          .order("created_at", { ascending: false })
+          .then(({ data }) => {
+            const extras = (data || []).filter(e => !seenIds.has(e.id));
+            if (extras.length > 0) setEvents(prev => [...prev, ...extras]);
+          });
+      }
+    });
   }, [profile?.id]);
   const totalClicks = events.filter(
     (e) => e.event_type === "link_visit" || e.event_type === "car_view" || e.event_type === "card_click",
-  ).length;
-  const totalEnquiries = events.filter(
-    (e) => e.event_type === "whatsapp_click" || e.event_type === "call_click",
   ).length;
   const totalWa = events.filter(
     (e) => e.event_type === "whatsapp_click",
   ).length;
   const totalCalls = events.filter((e) => e.event_type === "call_click").length;
-  const storeVisits = events.filter((e) => e.event_type === "store_visit").length;
-  const clicksData = bucketByDay(events, ['link_visit', 'car_view']);
-  const waData = bucketByDay(events, ['whatsapp_click']);
-  const enquiriesData = bucketByDay(events, ['whatsapp_click', 'call_click']);
+  const totalBookings = events.filter((e) => e.event_type === "booking_click").length;
+  const storeVisits = events.filter((e) =>
+    e.event_type === "store_visit" || e.event_type === "car_view" || e.event_type === "page_view"
+  ).length;
 
   const buildDailyChart = (evts, days = 30) => {
     const result = [];
@@ -1851,12 +1873,12 @@ function AnalyticsTab({ listings, profile }) {
       const label = d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
       const dayEvents = evts.filter(e => e.created_at?.slice(0, 10) === dateStr);
       result.push({
-        date: label,
-        visitors:  dayEvents.filter(e => e.event_type === 'store_visit').length,
-        clicks:    dayEvents.filter(e => ['link_visit', 'car_view', 'card_click'].includes(e.event_type)).length,
-        whatsapp:  dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
-        calls:     dayEvents.filter(e => e.event_type === 'call_click').length,
-        enquiries: dayEvents.filter(e => ['whatsapp_click', 'call_click'].includes(e.event_type)).length,
+        date:     label,
+        visits:   dayEvents.filter(e => ['store_visit', 'car_view', 'page_view'].includes(e.event_type)).length,
+        clicks:   dayEvents.filter(e => ['link_visit', 'card_click'].includes(e.event_type)).length,
+        whatsapp: dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
+        calls:    dayEvents.filter(e => e.event_type === 'call_click').length,
+        bookings: dayEvents.filter(e => e.event_type === 'booking_click').length,
       });
     }
     return result;
@@ -1868,27 +1890,30 @@ function AnalyticsTab({ listings, profile }) {
     const map = {};
     events.forEach(e => {
       if (!e.car_id) return;
-      if (!map[e.car_id]) map[e.car_id] = { views: 0, leads: 0 };
+      if (!map[e.car_id]) map[e.car_id] = { views: 0, whatsapp: 0, calls: 0, bookings: 0 };
       if (['car_view', 'link_visit', 'card_click'].includes(e.event_type)) map[e.car_id].views++;
-      if (['whatsapp_click', 'call_click'].includes(e.event_type)) map[e.car_id].leads++;
+      if (e.event_type === 'whatsapp_click') map[e.car_id].whatsapp++;
+      if (e.event_type === 'call_click') map[e.car_id].calls++;
+      if (e.event_type === 'booking_click') map[e.car_id].bookings++;
     });
     Object.values(map).forEach(s => {
-      s.cvr = s.views > 0 ? ((s.leads / s.views) * 100).toFixed(1) + '%' : '—';
+      const leads = s.whatsapp + s.calls;
+      s.cvr = s.views > 0 ? ((leads / s.views) * 100).toFixed(1) + '%' : '—';
     });
     return map;
   }, [events]);
 
   const bySlug = events.reduce((acc, e) => {
     if (!acc[e.salesman_slug])
-      acc[e.salesman_slug] = { clicks: 0, enquiries: 0 };
+      acc[e.salesman_slug] = { clicks: 0, whatsapp: 0 };
     if (e.event_type === "link_visit" || e.event_type === "car_view")
       acc[e.salesman_slug].clicks++;
-    if (e.event_type === "whatsapp_click" || e.event_type === "call_click")
-      acc[e.salesman_slug].enquiries++;
+    if (e.event_type === "whatsapp_click")
+      acc[e.salesman_slug].whatsapp++;
     return acc;
   }, {});
   const topSalesmen = Object.entries(bySlug).sort(
-    (a, b) => b[1].enquiries - a[1].enquiries,
+    (a, b) => b[1].whatsapp - a[1].whatsapp,
   );
 
   const total = listings.length;
@@ -2046,11 +2071,11 @@ function AnalyticsTab({ listings, profile }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: 'Clicks',    val: totalClicks,    color: '#67e8f9' },
-              { label: 'Enquiries', val: totalEnquiries, color: '#fbbf24' },
-              { label: 'WhatsApp',  val: totalWa,        color: '#4ade80' },
-              { label: 'Calls',     val: totalCalls,     color: '#c084fc' },
-              { label: 'Visits',    val: storeVisits,    color: '#94a3b8' },
+              { label: 'Page Visits', val: storeVisits,   color: '#94a3b8' },
+              { label: 'Clicks',      val: totalClicks,   color: '#67e8f9' },
+              { label: 'WhatsApp',    val: totalWa,       color: '#4ade80' },
+              { label: 'Bookings',    val: totalBookings, color: '#fbbf24' },
+              { label: 'Calls',       val: totalCalls,    color: '#c084fc' },
             ].map(({ label, val, color }) => (
               <div key={label}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
@@ -2111,11 +2136,11 @@ function AnalyticsTab({ listings, profile }) {
                   travellerWidth={6}
                   startIndex={Math.max(0, dailyChart.length - 14)}
                 />
-                <Line type="monotone" dataKey="visitors"  stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="clicks"    stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="enquiries" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="whatsapp"  stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
-                <Line type="monotone" dataKey="calls"     stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -2130,7 +2155,7 @@ function AnalyticsTab({ listings, profile }) {
             </p>
           </div>
           <div className="divide-y divide-white/[0.04]">
-            {topSalesmen.map(([slug, { clicks, enquiries }], i) => (
+            {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
               <div key={slug} className="flex items-center gap-3 px-4 py-3">
                 <span className="text-xs text-gray-600 w-4 tabular-nums">
                   {i + 1}
@@ -2147,23 +2172,23 @@ function AnalyticsTab({ listings, profile }) {
                       clicks
                     </span>
                     <span className="text-xs text-gray-500">
-                      <span className="text-amber-400 font-semibold">
-                        {enquiries}
+                      <span className="text-green-400 font-semibold">
+                        {whatsapp}
                       </span>{" "}
-                      enquiries
+                      whatsapp
                     </span>
                   </div>
                 </div>
-                {enquiries > 0 && (
+                {whatsapp > 0 && (
                   <span
                     className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
                     style={{
-                      background: "rgba(251,191,36,0.1)",
-                      border: "1px solid rgba(251,191,36,0.2)",
-                      color: "#fbbf24",
+                      background: "rgba(74,222,128,0.1)",
+                      border: "1px solid rgba(74,222,128,0.2)",
+                      color: "#4ade80",
                     }}
                   >
-                    🔥 Active
+                    Active
                   </span>
                 )}
               </div>
@@ -2252,7 +2277,9 @@ function AnalyticsTab({ listings, profile }) {
                     "Price",
                     "Age",
                     "Views",
-                    "Leads",
+                    "WhatsApp",
+                    "Calls",
+                    "Bookings",
                     "CVR",
                     "Status",
                   ].map((h, i) => (
@@ -2304,8 +2331,18 @@ function AnalyticsTab({ listings, profile }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.leads || 0) > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
-                        {eventsLoading ? '…' : (carStatsMap[l.id]?.leads || 0)}
+                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.whatsapp || 0) > 0 ? 'text-green-400' : 'text-gray-700'}`}>
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.whatsapp || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.calls || 0) > 0 ? 'text-purple-400' : 'text-gray-700'}`}>
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.calls || 0)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.bookings || 0) > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
+                        {eventsLoading ? '…' : (carStatsMap[l.id]?.bookings || 0)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -2531,11 +2568,11 @@ function TeamTab({ managerDealership, dealerId }) {
     if (!data) return;
     const map = {};
     data.forEach(({ salesman_slug, event_type }) => {
-      if (!map[salesman_slug]) map[salesman_slug] = { clicks: 0, enquiries: 0 };
+      if (!map[salesman_slug]) map[salesman_slug] = { clicks: 0, whatsapp: 0 };
       if (event_type === "link_visit" || event_type === "car_view")
         map[salesman_slug].clicks++;
-      if (event_type === "whatsapp_click" || event_type === "call_click")
-        map[salesman_slug].enquiries++;
+      if (event_type === "whatsapp_click")
+        map[salesman_slug].whatsapp++;
     });
     setAnalyticsMap(map);
   };
@@ -2996,8 +3033,8 @@ function TeamTab({ managerDealership, dealerId }) {
                       {[
                         [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
                         [
-                          String(analyticsMap[s.slug]?.enquiries || 0),
-                          "Enquiries",
+                          String(analyticsMap[s.slug]?.whatsapp || 0),
+                          "WhatsApp",
                         ],
                         [String(teamSoldCount), "Team Sales"],
                       ].map(([v, lbl]) => (
@@ -3010,7 +3047,7 @@ function TeamTab({ managerDealership, dealerId }) {
                           }}
                         >
                           <p
-                            className={`text-sm font-bold ${lbl === "Team Sales" ? "grad-green" : lbl === "Enquiries" && Number(v) > 0 ? "grad-gold" : "grad-white"}`}
+                            className={`text-sm font-bold ${lbl === "Team Sales" ? "grad-green" : lbl === "WhatsApp" && Number(v) > 0 ? "grad-green" : "grad-white"}`}
                           >
                             {v}
                           </p>
