@@ -112,7 +112,7 @@ const Footer = () => {
     supabase
       .from("public_dealer_profiles")
       .select(
-        "id, dealership, site_name, site_logo_url, about_text, location, whatsapp_number, social_facebook, social_instagram, social_tiktok, city, state"
+        "id, dealership, site_name, site_logo_url, about_text, location, email, phone, whatsapp_number, social_facebook, social_instagram, social_tiktok, city, state"
       )
       .eq("id", SUPERADMIN_ID)
       .maybeSingle()

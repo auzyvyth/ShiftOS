@@ -6,7 +6,7 @@ export const DASHBOARD_DOMAIN = "shiftos.com";
 
 const PROFILE_SELECT =
   "id, dealership, site_name, subdomain, avatar_url, site_logo_url, logo_url, " +
-  "whatsapp_number, social_facebook, social_instagram, social_tiktok, " +
+  "email, phone, whatsapp_number, social_facebook, social_instagram, social_tiktok, " +
   "location, city, state, about_text, brand_color, custom_domain, slug, " +
   "storefront_why, storefront_how, storefront_testimonials, storefront_cta, " +
   "hero_title, hero_subtitle, hero_cta_text, " +
