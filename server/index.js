@@ -16,12 +16,16 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5173',
+    'https://xdrive.my',
+    'https://www.xdrive.my',
     'https://drevo.my',
     'https://www.drevo.my',
+    // subdomains handled via regex
+    /^https:\/\/[a-z0-9-]+\.xdrive\.my$/,
   ],
   credentials: true,
 }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' })); // allow base64 image payloads
 
 app.use('/auth', authRoutes);
 app.use('/cars', carRoutes);

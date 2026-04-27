@@ -2771,29 +2771,30 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const removeBg = useCallback(async () => {
     const url = slide?.imageUrl;
     if (!url) return;
-    const apiKey = import.meta.env.VITE_REMOVEBG_API_KEY;
-    if (!apiKey) return;
     setRemovingBg(true);
     setRemoveBgError(null);
     try {
-      // Fetch the image as a blob (handles both relative and CORS-friendly URLs)
+      const REMOVEBG_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/removebg`;
       const imgResp = await fetch(url);
       const imgBlob = await imgResp.blob();
-      const form = new FormData();
-      form.append("image_file", imgBlob, "image.jpg");
-      form.append("size", "auto");
-      const resp = await fetch("https://api.remove.bg/v1.0/removebg", {
+      // Convert blob to base64 so it can be sent as JSON to the server proxy
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(imgBlob);
+      });
+      const resp = await fetch(REMOVEBG_PROXY, {
         method: "POST",
-        headers: { "X-Api-Key": apiKey },
-        body: form,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_base64: base64 }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err?.errors?.[0]?.title || `remove.bg error ${resp.status}`);
+        throw new Error(err?.error || `remove.bg error ${resp.status}`);
       }
       const resultBlob = await resp.blob();
       const resultUrl = URL.createObjectURL(resultBlob);
-      // Store original so user can restore
       patchSlide({ originalImageUrl: url, imageUrl: resultUrl });
     } catch (e) {
       setRemoveBgError(e.message);
@@ -4571,7 +4572,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       { key: "vignette",   label: "Vignette",   min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
     ];
     const bgRemoved = !!originalImageUrl;
-    const REMOVEBG_KEY = import.meta.env.VITE_REMOVEBG_API_KEY;
+    const REMOVEBG_KEY = true; // key lives server-side; always available
     return (
       <div style={{ padding: "10px 16px 18px" }}>
         {/* Header row */}
@@ -4596,7 +4597,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
               <div>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)", margin: 0 }}>Remove Background</p>
                 <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>
-                  {bgRemoved ? "Background removed — place on any scene" : REMOVEBG_KEY ? "Powered by remove.bg" : "Add VITE_REMOVEBG_API_KEY to .env"}
+                  {bgRemoved ? "Background removed — place on any scene" : "Powered by remove.bg"}
                 </p>
               </div>
               {bgRemoved ? (

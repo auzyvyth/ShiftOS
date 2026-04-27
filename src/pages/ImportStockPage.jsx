@@ -7,7 +7,7 @@ import Step1Upload from "../components/ImportStockPage/Step1Upload";
 import Step2Preview from "../components/ImportStockPage/Step2Preview";
 import Step3Import from "../components/ImportStockPage/Step3Import";
 
-const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","description":""}
@@ -92,15 +92,9 @@ async function buildClaudeMessages(file, sheetsUrl) {
 }
 
 async function callClaude(messages) {
-  const key = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  const res = await fetch(CLAUDE_API, {
+  const res = await fetch(AI_PROXY, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
@@ -110,7 +104,7 @@ async function callClaude(messages) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Claude API error ${res.status}`);
+    throw new Error(err?.error?.message || err?.error || `API error ${res.status}`);
   }
   const data = await res.json();
   const text = data?.content?.[0]?.text ?? "";
@@ -119,7 +113,7 @@ async function callClaude(messages) {
   } catch {
     const match = text.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
-    throw new Error("Could not parse JSON from Claude response");
+    throw new Error("Could not parse JSON from response");
   }
 }
 

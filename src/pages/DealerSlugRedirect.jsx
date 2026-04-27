@@ -14,11 +14,11 @@ export default function DealerSlugRedirect() {
         .eq('subdomain', dealerSlug)
         .maybeSingle();
 
-      if (data?.subdomain) {
-        // Redirect to subdomain
-        window.location.href = `https://${data.subdomain}.xdrive.my`;
+      const sub = data?.subdomain;
+      // Validate subdomain is alphanumeric/hyphens only before using in URL
+      if (sub && /^[a-z0-9-]{1,63}$/.test(sub)) {
+        window.location.href = `https://${sub}.xdrive.my`;
       } else {
-        // Not found — go home
         window.location.href = 'https://xdrive.my';
       }
     };

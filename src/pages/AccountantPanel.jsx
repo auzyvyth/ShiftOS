@@ -68,21 +68,12 @@ const ADVISOR_PRESETS = [
 ];
 
 async function streamAnthropic(messages, systemPrompt, onChunk) {
-  const key = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!key) {
-    onChunk("[No VITE_ANTHROPIC_API_KEY set]");
-    return;
-  }
+  const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
   const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
   if (systemPrompt) body.system = systemPrompt;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(AI_PROXY, {
     method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

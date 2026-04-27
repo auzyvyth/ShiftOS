@@ -2249,7 +2249,6 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                           <button
                             onClick={() => {
                               onEditListing(l);
-                              if (onStaleAdjusted) onStaleAdjusted(l.id);
                             }}
                             className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
                             style={{
@@ -5286,6 +5285,10 @@ export default function DashboardPage() {
     setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
   const handleUpdate = (u) => {
     setListings((p) => p.map((l) => (l.id === u.id ? u : l)));
+    // Mark as adjusted only after a real save — not when the form is merely opened
+    if (editListing && getListingAge(editListing.created_at) >= 30) {
+      handleStaleAdjusted(u.id);
+    }
     setEditListing(null);
   };
   const handleProfileUpdate = (updated) => setProfile(updated);
@@ -6009,45 +6012,44 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: -80, left: -80, width: 500, height: 500, background: '#dc2626', filter: 'blur(120px)', opacity: 0.04, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, background: '#dc2626', filter: 'blur(100px)', opacity: 0.03, borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px', zIndex: 0, pointerEvents: 'none', borderRadius: 8 }} />
-                <div style={{ position: 'relative', zIndex: 1, background: 'rgba(8,12,20,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0', flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <h2 style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
-                      <span style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 10px', fontSize: 12, color: '#ef4444' }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,20,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', fontFamily: "'DM Sans', sans-serif" }}>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <h2 style={{ fontSize: 17, fontWeight: 600, color: '#f9fafb', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 6, padding: '2px 8px', lineHeight: 1.5 }}>
                         {filteredListings.length}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <div style={{ position: 'relative', flex: '1 1 160px' }}>
-                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280', pointerEvents: 'none' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative' }}>
+                        <Search style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#4b5563', pointerEvents: 'none' }} />
                         <input
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search brand, model, VIN…"
-                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '7px 32px', fontSize: 13, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '100%', minWidth: 0 }}
+                          placeholder="Search…"
+                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 160 }}
                         />
                         {searchQuery && (
                           <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-                            <X style={{ width: 14, height: 14 }} />
+                            <X style={{ width: 13, height: 13 }} />
                           </button>
                         )}
                       </div>
                       <button
                         onClick={() => setActiveTab("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
-                        Add Listing
+                        Add
                       </button>
                     </div>
                   </div>
 
                   {/* ── Status filter tabs ── */}
-                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginTop: 14 }}>
                     {[
                       { key: 'active',   label: 'Active',   count: listings.filter(l => (l.status || 'active') === 'active').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
@@ -6058,20 +6060,21 @@ export default function DashboardPage() {
                         onClick={() => setStatusFilter(key)}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          padding: '10px 16px', fontSize: 13, fontWeight: 500,
+                          padding: '10px 16px', fontSize: 13,
+                          fontWeight: statusFilter === key ? 600 : 400,
                           fontFamily: "'DM Sans', sans-serif",
-                          color: statusFilter === key ? '#f3f4f6' : '#6b7280',
+                          color: statusFilter === key ? '#f9fafb' : '#4b5563',
                           borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
                           marginBottom: -1,
-                          display: 'flex', alignItems: 'center', gap: 6,
+                          display: 'flex', alignItems: 'center', gap: 7,
                           transition: 'color 0.15s',
                         }}
                       >
                         {label}
                         <span style={{
-                          fontSize: 11, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
-                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.05)',
-                          color: statusFilter === key ? '#ef4444' : '#4b5563',
+                          fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 4, lineHeight: 1.6,
+                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
+                          color: statusFilter === key ? '#f87171' : '#374151',
                         }}>
                           {count}
                         </span>
@@ -6080,17 +6083,17 @@ export default function DashboardPage() {
                   </div>
 
                 {loading ? (
-                  <div style={{ padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading…</div>
+                  <div style={{ padding: 52, textAlign: 'center', color: '#4b5563', fontSize: 13 }}>Loading…</div>
                 ) : filteredListings.length === 0 ? (
-                  <div style={{ padding: 48, textAlign: 'center' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                      <Car style={{ width: 24, height: 24, color: 'rgba(59,130,246,0.4)' }} />
+                  <div style={{ padding: 52, textAlign: 'center' }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                      <Car style={{ width: 22, height: 22, color: 'rgba(220,38,38,0.45)' }} />
                     </div>
-                    <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>
+                    <p style={{ color: '#4b5563', fontSize: 13, marginBottom: listings.length === 0 ? 16 : 0 }}>
                       {listings.length === 0 ? 'No listings yet' : `No ${statusFilter} listings`}
                     </p>
                     {listings.length === 0 && (
-                      <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 20px', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
+                      <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                         Add your first car
                       </button>
                     )}
@@ -6098,159 +6101,149 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block table-wrap">
-                      <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.025) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, margin: 16 }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
-                          <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                              {['', 'Vehicle', 'Price', 'Mileage', 'Grade', 'VIN', 'Location', 'Date Added', 'Status'].map((h, i) => (
-                                <th key={i} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredListings.map((l) => {
-                              const isSold = l.status === 'sold';
-                              const bt = l.body_type || l.bodyType || null;
-                              const extGC = gradeColor(String(l.auction_grade));
-                              const intGC = gradeColor(String(l.interior_grade));
-                              const sp = l.selling_price || l.price || 0;
-                              const op = l.original_price || l.previous_price || null;
-                              const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
-                              const sCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af' } })[l.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' };
-                              return (
-                                <tr
-                                  key={l.id}
-                                  onClick={() => setDetailListing(l)}
-                                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s', opacity: isSold ? 0.6 : 1 }}
-                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
-                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                >
-                                  {/* Thumbnail */}
-                                  <td style={{ padding: '12px 6px 12px 14px', width: 60 }}>
-                                    {l.images?.[0]
-                                      ? <img src={l.images[0]} alt="" style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(1)' : 'none' }} />
-                                      : <div style={{ width: 48, height: 48, borderRadius: 4, background: 'rgba(255,255,255,0.04)' }} />
-                                    }
-                                  </td>
-                                  {/* Brand / Model / Variant / Body Type */}
-                                  <td style={{ padding: '12px 14px', minWidth: 160 }}>
-                                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
-                                    <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0' }}>{l.model}</p>
-                                    {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{l.variant}</p>}
-                                    {bt && <span style={{ fontSize: 10, color: '#6b7280', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginTop: 3 }}>{bt}</span>}
-                                  </td>
-                                  {/* Price */}
-                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                                    <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>RM {sp.toLocaleString()}</p>
-                                    {pct > 0 && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                        <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                                        <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px' }}>-{pct}%</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                  {/* Mileage */}
-                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                                    {l.mileage
-                                      ? <><span style={{ fontSize: 13, color: '#f3f4f6' }}>{Number(l.mileage).toLocaleString()}</span><span style={{ fontSize: 12, color: '#6b7280' }}> km</span></>
-                                      : <span style={{ fontSize: 13, color: '#6b7280' }}>—</span>
-                                    }
-                                  </td>
-                                  {/* Grade */}
-                                  <td style={{ padding: '12px 14px' }}>
-                                    {l.auction_grade || l.interior_grade ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                        {l.auction_grade && <span style={{ fontSize: 11, color: extGC, background: `${extGC}18`, border: `1px solid ${extGC}30`, borderRadius: 4, padding: '1px 7px', display: 'inline-block', fontWeight: 600 }}>{l.auction_grade}</span>}
-                                        {l.interior_grade && <span style={{ fontSize: 10, color: intGC }}>Int: {l.interior_grade}</span>}
-                                      </div>
-                                    ) : <span style={{ fontSize: 12, color: '#6b7280' }}>—</span>}
-                                  </td>
-                                  {/* VIN */}
-                                  <td style={{ padding: '12px 14px' }}>
-                                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#6b7280' }}>{l.vin_number ? l.vin_number.slice(0, 12) : '—'}</span>
-                                  </td>
-                                  {/* Location */}
-                                  <td style={{ padding: '12px 14px' }}>
-                                    <span style={{ fontSize: 13, color: '#9ca3af' }}>{l.state || '—'}</span>
-                                  </td>
-                                  {/* Date Added */}
-                                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block' }}>{fmtDate(l.created_at)}</span>
-                                    <span style={{ display: 'block', marginTop: 3 }}><AgeBadge createdAt={l.created_at} /></span>
-                                  </td>
-                                  {/* Status */}
-                                  <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
-                                    <StatusBadge listing={l} />
-                                    {Array.isArray(l.included_services) && l.included_services.length > 0 && (
-                                      <button
-                                        onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                      >
-                                        <Tag style={{ width: 9, height: 9 }} />
-                                        {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                    <div className="hidden md:block" style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            {['', 'Vehicle', 'Price', 'Year / Km', 'Grade', 'Age', 'Status'].map((h, i) => (
+                              <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredListings.map((l) => {
+                            const isSold = l.status === 'sold';
+                            const extGC = gradeColor(String(l.auction_grade));
+                            const sp = l.selling_price || l.price || 0;
+                            const op = l.original_price || l.previous_price || null;
+                            const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
+                            const isHot = pct >= 3;
+                            return (
+                              <tr
+                                key={l.id}
+                                onClick={() => setDetailListing(l)}
+                                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1 }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                {/* Thumbnail */}
+                                <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
+                                  {l.images?.[0]
+                                    ? <img src={l.images[0]} alt="" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    : <div style={{ width: 72, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
+                                  }
+                                </td>
+                                {/* Vehicle */}
+                                <td style={{ padding: '12px 16px', minWidth: 165 }}>
+                                  <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, fontWeight: 600 }}>{l.brand}</p>
+                                  <p style={{ fontSize: 14, color: '#f9fafb', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0' }}>{l.model}</p>
+                                  {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{l.variant}</p>}
+                                </td>
+                                {/* Price */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  <p style={{ fontSize: 14, color: '#f9fafb', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</p>
+                                  {pct > 0 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                      <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
+                                      <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '0 5px' }}>−{pct}%</span>
+                                    </div>
+                                  )}
+                                </td>
+                                {/* Year / Km */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  {l.year && <p style={{ fontSize: 13, color: '#d1d5db', fontWeight: 600, margin: 0 }}>{l.year}</p>}
+                                  {l.mileage
+                                    ? <p style={{ fontSize: 11, color: '#6b7280', margin: l.year ? '2px 0 0' : 0 }}>{Number(l.mileage).toLocaleString()} km</p>
+                                    : !l.year && <span style={{ color: '#374151', fontSize: 13 }}>—</span>
+                                  }
+                                </td>
+                                {/* Grade */}
+                                <td style={{ padding: '12px 16px' }}>
+                                  {l.auction_grade
+                                    ? <span style={{ fontSize: 11, fontWeight: 700, color: extGC, background: `${extGC}15`, border: `1px solid ${extGC}28`, borderRadius: 5, padding: '2px 8px', display: 'inline-block' }}>{l.auction_grade}</span>
+                                    : l.condition
+                                      ? <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{l.condition}</span>
+                                      : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
+                                  }
+                                </td>
+                                {/* Age */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  <AgeBadge createdAt={l.created_at} />
+                                  <span style={{ display: 'block', fontSize: 10, color: '#374151', marginTop: 4 }}>{fmtDate(l.created_at)}</span>
+                                </td>
+                                {/* Status */}
+                                <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
+                                  <StatusBadge listing={l} />
+                                  {Array.isArray(l.included_services) && l.included_services.length > 0 && (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                    >
+                                      <Tag style={{ width: 9, height: 9 }} />
+                                      {l.included_services.length} svc
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Mobile cards */}
-                    <div className="md:hidden" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div className="md:hidden">
                       {filteredListings.map((l) => {
-                        const bt = l.body_type || l.bodyType || null;
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
                         const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
-                        const msCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af' } })[l.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80' };
+                        const isHot = pct >= 3;
                         return (
                           <div
                             key={l.id}
                             onClick={() => setDetailListing(l)}
-                            style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: isSold ? 0.6 : 1, cursor: 'pointer', transition: 'background 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.06)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: isSold ? 0.55 : 1, cursor: 'pointer' }}
                           >
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                              {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" style={{ width: 52, height: 52, borderRadius: 4, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(1)' : 'none' }} />
-                                : <div style={{ width: 52, height: 52, borderRadius: 4, background: 'rgba(255,255,255,0.04)', flexShrink: 0 }} />
+                                ? <img src={l.images[0]} alt="" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                : <div style={{ width: 80, height: 60, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
+                              {/* Info */}
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                                   <div style={{ minWidth: 0 }}>
-                                    <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{l.brand}</p>
-                                    <p style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500, lineHeight: 1.3, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
-                                    {l.variant && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}{bt ? ` · ${bt}` : ''}</p>}
+                                    <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0, fontWeight: 600 }}>{l.brand}{l.year ? ` · ${l.year}` : ''}</p>
+                                    <p style={{ fontSize: 15, color: '#f9fafb', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
+                                    {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}</p>}
                                   </div>
-                                  <span onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                                  <span onClick={e => e.stopPropagation()} style={{ flexShrink: 0, marginTop: 1 }}>
                                     <StatusBadge listing={l} />
                                   </span>
                                 </div>
-                                <div style={{ marginTop: 6 }}>
-                                  <span style={{ fontSize: 14, color: '#f3f4f6', fontWeight: 500 }}>RM {sp.toLocaleString()}</span>
-                                  {pct > 0 && <span style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '0 5px', marginLeft: 6 }}>-{pct}%</span>}
+                                {/* Price */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
+                                  <span style={{ fontSize: 15, color: '#f9fafb', fontWeight: 700, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</span>
+                                  {pct > 0 && (
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '1px 6px' }}>−{pct}%</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                              {l.mileage && <span style={{ fontSize: 11, color: '#9ca3af' }}>{Number(l.mileage).toLocaleString()} km</span>}
-                              {l.state && <span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span>}
-                              <span style={{ fontSize: 11, color: '#6b7280' }}>{fmtDate(l.created_at)}</span>
+                            {/* Meta row — indented under image */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
+                              {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
+                              {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               <AgeBadge createdAt={l.created_at} />
                               {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                 <button
                                   onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer' }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer' }}
                                 >
                                   <Tag style={{ width: 9, height: 9 }} />
-                                  {l.included_services.length} service{l.included_services.length !== 1 ? 's' : ''}
+                                  {l.included_services.length} svc
                                 </button>
                               )}
                             </div>
