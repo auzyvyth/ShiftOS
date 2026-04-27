@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle, Phone } from 'lucide-react';
+import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle, Phone, ExternalLink } from 'lucide-react';
 import { getCategoryCfg } from '../utils/serviceCategories';
 import { getEmbedUrl } from '../utils/videoEmbed';
 import { supabase } from '../supabaseClient';
@@ -31,6 +31,17 @@ function parseTags(raw) {
   if (Array.isArray(raw)) return raw.filter(Boolean);
   return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
 }
+
+const CDP_DOC_TYPES = {
+  puspakom:        { label: 'Puspakom Inspection',   color: '#22c55e' },
+  service_history: { label: 'Service History',        color: '#60a5fa' },
+  insurance:       { label: 'Insurance Certificate',  color: '#a78bfa' },
+  ownership:       { label: 'Ownership / VOC',        color: '#fbbf24' },
+  warranty:        { label: 'Warranty Certificate',   color: '#34d399' },
+  import_ap:       { label: 'Import / AP Permit',     color: '#fb923c' },
+  loan_clearance:  { label: 'Loan Clearance Letter',  color: '#94a3b8' },
+  other:           { label: 'Document',               color: '#6b7280' },
+};
 
 const inputStyle = (focused) => ({
   width: '100%', background: 'rgba(255,255,255,0.03)',
@@ -277,7 +288,7 @@ export default function CarDetailPage() {
 
       // fetch similar listings — same brand first, fallback to any dealer listing
       if (carData.dealer_id) {
-        const simFields = 'id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country';
+        const simFields = 'id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents';
         const { data: simBrand } = await supabase
           .from('car_listings')
           .select(simFields)
@@ -476,6 +487,7 @@ export default function CarDetailPage() {
   const isRecon    = car.is_recon;
   const isHot      = car.original_price && car.original_price > 0 && car.selling_price > 0 && car.selling_price <= car.original_price * 0.97;
   const saving     = isHot ? car.original_price - car.selling_price : 0;
+  const hasDocuments = Array.isArray(car.car_documents) && car.car_documents.length > 0;
   const carTitle   = `${car.year} ${car.brand} ${car.model}${car.variant ? ' ' + car.variant : ''}`;
   const dealerName = dealer?.site_name || dealer?.dealership || dealer?.full_name || 'Dealer';
   const listedDays = daysAgo(car.created_at);
@@ -879,7 +891,7 @@ export default function CarDetailPage() {
           <div className="cdp-info-col">
 
             {/* badges */}
-            {(isRecon || isHot) && (
+            {(isRecon || isHot || hasDocuments) && (
               <div style={{ display:'flex', gap:6, marginBottom:18, flexWrap:'wrap', animation:'cdp-fadeUp .5s ease .3s both' }}>
                 {isRecon && (
                   <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>
@@ -889,6 +901,11 @@ export default function CarDetailPage() {
                 {isHot && (
                   <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>
                     Hot Deal
+                  </span>
+                )}
+                {hasDocuments && (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', color:'#4ade80', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>
+                    <BadgeCheck size={11} /> Verified Docs
                   </span>
                 )}
               </div>
@@ -1067,6 +1084,39 @@ export default function CarDetailPage() {
                 Estimated add-on value: <span style={{ color:'#60a5fa', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span>
               </p>
             )}
+          </div>
+        )}
+
+        {/* ── car documents ── */}
+        {hasDocuments && (
+          <div className="cdp-content" style={{ padding:'32px 28px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+              <BadgeCheck size={13} style={{ color:'#4ade80' }} />
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700 }}>Verified Documents</p>
+            </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+              {car.car_documents.map((doc, i) => {
+                const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
+                return (
+                  <a
+                    key={i}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display:'inline-flex', alignItems:'center', gap:8, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30`, borderRadius:10, padding:'9px 14px', textDecoration:'none', transition:'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = `${cfg.color}1a`}
+                    onMouseLeave={e => e.currentTarget.style.background = `${cfg.color}0d`}
+                  >
+                    <BadgeCheck size={13} style={{ color:cfg.color, flexShrink:0 }} />
+                    <div>
+                      <p style={{ fontSize:12, fontWeight:600, color:cfg.color, margin:0 }}>{cfg.label}</p>
+                      <p style={{ fontSize:10, color:'#334155', margin:'1px 0 0', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</p>
+                    </div>
+                    <ExternalLink size={11} style={{ color:cfg.color, opacity:0.6, flexShrink:0, marginLeft:2 }} />
+                  </a>
+                );
+              })}
+            </div>
           </div>
         )}
 

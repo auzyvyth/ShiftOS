@@ -2393,6 +2393,8 @@ function PipelinePanel({ userId }) {
   const [lostPromptId, setLostPromptId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
   const [waModalMsg, setWaModalMessage] = useState("");
+  const [collapsedStages, setCollapsedStages] = useState(new Set());
+  const toggleStage = (s) => setCollapsedStages(p => { const n = new Set(p); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
   useEffect(() => {
     if (!userId) return;
@@ -2541,28 +2543,75 @@ function PipelinePanel({ userId }) {
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+      {/* ── Stage summary strip ── */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none", marginBottom: 12 }}>
+        {activeStages.map((stage) => {
+          const sc = STAGE_COLOR[stage] || {};
+          const count = leads.filter((l) => l.stage === stage).length;
+          return (
+            <button
+              key={stage}
+              onClick={() => toggleStage(stage)}
+              style={{
+                flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center",
+                gap: 3, padding: "8px 10px", minWidth: 64,
+                background: collapsedStages.has(stage) ? "rgba(255,255,255,0.02)" : (sc.bg || "rgba(255,255,255,0.04)"),
+                border: `1px solid ${collapsedStages.has(stage) ? "rgba(255,255,255,0.06)" : (sc.border || "rgba(255,255,255,0.1)")}`,
+                borderRadius: 10, cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              <span style={{ fontSize: 15, fontWeight: 800, color: collapsedStages.has(stage) ? "#374151" : (sc.tx || "#e5e7eb"), lineHeight: 1 }}>{count}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: collapsedStages.has(stage) ? "#374151" : (sc.tx || "#6b7280"), textTransform: "capitalize", textAlign: "center", lineHeight: 1.3 }}>
+                {stage.replace(/_/g, " ")}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Accordion stages ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {activeStages.map((stage) => {
           const sc = STAGE_COLOR[stage] || {};
           const stageLeads = leads.filter((l) => l.stage === stage).sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+          const isCollapsed = collapsedStages.has(stage);
           return (
-            <div key={stage} style={{ minWidth: 190, flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
-                  {stage.replace(/_/g, " ")}
-                </span>
-                <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
-                  {stageLeads.length}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {stageLeads.length === 0 && (
-                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
-                  </div>
-                )}
-                {stageLeads.map((lead) => renderLeadCard(lead))}
-              </div>
+            <div key={stage} style={{ borderRadius: 10, border: `1px solid ${stageLeads.length > 0 ? (sc.border || "rgba(255,255,255,0.1)") : "rgba(255,255,255,0.05)"}`, overflow: "hidden" }}>
+              {/* Stage header — always visible, click to collapse */}
+              <button
+                onClick={() => toggleStage(stage)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 14px", background: stageLeads.length > 0 ? (sc.bg || "rgba(255,255,255,0.04)") : "rgba(255,255,255,0.02)",
+                  border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: sc.tx || "#6b7280", flexShrink: 0, display: "inline-block" }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: stageLeads.length > 0 ? (sc.tx || "#e5e7eb") : "#4b5563", textTransform: "capitalize" }}>
+                    {stage.replace(/_/g, " ")}
+                  </span>
+                  {stageLeads.length > 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 7px" }}>
+                      {stageLeads.length}
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: "#374151", lineHeight: 1 }}>{isCollapsed ? "▶" : "▼"}</span>
+              </button>
+
+              {/* Stage body */}
+              {!isCollapsed && (
+                <div style={{ padding: stageLeads.length > 0 ? "0 10px 10px" : "6px 10px 8px", background: "rgba(0,0,0,0.2)" }}>
+                  {stageLeads.length === 0 ? (
+                    <p style={{ fontSize: 11, color: "#374151", margin: 0, textAlign: "center", padding: "6px 0" }}>No leads here</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", paddingTop: 10 }}>
+                      {stageLeads.map((lead) => renderLeadCard(lead))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
