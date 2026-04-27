@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock } from 'lucide-react';
+import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock, BadgeCheck } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -47,6 +47,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
     (Array.isArray(car.images) && car.images[0]) ||
     car.image_url || car.photo_url || null
   );
+  const hasDocuments   = Array.isArray(car.car_documents) && car.car_documents.length > 0;
   const isRecon        = car.is_recon || false;
   const auctionGrade   = car.auction_grade || null;
   const interiorGrade  = car.interior_grade || null;
@@ -167,6 +168,11 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             )}
             {isReserved && (
               <span className="car-card-badge" style={{ background:'rgba(245,158,11,0.9)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 10px', borderRadius:'20px' }}>RESERVED</span>
+            )}
+            {hasDocuments && !isSold && (
+              <span className="car-card-badge" style={{ display:'inline-flex', alignItems:'center', gap:'3px', background:'rgba(34,197,94,0.85)', color:'white', fontSize:'11px', fontWeight:'800', padding:'3px 8px', borderRadius:'20px' }}>
+                <BadgeCheck size={9}/> DOCS
+              </span>
             )}
           </div>
 

@@ -20,6 +20,8 @@ import {
   Tag,
   Search,
   X as XIcon,
+  BadgeCheck,
+  Upload,
 } from "lucide-react";
 import DamageMap from "./DamageMap";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -65,6 +67,8 @@ const initialListing = {
   baseReconCost: 0, // recon_cost excluding services (computed at pre-fill)
   // Video
   video_url: "",
+  // Documents
+  car_documents: [],
 };
 
 const CAR_DATA = {
@@ -483,6 +487,17 @@ const STEPS = [
   { id: 8, label: "Photos", icon: Camera, desc: "Upload images" },
 ];
 
+const DOC_TYPES = [
+  { key: 'puspakom',        label: 'Puspakom Inspection',    color: '#22c55e' },
+  { key: 'service_history', label: 'Service History',        color: '#60a5fa' },
+  { key: 'insurance',       label: 'Insurance Certificate',  color: '#a78bfa' },
+  { key: 'ownership',       label: 'Ownership / VOC',        color: '#fbbf24' },
+  { key: 'warranty',        label: 'Warranty Certificate',   color: '#34d399' },
+  { key: 'import_ap',       label: 'Import / AP Permit',     color: '#fb923c' },
+  { key: 'loan_clearance',  label: 'Loan Clearance Letter',  color: '#94a3b8' },
+  { key: 'other',           label: 'Other Document',         color: '#6b7280' },
+];
+
 // ─── Copy formatter (also exported for DashboardPage use) ────────────────────
 export function buildCopyText(l) {
   const condLabel =
@@ -748,6 +763,34 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const previewUrlsRef = useRef([]);
   const formRef = useRef(null);
 
+  // ── Documents state ──────────────────────────────────────────────────────
+  const [docTypeInput, setDocTypeInput] = useState('puspakom');
+  const [docUploading, setDocUploading] = useState(false);
+
+  const handleDocumentFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocUploading(true);
+    try {
+      const path = `docs/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error } = await supabase.storage.from('car-images').upload(path, file);
+      if (error) throw error;
+      const url = supabase.storage.from('car-images').getPublicUrl(path).data.publicUrl;
+      setForm(f => ({
+        ...f,
+        car_documents: [...(f.car_documents || []), { type: docTypeInput, name: file.name, url }],
+      }));
+    } catch (err) {
+      alert('Upload failed: ' + err.message);
+    }
+    setDocUploading(false);
+    e.target.value = '';
+  };
+
+  const removeDocument = (i) => {
+    setForm(f => ({ ...f, car_documents: (f.car_documents || []).filter((_, j) => j !== i) }));
+  };
+
   // ── Included services state ──────────────────────────────────────────────
   const [servicesOpen, setServicesOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -814,6 +857,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           (listing.recon_cost || 0) - (listing.included_services_cost || 0),
         ),
         video_url: listing.video_url || "",
+        car_documents: listing.car_documents || [],
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -1182,6 +1226,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         included_services_cost: servicesCost,
         recon_cost: (form.baseReconCost || 0) + servicesCost,
         video_url: form.video_url || null,
+        car_documents: form.car_documents || [],
       };
 
       if (listing) {
@@ -2200,6 +2245,61 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               className={inputCls}
             />
             {form.video_url && <VideoPreview url={form.video_url} />}
+          </div>
+
+          {/* Car Documents */}
+          <div className="rounded-2xl border border-gray-800 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-900">
+              <BadgeCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-semibold text-white">Car Documents</span>
+              {form.car_documents.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
+                  {form.car_documents.length}
+                </span>
+              )}
+              <span className="ml-auto text-xs text-gray-600">Puspakom, service history, insurance…</span>
+            </div>
+            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+              {form.car_documents.length > 0 && (
+                <div className="space-y-2">
+                  {form.car_documents.map((doc, i) => {
+                    const dt = DOC_TYPES.find(d => d.key === doc.type) || DOC_TYPES[DOC_TYPES.length - 1];
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl">
+                        <BadgeCheck className="w-4 h-4 flex-shrink-0" style={{ color: dt.color }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{doc.name}</p>
+                          <p className="text-xs" style={{ color: dt.color }}>{dt.label}</p>
+                        </div>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0">View</a>
+                        <button type="button" onClick={() => removeDocument(i)} className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <select
+                  value={docTypeInput}
+                  onChange={e => setDocTypeInput(e.target.value)}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                >
+                  {DOC_TYPES.map(d => (
+                    <option key={d.key} value={d.key} style={{ background: '#111827' }}>{d.label}</option>
+                  ))}
+                </select>
+                <label className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? 'bg-gray-700 text-gray-400 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
+                  {docUploading
+                    ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading…</>
+                    : <><Upload className="w-3.5 h-3.5" /> Upload</>
+                  }
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleDocumentFile} disabled={docUploading} className="hidden" />
+                </label>
+              </div>
+              <p className="text-xs text-gray-600">PDF, JPG or PNG — shown to buyers on the listing page and earns a Verified badge on listing cards.</p>
+            </div>
           </div>
 
           {form.brand && (
