@@ -1795,7 +1795,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 }
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile }) {
+function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjustedStaleIds }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -2196,109 +2196,32 @@ function AnalyticsTab({ listings, profile }) {
           </div>
         </div>
       )}
-      {stale.length > 0 && (
-        <div
-          className="rounded-xl p-4"
-          style={{
-            background: "rgba(251,191,36,0.04)",
-            border: "1px solid rgba(251,191,36,0.12)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="w-4 h-4 text-amber-400" />
-            <p className="text-amber-300 text-sm font-semibold">
-              {stale.length} listing{stale.length > 1 ? "s" : ""} aging 30+ days
-            </p>
-          </div>
-          <div className="space-y-2">
-            {stale.slice(0, 5).map((l) => (
+      {(() => {
+        const visibleStale = stale.filter(l => !(adjustedStaleIds || new Set()).has(l.id));
+        const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
+        return (
+          <>
+            {visibleStale.length > 0 && (
               <div
-                key={l.id}
-                className="flex items-center justify-between py-2"
-                style={{ borderBottom: "1px solid rgba(251,191,36,0.07)" }}
+                className="rounded-xl p-4"
+                style={{
+                  background: "rgba(251,191,36,0.04)",
+                  border: "1px solid rgba(251,191,36,0.12)",
+                }}
               >
-                <div className="flex items-center gap-3">
-                  {l.images?.[0] ? (
-                    <img
-                      src={l.images[0]}
-                      alt=""
-                      className="w-8 h-8 rounded-lg object-cover bg-gray-800 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex-shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-white text-sm font-medium">
-                      {l.brand} {l.model}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      RM {l.selling_price?.toLocaleString()}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <p className="text-amber-300 text-sm font-semibold">
+                    {visibleStale.length} listing{visibleStale.length > 1 ? "s" : ""} aging 30+ days — needs attention
+                  </p>
                 </div>
-                <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
-                  {getListingAge(l.created_at)}d
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        <div
-          className="flex items-center justify-between p-4"
-          style={T.divider}
-        >
-          <div>
-            <h2 className="font-semibold text-white text-sm">
-              Listing Performance
-            </h2>
-            <p className="text-xs text-gray-600 mt-0.5">
-              Views & leads tracking activates once traffic is live
-            </p>
-          </div>
-        </div>
-        {listings.length === 0 ? (
-          <div className="p-12 text-center text-gray-600 text-sm">
-            No listings to analyse yet
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr
-                  style={{
-                    background: "rgba(255,255,255,0.025)",
-                    boxShadow: "inset 0 -1px 0 rgba(59,130,246,0.2)",
-                  }}
-                >
-                  {[
-                    "Vehicle",
-                    "Price",
-                    "Age",
-                    "Views",
-                    "WhatsApp",
-                    "Calls",
-                    "Bookings",
-                    "CVR",
-                    "Status",
-                  ].map((h, i) => (
-                    <th
-                      key={i}
-                      className="px-4 py-3 text-gray-600 font-semibold text-xs uppercase tracking-widest text-left"
+                <div className="space-y-2">
+                  {visibleStale.slice(0, 5).map((l) => (
+                    <div
+                      key={l.id}
+                      className="flex items-center justify-between py-2"
+                      style={{ borderBottom: "1px solid rgba(251,191,36,0.07)" }}
                     >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {listings.map((l) => (
-                  <tr
-                    key={l.id}
-                    className={`data-row ${getListingAge(l.created_at) >= 30 ? "bg-amber-950/[0.08]" : ""}`}
-                  >
-                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
                           <img
@@ -2309,66 +2232,347 @@ function AnalyticsTab({ listings, profile }) {
                         ) : (
                           <div className="w-8 h-8 rounded-lg bg-white/5 flex-shrink-0" />
                         )}
-                        <div className="min-w-0">
-                          <p className="font-medium text-white text-sm truncate">
+                        <div>
+                          <p className="text-white text-sm font-medium">
                             {l.brand} {l.model}
                           </p>
-                          <p className="text-gray-600 text-xs truncate">
-                            {l.variant || "—"}
+                          <p className="text-gray-500 text-xs">
+                            RM {l.selling_price?.toLocaleString()}
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-semibold grad-white text-sm">
-                      RM {l.selling_price?.toLocaleString() || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AgeBadge createdAt={l.created_at} />
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="text-sky-400 font-semibold tabular-nums">
-                        {eventsLoading ? '…' : (carStatsMap[l.id]?.views || 0)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.whatsapp || 0) > 0 ? 'text-green-400' : 'text-gray-700'}`}>
-                        {eventsLoading ? '…' : (carStatsMap[l.id]?.whatsapp || 0)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.calls || 0) > 0 ? 'text-purple-400' : 'text-gray-700'}`}>
-                        {eventsLoading ? '…' : (carStatsMap[l.id]?.calls || 0)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`font-semibold tabular-nums ${(carStatsMap[l.id]?.bookings || 0) > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
-                        {eventsLoading ? '…' : (carStatsMap[l.id]?.bookings || 0)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {(() => {
-                        const cvr = carStatsMap[l.id]?.cvr;
-                        const num = parseFloat(cvr);
-                        return (
-                          <span className={`font-semibold tabular-nums ${num > 5 ? 'text-emerald-400' : num > 0 ? 'text-amber-400' : 'text-gray-700'}`}>
-                            {eventsLoading ? '…' : (cvr || '—')}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${(l.status || "active") === "active" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : l.status === "reserved" ? "bg-amber-400/10 text-amber-400 border-amber-400/20" : "bg-blue-400/10 text-blue-400 border-blue-400/20"}`}
-                      >
-                        {l.status || "active"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                          {getListingAge(l.created_at)}d
+                        </span>
+                        {onEditListing && (
+                          <button
+                            onClick={() => {
+                              onEditListing(l);
+                              if (onStaleAdjusted) onStaleAdjusted(l.id);
+                            }}
+                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
+                            style={{
+                              background: "rgba(59,130,246,0.1)",
+                              border: "1px solid rgba(59,130,246,0.25)",
+                              color: "#93c5fd",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
+                          >
+                            Adjust
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {adjustedStale.length > 0 && (
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "rgba(34,197,94,0.03)",
+                  border: "1px solid rgba(34,197,94,0.15)",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <p className="text-emerald-300 text-sm font-semibold">
+                    {adjustedStale.length} listing{adjustedStale.length > 1 ? "s" : ""} adjusted — 30+ days old, repriced or updated
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {adjustedStale.map((l) => (
+                    <div
+                      key={l.id}
+                      className="flex items-center justify-between py-2"
+                      style={{ borderBottom: "1px solid rgba(34,197,94,0.07)" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        {l.images?.[0] ? (
+                          <img
+                            src={l.images[0]}
+                            alt=""
+                            className="w-8 h-8 rounded-lg object-cover bg-gray-800 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-white/5 flex-shrink-0" />
+                        )}
+                        <div>
+                          <p className="text-white text-sm font-medium">
+                            {l.brand} {l.model}
+                          </p>
+                          <p className="text-gray-500 text-xs">
+                            RM {l.selling_price?.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 text-xs font-semibold bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
+                          {getListingAge(l.created_at)}d · adjusted
+                        </span>
+                        {onEditListing && (
+                          <button
+                            onClick={() => onEditListing(l)}
+                            className="text-xs px-2.5 py-1 rounded-lg transition-all"
+                            style={{
+                              background: "rgba(255,255,255,0.04)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              color: "#6b7280",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#e5e7eb"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#6b7280"}
+                          >
+                            Edit again
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
+      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+        <style>{`
+          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.05); }
+          /* ── desktop table ── */
+          .lp-table-wrap { display:block; }
+          .lp-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+          .lp-table colgroup col:nth-child(1) { width:22%; }
+          .lp-table colgroup col:nth-child(2) { width:14%; }
+          .lp-table colgroup col:nth-child(3) { width:9%; }
+          .lp-table colgroup col:nth-child(4) { width:9%; }
+          .lp-table colgroup col:nth-child(5) { width:10%; }
+          .lp-table colgroup col:nth-child(6) { width:9%; }
+          .lp-table colgroup col:nth-child(7) { width:10%; }
+          .lp-table colgroup col:nth-child(8) { width:8%; }
+          .lp-table colgroup col:nth-child(9) { width:9%; }
+          .lp-th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:rgba(107,114,128,0.8); text-align:left; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); }
+          .lp-row { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; }
+          .lp-row:last-child { border-bottom:none; }
+          .lp-row:hover { background:rgba(255,255,255,0.025); }
+          .lp-row.stale { background:rgba(251,191,36,0.03); }
+          .lp-row.stale:hover { background:rgba(251,191,36,0.06); }
+          .lp-td { padding:13px 14px; vertical-align:middle; }
+          .lp-stat { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:24px; padding:0 8px; border-radius:6px; font-size:12px; font-weight:700; tabular-nums; letter-spacing:0.02em; }
+          .lp-stat.sky  { background:rgba(56,189,248,0.1);  color:#38bdf8; border:1px solid rgba(56,189,248,0.18); }
+          .lp-stat.green{ background:rgba(34,197,94,0.1);   color:#4ade80; border:1px solid rgba(34,197,94,0.18); }
+          .lp-stat.purple{ background:rgba(168,85,247,0.1); color:#c084fc; border:1px solid rgba(168,85,247,0.18); }
+          .lp-stat.amber{ background:rgba(251,191,36,0.1);  color:#fbbf24; border:1px solid rgba(251,191,36,0.18); }
+          .lp-stat.dim  { background:rgba(255,255,255,0.03); color:rgba(75,85,99,0.9); border:1px solid rgba(255,255,255,0.06); }
+          .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#111827; }
+          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
+          /* ── mobile cards ── */
+          .lp-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
+          .lp-card { border-radius:10px; overflow:hidden; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); transition:border-color 0.15s; }
+          .lp-card.stale { border-color:rgba(251,191,36,0.2); background:rgba(251,191,36,0.02); }
+          .lp-card-top { display:flex; align-items:center; gap:12px; padding:12px 14px 10px; }
+          .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#111827; }
+          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
+          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:rgba(255,255,255,0.05); border-top:1px solid rgba(255,255,255,0.05); }
+          .lp-card-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:9px 4px; background:rgba(6,12,20,0.6); gap:2px; }
+          .lp-card-stat-val { font-size:13px; font-weight:800; tabular-nums; letter-spacing:0.02em; }
+          .lp-card-stat-lbl { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#374151; }
+          @media(max-width:640px) {
+            .lp-table-wrap { display:none !important; }
+            .lp-cards { display:flex !important; }
+          }
+        `}</style>
+
+        {/* ── header ── */}
+        <div className="lp-header">
+          <div>
+            <h2 style={{ fontSize:14, fontWeight:700, color:'white', margin:0, letterSpacing:'-0.01em' }}>Listing Performance</h2>
+            <p style={{ fontSize:11, color:'#374151', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
           </div>
-        )}
+          <span style={{ fontSize:11, fontWeight:600, color:'#374151', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:6, padding:'4px 10px' }}>
+            {listings.length} listing{listings.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {listings.length === 0 ? (
+          <div style={{ padding:'48px 20px', textAlign:'center', color:'#374151', fontSize:13 }}>
+            No listings to analyse yet
+          </div>
+        ) : (() => {
+          const sorted = [...listings].sort((a, b) => {
+            const aViews = carStatsMap[a.id]?.views || 0;
+            const bViews = carStatsMap[b.id]?.views || 0;
+            return bViews - aViews;
+          });
+          return (
+            <>
+              {/* ── desktop table ── */}
+              <div className="lp-table-wrap">
+                <table className="lp-table">
+                  <colgroup>
+                    <col /><col /><col /><col /><col /><col /><col /><col /><col />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {['Vehicle','Price','Age','Views','WhatsApp','Calls','Bookings','CVR','Status'].map(h => (
+                        <th key={h} className="lp-th">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((l) => {
+                      const stats  = carStatsMap[l.id] || {};
+                      const views  = stats.views    || 0;
+                      const wa     = stats.whatsapp  || 0;
+                      const calls  = stats.calls     || 0;
+                      const books  = stats.bookings  || 0;
+                      const cvr    = stats.cvr;
+                      const cvrNum = parseFloat(cvr);
+                      const isStale = getListingAge(l.created_at) >= 30;
+                      const statusKey = l.status || 'active';
+                      const statusCls = statusKey === 'active' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
+                        : statusKey === 'reserved' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                        : 'bg-blue-400/10 text-blue-400 border-blue-400/20';
+                      return (
+                        <tr key={l.id} className={`lp-row${isStale ? ' stale' : ''}`}>
+                          {/* Vehicle */}
+                          <td className="lp-td">
+                            <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                              {l.images?.[0]
+                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" />
+                                : <div className="lp-vehicle-placeholder" />
+                              }
+                              <div style={{ minWidth:0 }}>
+                                <p style={{ fontSize:13, fontWeight:700, color:'white', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                                  {l.brand} {l.model}
+                                </p>
+                                <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                  {l.variant || l.year || '—'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          {/* Price */}
+                          <td className="lp-td">
+                            <p style={{ fontSize:13, fontWeight:800, color:'#f3f4f6', margin:0, letterSpacing:'-0.02em', tabularNums:true }}>
+                              RM {l.selling_price?.toLocaleString() || '—'}
+                            </p>
+                          </td>
+                          {/* Age */}
+                          <td className="lp-td">
+                            <AgeBadge createdAt={l.created_at} />
+                          </td>
+                          {/* Views */}
+                          <td className="lp-td">
+                            <span className={`lp-stat ${views > 0 ? 'sky' : 'dim'}`}>
+                              {eventsLoading ? '…' : views}
+                            </span>
+                          </td>
+                          {/* WhatsApp */}
+                          <td className="lp-td">
+                            <span className={`lp-stat ${wa > 0 ? 'green' : 'dim'}`}>
+                              {eventsLoading ? '…' : wa}
+                            </span>
+                          </td>
+                          {/* Calls */}
+                          <td className="lp-td">
+                            <span className={`lp-stat ${calls > 0 ? 'purple' : 'dim'}`}>
+                              {eventsLoading ? '…' : calls}
+                            </span>
+                          </td>
+                          {/* Bookings */}
+                          <td className="lp-td">
+                            <span className={`lp-stat ${books > 0 ? 'amber' : 'dim'}`}>
+                              {eventsLoading ? '…' : books}
+                            </span>
+                          </td>
+                          {/* CVR */}
+                          <td className="lp-td">
+                            <span style={{ fontSize:12, fontWeight:700, color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151' }}>
+                              {eventsLoading ? '…' : (cvr || '—')}
+                            </span>
+                          </td>
+                          {/* Status */}
+                          <td className="lp-td">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCls}`} style={{ letterSpacing:'0.04em', textTransform:'capitalize' }}>
+                              {statusKey}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── mobile cards ── */}
+              <div className="lp-cards">
+                {sorted.map((l) => {
+                  const stats  = carStatsMap[l.id] || {};
+                  const views  = stats.views    || 0;
+                  const wa     = stats.whatsapp  || 0;
+                  const calls  = stats.calls     || 0;
+                  const books  = stats.bookings  || 0;
+                  const cvr    = stats.cvr;
+                  const cvrNum = parseFloat(cvr);
+                  const isStale = getListingAge(l.created_at) >= 30;
+                  const statusKey = l.status || 'active';
+                  const statusColor = statusKey === 'active' ? '#4ade80' : statusKey === 'reserved' ? '#fbbf24' : '#60a5fa';
+                  return (
+                    <div key={l.id} className={`lp-card${isStale ? ' stale' : ''}`}>
+                      {/* top row */}
+                      <div className="lp-card-top">
+                        {l.images?.[0]
+                          ? <img src={l.images[0]} alt="" className="lp-card-img" />
+                          : <div className="lp-card-placeholder" />
+                        }
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
+                            <div style={{ minWidth:0 }}>
+                              <p style={{ fontSize:13, fontWeight:800, color:'white', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                                {l.brand} {l.model}
+                              </p>
+                              <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
+                                {l.variant || l.year || '—'}
+                              </p>
+                            </div>
+                            <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
+                              {statusKey}
+                            </span>
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
+                            <span style={{ fontSize:14, fontWeight:800, color:'#f3f4f6', letterSpacing:'-0.02em' }}>
+                              RM {l.selling_price?.toLocaleString() || '—'}
+                            </span>
+                            <AgeBadge createdAt={l.created_at} />
+                          </div>
+                        </div>
+                      </div>
+                      {/* stats strip */}
+                      <div className="lp-card-stats">
+                        {[
+                          { label:'Views',    val: views,  color:'#38bdf8' },
+                          { label:'WhatsApp', val: wa,     color:'#4ade80' },
+                          { label:'Calls',    val: calls,  color:'#c084fc' },
+                          { label:'Bookings', val: books,  color:'#fbbf24' },
+                          { label:'CVR',      val: eventsLoading ? '…' : (cvr || '—'), color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151', raw: true },
+                        ].map(({ label, val, color, raw }) => (
+                          <div key={label} className="lp-card-stat">
+                            <span className="lp-card-stat-val" style={{ color: (raw ? true : val > 0) ? color : '#374151' }}>
+                              {eventsLoading && !raw ? '…' : val}
+                            </span>
+                            <span className="lp-card-stat-lbl">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
       </div>
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <button
@@ -4825,6 +5029,8 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
+  const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
+  const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [copiedListingId, setCopiedListingId] = useState(null);
@@ -6065,7 +6271,13 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === "analytics" && (
-            <AnalyticsTab listings={listings} profile={profile} />
+            <AnalyticsTab
+              listings={listings}
+              profile={profile}
+              onEditListing={setEditListing}
+              onStaleAdjusted={handleStaleAdjusted}
+              adjustedStaleIds={adjustedStaleIds}
+            />
           )}
           {activeTab === "ai_manager" && snapshot && (
             <AISalesManager
