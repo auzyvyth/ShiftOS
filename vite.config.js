@@ -1,10 +1,31 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
 	plugins: [
 		react(),
+		VitePWA({
+			registerType: 'autoUpdate',
+			manifest: {
+				name: 'ShiftOS by XDrive',
+				short_name: 'ShiftOS',
+				description: 'Car dealership management platform',
+				theme_color: '#080C14',
+				background_color: '#080C14',
+				display: 'standalone',
+				start_url: '/',
+				icons: [
+  { src: '/xdrivelogo.png', sizes: '192x192', type: 'image/png' },
+  { src: '/xdrivelogo.png', sizes: '512x512', type: 'image/png' },
+],
+			},
+			workbox: {
+				navigateFallback: '/index.html',
+				globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+			},
+		}),
 	],
 	server: {
 		cors: true,
@@ -23,22 +44,15 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: {
-					// Core React runtime
 					'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-					// Animation library
 					'vendor-motion': ['framer-motion'],
-					// Supabase client
 					'vendor-supabase': ['@supabase/supabase-js'],
-					// UI utilities
 					'vendor-ui': ['lucide-react', 'react-helmet', 'react-i18next'],
-					// DnD
 					'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable'],
-					// PDF generation
 					'vendor-pdf': ['jspdf'],
 				},
 			},
 		},
-		// Raise warning threshold slightly — we're now splitting properly
 		chunkSizeWarningLimit: 600,
 	},
 });
