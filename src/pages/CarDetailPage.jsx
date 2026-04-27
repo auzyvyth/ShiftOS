@@ -957,7 +957,15 @@ export default function CarDetailPage() {
                     <Phone size={13} /> Call
                   </button>
                 )}
-                <button onClick={() => bookingRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })}
+                <button onClick={() => {
+                    trackEvent(supabase, 'booking_click', {
+                      car_id: car.id,
+                      car_name: `${car.brand} ${car.model} ${car.year}`,
+                      dealer_id: car.dealer_id,
+                      metadata: { source: 'car_detail' },
+                    });
+                    bookingRef.current?.scrollIntoView({ behavior:'smooth', block:'start' });
+                  }}
                   style={{ flex:contactPhone ? 1 : undefined, width:contactPhone ? undefined : '100%', background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s' }}>
                   Book Visit
                 </button>
