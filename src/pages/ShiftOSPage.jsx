@@ -287,11 +287,12 @@ const SALESMAN_FEATURES = [
 
 const FOUNDING_FEATURES = [
   "Unlimited car listings",
+  "Your own catalog website (sub.xdrive.my)",
+  "All salesman listings auto-appear on xdrive.my",
   "TikTok Content Studio",
   "Telegram Auto-Post",
   "Salesman Panel + referral tracking",
   "AI Performance Advisor",
-  "xdrive.my marketplace listing",
   "WhatsApp Enquiry Inbox",
   "Priority onboarding support",
 ];
