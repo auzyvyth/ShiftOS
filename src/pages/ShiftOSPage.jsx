@@ -210,18 +210,18 @@ const PAIN_EMOJIS = [
 const PAIN_POINTS = [
   {
     Icon: AlertCircle,
-    title: "Masih post listing satu-satu?",
-    desc: "Auto-post ke Telegram channel dan TikTok the moment you go live. No extra steps.",
+    title: "Nak tahu unit mana yang dah lama tak jual?",
+    desc: "ShiftOS highlight listing yang dah 30+ hari — so you know exactly what to push or reprice.",
   },
   {
     Icon: BarChart2,
-    title: "Tak tahu salesman mana yang close deal?",
-    desc: "Every referral link is tracked. See clicks, leads, and conversions per salesman — live.",
+    title: "Salesman report sendiri — betul ke?",
+    desc: "Every lead, enquiry, and test drive is auto-logged. No more trusting unverified WhatsApp screenshots.",
   },
   {
     Icon: Video,
-    title: "Buyer tanya pastu hilang?",
-    desc: "All WhatsApp enquiries in one inbox. AI advisor tells you which cars to push and who to follow up.",
+    title: "Posting listing ambil masa 20 minit?",
+    desc: "Add once — auto-post to Telegram, appear on xdrive.my, generate TikTok slides. Done in under 5 minutes.",
   },
 ];
 
@@ -262,7 +262,17 @@ const STATS = [
   { num: "100%", label: "Automated listing workflow" },
   { num: "1 Dashboard", label: "Replaces 4-5 tools" },
   { num: "< 5 min", label: "To list a new car" },
-  { num: "1", label: "Dashboard for everything" },
+  { num: "RM0", label: "Setup fee" },
+];
+
+const SPOTS_LEFT = 3;
+
+const SALESMAN_FEATURES = [
+  "Personal dashboard",
+  "Referral link tracking",
+  "Commission reports",
+  "AI lead advisor",
+  "Merge into dealer account anytime",
 ];
 
 const FOUNDING_FEATURES = [
@@ -1188,9 +1198,8 @@ export default function ShiftOSPage() {
               lineHeight: 1.6,
             }}
           >
-            ShiftOS replaces your WhatsApp groups, Excel sheets, and manual
-            posting — one dashboard built for Malaysian independent used car
-            dealers.
+            Dashboard pengurusan kereta untuk dealer Malaysia. Ganti Excel,
+            WhatsApp group, dan posting manual — dalam satu sistem.
           </p>
 
           <div
@@ -1222,10 +1231,11 @@ export default function ShiftOSPage() {
 
           <NetworkAnimation />
 
-          <p
-            style={{ fontSize: 12, color: "#4b5563", letterSpacing: "0.08em" }}
-          >
+          <p style={{ fontSize: 12, color: "#4b5563", marginBottom: 16, letterSpacing: "0.08em" }}>
             Digunakan oleh dealer di Penang, KL & Johor
+          </p>
+          <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>
+            ✓ Setup dalam 30 minit &nbsp;·&nbsp; ✓ Tanpa kontrak &nbsp;·&nbsp; ✓ Cancel bila-bila masa
           </p>
         </section>
 
@@ -1269,6 +1279,61 @@ export default function ShiftOSPage() {
                 desc={desc}
                 emojis={PAIN_EMOJIS[i]}
               />
+            ))}
+          </div>
+        </section>
+
+        {/* ── How It Works ── */}
+        <section style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 24px 80px" }}>
+          <h2 style={{ textAlign: "center", fontSize: 32, fontWeight: 700, marginBottom: 12 }}>
+            Macam mana ShiftOS berfungsi?
+          </h2>
+          <p style={{ textAlign: "center", color: "#6b7280", fontSize: 15, marginBottom: 56 }}>
+            Tiga langkah. Semua selesai.
+          </p>
+          <div style={{ position: "relative", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 32 }}>
+            {/* dashed connector line */}
+            <div style={{
+              position: "absolute",
+              top: 28,
+              left: "calc(16.66% + 16px)",
+              right: "calc(16.66% + 16px)",
+              height: 1,
+              borderTop: "1px dashed rgba(255,255,255,0.08)",
+              pointerEvents: "none",
+            }} />
+            {[
+              { num: "01", Icon: Car,   title: "Add your stock",            sub: "Tambah listing dalam masa 5 minit — gambar, specs, harga." },
+              { num: "02", Icon: Globe, title: "Share your storefront link", sub: "Auto-publish ke xdrive.my dan Telegram channel anda." },
+              { num: "03", Icon: Zap,   title: "Close deals from one dashboard", sub: "Track leads, assign salesman, and mark sold — semuanya di satu tempat." },
+            ].map(({ num, Icon: StepIcon, title, sub }) => (
+              <div key={num} style={{ textAlign: "center", position: "relative" }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(220,38,38,0.06)",
+                  border: "1px solid rgba(220,38,38,0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
+                  position: "relative",
+                }}>
+                  <StepIcon size={22} color="#ef4444" />
+                  <span style={{
+                    position: "absolute",
+                    top: -10,
+                    right: -10,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 18,
+                    color: "#dc2626",
+                    lineHeight: 1,
+                  }}>{num}</span>
+                </div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "white", marginBottom: 8 }}>{title}</p>
+                <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, margin: 0 }}>{sub}</p>
+              </div>
             ))}
           </div>
         </section>
@@ -1439,9 +1504,9 @@ export default function ShiftOSPage() {
             className="shiftos-pricing-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "repeat(3,1fr)",
               gap: 20,
-              maxWidth: 780,
+              maxWidth: 1100,
               margin: "0 auto",
             }}
           >
@@ -1487,7 +1552,7 @@ export default function ShiftOSPage() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  LIMITED — 10 SPOTS
+                  {SPOTS_LEFT} SPOTS LEFT
                 </span>
               </div>
               <p
@@ -1625,6 +1690,85 @@ export default function ShiftOSPage() {
                 WhatsApp Us
               </a>
             </div>
+
+            {/* Salesman Premium */}
+            <div
+              className="shiftos-pricing-card"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 8,
+                padding: 32,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, marginBottom: 4 }}>
+                Salesman Premium
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 52,
+                  lineHeight: 1,
+                  margin: "12px 0 4px",
+                  color: "white",
+                }}
+              >
+                RM49
+                <span style={{ fontSize: 22, color: "#6b7280" }}>/mo</span>
+              </p>
+              <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>
+                solo plan · for individual salesmen
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
+                {SALESMAN_FEATURES.map((f) => (
+                  <li
+                    key={f}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      fontSize: 13,
+                      color: "#d1d5db",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Check size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shiftos-btn-red"
+                style={{ justifyContent: "center" }}
+              >
+                Mula Sekarang
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Testimonial ── */}
+        <section style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px 80px" }}>
+          <div style={{
+            borderLeft: "3px solid #dc2626",
+            paddingLeft: 28,
+            textAlign: "left",
+          }}>
+            <p style={{
+              fontSize: 17,
+              fontStyle: "italic",
+              color: "#9ca3af",
+              lineHeight: 1.7,
+              margin: "0 0 12px",
+            }}>
+              "Dulu semua dalam Excel. Sekarang salesman boleh check stok sendiri masa tanya buyer."
+            </p>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>— Dealer, Penang</p>
           </div>
         </section>
 
@@ -1835,7 +1979,7 @@ export default function ShiftOSPage() {
               }}
             >
               <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
-                © 2025 ShiftOS. Built for Malaysian dealers.
+                © {new Date().getFullYear()} ShiftOS. Built for Malaysian dealers.
               </p>
               <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
                 Powered by <span style={{ color: "#ef4444" }}>XDrive</span>
