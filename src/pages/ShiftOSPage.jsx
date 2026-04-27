@@ -267,11 +267,21 @@ const STATS = [
 
 const SPOTS_LEFT = 3;
 
+const SALESMAN_FREE_FEATURES = [
+  "Active leads tracker",
+  "My listings view",
+  "Stale leads alerts",
+  "Appointments today",
+  "New enquiries inbox",
+  "Personal storefront link",
+];
+
 const SALESMAN_FEATURES = [
-  "Personal dashboard",
+  "Everything in Free",
   "Referral link tracking",
   "Commission reports",
   "AI lead advisor",
+  "Performance analytics (30d)",
   "Merge into dealer account anytime",
 ];
 
@@ -1568,7 +1578,7 @@ export default function ShiftOSPage() {
                 <span style={{ fontSize: 22, color: "#92600d" }}>/mo</span>
               </p>
               <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>
-                founder rate · locked in forever
+                for the first 10 dealers only · locked in forever
               </p>
               <ul
                 style={{
@@ -1614,27 +1624,20 @@ export default function ShiftOSPage() {
               </a>
             </div>
 
-            {/* Monthly Standard */}
+            {/* Salesman Free */}
             <div
               className="shiftos-pricing-card"
               style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 8,
                 padding: 32,
                 display: "flex",
                 flexDirection: "column",
               }}
             >
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "#9ca3af",
-                  fontWeight: 500,
-                  marginBottom: 4,
-                }}
-              >
-                Monthly Standard
+              <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, marginBottom: 4 }}>
+                Salesman Free
               </p>
               <p
                 style={{
@@ -1645,21 +1648,14 @@ export default function ShiftOSPage() {
                   color: "white",
                 }}
               >
-                RM 1,000
+                RM0
                 <span style={{ fontSize: 22, color: "#6b7280" }}>/mo</span>
               </p>
               <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 28 }}>
-                cancel anytime · no lock-in
+                forever free · no credit card
               </p>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: "0 0 32px",
-                  flex: 1,
-                }}
-              >
-                {MONTHLY_FEATURES.map((f) => (
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
+                {SALESMAN_FREE_FEATURES.map((f) => (
                   <li
                     key={f}
                     style={{
@@ -1671,11 +1667,7 @@ export default function ShiftOSPage() {
                       marginBottom: 12,
                     }}
                   >
-                    <Check
-                      size={14}
-                      color="#ef4444"
-                      style={{ flexShrink: 0 }}
-                    />
+                    <Check size={14} color="#6b7280" style={{ flexShrink: 0 }} />
                     {f}
                   </li>
                 ))}
@@ -1684,10 +1676,10 @@ export default function ShiftOSPage() {
                 href={waLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shiftos-btn-red"
+                className="shiftos-btn-ghost"
                 style={{ justifyContent: "center" }}
               >
-                WhatsApp Us
+                Daftar Percuma
               </a>
             </div>
 
