@@ -5,34 +5,17 @@ import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
-// in-memory user store for demo
-const users = [
-  {
-    id: 1,
-    email: 'admin@example.com',
-    passwordHash: bcrypt.hashSync('password123', 8),
-  },
-];
-
-// secret for JWT (in a real app use env var)
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[auth] FATAL: JWT_SECRET env var is not set. Auth routes disabled.');
+}
 
 router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
+  if (!JWT_SECRET) return res.status(503).json({ error: 'Auth not configured' });
 
-  const valid = bcrypt.compareSync(password, user.passwordHash);
-  if (!valid) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-    expiresIn: '1h',
-  });
-  res.json({ token });
+  // This route is a legacy stub — production auth is handled by Supabase.
+  // Enable only for local dev by setting JWT_SECRET and populating a real user store.
+  return res.status(403).json({ error: 'Not available' });
 });
 
 export default router;
