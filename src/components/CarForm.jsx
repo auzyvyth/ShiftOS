@@ -69,6 +69,12 @@ const initialListing = {
   video_url: "",
   // Documents
   car_documents: [],
+  // Extra fields
+  previous_owners: "",
+  road_tax_expiry: "",
+  loan_eligible: true,
+  warranty_months: "",
+  deposit_amount: "",
 };
 
 const CAR_DATA = {
@@ -858,6 +864,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         ),
         video_url: listing.video_url || "",
         car_documents: listing.car_documents || [],
+        previous_owners: listing.previous_owners != null ? String(listing.previous_owners) : "",
+        road_tax_expiry: listing.road_tax_expiry || "",
+        loan_eligible: listing.loan_eligible !== false,
+        warranty_months: listing.warranty_months != null ? String(listing.warranty_months) : "",
+        deposit_amount: listing.deposit_amount != null ? String(listing.deposit_amount) : "",
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -1227,6 +1238,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         recon_cost: (form.baseReconCost || 0) + servicesCost,
         video_url: form.video_url || null,
         car_documents: form.car_documents || [],
+        previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+        road_tax_expiry: form.road_tax_expiry || null,
+        loan_eligible: form.loan_eligible !== false,
+        warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
+        deposit_amount: form.deposit_amount ? parseFloat(form.deposit_amount) : null,
       };
 
       if (listing) {
@@ -1569,6 +1585,36 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               className={inputCls}
             />
           </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Previous Owners">
+              <input
+                type="number"
+                name="previous_owners"
+                value={form.previous_owners}
+                onChange={handleChange}
+                placeholder="e.g. 2"
+                min="0"
+                max="10"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Road Tax Expiry">
+              <input
+                type="date"
+                name="road_tax_expiry"
+                value={form.road_tax_expiry}
+                onChange={handleChange}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Loan Eligible">
+            <PillSelect
+              options={["Yes", "No"]}
+              value={form.loan_eligible ? "Yes" : "No"}
+              onChange={(v) => set("loan_eligible", v === "Yes")}
+            />
+          </Field>
         </div>
       )}
 
@@ -1873,6 +1919,35 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
             </div>
           )}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Deposit to Reserve (RM)" hint="Amount needed to hold this unit">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
+                  RM
+                </span>
+                <input
+                  type="number"
+                  name="deposit_amount"
+                  value={form.deposit_amount}
+                  onChange={handleChange}
+                  placeholder="0"
+                  min="0"
+                  className={`${inputCls} pl-12`}
+                />
+              </div>
+            </Field>
+            <Field label="Warranty Offered (months)" hint="0 = no warranty">
+              <input
+                type="number"
+                name="warranty_months"
+                value={form.warranty_months}
+                onChange={handleChange}
+                placeholder="e.g. 3"
+                min="0"
+                className={inputCls}
+              />
+            </Field>
+          </div>
 
           {/* ── Included Services & Add-ons ── */}
           <div className="rounded-2xl border border-gray-800 overflow-hidden">
@@ -2361,6 +2436,36 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 <span className="text-white">
                   {form.images.length} selected
                 </span>
+                {form.previous_owners !== "" && (
+                  <>
+                    <span className="text-gray-500">Prev. Owners</span>
+                    <span className="text-white">{form.previous_owners}</span>
+                  </>
+                )}
+                {form.road_tax_expiry && (
+                  <>
+                    <span className="text-gray-500">Road Tax Expiry</span>
+                    <span className="text-white">{form.road_tax_expiry}</span>
+                  </>
+                )}
+                <span className="text-gray-500">Loan Eligible</span>
+                <span className={form.loan_eligible ? "text-emerald-400 font-semibold" : "text-gray-400"}>
+                  {form.loan_eligible ? "Yes" : "No"}
+                </span>
+                {form.deposit_amount && (
+                  <>
+                    <span className="text-gray-500">Deposit to Reserve</span>
+                    <span className="text-white">RM {Number(form.deposit_amount).toLocaleString()}</span>
+                  </>
+                )}
+                {form.warranty_months !== "" && (
+                  <>
+                    <span className="text-gray-500">Warranty</span>
+                    <span className="text-white">
+                      {form.warranty_months === "0" || form.warranty_months === 0 ? "None" : `${form.warranty_months} months`}
+                    </span>
+                  </>
+                )}
                 {form.isRecon && (
                   <>
                     <span className="text-gray-500">Type</span>
