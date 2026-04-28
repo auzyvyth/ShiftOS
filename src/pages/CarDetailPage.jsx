@@ -168,6 +168,9 @@ export default function CarDetailPage() {
   const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '' });
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
 
+  /* view count */
+  const [viewCount, setViewCount] = useState(0);
+
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
 
@@ -331,6 +334,17 @@ export default function CarDetailPage() {
       page_path: window.location.pathname,
       metadata: { price: car.selling_price, colour: car.colour },
     });
+  }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── view count ── */
+  useEffect(() => {
+    if (!car?.id) return;
+    supabase
+      .from('analytics_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('car_id', car.id)
+      .eq('event_type', 'car_view')
+      .then(({ count }) => { if (count != null) setViewCount(count); });
   }, [car?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── auto-slide ── */
@@ -988,6 +1002,18 @@ export default function CarDetailPage() {
                 </button>
               </div>
 
+              {car.warranty_months > 0 && (
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, padding:'8px 12px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', borderRadius:'9px' }}>
+                  <ShieldCheck size={13} style={{ color:'#4ade80', flexShrink:0 }} />
+                  <span style={{ fontSize:'12px', color:'#4ade80', fontWeight:600 }}>{car.warranty_months}-month warranty included</span>
+                </div>
+              )}
+              {car.deposit_amount > 0 && (
+                <p style={{ fontSize:'11px', color:'#475569', marginTop:7, textAlign:'center' }}>
+                  RM {fmt(car.deposit_amount)} deposit to reserve
+                </p>
+              )}
+
               <button onClick={() => setCalcOpen(true)}
                 style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.05)', color:'#334155', borderRadius:'9px', padding:'10px', fontWeight:500, fontSize:'12px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:6, display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s', letterSpacing:'0.05em' }}>
                 <Calculator size={13} /> Financing Calculator
@@ -1019,9 +1045,14 @@ export default function CarDetailPage() {
                         )}
                       </p>
                     </div>
-                    {listedDays !== null && (
-                      <p style={{ fontSize:'10px', color:'#1e293b', whiteSpace:'nowrap', flexShrink:0 }}>{listedDays}d ago</p>
-                    )}
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
+                      {listedDays !== null && (
+                        <p style={{ fontSize:'10px', color:'#1e293b', whiteSpace:'nowrap', margin:0 }}>{listedDays}d ago</p>
+                      )}
+                      {viewCount > 0 && (
+                        <p style={{ fontSize:'10px', color:'#1e293b', whiteSpace:'nowrap', margin:0 }}>👁 {viewCount} views</p>
+                      )}
+                    </div>
                   </div>
                 );
               })()}
@@ -1037,6 +1068,8 @@ export default function CarDetailPage() {
             { Icon: Settings, label: 'Transmission', value: car.transmission || '—' },
             { Icon: Droplets, label: 'Fuel',         value: car.fuel_type   || '—' },
             { Icon: Palette,  label: 'Colour',       value: car.colour      || '—' },
+            { Icon: Shield,   label: 'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' }) : '—' },
+            { Icon: Eye,      label: 'Owners',       value: car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—' },
           ].map(({ Icon, label, value }) => (
             <div key={label} className="cdp-spec">
               <Icon size={16} style={{ color:'#dc2626', marginBottom:8, opacity:0.75 }} />
@@ -1169,7 +1202,10 @@ export default function CarDetailPage() {
                             </span>
                           ),
                         },
-                        { key: 'Location', val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
+                        { key: 'Location',        val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
+                        { key: 'Previous Owners', val: car.previous_owners != null ? car.previous_owners : '—' },
+                        { key: 'Road Tax Expiry', val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
+                        { key: 'Loan Eligible',   val: car.loan_eligible === false ? 'No' : 'Yes' },
                         ...(isRecon ? [
                           { key: 'Import Country', val: car.import_country || '—' },
                           { key: 'Auction House',  val: car.auction_house  || '—' },
