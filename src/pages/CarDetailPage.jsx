@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Gauge, Zap, Settings, Droplets, Palette, ChevronLeft, ChevronRight, ArrowLeft, ZoomIn, ZoomOut, X, Calculator, Shield, Eye, BadgeCheck, ShieldCheck, FileText, Wrench, Star, Package, PlayCircle, Phone, ExternalLink } from 'lucide-react';
 import { getCategoryCfg } from '../utils/serviceCategories';
+import DamageMap from '../components/DamageMap';
 import { getEmbedUrl } from '../utils/videoEmbed';
 import { supabase } from '../supabaseClient';
 import FinancingCalculator from '../components/FinancingCalculator';
@@ -45,8 +46,8 @@ const CDP_DOC_TYPES = {
 
 const inputStyle = (focused) => ({
   width: '100%', background: 'rgba(255,255,255,0.03)',
-  border: `1px solid ${focused ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'}`,
-  borderRadius: '8px', padding: '10px 14px', color: 'white',
+  border: `1px solid ${focused ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.08)'}`,
+  borderRadius: '10px', padding: '10px 14px', color: 'white',
   fontSize: '13px', fontFamily: "'DM Sans', sans-serif",
   outline: 'none', marginBottom: '8px', boxSizing: 'border-box',
   transition: 'border-color 0.2s',
@@ -563,7 +564,7 @@ export default function CarDetailPage() {
         .cdp-header {
           position: sticky; top: 0; z-index: 100;
           display: flex; align-items: center; justify-content: space-between;
-          padding: 0 28px; height: 56px;
+          padding: 0 28px; height: 60px;
           background: rgba(6,12,20,0.93);
           backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
           border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -584,24 +585,25 @@ export default function CarDetailPage() {
         }
         .cdp-header-title.visible { opacity: 1; }
         .cdp-enquire-btn {
-          background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.28);
-          color: #f87171; border-radius: 6px; padding: 6px 18px;
+          background: #dc2626; border: none;
+          color: white; border-radius: 6px; padding: 6px 18px;
           font-size: 11px; cursor: pointer; letter-spacing: 0.08em;
           font-family: 'DM Sans', sans-serif; transition: all 0.2s;
           text-transform: uppercase; font-weight: 600;
         }
-        .cdp-enquire-btn:hover { background: rgba(220,38,38,0.18); border-color: rgba(220,38,38,0.5); color: white; }
+        .cdp-enquire-btn:hover { background: #b91c1c; color: white; }
 
         /* ── fold ── */
         .cdp-fold {
           display: flex;
-          height: calc(100vh - 56px);
+          flex-direction: row-reverse;
+          height: calc(100vh - 60px);
           overflow: hidden;
         }
 
         /* ── gallery ── */
         .cdp-gallery-col {
-          flex: 1.65; display: flex; gap: 0; min-width: 0; overflow: hidden;
+          flex: 1.8; display: flex; gap: 0; min-width: 0; overflow: hidden; position: relative;
         }
         .cdp-main-wrap {
           flex: 1; position: relative;
@@ -643,7 +645,7 @@ export default function CarDetailPage() {
           gap: 4px; overflow-y: auto; scrollbar-width: none;
           padding: 8px 6px;
           background: #060c14;
-          border-left: 1px solid rgba(255,255,255,0.05);
+          border-right: 1px solid rgba(255,255,255,0.05);
         }
         .cdp-thumbs-v::-webkit-scrollbar { display: none; }
         .cdp-thumb-v {
@@ -657,32 +659,34 @@ export default function CarDetailPage() {
 
         /* ── info col ── */
         .cdp-info-col {
-          flex: 1; min-width: 300px; max-width: 460px;
-          display: flex; flex-direction: column; justify-content: center;
+          flex: 1; min-width: 360px; max-width: 480px;
+          display: flex; flex-direction: column; justify-content: flex-start;
           overflow-y: auto; scrollbar-width: none;
-          padding: 32px 36px;
-          background: #070e1a;
-          border-left: 1px solid rgba(255,255,255,0.05);
+          padding: 40px 40px 32px;
+          background: linear-gradient(180deg, #06080f 0%, #070e1a 40%, #080c18 100%);
+          border-left: none;
+          border-right: 1px solid rgba(255,255,255,0.05);
         }
         .cdp-info-col::-webkit-scrollbar { display: none; }
 
         /* ── specs strip ── */
         .cdp-specs {
-          background: #0a1220;
-          border-top: 1px solid rgba(255,255,255,0.05);
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          background: #060c14;
+          border-top: 1px solid rgba(220,38,38,0.15);
+          border-bottom: 1px solid rgba(255,255,255,0.04);
           display: flex; overflow-x: auto;
           scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
         .cdp-specs::-webkit-scrollbar { display: none; }
         .cdp-spec {
-          flex: 1; min-width: 120px; text-align: center;
-          padding: 26px 16px;
+          flex: 1; min-width: 140px; text-align: center;
+          padding: 20px 16px;
           border-right: 1px solid rgba(255,255,255,0.04);
-          transition: background .25s; cursor: default;
+          border-top: 2px solid transparent;
+          transition: background .25s, border-top-color .25s, padding-top .25s; cursor: default;
         }
         .cdp-spec:last-child { border-right: none; }
-        .cdp-spec:hover { background: rgba(220,38,38,0.04); }
+        .cdp-spec:hover { background: rgba(220,38,38,0.04); border-top-color: #dc2626; padding-top: 24px; }
 
         /* ── content wrapper ── */
         .cdp-content { max-width: 1200px; margin: 0 auto; padding: 0 28px; }
@@ -704,7 +708,7 @@ export default function CarDetailPage() {
           align-items: center; gap: 12px;
           border-radius: 6px; transition: background .2s;
         }
-        .cdp-row:hover { background: rgba(255,255,255,0.025); }
+        .cdp-row:hover { background: rgba(220,38,38,0.04); }
 
         /* ── similar ── */
         .cdp-similar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
@@ -776,9 +780,10 @@ export default function CarDetailPage() {
           .cdp-info-col {
             min-width: 0; max-width: 100%; flex: none; width: 100%;
             padding: 28px 20px; justify-content: flex-start;
-            border-left: none; border-top: 1px solid rgba(255,255,255,0.05);
+            border-left: none; border-right: none; border-top: 1px solid rgba(255,255,255,0.05);
             overflow-y: visible; overflow: visible;
           }
+          .cdp-quick-stats { display: none; }
           .cdp-details { flex-direction: column; gap: 40px; padding: 40px 20px 60px; }
           .cdp-details-right { min-width: 0; width: 100%; max-width: 480px; }
           .cdp-content { padding: 0 20px; }
@@ -791,7 +796,7 @@ export default function CarDetailPage() {
           .cdp-similar-scroll::-webkit-scrollbar { display: none; }
           .cdp-mobile-bar {
             display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
-            background: rgba(6,12,20,0.97); backdrop-filter: blur(20px);
+            background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-top: 1px solid rgba(255,255,255,0.07);
             padding: 12px 16px; gap: 10px;
           }
@@ -799,28 +804,38 @@ export default function CarDetailPage() {
             flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700;
             font-family: 'DM Sans', sans-serif; border: none; cursor: pointer;
             background: #22c55e; color: white; padding: 13px 0;
+            border-top: 2px solid #16a34a;
           }
           .cdp-mobile-bar-book {
             flex: 1; border-radius: 10px; font-size: 13px; font-weight: 600;
             font-family: 'DM Sans', sans-serif; cursor: pointer;
-            background: transparent; color: white; padding: 13px 0;
-            border: 1px solid rgba(255,255,255,0.15);
+            background: transparent; color: #e2e8f0; padding: 13px 0;
+            border: 1px solid rgba(255,255,255,0.12);
           }
         }
         @media (max-width: 480px) {
           .cdp-arrow { display: none; }
+        }
+
+        @keyframes cdp-redline { from { width: 0; } to { width: 100%; } }
+        .cdp-header-redline {
+          position: absolute; bottom: 0; left: 0; height: 1px;
+          background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.3), transparent);
+          animation: cdp-redline 3s ease forwards;
+          pointer-events: none;
         }
       `}</style>
 
       <div className="cdp-root">
 
         {/* ── header ── */}
-        <header className="cdp-header">
+        <header className="cdp-header" style={{ position:'sticky' }}>
           <button className="cdp-back-btn" onClick={() => navigate(-1)}>
             <ArrowLeft size={14} /> Back
           </button>
           <span className={`cdp-header-title${showTitle ? ' visible' : ''}`}>{carTitle}</span>
           <button className="cdp-enquire-btn" onClick={handleWhatsApp}>Enquire</button>
+          <div className="cdp-header-redline" />
         </header>
 
         {/* ── hero fold ── */}
@@ -828,6 +843,18 @@ export default function CarDetailPage() {
 
           {/* gallery */}
           <div className="cdp-gallery-col">
+            {/* vertical thumbnails — leftmost child */}
+            {imgCount > 1 && (
+              <div className="cdp-thumbs-v">
+                {images.map((src, i) => (
+                  <img key={i} src={src} className={`cdp-thumb-v${i === activeIdx ? ' active' : ''}`}
+                    alt={`View ${i + 1}`} loading="lazy" style={{ aspectRatio: '4/3' }}
+                    onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                    onError={e => { e.target.src = '/placeholder-car.jpg'; }}
+                  />
+                ))}
+              </div>
+            )}
             <div className="cdp-main-wrap" onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
               {!imgLoaded && <div className="cdp-img-shimmer" />}
               <img
@@ -885,28 +912,34 @@ export default function CarDetailPage() {
               <div style={{ position:'absolute', top:0, left:0, bottom:0, width:3, background:'linear-gradient(to bottom,transparent,#dc2626,transparent)', opacity:0, animation:'cdp-fadeIn .6s ease 1s forwards', zIndex:5 }} />
               {/* bottom vignette */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'42%', background:'linear-gradient(to top,rgba(7,14,26,0.75),transparent)', pointerEvents:'none', zIndex:3 }} />
+              {/* bottom-left bracket */}
+              <div style={{ position:'absolute', bottom:18, left:18, width:24, height:24, borderLeft:'2px solid rgba(220,38,38,0.4)', borderBottom:'2px solid rgba(220,38,38,0.4)', pointerEvents:'none', zIndex:6 }} />
             </div>
 
-            {/* vertical thumbnails */}
-            {imgCount > 1 && (
-              <div className="cdp-thumbs-v">
-                {images.map((src, i) => (
-                  <img key={i} src={src} className={`cdp-thumb-v${i === activeIdx ? ' active' : ''}`}
-                    alt={`View ${i + 1}`} loading="lazy" style={{ aspectRatio: '4/3' }}
-                    onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
-                    onError={e => { e.target.src = '/placeholder-car.jpg'; }}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           {/* ── info panel ── */}
           <div className="cdp-info-col">
 
+            {/* topbar row */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80', display:'inline-block', animation:'cdp-pulse 2s ease infinite', flexShrink:0 }} />
+                <span style={{ fontSize:'11px', color:'#475569', fontWeight:500, letterSpacing:'0.02em' }}>{dealerName}</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                {listedDays !== null && (
+                  <span style={{ fontSize:'10px', color:'#334155' }}>{listedDays}d ago</span>
+                )}
+                {viewCount > 0 && (
+                  <span style={{ fontSize:'10px', color:'#334155' }}>👁 {viewCount}</span>
+                )}
+              </div>
+            </div>
+
             {/* badges */}
             {(isRecon || isHot || hasDocuments) && (
-              <div style={{ display:'flex', gap:6, marginBottom:18, flexWrap:'wrap', animation:'cdp-fadeUp .5s ease .3s both' }}>
+              <div style={{ display:'flex', gap:6, marginBottom:14, flexWrap:'wrap', animation:'cdp-fadeUp .5s ease .3s both' }}>
                 {isRecon && (
                   <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>
                     Recon
@@ -926,17 +959,17 @@ export default function CarDetailPage() {
             )}
 
             {/* brand label */}
-            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.22em', color:'#dc2626', marginBottom:5, fontWeight:700, animation:'cdp-fadeUp .6s ease .45s both' }}>
+            <p style={{ fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.3em', color:'#dc2626', marginBottom:5, fontWeight:700, animation:'cdp-fadeUp .6s ease .45s both' }}>
               {car.brand}
             </p>
 
             {/* model — Bebas Neue */}
-            <h1 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.2rem, 3.8vw, 3.4rem)', color:'white', lineHeight:1, marginBottom:7, letterSpacing:'0.03em', animation:'cdp-fadeUp .6s ease .5s both' }}>
+            <h1 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.6rem, 3.6vw, 3.6rem)', color:'white', lineHeight:1, marginBottom:7, letterSpacing:'0.03em', animation:'cdp-fadeUp .6s ease .5s both' }}>
               {car.model}{car.variant ? ` ${car.variant}` : ''}
             </h1>
 
             {/* meta */}
-            <p style={{ fontSize:'12px', color:'#475569', marginBottom:22, letterSpacing:'0.04em' }}>
+            <p style={{ fontSize:'12px', color:'#475569', marginBottom:16, letterSpacing:'0.04em' }}>
               {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
             </p>
 
@@ -944,7 +977,7 @@ export default function CarDetailPage() {
             <div style={{ height:1, background:'linear-gradient(to right,rgba(255,255,255,0.07),transparent)', marginBottom:22 }} />
 
             {/* price block */}
-            <div style={{ marginBottom:20, animation:'cdp-fadeUp .6s ease .6s both' }}>
+            <div style={{ marginBottom:16, borderLeft:'2px solid rgba(220,38,38,0.4)', paddingLeft:14, animation:'cdp-fadeUp .6s ease .6s both' }}>
               <p style={{ fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', marginBottom:5, fontWeight:700 }}>
                 Selling Price
               </p>
@@ -953,11 +986,12 @@ export default function CarDetailPage() {
                   {fmtPrice(car.selling_price)}
                 </p>
                 {calcMonthly(car.selling_price) && (
-                  <span style={{ fontSize:'12px', color:'#334155', whiteSpace:'nowrap' }}>
-                    ~<span style={{ color:'#64748b', fontWeight:500 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+                  <span style={{ fontSize:'12px', color:'#475569', whiteSpace:'nowrap' }}>
+                    ~<span style={{ color:'#94a3b8', fontWeight:500 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
                   </span>
                 )}
               </div>
+              <div style={{ height:1, background:'rgba(220,38,38,0.2)', marginTop:10 }} />
               {isHot && (
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:7 }}>
                   <span style={{ fontSize:'13px', color:'#1e293b', textDecoration:'line-through' }}>
@@ -970,21 +1004,35 @@ export default function CarDetailPage() {
               )}
             </div>
 
+            {/* quick stats pills */}
+            <div className="cdp-quick-stats" style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:18 }}>
+              {[
+                car.mileage     && `${fmt(car.mileage)} km`,
+                car.transmission,
+                car.fuel_type,
+                car.colour,
+              ].filter(Boolean).map((val, i) => (
+                <span key={i} style={{ fontSize:'11px', color:'#94a3b8', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:20, padding:'4px 12px', letterSpacing:'0.02em' }}>
+                  {val}
+                </span>
+              ))}
+            </div>
+
             {/* CTA card */}
-            <div style={{ background:'#0b1422', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px', animation:'cdp-fadeUp .6s ease .8s both' }}>
-              <p style={{ fontSize:'9px', color:'#334155', textTransform:'uppercase', letterSpacing:'0.18em', marginBottom:14, fontWeight:700 }}>
+            <div style={{ background:'#0a1625', border:'1px solid rgba(220,38,38,0.12)', borderRadius:14, padding:'20px', animation:'cdp-fadeUp .6s ease .8s both' }}>
+              <p style={{ fontSize:'9px', color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.2em', marginBottom:14, fontWeight:700 }}>
                 Get in touch
               </p>
 
               <button className="cdp-wa-btn" onClick={handleWhatsApp}
-                style={{ width:'100%', background:'#22c55e', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", letterSpacing:'0.02em', boxShadow:'0 4px 20px rgba(34,197,94,0.2)', transition:'transform .15s, box-shadow .2s' }}>
+                style={{ width:'100%', background:'#22c55e', color:'white', border:'none', borderLeft:'3px solid #16a34a', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", letterSpacing:'0.02em', boxShadow:'0 4px 20px rgba(34,197,94,0.2)', transition:'transform .15s, box-shadow .2s' }}>
                 WhatsApp Dealer
               </button>
 
               <div style={{ display:'flex', gap:7, marginTop:7 }}>
                 {contactPhone && (
                   <button onClick={handleCall}
-                    style={{ flex:1, background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s' }}>
+                    style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s' }}>
                     <Phone size={13} /> Call
                   </button>
                 )}
@@ -997,7 +1045,7 @@ export default function CarDetailPage() {
                     });
                     bookingRef.current?.scrollIntoView({ behavior:'smooth', block:'start' });
                   }}
-                  style={{ flex:contactPhone ? 1 : undefined, width:contactPhone ? undefined : '100%', background:'none', border:'1px solid rgba(255,255,255,0.09)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s' }}>
+                  style={{ flex:contactPhone ? 1 : undefined, width:contactPhone ? undefined : '100%', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:'9px', padding:'11px', fontWeight:500, fontSize:'13px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s' }}>
                   Book Visit
                 </button>
               </div>
@@ -1015,11 +1063,11 @@ export default function CarDetailPage() {
               )}
 
               <button onClick={() => setCalcOpen(true)}
-                style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.05)', color:'#334155', borderRadius:'9px', padding:'10px', fontWeight:500, fontSize:'12px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:6, display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s', letterSpacing:'0.05em' }}>
+                style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.05)', color:'#475569', borderRadius:'9px', padding:'10px', fontWeight:500, fontSize:'12px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:6, display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all .2s', letterSpacing:'0.05em' }}>
                 <Calculator size={13} /> Financing Calculator
               </button>
 
-              <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'16px 0 14px' }} />
+              <div style={{ height:1, background:'linear-gradient(to right, rgba(220,38,38,0.2), rgba(255,255,255,0.04), transparent)', margin:'16px 0 14px' }} />
 
               {/* dealer row */}
               {(() => {
@@ -1045,14 +1093,6 @@ export default function CarDetailPage() {
                         )}
                       </p>
                     </div>
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0 }}>
-                      {listedDays !== null && (
-                        <p style={{ fontSize:'10px', color:'#1e293b', whiteSpace:'nowrap', margin:0 }}>{listedDays}d ago</p>
-                      )}
-                      {viewCount > 0 && (
-                        <p style={{ fontSize:'10px', color:'#1e293b', whiteSpace:'nowrap', margin:0 }}>👁 {viewCount} views</p>
-                      )}
-                    </div>
                   </div>
                 );
               })()}
@@ -1063,18 +1103,16 @@ export default function CarDetailPage() {
         {/* ── specs strip ── */}
         <div className="cdp-specs" style={{ animation:'cdp-fadeUp .5s ease .9s both' }}>
           {[
-            { Icon: Gauge,    label: 'Mileage',      value: car.mileage     ? `${fmt(car.mileage)} km`   : '—' },
-            { Icon: Zap,      label: 'Engine',       value: car.engine_cc   ? `${fmt(car.engine_cc)} cc` : '—' },
-            { Icon: Settings, label: 'Transmission', value: car.transmission || '—' },
-            { Icon: Droplets, label: 'Fuel',         value: car.fuel_type   || '—' },
-            { Icon: Palette,  label: 'Colour',       value: car.colour      || '—' },
-            { Icon: Shield,   label: 'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' }) : '—' },
-            { Icon: Eye,      label: 'Owners',       value: car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—' },
+            { Icon: Zap,      label: 'Engine',    value: car.engine_cc   ? `${fmt(car.engine_cc)} cc` : '—' },
+            { Icon: Shield,   label: 'Road Tax',  value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' }) : '—' },
+            { Icon: Eye,      label: 'Owners',    value: car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—' },
+            { Icon: BadgeCheck, label: 'Loan',    value: car.loan_eligible === false ? 'Not Eligible' : 'Eligible' },
+            { Icon: Settings, label: 'Chassis',   value: car.chassis_status || '—' },
           ].map(({ Icon, label, value }) => (
             <div key={label} className="cdp-spec">
-              <Icon size={16} style={{ color:'#dc2626', marginBottom:8, opacity:0.75 }} />
-              <p style={{ fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.16em', color:'#334155', marginBottom:4, fontWeight:700 }}>{label}</p>
-              <p style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'17px', letterSpacing:'0.04em', color:'#cbd5e1' }}>{value}</p>
+              <Icon size={16} style={{ color:'#dc2626', marginBottom:8, opacity:1 }} />
+              <p style={{ fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.16em', color:'#64748b', marginBottom:4, fontWeight:700 }}>{label}</p>
+              <p style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'19px', letterSpacing:'0.04em', color:'#e2e8f0' }}>{value}</p>
             </div>
           ))}
         </div>
@@ -1154,7 +1192,7 @@ export default function CarDetailPage() {
         )}
 
         {/* ── details section ── */}
-        <section className="cdp-details">
+        <section className="cdp-details" style={{ background:'radial-gradient(ellipse 60% 40% at 15% 50%, rgba(220,38,38,0.03), transparent)' }}>
 
           {/* left — tabbed */}
           <div className="cdp-details-left">
@@ -1174,13 +1212,15 @@ export default function CarDetailPage() {
                     {tabs.map(t => (
                       <button key={t.key} onClick={() => setDetailTab(t.key)}
                         style={{
-                          background:'none', border:'none',
+                          background: detailTab === t.key ? 'rgba(220,38,38,0.06)' : 'none',
+                          border:'none',
                           borderBottom:`2px solid ${detailTab === t.key ? '#dc2626' : 'transparent'}`,
-                          color: detailTab === t.key ? 'white' : '#334155',
+                          color: detailTab === t.key ? 'white' : '#475569',
                           padding:'10px 20px 12px', marginBottom:-1,
                           fontSize:'13px', fontWeight: detailTab === t.key ? 600 : 400,
                           cursor:'pointer', fontFamily:"'DM Sans',sans-serif",
                           transition:'all .2s', letterSpacing:'0.04em',
+                          borderRadius: detailTab === t.key ? '6px 6px 0 0' : '0',
                         }}>
                         {t.label}
                       </button>
@@ -1214,10 +1254,19 @@ export default function CarDetailPage() {
                         ] : []),
                       ].map(({ key, val }) => (
                         <div key={key} className="cdp-row">
-                          <span style={{ fontSize:'13px', color:'#475569' }}>{key}</span>
-                          <span style={{ fontSize:'13px', color:'#e2e8f0', textAlign:'right' }}>{val}</span>
+                          <span style={{ fontSize:'13px', color:'#64748b' }}>{key}</span>
+                          <span style={{ fontSize:'13px', color:'#f1f5f9', textAlign:'right' }}>{val}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {detailTab === 'specs' && isRecon && Array.isArray(car.damage_map) && car.damage_map.length > 0 && (
+                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#334155', fontWeight: 700, marginBottom: 14 }}>Condition Map</p>
+                      <div style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px 20px' }}>
+                        <DamageMap value={car.damage_map} readOnly />
+                      </div>
                     </div>
                   )}
 
@@ -1247,8 +1296,8 @@ export default function CarDetailPage() {
 
           {/* right — booking form */}
           <div className="cdp-details-right" ref={bookingRef} id="booking-form">
-            <div style={{ background:'#0b1422', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'24px' }}>
-              <p style={{ fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', marginBottom:20, fontWeight:700 }}>
+            <div style={{ background:'#0a1625', border:'1px solid rgba(220,38,38,0.1)', borderRadius:14, padding:'24px' }}>
+              <p style={{ fontSize:'9px', textTransform:'uppercase', letterSpacing:'0.18em', color:'#dc2626', marginBottom:20, fontWeight:700 }}>
                 Book a Viewing
               </p>
 
@@ -1287,7 +1336,7 @@ export default function CarDetailPage() {
                     onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
                     style={{ ...inputStyle(focusedField === 'notes'), resize: 'vertical', minHeight: 72 }} />
                   <button type="submit" disabled={submitting}
-                    style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily:"'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing:'0.02em', transition:'opacity .2s' }}>
+                    style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily:"'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing:'0.02em', transition:'opacity .2s', boxShadow:'0 4px 20px rgba(220,38,38,0.25)' }}>
                     {submitting ? 'Booking…' : 'Confirm Viewing'}
                   </button>
                 </form>
@@ -1402,10 +1451,9 @@ export default function CarDetailPage() {
               You might also like
             </p>
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:32 }}>
-              <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.4rem', letterSpacing:'0.06em', color:'white', margin:0, animation:'cdp-fadeUp .6s ease .2s both', flexShrink:0 }}>
+              <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.4rem', letterSpacing:'0.06em', color:'white', margin:0, animation:'cdp-fadeUp .6s ease .2s both', flexShrink:0, borderLeft:'2px solid #dc2626', paddingLeft:'12px' }}>
                 More {car.brand}
               </h2>
-              <div style={{ flex:1, height:1, background:'linear-gradient(to right,rgba(220,38,38,0.25),transparent)' }} />
             </div>
             <div className="cdp-similar-grid">
               {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
@@ -1435,25 +1483,26 @@ export default function CarDetailPage() {
       {/* ── enquiry modal ── */}
       {showEnquiryModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm">
+          <div style={{ background:'#0b1628', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'20px' }} className="p-6 w-full max-w-sm">
             <h3 className="text-white font-semibold text-lg mb-1">Contact Dealer</h3>
-            <p className="text-gray-400 text-sm mb-4">Enter your details to continue to WhatsApp</p>
+            <p className="text-gray-500 text-sm mb-4">Enter your details to continue to WhatsApp</p>
             <input
               placeholder="Your name"
               value={enquiryForm.name}
               onChange={e => setEnquiryForm(p => ({ ...p, name: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-600"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
             />
             <input
               placeholder="Phone number (e.g. 0123456789)"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-600"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
             />
             <button
               onClick={handleEnquirySubmit}
               disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
+              style={{ borderTop:'2px solid #16a34a', letterSpacing:'0.02em' }}
             >
               {enquirySubmitting ? 'Opening WhatsApp...' : 'Continue to WhatsApp'}
             </button>
