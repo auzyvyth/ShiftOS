@@ -117,6 +117,12 @@ export default function AccountantPanel() {
   const [overviewStats, setOverviewStats] = useState(null);
   const [overviewRows, setOverviewRows] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // ── Inline grid editing ───────────────────────────────────────
+  const [editingCell, setEditingCell] = useState(null); // { rowIdx, field }
+  const [cellDraft, setCellDraft] = useState("");
+  const [cellSaving, setCellSaving] = useState(false);
+  const cellInputRef = useRef(null);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -217,7 +223,7 @@ export default function AccountantPanel() {
     supabase
       .from("stock_units")
       .select(
-        "purchase_price,recon_cost,sold_price,gross_profit,days_in_stock,sold_date,car_listings(brand,model,year)",
+        "id,purchase_price,recon_cost,sold_price,gross_profit,days_in_stock,sold_date,car_listings(brand,model,year)",
       )
       .eq("dealer_id", profile.dealer_id)
       .eq("status", "sold")
@@ -225,7 +231,7 @@ export default function AccountantPanel() {
       .lt("sold_date", end.toISOString())
       .order("sold_date", { ascending: false })
       .then(({ data }) => {
-        const rows = data || [];
+        const rows = (data || []).map((r) => ({ ...r, stock_unit_id: r.id }));
         const totalRevenue = rows.reduce((s, r) => s + (r.sold_price || 0), 0);
         const totalGP = rows.reduce((s, r) => s + (r.gross_profit || 0), 0);
         const unitsSold = rows.length;
@@ -235,6 +241,37 @@ export default function AccountantPanel() {
         setOverviewLoading(false);
       });
   }, [activeNav, profile, viewMonth]);
+
+  // ── Save inline cell edit ─────────────────────────────────────
+  const saveCellEdit = useCallback(async () => {
+    if (!editingCell || cellSaving) return;
+    const { rowIdx, field } = editingCell;
+    const row = overviewRows[rowIdx];
+    if (!row) return;
+    const numVal = parseFloat(cellDraft) || 0;
+    setOverviewRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIdx) return r;
+        const updated = { ...r, [field]: numVal };
+        const purchase = field === "purchase_price" ? numVal : (r.purchase_price || 0);
+        const recon    = field === "recon_cost"     ? numVal : (r.recon_cost     || 0);
+        const sold     = field === "sold_price"     ? numVal : (r.sold_price     || 0);
+        updated.gross_profit = sold - purchase - recon;
+        return updated;
+      })
+    );
+    setEditingCell(null);
+    setCellSaving(true);
+    await supabase
+      .from("stock_units")
+      .update({ [field]: numVal })
+      .eq("id", row.stock_unit_id);
+    setCellSaving(false);
+  }, [editingCell, cellDraft, overviewRows, cellSaving]);
+
+  useEffect(() => {
+    if (editingCell) cellInputRef.current?.select();
+  }, [editingCell]);
 
   // ── Deals fetch ───────────────────────────────────────────────
   useEffect(() => {
@@ -999,6 +1036,39 @@ export default function AccountantPanel() {
               >
                 ›
               </button>
+              <button
+                onClick={async () => {
+                  const { utils, writeFile } = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+                  const rows = overviewRows.map((r) => ({
+                    Car: r.car_listings ? `${r.car_listings.year} ${r.car_listings.brand} ${r.car_listings.model}` : "—",
+                    "Purchase (RM)": r.purchase_price || 0,
+                    "Recon (RM)":    r.recon_cost     || 0,
+                    "Sold (RM)":     r.sold_price     || 0,
+                    "GP (RM)":       r.gross_profit   || 0,
+                    "Margin %":      r.sold_price > 0 ? +((r.gross_profit / r.sold_price) * 100).toFixed(2) : 0,
+                    "Days in Stock": r.days_in_stock  ?? "",
+                  }));
+                  const ws = utils.json_to_sheet(rows);
+                  const wb = utils.book_new();
+                  utils.book_append_sheet(wb, ws, fmtMonth(viewMonth));
+                  writeFile(wb, `ShiftOS_PL_${monthKey(viewMonth)}.xlsx`);
+                }}
+                style={{
+                  marginLeft: 8,
+                  background: "rgba(34,197,94,0.1)",
+                  border: "1px solid rgba(34,197,94,0.25)",
+                  borderRadius: 6,
+                  color: "#4ade80",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "5px 12px",
+                  cursor: "pointer",
+                  letterSpacing: 0.5,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                ↓ Export .xlsx
+              </button>
             </div>
             <div
               style={{
@@ -1083,9 +1153,9 @@ export default function AccountantPanel() {
                   >
                     {[
                       "Car",
-                      "Purchase",
-                      "Recon",
-                      "Sold",
+                      "Purchase ✎",
+                      "Recon ✎",
+                      "Sold ✎",
                       "GP",
                       "Margin %",
                       "Days",
@@ -1131,37 +1201,73 @@ export default function AccountantPanel() {
                         r.sold_price > 0 ? (gp / r.sold_price) * 100 : 0;
                       const gpColor =
                         gp < 0 ? "#f87171" : gp > 0 ? "#4ade80" : "#6b7280";
+
+                      const EditableCell = ({ rowIdx, field, value, color }) => {
+                        const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === field;
+                        if (isEditing) {
+                          return (
+                            <td style={{ ...td(true), padding: "4px 8px" }}>
+                              <input
+                                ref={cellInputRef}
+                                type="number"
+                                value={cellDraft}
+                                onChange={(e) => setCellDraft(e.target.value)}
+                                onBlur={saveCellEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { e.preventDefault(); saveCellEdit(); }
+                                  if (e.key === "Escape") setEditingCell(null);
+                                  if (e.key === "Tab") {
+                                    e.preventDefault();
+                                    saveCellEdit();
+                                    const fields = ["purchase_price", "recon_cost", "sold_price"];
+                                    const nextField = fields[(fields.indexOf(field) + 1) % fields.length];
+                                    const nextRowIdx = fields.indexOf(field) === fields.length - 1 ? rowIdx + 1 : rowIdx;
+                                    setTimeout(() => {
+                                      const targetIdx = nextRowIdx < overviewRows.length ? nextRowIdx : 0;
+                                      setEditingCell({ rowIdx: targetIdx, field: nextField });
+                                      setCellDraft(String(overviewRows[targetIdx]?.[nextField] || 0));
+                                    }, 0);
+                                  }
+                                }}
+                                style={{
+                                  width: "100%",
+                                  background: "rgba(34,197,94,0.08)",
+                                  border: "1px solid rgba(34,197,94,0.4)",
+                                  borderRadius: 4,
+                                  color: "#86efac",
+                                  fontSize: 12,
+                                  padding: "3px 6px",
+                                  textAlign: "right",
+                                  outline: "none",
+                                  fontFamily: "'DM Sans',sans-serif",
+                                  boxSizing: "border-box",
+                                }}
+                              />
+                            </td>
+                          );
+                        }
+                        return (
+                          <td
+                            style={{ ...td(true), color: color || "#9ca3af", cursor: "cell", userSelect: "none" }}
+                            onDoubleClick={() => { setEditingCell({ rowIdx, field }); setCellDraft(String(value || 0)); }}
+                            title="Double-click to edit"
+                          >
+                            {rm(value)}
+                          </td>
+                        );
+                      };
+
                       return (
                         <tr key={i} style={tblRow(i % 2)}>
                           <td style={{ ...td(false), color: "#e5e7eb" }}>
-                            {car
-                              ? `${car.year} ${car.brand} ${car.model}`
-                              : "—"}
+                            {car ? `${car.year} ${car.brand} ${car.model}` : "—"}
                           </td>
-                          <td style={{ ...td(true), color: "#9ca3af" }}>
-                            {rm(r.purchase_price)}
-                          </td>
-                          <td style={{ ...td(true), color: "#9ca3af" }}>
-                            {rm(r.recon_cost)}
-                          </td>
-                          <td style={{ ...td(true), color: "#e5e7eb" }}>
-                            {rm(r.sold_price)}
-                          </td>
-                          <td
-                            style={{
-                              ...td(true),
-                              fontWeight: 600,
-                              color: gpColor,
-                            }}
-                          >
-                            {rm(gp)}
-                          </td>
-                          <td style={{ ...td(true), color: gpColor }}>
-                            {margin.toFixed(1)}%
-                          </td>
-                          <td style={{ ...td(true), color: "#6b7280" }}>
-                            {r.days_in_stock ?? "—"}
-                          </td>
+                          <EditableCell rowIdx={i} field="purchase_price" value={r.purchase_price} />
+                          <EditableCell rowIdx={i} field="recon_cost" value={r.recon_cost} />
+                          <EditableCell rowIdx={i} field="sold_price" value={r.sold_price} color="#e5e7eb" />
+                          <td style={{ ...td(true), fontWeight: 600, color: gpColor }}>{rm(gp)}</td>
+                          <td style={{ ...td(true), color: gpColor }}>{margin.toFixed(1)}%</td>
+                          <td style={{ ...td(true), color: "#6b7280" }}>{r.days_in_stock ?? "—"}</td>
                         </tr>
                       );
                     })
