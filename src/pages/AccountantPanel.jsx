@@ -68,7 +68,7 @@ const ADVISOR_PRESETS = [
 ];
 
 async function streamAnthropic(messages, systemPrompt, onChunk) {
-  const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
+  const AI_PROXY = `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/ai/messages`;
   const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
   if (systemPrompt) body.system = systemPrompt;
   const res = await fetch(AI_PROXY, {
@@ -202,12 +202,26 @@ export default function AccountantPanel() {
       setProfile(p);
       setLoading(false);
       const loadNotifs = () =>
-        supabase.from("salesman_notifications").select("*")
-          .eq("salesman_id", p.id).order("created_at", { ascending: false }).limit(20)
+        supabase
+          .from("salesman_notifications")
+          .select("*")
+          .eq("salesman_id", p.id)
+          .order("created_at", { ascending: false })
+          .limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      const ch = supabase.channel("acct_notifs_" + p.id)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadNotifs)
+      const ch = supabase
+        .channel("acct_notifs_" + p.id)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "salesman_notifications",
+            filter: `salesman_id=eq.${p.id}`,
+          },
+          loadNotifs,
+        )
         .subscribe();
       return () => supabase.removeChannel(ch);
     });
@@ -249,22 +263,28 @@ export default function AccountantPanel() {
     const row = overviewRows[rowIdx];
     if (!row) return;
     const numVal = parseFloat(cellDraft) || 0;
-    setOverviewRows((prev) =>
-      prev.map((r, i) => {
+    const purchase = field === "purchase_price" ? numVal : (row.purchase_price || 0);
+    const recon    = field === "recon_cost"     ? numVal : (row.recon_cost     || 0);
+    const sold     = field === "sold_price"     ? numVal : (row.sold_price     || 0);
+    const newGP    = sold - purchase - recon;
+    // optimistic update + live summary recalc
+    setOverviewRows((prev) => {
+      const updated = prev.map((r, i) => {
         if (i !== rowIdx) return r;
-        const updated = { ...r, [field]: numVal };
-        const purchase = field === "purchase_price" ? numVal : (r.purchase_price || 0);
-        const recon    = field === "recon_cost"     ? numVal : (r.recon_cost     || 0);
-        const sold     = field === "sold_price"     ? numVal : (r.sold_price     || 0);
-        updated.gross_profit = sold - purchase - recon;
-        return updated;
-      })
-    );
+        return { ...r, [field]: numVal, gross_profit: newGP };
+      });
+      const totalRevenue = updated.reduce((s, r) => s + (r.sold_price || 0), 0);
+      const totalGP      = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
+      const unitsSold    = updated.length;
+      const avgMargin    = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+      setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
+      return updated;
+    });
     setEditingCell(null);
     setCellSaving(true);
     await supabase
       .from("stock_units")
-      .update({ [field]: numVal })
+      .update({ [field]: numVal, gross_profit: newGP })
       .eq("id", row.stock_unit_id);
     setCellSaving(false);
   }, [editingCell, cellDraft, overviewRows, cellSaving]);
@@ -794,8 +814,10 @@ export default function AccountantPanel() {
 
   // ── Excel-style grid helpers ─────────────────────────────────
   const XL = {
-    tbl: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
-    th: (left) => ({
+    // width: auto so table uses natural column widths and scrolls horizontally
+    tbl: { width: "auto", minWidth: "100%", borderCollapse: "collapse", fontSize: 12 },
+    // col size hints — callers can override minWidth per column type
+    th: (left, minW = 110) => ({
       padding: "6px 10px",
       textAlign: left ? "left" : "right",
       color: "#6b7280",
@@ -810,6 +832,7 @@ export default function AccountantPanel() {
       position: "sticky",
       top: 0,
       zIndex: 2,
+      minWidth: minW,
     }),
     thN: {
       width: 40,
@@ -821,11 +844,12 @@ export default function AccountantPanel() {
       top: 0,
       zIndex: 2,
     },
-    td: (right) => ({
+    td: (right, minW = 110) => ({
       padding: "6px 10px",
       textAlign: right ? "right" : "left",
       border: "1px solid rgba(255,255,255,0.07)",
       fontSize: 12,
+      minWidth: minW,
     }),
     tdN: {
       padding: "5px 8px",
@@ -907,143 +931,614 @@ export default function AccountantPanel() {
     !!closeData?.expenses_posted;
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#080C14", fontFamily: "'DM Sans',sans-serif", color: "#f0f2f5" }}>
-
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "#080C14",
+        fontFamily: "'DM Sans',sans-serif",
+        color: "#f0f2f5",
+      }}
+    >
       {/* ── LEFT SIDEBAR ── */}
-      <div style={{ width: 220, flexShrink: 0, background: "#080e19", borderRight: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
+      <div
+        className="acct-sidebar"
+        style={{
+          width: 220,
+          flexShrink: 0,
+          background: "#080e19",
+          borderRight: "1px solid rgba(255,255,255,0.07)",
+          display: "flex",
+          flexDirection: "column",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
         {/* Logo */}
-        <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        <div
+          className="acct-sidebar-logo"
+          style={{
+            padding: "16px 16px 12px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <div style={{ width: 6, height: 6, background: ACCENT, borderRadius: "50%" }} />
-            <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, letterSpacing: 3, color: ACCENT }}>ACCOUNTS</span>
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                background: ACCENT,
+                borderRadius: "50%",
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: 17,
+                letterSpacing: 3,
+                color: ACCENT,
+              }}
+            >
+              ACCOUNTS
+            </span>
           </div>
-          <p style={{ fontSize: 9, color: "#1e293b", marginTop: 3, letterSpacing: "0.12em", textTransform: "uppercase", margin: "3px 0 0" }}>ShiftOS Financial</p>
+          <p
+            style={{
+              fontSize: 9,
+              color: "#1e293b",
+              marginTop: 3,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              margin: "3px 0 0",
+            }}
+          >
+            ShiftOS Financial
+          </p>
         </div>
 
         {/* Sheet tabs */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "6px 0", scrollbarWidth: "none" }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "6px 0",
+            scrollbarWidth: "none",
+          }}
+        >
           {NAV.map((n, idx) => {
             const active = activeNav === n.id;
             return (
-              <button key={n.id} onClick={() => setActiveNav(n.id)} style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 8,
-                padding: "9px 14px 9px 13px",
-                background: active ? "rgba(34,197,94,0.07)" : "transparent",
-                border: "none",
-                borderLeft: active ? `3px solid ${ACCENT}` : "3px solid transparent",
-                color: active ? "#e5e7eb" : "#4b5563",
-                fontSize: 12, fontWeight: active ? 600 : 400,
-                cursor: "pointer", textAlign: "left", fontFamily: "'DM Sans',sans-serif",
-                transition: "all 0.12s",
-              }}>
-                <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9, color: active ? ACCENT : "#1e293b", minWidth: 18, flexShrink: 0 }}>
+              <button
+                key={n.id}
+                className={`acct-tab-btn${active ? " active" : ""}`}
+                onClick={() => setActiveNav(n.id)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "9px 14px 9px 13px",
+                  background: active ? "rgba(34,197,94,0.07)" : "transparent",
+                  border: "none",
+                  borderLeft: active
+                    ? `3px solid ${ACCENT}`
+                    : "3px solid transparent",
+                  color: active ? "#e5e7eb" : "#4b5563",
+                  fontSize: 12,
+                  fontWeight: active ? 600 : 400,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "'DM Sans',sans-serif",
+                  transition: "all 0.12s",
+                }}
+              >
+                <span
+                  className="acct-cellref"
+                  style={{
+                    fontFamily: "'Courier New',monospace",
+                    fontSize: 9,
+                    color: active ? ACCENT : "#1e293b",
+                    minWidth: 18,
+                    flexShrink: 0,
+                  }}
+                >
                   {String.fromCharCode(65 + idx)}1
                 </span>
-                {n.label}
+                <span className="acct-tab-label">{n.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* Notification bell + user + logout */}
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px", flexShrink: 0 }}>
+        <div
+          className="acct-sidebar-bottom"
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            padding: "10px 14px",
+            flexShrink: 0,
+          }}
+        >
           <div style={{ position: "relative", marginBottom: 8 }}>
-            <button onClick={() => setNotifOpen(p => !p)} style={{
-              width: "100%", padding: "5px 8px", borderRadius: 5,
-              background: notifications.some(n => !n.is_read) ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.03)",
-              border: notifications.some(n => !n.is_read) ? "1px solid rgba(34,197,94,0.22)" : "1px solid rgba(255,255,255,0.06)",
-              color: notifications.some(n => !n.is_read) ? "#4ade80" : "#6b7280",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-              fontSize: 11, fontFamily: "'DM Sans',sans-serif",
-            }}>
+            <button
+              onClick={() => setNotifOpen((p) => !p)}
+              style={{
+                width: "100%",
+                padding: "5px 8px",
+                borderRadius: 5,
+                background: notifications.some((n) => !n.is_read)
+                  ? "rgba(34,197,94,0.08)"
+                  : "rgba(255,255,255,0.03)",
+                border: notifications.some((n) => !n.is_read)
+                  ? "1px solid rgba(34,197,94,0.22)"
+                  : "1px solid rgba(255,255,255,0.06)",
+                color: notifications.some((n) => !n.is_read)
+                  ? "#4ade80"
+                  : "#6b7280",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
               <Bell style={{ width: 13, height: 13, flexShrink: 0 }} />
               <span>Notifications</span>
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <span style={{ marginLeft: "auto", width: 15, height: 15, background: ACCENT, color: "#fff", fontSize: 8, fontWeight: 700, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {notifications.filter(n => !n.is_read).length > 9 ? "9+" : notifications.filter(n => !n.is_read).length}
+              {notifications.filter((n) => !n.is_read).length > 0 && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    width: 15,
+                    height: 15,
+                    background: ACCENT,
+                    color: "#fff",
+                    fontSize: 8,
+                    fontWeight: 700,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {notifications.filter((n) => !n.is_read).length > 9
+                    ? "9+"
+                    : notifications.filter((n) => !n.is_read).length}
                 </span>
               )}
             </button>
             {notifOpen && (
               <>
-                <div onClick={() => setNotifOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                <div style={{ position: "absolute", bottom: "110%", left: 0, zIndex: 50, width: 290, maxHeight: 340, overflowY: "auto", background: "#111827", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", fontFamily: "'DM Sans',sans-serif" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#f3f4f6" }}>Notifications</span>
-                    {notifications.some(n => !n.is_read) && (
-                      <button onClick={async () => { const ids = notifications.filter(n => !n.is_read).map(n => n.id); await supabase.from("salesman_notifications").update({ is_read: true }).in("id", ids); setNotifications(p => p.map(n => ({ ...n, is_read: true }))); }} style={{ fontSize: 10, color: "#4ade80", background: "none", border: "none", cursor: "pointer" }}>Mark all read</button>
+                <div
+                  onClick={() => setNotifOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "110%",
+                    left: 0,
+                    zIndex: 50,
+                    width: 290,
+                    maxHeight: 340,
+                    overflowY: "auto",
+                    background: "#111827",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 14px",
+                      borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#f3f4f6",
+                      }}
+                    >
+                      Notifications
+                    </span>
+                    {notifications.some((n) => !n.is_read) && (
+                      <button
+                        onClick={async () => {
+                          const ids = notifications
+                            .filter((n) => !n.is_read)
+                            .map((n) => n.id);
+                          await supabase
+                            .from("salesman_notifications")
+                            .update({ is_read: true })
+                            .in("id", ids);
+                          setNotifications((p) =>
+                            p.map((n) => ({ ...n, is_read: true })),
+                          );
+                        }}
+                        style={{
+                          fontSize: 10,
+                          color: "#4ade80",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Mark all read
+                      </button>
                     )}
                   </div>
                   {notifications.length === 0 ? (
-                    <p style={{ fontSize: 12, color: "#4b5563", padding: "16px", textAlign: "center" }}>No messages yet</p>
-                  ) : notifications.map(n => (
-                    <div key={n.id} onClick={async () => { if (!n.is_read) { await supabase.from("salesman_notifications").update({ is_read: true }).eq("id", n.id); setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x)); } }} style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: n.is_read ? "transparent" : "rgba(34,197,94,0.04)", cursor: "pointer" }}>
-                      <div style={{ display: "flex", gap: 7 }}>
-                        {!n.is_read && <div style={{ width: 5, height: 5, background: ACCENT, borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />}
-                        <div>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: "#f3f4f6", margin: "0 0 2px" }}>{n.title || "Message from Owner"}</p>
-                          <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>{n.body}</p>
-                          <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2 }}>{n.created_at ? new Date(n.created_at).toLocaleDateString("en-MY") : ""}</p>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#4b5563",
+                        padding: "16px",
+                        textAlign: "center",
+                      }}
+                    >
+                      No messages yet
+                    </p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={async () => {
+                          if (!n.is_read) {
+                            await supabase
+                              .from("salesman_notifications")
+                              .update({ is_read: true })
+                              .eq("id", n.id);
+                            setNotifications((p) =>
+                              p.map((x) =>
+                                x.id === n.id ? { ...x, is_read: true } : x,
+                              ),
+                            );
+                          }
+                        }}
+                        style={{
+                          padding: "10px 14px",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          background: n.is_read
+                            ? "transparent"
+                            : "rgba(34,197,94,0.04)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 7 }}>
+                          {!n.is_read && (
+                            <div
+                              style={{
+                                width: 5,
+                                height: 5,
+                                background: ACCENT,
+                                borderRadius: "50%",
+                                flexShrink: 0,
+                                marginTop: 5,
+                              }}
+                            />
+                          )}
+                          <div>
+                            <p
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#f3f4f6",
+                                margin: "0 0 2px",
+                              }}
+                            >
+                              {n.title || "Message from Owner"}
+                            </p>
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: "#9ca3af",
+                                margin: 0,
+                              }}
+                            >
+                              {n.body}
+                            </p>
+                            <p
+                              style={{
+                                fontSize: 10,
+                                color: "#4b5563",
+                                marginTop: 2,
+                              }}
+                            >
+                              {n.created_at
+                                ? new Date(n.created_at).toLocaleDateString(
+                                    "en-MY",
+                                  )
+                                : ""}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </>
             )}
           </div>
-          <p style={{ fontSize: 11, color: "#374151", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name}</p>
-          <button onClick={() => supabase.auth.signOut().then(() => navigate("/login"))} style={{ fontSize: 11, color: "#1e293b", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "'DM Sans',sans-serif" }}>
+          <p
+            style={{
+              fontSize: 11,
+              color: "#374151",
+              marginBottom: 5,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {profile?.full_name}
+          </p>
+          <button
+            onClick={() =>
+              supabase.auth.signOut().then(() => navigate("/login"))
+            }
+            style={{
+              fontSize: 11,
+              color: "#1e293b",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              fontFamily: "'DM Sans',sans-serif",
+            }}
+          >
             Sign out
           </button>
         </div>
-      </div>{/* end sidebar */}
+      </div>
+      {/* end sidebar */}
 
       {/* ── MAIN CONTENT AREA ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-
+      <style>{`
+        @media (max-width: 767px) {
+          .acct-sidebar { width: 40px !important; min-width: 40px !important; }
+          .acct-sidebar .acct-sidebar-logo,
+          .acct-sidebar .acct-sidebar-label,
+          .acct-sidebar .acct-sidebar-bottom { display: none !important; }
+          .acct-sidebar .acct-tab-label { display: none !important; }
+          .acct-sidebar .acct-tab-btn {
+            padding: 10px 0 !important;
+            justify-content: center !important;
+            border-left-width: 0 !important;
+            border-bottom: 2px solid transparent !important;
+          }
+          .acct-sidebar .acct-tab-btn.active {
+            background: rgba(34,197,94,0.15) !important;
+          }
+          .acct-sidebar .acct-cellref {
+            font-size: 10px !important;
+            min-width: unset !important;
+            writing-mode: vertical-rl !important;
+          }
+        }
+      `}</style>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+          minHeight: "100vh",
+        }}
+      >
         {/* FORMULA BAR */}
-        <div style={{ height: 34, background: "#0a0f1a", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", padding: "0 14px", gap: 10, flexShrink: 0 }}>
-          <div style={{ background: "#060b14", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 3, padding: "2px 10px", fontFamily: "'Courier New',monospace", fontSize: 11, color: ACCENT, minWidth: 36, textAlign: "center", letterSpacing: 1 }}>
-            {String.fromCharCode(65 + NAV.findIndex(n => n.id === activeNav))}1
+        <div
+          style={{
+            height: 34,
+            background: "#0a0f1a",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 14px",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              background: "#060b14",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 3,
+              padding: "2px 10px",
+              fontFamily: "'Courier New',monospace",
+              fontSize: 11,
+              color: ACCENT,
+              minWidth: 36,
+              textAlign: "center",
+              letterSpacing: 1,
+            }}
+          >
+            {String.fromCharCode(65 + NAV.findIndex((n) => n.id === activeNav))}
+            1
           </div>
-          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: "#374151", fontFamily: "'Courier New',monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {"ShiftOS Accounts › "}{NAV.find(n => n.id === activeNav)?.label}{activeNav === "overview" ? ` › ${fmtMonth(viewMonth)}` : activeNav === "close" ? ` › ${fmtMonth(closeMonth)}` : ""}
+          <div
+            style={{
+              width: 1,
+              height: 16,
+              background: "rgba(255,255,255,0.08)",
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              color: "#374151",
+              fontFamily: "'Courier New',monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {"ShiftOS Accounts › "}
+            {NAV.find((n) => n.id === activeNav)?.label}
+            {activeNav === "overview"
+              ? ` › ${fmtMonth(viewMonth)}`
+              : activeNav === "close"
+                ? ` › ${fmtMonth(closeMonth)}`
+                : ""}
           </span>
-          {cellSaving && <span style={{ marginLeft: "auto", fontSize: 10, color: ACCENT, letterSpacing: 1, flexShrink: 0 }}>SAVING…</span>}
+          {cellSaving && (
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: 10,
+                color: ACCENT,
+                letterSpacing: 1,
+                flexShrink: 0,
+              }}
+            >
+              SAVING…
+            </span>
+          )}
         </div>
 
         {/* PER-SHEET TOOLBAR */}
-        <div style={{ height: 36, background: "#090e1a", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", padding: "0 14px", gap: 8, flexShrink: 0, overflowX: "auto", scrollbarWidth: "none" }}>
+        <div
+          style={{
+            height: 36,
+            background: "#090e1a",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 14px",
+            gap: 8,
+            flexShrink: 0,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+          }}
+        >
           {activeNav === "overview" && (
             <>
-              <button style={monthNavBtn} onClick={() => setViewMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() - 1); return d; })}>‹</button>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#e5e7eb", minWidth: 110, textAlign: "center" }}>{fmtMonth(viewMonth)}</span>
-              <button style={monthNavBtn} onClick={() => setViewMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() + 1); return d; })}>›</button>
-              <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.07)", margin: "0 4px" }} />
-              <button onClick={async () => {
-                const { utils, writeFile } = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
-                const rows = overviewRows.map(r => ({ Car: r.car_listings ? `${r.car_listings.year} ${r.car_listings.brand} ${r.car_listings.model}` : "—", "Purchase (RM)": r.purchase_price || 0, "Recon (RM)": r.recon_cost || 0, "Sold (RM)": r.sold_price || 0, "GP (RM)": r.gross_profit || 0, "Margin %": r.sold_price > 0 ? +((r.gross_profit / r.sold_price) * 100).toFixed(2) : 0, "Days in Stock": r.days_in_stock ?? "" }));
-                const ws = utils.json_to_sheet(rows);
-                const wb = utils.book_new();
-                utils.book_append_sheet(wb, ws, fmtMonth(viewMonth));
-                writeFile(wb, `ShiftOS_PL_${monthKey(viewMonth)}.xlsx`);
-              }} style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 3, color: "#4ade80", fontSize: 10, fontWeight: 600, padding: "3px 10px", cursor: "pointer", letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans',sans-serif" }}>
+              <button
+                style={monthNavBtn}
+                onClick={() =>
+                  setViewMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() - 1);
+                    return d;
+                  })
+                }
+              >
+                ‹
+              </button>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#e5e7eb",
+                  minWidth: 110,
+                  textAlign: "center",
+                }}
+              >
+                {fmtMonth(viewMonth)}
+              </span>
+              <button
+                style={monthNavBtn}
+                onClick={() =>
+                  setViewMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() + 1);
+                    return d;
+                  })
+                }
+              >
+                ›
+              </button>
+              <div
+                style={{
+                  width: 1,
+                  height: 18,
+                  background: "rgba(255,255,255,0.07)",
+                  margin: "0 4px",
+                }}
+              />
+              <button
+                onClick={async () => {
+                  const { utils, writeFile } =
+                    await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+                  const rows = overviewRows.map((r) => ({
+                    Car: r.car_listings
+                      ? `${r.car_listings.year} ${r.car_listings.brand} ${r.car_listings.model}`
+                      : "—",
+                    "Purchase (RM)": r.purchase_price || 0,
+                    "Recon (RM)": r.recon_cost || 0,
+                    "Sold (RM)": r.sold_price || 0,
+                    "GP (RM)": r.gross_profit || 0,
+                    "Margin %":
+                      r.sold_price > 0
+                        ? +((r.gross_profit / r.sold_price) * 100).toFixed(2)
+                        : 0,
+                    "Days in Stock": r.days_in_stock ?? "",
+                  }));
+                  const ws = utils.json_to_sheet(rows);
+                  const wb = utils.book_new();
+                  utils.book_append_sheet(wb, ws, fmtMonth(viewMonth));
+                  writeFile(wb, `ShiftOS_PL_${monthKey(viewMonth)}.xlsx`);
+                }}
+                style={{
+                  background: "rgba(34,197,94,0.08)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  borderRadius: 3,
+                  color: "#4ade80",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  cursor: "pointer",
+                  letterSpacing: 0.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
                 ↓ Export .xlsx
               </button>
             </>
           )}
           {activeNav === "deals" && (
-            <span style={{ fontSize: 11, color: "#374151" }}>Click a row to expand · {dealsRows.length} deals</span>
+            <span style={{ fontSize: 11, color: "#374151" }}>
+              Click a row to expand · {dealsRows.length} deals
+            </span>
           )}
           {activeNav === "commissions" && (
             <>
-              <button style={tbBtn(commSubTab === "rules")} onClick={() => setCommSubTab("rules")}>Commission Rules</button>
-              <button style={tbBtn(commSubTab === "ledger")} onClick={() => setCommSubTab("ledger")}>Ledger</button>
+              <button
+                style={tbBtn(commSubTab === "rules")}
+                onClick={() => setCommSubTab("rules")}
+              >
+                Commission Rules
+              </button>
+              <button
+                style={tbBtn(commSubTab === "ledger")}
+                onClick={() => setCommSubTab("ledger")}
+              >
+                Ledger
+              </button>
               {commSubTab === "ledger" && unpaidTotal > 0 && (
-                <span style={{ marginLeft: 8, fontSize: 11, color: "#f87171", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 3, padding: "2px 8px" }}>
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    color: "#f87171",
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    borderRadius: 3,
+                    padding: "2px 8px",
+                  }}
+                >
                   Unpaid: {rm(unpaidTotal)}
                 </span>
               )}
@@ -1051,43 +1546,186 @@ export default function AccountantPanel() {
           )}
           {activeNav === "expenses" && (
             <span style={{ fontSize: 11, color: "#4b5563" }}>
-              Total: <strong style={{ color: "#e5e7eb" }}>{rm(expenseRows.reduce((s, r) => s + (r.amount || 0), 0))}</strong>
+              Total:{" "}
+              <strong style={{ color: "#e5e7eb" }}>
+                {rm(expenseRows.reduce((s, r) => s + (r.amount || 0), 0))}
+              </strong>
             </span>
           )}
           {activeNav === "close" && (
             <>
-              <button style={monthNavBtn} onClick={() => setCloseMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() - 1); return d; })}>‹</button>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#e5e7eb", minWidth: 110, textAlign: "center" }}>{fmtMonth(closeMonth)}</span>
-              <button style={monthNavBtn} onClick={() => setCloseMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() + 1); return d; })}>›</button>
-              {isClosed && <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 700, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 3, padding: "2px 8px", letterSpacing: 0.5 }}>✓ CLOSED</span>}
+              <button
+                style={monthNavBtn}
+                onClick={() =>
+                  setCloseMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() - 1);
+                    return d;
+                  })
+                }
+              >
+                ‹
+              </button>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#e5e7eb",
+                  minWidth: 110,
+                  textAlign: "center",
+                }}
+              >
+                {fmtMonth(closeMonth)}
+              </span>
+              <button
+                style={monthNavBtn}
+                onClick={() =>
+                  setCloseMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() + 1);
+                    return d;
+                  })
+                }
+              >
+                ›
+              </button>
+              {isClosed && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "#4ade80",
+                    fontWeight: 700,
+                    background: "rgba(34,197,94,0.1)",
+                    border: "1px solid rgba(34,197,94,0.25)",
+                    borderRadius: 3,
+                    padding: "2px 8px",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  ✓ CLOSED
+                </span>
+              )}
             </>
           )}
           {activeNav === "advisor" && (
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none" }}>
-              {ADVISOR_PRESETS.map(p => (
-                <button key={p} onClick={() => sendAdvisor(p)} disabled={advisorSending} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#9ca3af", fontSize: 11, padding: "3px 10px", cursor: advisorSending ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "'DM Sans',sans-serif", flexShrink: 0, opacity: advisorSending ? 0.5 : 1 }}>{p}</button>
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                overflowX: "auto",
+                scrollbarWidth: "none",
+              }}
+            >
+              {ADVISOR_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => sendAdvisor(p)}
+                  disabled={advisorSending}
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 3,
+                    color: "#9ca3af",
+                    fontSize: 11,
+                    padding: "3px 10px",
+                    cursor: advisorSending ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap",
+                    fontFamily: "'DM Sans',sans-serif",
+                    flexShrink: 0,
+                    opacity: advisorSending ? 0.5 : 1,
+                  }}
+                >
+                  {p}
+                </button>
               ))}
             </div>
           )}
         </div>
 
         {/* GRID AREA */}
-        <div style={{ flex: 1, overflow: activeNav === "advisor" ? "hidden" : "auto", background: "#080C14", scrollbarWidth: "thin", scrollbarColor: "#1a2030 transparent" }}>
-
+        <div
+          style={{
+            flex: 1,
+            overflow: activeNav === "advisor" ? "hidden" : "auto",
+            background: "#080C14",
+            scrollbarWidth: "thin",
+            scrollbarColor: "#1a2030 transparent",
+          }}
+        >
           {/* ── P&L OVERVIEW ── */}
           {activeNav === "overview" && (
             <div>
               {/* Pinned summary row */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "2px solid rgba(34,197,94,0.15)", background: "rgba(34,197,94,0.03)" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4,1fr)",
+                  borderBottom: "2px solid rgba(34,197,94,0.15)",
+                  background: "rgba(34,197,94,0.03)",
+                }}
+              >
                 {[
-                  { label: "Total Revenue", value: overviewLoading || !overviewStats ? "—" : `RM ${overviewStats.totalRevenue.toLocaleString()}` },
-                  { label: "Gross Profit",  value: overviewLoading || !overviewStats ? "—" : `RM ${overviewStats.totalGP.toLocaleString()}` },
-                  { label: "Units Sold",    value: overviewLoading || !overviewStats ? "—" : overviewStats.unitsSold },
-                  { label: "Avg Margin",    value: overviewLoading || !overviewStats ? "—" : `${overviewStats.avgMargin.toFixed(1)}%` },
+                  {
+                    label: "Total Revenue",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : `RM ${overviewStats.totalRevenue.toLocaleString()}`,
+                  },
+                  {
+                    label: "Gross Profit",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : `RM ${overviewStats.totalGP.toLocaleString()}`,
+                  },
+                  {
+                    label: "Units Sold",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : overviewStats.unitsSold,
+                  },
+                  {
+                    label: "Avg Margin",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : `${overviewStats.avgMargin.toFixed(1)}%`,
+                  },
                 ].map((c, i) => (
-                  <div key={c.label} style={{ padding: "10px 16px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
-                    <p style={{ fontSize: 9, color: "#334155", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, margin: "0 0 4px" }}>{c.label}</p>
-                    <p style={{ fontSize: 18, fontWeight: 700, color: ACCENT, margin: 0, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: 1 }}>{c.value}</p>
+                  <div
+                    key={c.label}
+                    style={{
+                      padding: "10px 16px",
+                      borderRight:
+                        i < 3 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 9,
+                        color: "#334155",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        fontWeight: 700,
+                        margin: "0 0 4px",
+                      }}
+                    >
+                      {c.label}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: ACCENT,
+                        margin: 0,
+                        fontFamily: "'Bebas Neue',sans-serif",
+                        letterSpacing: 1,
+                      }}
+                    >
+                      {c.value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -1097,72 +1735,208 @@ export default function AccountantPanel() {
                   <thead>
                     <tr>
                       <th style={XL.thN} />
-                      {["Car", "Purchase ✎", "Recon ✎", "Sold ✎", "GP", "Margin %", "Days"].map(h => (
-                        <th key={h} style={XL.th(h === "Car")}>{h}</th>
+                      {[
+                        "Car",
+                        "Purchase ✎",
+                        "Recon ✎",
+                        "Sold ✎",
+                        "GP",
+                        "Margin %",
+                        "Days",
+                      ].map((h) => (
+                        <th key={h} style={XL.th(h === "Car", h === "Car" ? 200 : h === "Days" ? 80 : 110)}>
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {overviewLoading ? (
-                      <tr><td colSpan={8} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
+                      <tr>
+                        <td
+                          colSpan={8}
+                          style={{
+                            padding: 20,
+                            textAlign: "center",
+                            color: "#374151",
+                            border: "1px solid rgba(255,255,255,0.07)",
+                          }}
+                        >
+                          Loading…
+                        </td>
+                      </tr>
                     ) : overviewRows.length === 0 ? (
-                      <tr><td colSpan={8} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No sold units this period</td></tr>
-                    ) : overviewRows.map((r, i) => {
-                      const car = r.car_listings;
-                      const gp = r.gross_profit || 0;
-                      const margin = r.sold_price > 0 ? (gp / r.sold_price) * 100 : 0;
-                      const gpColor = gp < 0 ? "#f87171" : gp > 0 ? "#4ade80" : "#6b7280";
+                      <tr>
+                        <td
+                          colSpan={8}
+                          style={{
+                            padding: 20,
+                            textAlign: "center",
+                            color: "#374151",
+                            border: "1px solid rgba(255,255,255,0.07)",
+                          }}
+                        >
+                          No sold units this period
+                        </td>
+                      </tr>
+                    ) : (
+                      overviewRows.map((r, i) => {
+                        const car = r.car_listings;
+                        const gp = r.gross_profit || 0;
+                        const margin =
+                          r.sold_price > 0 ? (gp / r.sold_price) * 100 : 0;
+                        const gpColor =
+                          gp < 0 ? "#f87171" : gp > 0 ? "#4ade80" : "#6b7280";
 
-                      const EditableCell = ({ rowIdx, field, value, color }) => {
-                        const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === field;
-                        if (isEditing) {
-                          return (
-                            <td style={{ ...XL.td(true), padding: "3px 6px", outline: "2px solid #22c55e", outlineOffset: "-2px", background: "rgba(34,197,94,0.06)" }}>
-                              <input ref={cellInputRef} type="number" value={cellDraft}
-                                onChange={e => setCellDraft(e.target.value)}
-                                onBlur={saveCellEdit}
-                                onKeyDown={e => {
-                                  if (e.key === "Enter") { e.preventDefault(); saveCellEdit(); }
-                                  if (e.key === "Escape") setEditingCell(null);
-                                  if (e.key === "Tab") {
-                                    e.preventDefault(); saveCellEdit();
-                                    const fields = ["purchase_price", "recon_cost", "sold_price"];
-                                    const nextField = fields[(fields.indexOf(field) + 1) % fields.length];
-                                    const nextRowIdx = fields.indexOf(field) === fields.length - 1 ? rowIdx + 1 : rowIdx;
-                                    setTimeout(() => {
-                                      const targetIdx = nextRowIdx < overviewRows.length ? nextRowIdx : 0;
-                                      setEditingCell({ rowIdx: targetIdx, field: nextField });
-                                      setCellDraft(String(overviewRows[targetIdx]?.[nextField] || 0));
-                                    }, 0);
-                                  }
+                        const EditableCell = ({
+                          rowIdx,
+                          field,
+                          value,
+                          color,
+                        }) => {
+                          const isEditing =
+                            editingCell?.rowIdx === rowIdx &&
+                            editingCell?.field === field;
+                          if (isEditing) {
+                            return (
+                              <td
+                                style={{
+                                  ...XL.td(true),
+                                  padding: "3px 6px",
+                                  boxShadow: "inset 0 0 0 2px #22c55e",
+                                  background: "rgba(34,197,94,0.06)",
                                 }}
-                                style={{ width: "100%", background: "transparent", border: "none", color: "#86efac", fontSize: 12, textAlign: "right", outline: "none", fontFamily: "'Courier New',monospace", boxSizing: "border-box", padding: "2px 0" }}
-                              />
+                              >
+                                <input
+                                  ref={cellInputRef}
+                                  type="number"
+                                  value={cellDraft}
+                                  onChange={(e) => setCellDraft(e.target.value)}
+                                  onBlur={saveCellEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      saveCellEdit();
+                                    }
+                                    if (e.key === "Escape")
+                                      setEditingCell(null);
+                                    if (e.key === "Tab") {
+                                      e.preventDefault();
+                                      saveCellEdit();
+                                      const fields = [
+                                        "purchase_price",
+                                        "recon_cost",
+                                        "sold_price",
+                                      ];
+                                      const nextField =
+                                        fields[
+                                          (fields.indexOf(field) + 1) %
+                                            fields.length
+                                        ];
+                                      const nextRowIdx =
+                                        fields.indexOf(field) ===
+                                        fields.length - 1
+                                          ? rowIdx + 1
+                                          : rowIdx;
+                                      setTimeout(() => {
+                                        const targetIdx =
+                                          nextRowIdx < overviewRows.length
+                                            ? nextRowIdx
+                                            : 0;
+                                        setEditingCell({
+                                          rowIdx: targetIdx,
+                                          field: nextField,
+                                        });
+                                        setCellDraft(
+                                          String(
+                                            overviewRows[targetIdx]?.[
+                                              nextField
+                                            ] || 0,
+                                          ),
+                                        );
+                                      }, 0);
+                                    }
+                                  }}
+                                  style={{
+                                    width: "100%",
+                                    background: "transparent",
+                                    border: "none",
+                                    color: "#86efac",
+                                    fontSize: 12,
+                                    textAlign: "right",
+                                    outline: "none",
+                                    fontFamily: "'Courier New',monospace",
+                                    boxSizing: "border-box",
+                                    padding: "2px 0",
+                                  }}
+                                />
+                              </td>
+                            );
+                          }
+                          return (
+                            <td
+                              style={{
+                                ...XL.td(true),
+                                color: color || "#9ca3af",
+                                cursor: "cell",
+                                userSelect: "none",
+                              }}
+                              onDoubleClick={() => {
+                                setEditingCell({ rowIdx, field });
+                                setCellDraft(String(value || 0));
+                              }}
+                              title="Double-click to edit"
+                            >
+                              {rm(value)}
                             </td>
                           );
-                        }
-                        return (
-                          <td style={{ ...XL.td(true), color: color || "#9ca3af", cursor: "cell", userSelect: "none" }}
-                            onDoubleClick={() => { setEditingCell({ rowIdx, field }); setCellDraft(String(value || 0)); }}
-                            title="Double-click to edit">
-                            {rm(value)}
-                          </td>
-                        );
-                      };
+                        };
 
-                      return (
-                        <tr key={i} style={XL.row(i)}>
-                          <td style={XL.tdN}>{i + 1}</td>
-                          <td style={{ ...XL.td(false), color: "#e5e7eb" }}>{car ? `${car.year} ${car.brand} ${car.model}` : "—"}</td>
-                          <EditableCell rowIdx={i} field="purchase_price" value={r.purchase_price} />
-                          <EditableCell rowIdx={i} field="recon_cost" value={r.recon_cost} />
-                          <EditableCell rowIdx={i} field="sold_price" value={r.sold_price} color="#e5e7eb" />
-                          <td style={{ ...XL.td(true), fontWeight: 600, color: gpColor }}>{rm(gp)}</td>
-                          <td style={{ ...XL.td(true), color: gpColor }}>{margin.toFixed(1)}%</td>
-                          <td style={{ ...XL.td(true), color: "#6b7280" }}>{r.days_in_stock ?? "—"}</td>
-                        </tr>
-                      );
-                    })}
+                        return (
+                          <tr key={i} style={XL.row(i)}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.04)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.018)"; }}>
+                            <td style={XL.tdN}>{i + 1}</td>
+                            <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>
+                              {car
+                                ? `${car.year} ${car.brand} ${car.model}`
+                                : "—"}
+                            </td>
+                            <EditableCell
+                              rowIdx={i}
+                              field="purchase_price"
+                              value={r.purchase_price}
+                            />
+                            <EditableCell
+                              rowIdx={i}
+                              field="recon_cost"
+                              value={r.recon_cost}
+                            />
+                            <EditableCell
+                              rowIdx={i}
+                              field="sold_price"
+                              value={r.sold_price}
+                              color="#e5e7eb"
+                            />
+                            <td
+                              style={{
+                                ...XL.td(true),
+                                fontWeight: 600,
+                                color: gpColor,
+                              }}
+                            >
+                              {rm(gp)}
+                            </td>
+                            <td style={{ ...XL.td(true), color: gpColor }}>
+                              {margin.toFixed(1)}%
+                            </td>
+                            <td style={{ ...XL.td(true), color: "#6b7280" }}>
+                              {r.days_in_stock ?? "—"}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1176,87 +1950,326 @@ export default function AccountantPanel() {
                 <thead>
                   <tr>
                     <th style={XL.thN} />
-                    {["Car", "Salesman", "Selling Price", "Deposit", "Loan Bank", "Disbursed", "Status", ""].map(h => (
-                      <th key={h} style={XL.th(["Car", "Salesman", "Loan Bank", ""].includes(h))}>{h}</th>
+                    {[
+                      "Car",
+                      "Salesman",
+                      "Selling Price",
+                      "Deposit",
+                      "Loan Bank",
+                      "Disbursed",
+                      "Status",
+                      "",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        style={XL.th(
+                          ["Car", "Salesman", "Loan Bank", ""].includes(h),
+                        )}
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {dealsLoading ? (
-                    <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
+                    <tr>
+                      <td
+                        colSpan={9}
+                        style={{
+                          padding: 20,
+                          textAlign: "center",
+                          color: "#374151",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                        }}
+                      >
+                        Loading…
+                      </td>
+                    </tr>
                   ) : dealsRows.length === 0 ? (
-                    <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No deals found</td></tr>
-                  ) : dealsRows.map((row, idx) => {
-                    const car = row.car_listings;
-                    const sc = DEAL_STATUS_COLORS[row.status] || DEAL_STATUS_COLORS.pending;
-                    const isOpen = expandedDealId === row.id;
-                    const draft = dealDrafts[row.id] || {};
-                    const val = f => f in draft ? draft[f] : row[f];
-                    return (
-                      <React.Fragment key={row.id}>
-                        <tr style={{ ...XL.row(idx), cursor: "pointer" }} onClick={() => setExpandedDealId(isOpen ? null : row.id)}>
-                          <td style={XL.tdN}>{idx + 1}</td>
-                          <td style={{ ...XL.td(false), color: "#e5e7eb" }}>{car ? `${car.year} ${car.brand} ${car.model}` : "—"}</td>
-                          <td style={{ ...XL.td(false), color: "#9ca3af" }}>{row.profiles?.full_name || "—"}</td>
-                          <td style={{ ...XL.td(true), color: "#e5e7eb" }}>{rm(row.selling_price)}</td>
-                          <td style={{ ...XL.td(true), color: "#9ca3af" }}>{rm(row.deposit_received)}</td>
-                          <td style={{ ...XL.td(false), color: "#9ca3af" }}>{row.loan_bank || "—"}</td>
-                          <td style={{ ...XL.td(true), color: row.loan_disbursed ? "#4ade80" : "#6b7280" }}>{row.loan_disbursed ? "Yes" : "No"}</td>
-                          <td style={XL.td(true)}>
-                            <span style={{ background: sc.bg, color: sc.color, borderRadius: 3, padding: "1px 7px", fontSize: 10, fontWeight: 600 }}>{row.status || "pending"}</span>
-                          </td>
-                          <td style={{ ...XL.td(false), color: "#6b7280", fontSize: 11 }}>{isOpen ? "▲" : "▼"}</td>
-                        </tr>
-                        {isOpen && (
-                          <tr style={{ background: "rgba(0,0,0,0.2)" }}>
-                            <td style={{ ...XL.tdN, background: "#090e18" }} />
-                            <td colSpan={8} style={{ padding: "14px 16px", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.15)" }}>
-                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
-                                {[
-                                  { label: "Deposit Received (RM)", field: "deposit_received", type: "number" },
-                                  { label: "Deposit Date", field: "deposit_date", type: "date" },
-                                  { label: "Loan Amount (RM)", field: "loan_amount", type: "number" },
-                                  { label: "Loan Bank", field: "loan_bank", type: "text" },
-                                  { label: "Cash Balance (RM)", field: "cash_balance", type: "number" },
-                                  { label: "Commission (RM)", field: "commission_amount", type: "number" },
-                                ].map(({ label, field, type }) => (
-                                  <div key={field}>
-                                    <p style={label11}>{label}</p>
-                                    <input type={type} value={val(field) ?? ""} onChange={e => setDealField(row.id, field, type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)} style={inp} />
-                                  </div>
-                                ))}
-                                <div>
-                                  <p style={label11}>Status</p>
-                                  <select value={val("status") || "pending"} onChange={e => setDealField(row.id, "status", e.target.value)} style={inp}>
-                                    {["pending", "disbursed", "complete", "flagged"].map(s => <option key={s} value={s}>{s}</option>)}
-                                  </select>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 14, paddingTop: 18 }}>
-                                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#9ca3af", cursor: "pointer" }}>
-                                    <input type="checkbox" checked={!!val("loan_disbursed")} onChange={e => setDealField(row.id, "loan_disbursed", e.target.checked)} />
-                                    Loan Disbursed
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#9ca3af", cursor: "pointer" }}>
-                                    <input type="checkbox" checked={!!val("commission_paid")} onChange={e => setDealField(row.id, "commission_paid", e.target.checked)} />
-                                    Comm. Paid
-                                  </label>
-                                </div>
-                                <div style={{ gridColumn: "1 / -1" }}>
-                                  <p style={label11}>Notes</p>
-                                  <textarea value={val("notes") ?? ""} onChange={e => setDealField(row.id, "notes", e.target.value)} rows={2} style={{ ...inp, resize: "vertical" }} />
-                                </div>
-                              </div>
-                              <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                                <button onClick={() => saveDeal(row)} disabled={dealSaving[row.id]} style={{ background: ACCENT, color: "#000", border: "none", borderRadius: 4, padding: "5px 16px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: dealSaving[row.id] ? 0.6 : 1 }}>
-                                  {dealSaving[row.id] ? "Saving…" : "Save"}
-                                </button>
-                              </div>
+                    <tr>
+                      <td
+                        colSpan={9}
+                        style={{
+                          padding: 20,
+                          textAlign: "center",
+                          color: "#374151",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                        }}
+                      >
+                        No deals found
+                      </td>
+                    </tr>
+                  ) : (
+                    dealsRows.map((row, idx) => {
+                      const car = row.car_listings;
+                      const sc =
+                        DEAL_STATUS_COLORS[row.status] ||
+                        DEAL_STATUS_COLORS.pending;
+                      const isOpen = expandedDealId === row.id;
+                      const draft = dealDrafts[row.id] || {};
+                      const val = (f) => (f in draft ? draft[f] : row[f]);
+                      return (
+                        <React.Fragment key={row.id}>
+                          <tr
+                            style={{ ...XL.row(idx), cursor: "pointer" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.04)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.018)"; }}
+                            onClick={() =>
+                              setExpandedDealId(isOpen ? null : row.id)
+                            }
+                          >
+                            <td style={XL.tdN}>{idx + 1}</td>
+                            <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>
+                              {car
+                                ? `${car.year} ${car.brand} ${car.model}`
+                                : "—"}
+                            </td>
+                            <td style={{ ...XL.td(false), color: "#9ca3af" }}>
+                              {row.profiles?.full_name || "—"}
+                            </td>
+                            <td style={{ ...XL.td(true), color: "#e5e7eb" }}>
+                              {rm(row.selling_price)}
+                            </td>
+                            <td style={{ ...XL.td(true), color: "#9ca3af" }}>
+                              {rm(row.deposit_received)}
+                            </td>
+                            <td style={{ ...XL.td(false), color: "#9ca3af" }}>
+                              {row.loan_bank || "—"}
+                            </td>
+                            <td
+                              style={{
+                                ...XL.td(true),
+                                color: row.loan_disbursed
+                                  ? "#4ade80"
+                                  : "#6b7280",
+                              }}
+                            >
+                              {row.loan_disbursed ? "Yes" : "No"}
+                            </td>
+                            <td style={XL.td(true)}>
+                              <span
+                                style={{
+                                  background: sc.bg,
+                                  color: sc.color,
+                                  borderRadius: 3,
+                                  padding: "1px 7px",
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {row.status || "pending"}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                ...XL.td(false),
+                                color: "#6b7280",
+                                fontSize: 11,
+                              }}
+                            >
+                              {isOpen ? "▲" : "▼"}
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+                          {isOpen && (
+                            <tr style={{ background: "rgba(0,0,0,0.2)" }}>
+                              <td
+                                style={{ ...XL.tdN, background: "#090e18" }}
+                              />
+                              <td
+                                colSpan={8}
+                                style={{
+                                  padding: "14px 16px",
+                                  border: "1px solid rgba(255,255,255,0.07)",
+                                  background: "rgba(0,0,0,0.15)",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                      "repeat(auto-fill, minmax(160px, 1fr))",
+                                    gap: 10,
+                                  }}
+                                >
+                                  {[
+                                    {
+                                      label: "Deposit Received (RM)",
+                                      field: "deposit_received",
+                                      type: "number",
+                                    },
+                                    {
+                                      label: "Deposit Date",
+                                      field: "deposit_date",
+                                      type: "date",
+                                    },
+                                    {
+                                      label: "Loan Amount (RM)",
+                                      field: "loan_amount",
+                                      type: "number",
+                                    },
+                                    {
+                                      label: "Loan Bank",
+                                      field: "loan_bank",
+                                      type: "text",
+                                    },
+                                    {
+                                      label: "Cash Balance (RM)",
+                                      field: "cash_balance",
+                                      type: "number",
+                                    },
+                                    {
+                                      label: "Commission (RM)",
+                                      field: "commission_amount",
+                                      type: "number",
+                                    },
+                                  ].map(({ label, field, type }) => (
+                                    <div key={field}>
+                                      <p style={label11}>{label}</p>
+                                      <input
+                                        type={type}
+                                        value={val(field) ?? ""}
+                                        onChange={(e) =>
+                                          setDealField(
+                                            row.id,
+                                            field,
+                                            type === "number"
+                                              ? parseFloat(e.target.value) || 0
+                                              : e.target.value,
+                                          )
+                                        }
+                                        style={inp}
+                                      />
+                                    </div>
+                                  ))}
+                                  <div>
+                                    <p style={label11}>Status</p>
+                                    <select
+                                      value={val("status") || "pending"}
+                                      onChange={(e) =>
+                                        setDealField(
+                                          row.id,
+                                          "status",
+                                          e.target.value,
+                                        )
+                                      }
+                                      style={inp}
+                                    >
+                                      {[
+                                        "pending",
+                                        "disbursed",
+                                        "complete",
+                                        "flagged",
+                                      ].map((s) => (
+                                        <option key={s} value={s}>
+                                          {s}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 14,
+                                      paddingTop: 18,
+                                    }}
+                                  >
+                                    <label
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        fontSize: 11,
+                                        color: "#9ca3af",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={!!val("loan_disbursed")}
+                                        onChange={(e) =>
+                                          setDealField(
+                                            row.id,
+                                            "loan_disbursed",
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                      Loan Disbursed
+                                    </label>
+                                    <label
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        fontSize: 11,
+                                        color: "#9ca3af",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={!!val("commission_paid")}
+                                        onChange={(e) =>
+                                          setDealField(
+                                            row.id,
+                                            "commission_paid",
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                      Comm. Paid
+                                    </label>
+                                  </div>
+                                  <div style={{ gridColumn: "1 / -1" }}>
+                                    <p style={label11}>Notes</p>
+                                    <textarea
+                                      value={val("notes") ?? ""}
+                                      onChange={(e) =>
+                                        setDealField(
+                                          row.id,
+                                          "notes",
+                                          e.target.value,
+                                        )
+                                      }
+                                      rows={2}
+                                      style={{ ...inp, resize: "vertical" }}
+                                    />
+                                  </div>
+                                </div>
+                                <div
+                                  style={{
+                                    marginTop: 10,
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => saveDeal(row)}
+                                    disabled={dealSaving[row.id]}
+                                    style={{
+                                      background: ACCENT,
+                                      color: "#000",
+                                      border: "none",
+                                      borderRadius: 4,
+                                      padding: "5px 16px",
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      opacity: dealSaving[row.id] ? 0.6 : 1,
+                                    }}
+                                  >
+                                    {dealSaving[row.id] ? "Saving…" : "Save"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1268,35 +2281,110 @@ export default function AccountantPanel() {
               {commSubTab === "rules" && (
                 <>
                   {/* Inline add-rule form */}
-                  <div style={{ background: "rgba(34,197,94,0.03)", borderBottom: "2px solid rgba(34,197,94,0.12)", padding: "10px 14px" }}>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      background: "rgba(34,197,94,0.03)",
+                      borderBottom: "2px solid rgba(34,197,94,0.12)",
+                      padding: "10px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <div style={{ minWidth: 130 }}>
                         <p style={label11}>Label</p>
-                        <input value={newRule.label} onChange={e => setNewRule(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Standard GP" style={{ ...inp, width: 130 }} />
+                        <input
+                          value={newRule.label}
+                          onChange={(e) =>
+                            setNewRule((p) => ({ ...p, label: e.target.value }))
+                          }
+                          placeholder="e.g. Standard GP"
+                          style={{ ...inp, width: 130 }}
+                        />
                       </div>
                       <div style={{ minWidth: 110 }}>
                         <p style={label11}>Basis</p>
-                        <select value={newRule.basis} onChange={e => setNewRule(p => ({ ...p, basis: e.target.value }))} style={{ ...inp, width: 110 }}>
+                        <select
+                          value={newRule.basis}
+                          onChange={(e) =>
+                            setNewRule((p) => ({ ...p, basis: e.target.value }))
+                          }
+                          style={{ ...inp, width: 110 }}
+                        >
                           <option value="gp">Gross Profit</option>
                           <option value="selling_price">Selling Price</option>
                         </select>
                       </div>
                       <div style={{ minWidth: 90 }}>
                         <p style={label11}>Type</p>
-                        <select value={newRule.rate_type} onChange={e => setNewRule(p => ({ ...p, rate_type: e.target.value }))} style={{ ...inp, width: 90 }}>
+                        <select
+                          value={newRule.rate_type}
+                          onChange={(e) =>
+                            setNewRule((p) => ({
+                              ...p,
+                              rate_type: e.target.value,
+                            }))
+                          }
+                          style={{ ...inp, width: 90 }}
+                        >
                           <option value="percent">%</option>
                           <option value="flat">RM flat</option>
                         </select>
                       </div>
                       <div style={{ minWidth: 80 }}>
                         <p style={label11}>Rate</p>
-                        <input type="number" value={newRule.rate_value} onChange={e => setNewRule(p => ({ ...p, rate_value: e.target.value }))} placeholder={newRule.rate_type === "percent" ? "10" : "500"} style={{ ...inp, width: 80 }} />
+                        <input
+                          type="number"
+                          value={newRule.rate_value}
+                          onChange={(e) =>
+                            setNewRule((p) => ({
+                              ...p,
+                              rate_value: e.target.value,
+                            }))
+                          }
+                          placeholder={
+                            newRule.rate_type === "percent" ? "10" : "500"
+                          }
+                          style={{ ...inp, width: 80 }}
+                        />
                       </div>
                       <div style={{ minWidth: 90 }}>
                         <p style={label11}>Min GP (RM)</p>
-                        <input type="number" value={newRule.min_gp} onChange={e => setNewRule(p => ({ ...p, min_gp: e.target.value }))} placeholder="0" style={{ ...inp, width: 90 }} />
+                        <input
+                          type="number"
+                          value={newRule.min_gp}
+                          onChange={(e) =>
+                            setNewRule((p) => ({
+                              ...p,
+                              min_gp: e.target.value,
+                            }))
+                          }
+                          placeholder="0"
+                          style={{ ...inp, width: 90 }}
+                        />
                       </div>
-                      <button onClick={addRule} disabled={commRuleSaving} style={{ background: ACCENT, color: "#000", border: "none", borderRadius: 4, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: commRuleSaving ? 0.6 : 1, whiteSpace: "nowrap", flexShrink: 0 }}>
+                      <button
+                        onClick={addRule}
+                        disabled={commRuleSaving}
+                        style={{
+                          background: ACCENT,
+                          color: "#000",
+                          border: "none",
+                          borderRadius: 4,
+                          padding: "6px 14px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          opacity: commRuleSaving ? 0.6 : 1,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}
+                      >
                         {commRuleSaving ? "Adding…" : "+ Add Rule"}
                       </button>
                     </div>
@@ -1306,27 +2394,104 @@ export default function AccountantPanel() {
                       <thead>
                         <tr>
                           <th style={XL.thN} />
-                          {["Label", "Basis", "Type", "Rate", "Min GP", "Active"].map(h => <th key={h} style={XL.th(h === "Label")}>{h}</th>)}
+                          {[
+                            "Label",
+                            "Basis",
+                            "Type",
+                            "Rate",
+                            "Min GP",
+                            "Active",
+                          ].map((h) => (
+                            <th key={h} style={XL.th(h === "Label")}>
+                              {h}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {commRulesLoading ? (
-                          <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
-                        ) : commRules.length === 0 ? (
-                          <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No rules yet</td></tr>
-                        ) : commRules.map((r, i) => (
-                          <tr key={r.id} style={XL.row(i)}>
-                            <td style={XL.tdN}>{i + 1}</td>
-                            <td style={{ ...XL.td(false), color: "#e5e7eb" }}>{r.label}</td>
-                            <td style={{ ...XL.td(true), color: "#9ca3af", textTransform: "capitalize" }}>{r.basis?.replace("_", " ")}</td>
-                            <td style={{ ...XL.td(true), color: "#9ca3af", textTransform: "capitalize" }}>{r.rate_type}</td>
-                            <td style={{ ...XL.td(true), color: "#e5e7eb" }}>{r.rate_type === "percent" ? `${r.rate_value}%` : rm(r.rate_value)}</td>
-                            <td style={{ ...XL.td(true), color: "#9ca3af" }}>{rm(r.min_gp)}</td>
-                            <td style={XL.td(true)}>
-                              <button onClick={() => toggleRule(r)} style={{ background: r.is_active ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)", color: r.is_active ? "#4ade80" : "#6b7280", border: "none", borderRadius: 3, padding: "1px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>{r.is_active ? "Active" : "Off"}</button>
+                          <tr>
+                            <td
+                              colSpan={7}
+                              style={{
+                                padding: 20,
+                                textAlign: "center",
+                                color: "#374151",
+                                border: "1px solid rgba(255,255,255,0.07)",
+                              }}
+                            >
+                              Loading…
                             </td>
                           </tr>
-                        ))}
+                        ) : commRules.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              style={{
+                                padding: 20,
+                                textAlign: "center",
+                                color: "#374151",
+                                border: "1px solid rgba(255,255,255,0.07)",
+                              }}
+                            >
+                              No rules yet
+                            </td>
+                          </tr>
+                        ) : (
+                          commRules.map((r, i) => (
+                            <tr key={r.id} style={XL.row(i)}>
+                              <td style={XL.tdN}>{i + 1}</td>
+                              <td style={{ ...XL.td(false), color: "#e5e7eb" }}>
+                                {r.label}
+                              </td>
+                              <td
+                                style={{
+                                  ...XL.td(true),
+                                  color: "#9ca3af",
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {r.basis?.replace("_", " ")}
+                              </td>
+                              <td
+                                style={{
+                                  ...XL.td(true),
+                                  color: "#9ca3af",
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {r.rate_type}
+                              </td>
+                              <td style={{ ...XL.td(true), color: "#e5e7eb" }}>
+                                {r.rate_type === "percent"
+                                  ? `${r.rate_value}%`
+                                  : rm(r.rate_value)}
+                              </td>
+                              <td style={{ ...XL.td(true), color: "#9ca3af" }}>
+                                {rm(r.min_gp)}
+                              </td>
+                              <td style={XL.td(true)}>
+                                <button
+                                  onClick={() => toggleRule(r)}
+                                  style={{
+                                    background: r.is_active
+                                      ? "rgba(34,197,94,0.15)"
+                                      : "rgba(107,114,128,0.15)",
+                                    color: r.is_active ? "#4ade80" : "#6b7280",
+                                    border: "none",
+                                    borderRadius: 3,
+                                    padding: "1px 8px",
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {r.is_active ? "Active" : "Off"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1338,45 +2503,171 @@ export default function AccountantPanel() {
                     <thead>
                       <tr>
                         <th style={XL.thN} />
-                        {["Car", "Salesman", "GP", "Rule Applied", "Commission Due", "Paid?"].map(h => (
-                          <th key={h} style={XL.th(["Car", "Salesman", "Rule Applied"].includes(h))}>{h}</th>
+                        {[
+                          "Car",
+                          "Salesman",
+                          "GP",
+                          "Rule Applied",
+                          "Commission Due",
+                          "Paid?",
+                        ].map((h) => (
+                          <th
+                            key={h}
+                            style={XL.th(
+                              ["Car", "Salesman", "Rule Applied"].includes(h),
+                            )}
+                          >
+                            {h}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {commLedgerLoading ? (
-                        <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
+                        <tr>
+                          <td
+                            colSpan={7}
+                            style={{
+                              padding: 20,
+                              textAlign: "center",
+                              color: "#374151",
+                              border: "1px solid rgba(255,255,255,0.07)",
+                            }}
+                          >
+                            Loading…
+                          </td>
+                        </tr>
                       ) : commLedger.length === 0 ? (
-                        <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No settled deals</td></tr>
+                        <tr>
+                          <td
+                            colSpan={7}
+                            style={{
+                              padding: 20,
+                              textAlign: "center",
+                              color: "#374151",
+                              border: "1px solid rgba(255,255,255,0.07)",
+                            }}
+                          >
+                            No settled deals
+                          </td>
+                        </tr>
                       ) : (
                         <>
                           {commLedger.map((r, i) => {
                             const car = r.car_listings;
-                            const rule = commRules.find(ru => ru.id === r.commission_rule_id);
+                            const rule = commRules.find(
+                              (ru) => ru.id === r.commission_rule_id,
+                            );
                             const commDue = calcCommDue(r);
-                            const gpColor = (r.gross_profit || 0) < 0 ? "#f87171" : "#4ade80";
+                            const gpColor =
+                              (r.gross_profit || 0) < 0 ? "#f87171" : "#4ade80";
                             return (
                               <tr key={r.id} style={XL.row(i)}>
                                 <td style={XL.tdN}>{i + 1}</td>
-                                <td style={{ ...XL.td(false), color: "#e5e7eb" }}>{car ? `${car.year} ${car.brand} ${car.model}` : "—"}</td>
-                                <td style={{ ...XL.td(false), color: "#9ca3af" }}>{r.profiles?.full_name || "—"}</td>
-                                <td style={{ ...XL.td(true), fontWeight: 600, color: gpColor }}>{rm(r.gross_profit)}</td>
-                                <td style={{ ...XL.td(false), color: "#9ca3af", fontSize: 11 }}>{rule ? rule.label : <span style={{ color: "#374151" }}>—</span>}</td>
-                                <td style={{ ...XL.td(true), fontWeight: 600, color: "#e5e7eb" }}>{rm(commDue)}</td>
+                                <td
+                                  style={{ ...XL.td(false), color: "#e5e7eb" }}
+                                >
+                                  {car
+                                    ? `${car.year} ${car.brand} ${car.model}`
+                                    : "—"}
+                                </td>
+                                <td
+                                  style={{ ...XL.td(false), color: "#9ca3af" }}
+                                >
+                                  {r.profiles?.full_name || "—"}
+                                </td>
+                                <td
+                                  style={{
+                                    ...XL.td(true),
+                                    fontWeight: 600,
+                                    color: gpColor,
+                                  }}
+                                >
+                                  {rm(r.gross_profit)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...XL.td(false),
+                                    color: "#9ca3af",
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  {rule ? (
+                                    rule.label
+                                  ) : (
+                                    <span style={{ color: "#374151" }}>—</span>
+                                  )}
+                                </td>
+                                <td
+                                  style={{
+                                    ...XL.td(true),
+                                    fontWeight: 600,
+                                    color: "#e5e7eb",
+                                  }}
+                                >
+                                  {rm(commDue)}
+                                </td>
                                 <td style={XL.td(true)}>
-                                  <label style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, cursor: "pointer" }}>
-                                    <input type="checkbox" checked={!!r.commission_paid} onChange={() => toggleCommPaid(r)} />
-                                    <span style={{ fontSize: 10, color: r.commission_paid ? "#4ade80" : "#6b7280" }}>{r.commission_paid ? "Paid" : "Unpaid"}</span>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "flex-end",
+                                      gap: 5,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={!!r.commission_paid}
+                                      onChange={() => toggleCommPaid(r)}
+                                    />
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        color: r.commission_paid
+                                          ? "#4ade80"
+                                          : "#6b7280",
+                                      }}
+                                    >
+                                      {r.commission_paid ? "Paid" : "Unpaid"}
+                                    </span>
                                   </label>
                                 </td>
                               </tr>
                             );
                           })}
-                          <tr style={{ background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                          <tr
+                            style={{
+                              background: "rgba(0,0,0,0.2)",
+                              borderTop: "1px solid rgba(255,255,255,0.08)",
+                            }}
+                          >
                             <td style={XL.tdN} />
-                            <td colSpan={4} style={{ ...XL.td(false), color: "#6b7280", fontSize: 11 }}>Total unpaid commissions</td>
-                            <td style={{ ...XL.td(true), fontWeight: 700, color: "#f87171" }}>{rm(unpaidTotal)}</td>
-                            <td style={{ border: "1px solid rgba(255,255,255,0.07)" }} />
+                            <td
+                              colSpan={4}
+                              style={{
+                                ...XL.td(false),
+                                color: "#6b7280",
+                                fontSize: 11,
+                              }}
+                            >
+                              Total unpaid commissions
+                            </td>
+                            <td
+                              style={{
+                                ...XL.td(true),
+                                fontWeight: 700,
+                                color: "#f87171",
+                              }}
+                            >
+                              {rm(unpaidTotal)}
+                            </td>
+                            <td
+                              style={{
+                                border: "1px solid rgba(255,255,255,0.07)",
+                              }}
+                            />
                           </tr>
                         </>
                       )}
@@ -1391,94 +2682,346 @@ export default function AccountantPanel() {
           {activeNav === "expenses" && (
             <div>
               {/* Inline add-expense row */}
-              <div style={{ background: "rgba(34,197,94,0.03)", borderBottom: "2px solid rgba(34,197,94,0.12)", padding: "10px 14px" }}>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  background: "rgba(34,197,94,0.03)",
+                  borderBottom: "2px solid rgba(34,197,94,0.12)",
+                  padding: "10px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <div style={{ minWidth: 100 }}>
                     <p style={label11}>Category</p>
-                    <select value={newExpense.category} onChange={e => setNewExpense(p => ({ ...p, category: e.target.value }))} style={{ ...inp, width: 100 }}>
-                      {EXPENSE_CATS.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                    <select
+                      value={newExpense.category}
+                      onChange={(e) =>
+                        setNewExpense((p) => ({
+                          ...p,
+                          category: e.target.value,
+                        }))
+                      }
+                      style={{ ...inp, width: 100 }}
+                    >
+                      {EXPENSE_CATS.map((c) => (
+                        <option key={c} value={c}>
+                          {c.charAt(0).toUpperCase() + c.slice(1)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div style={{ flex: 2, minWidth: 160 }}>
                     <p style={label11}>Description</p>
-                    <input value={newExpense.description} onChange={e => setNewExpense(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Office rent May" style={inp} />
+                    <input
+                      value={newExpense.description}
+                      onChange={(e) =>
+                        setNewExpense((p) => ({
+                          ...p,
+                          description: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Office rent May"
+                      style={inp}
+                    />
                   </div>
                   <div style={{ minWidth: 90 }}>
                     <p style={label11}>Amount (RM)</p>
-                    <input type="number" value={newExpense.amount} onChange={e => setNewExpense(p => ({ ...p, amount: e.target.value }))} placeholder="0" style={{ ...inp, width: 90 }} />
+                    <input
+                      type="number"
+                      value={newExpense.amount}
+                      onChange={(e) =>
+                        setNewExpense((p) => ({ ...p, amount: e.target.value }))
+                      }
+                      placeholder="0"
+                      style={{ ...inp, width: 90 }}
+                    />
                   </div>
                   <div style={{ minWidth: 110 }}>
                     <p style={label11}>Date</p>
-                    <input type="date" value={newExpense.expense_date} onChange={e => setNewExpense(p => ({ ...p, expense_date: e.target.value }))} style={{ ...inp, width: 110 }} />
+                    <input
+                      type="date"
+                      value={newExpense.expense_date}
+                      onChange={(e) =>
+                        setNewExpense((p) => ({
+                          ...p,
+                          expense_date: e.target.value,
+                        }))
+                      }
+                      style={{ ...inp, width: 110 }}
+                    />
                   </div>
                   <div style={{ minWidth: 120 }}>
                     <p style={label11}>Listing ref (opt.)</p>
-                    <input value={newExpense.listing_ref} onChange={e => setNewExpense(p => ({ ...p, listing_ref: e.target.value }))} placeholder="e.g. Honda Civic" style={{ ...inp, width: 120 }} />
+                    <input
+                      value={newExpense.listing_ref}
+                      onChange={(e) =>
+                        setNewExpense((p) => ({
+                          ...p,
+                          listing_ref: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Honda Civic"
+                      style={{ ...inp, width: 120 }}
+                    />
                   </div>
-                  <button onClick={addExpense} disabled={expenseSaving} style={{ background: ACCENT, color: "#000", border: "none", borderRadius: 4, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: expenseSaving ? 0.6 : 1, flexShrink: 0 }}>
+                  <button
+                    onClick={addExpense}
+                    disabled={expenseSaving}
+                    style={{
+                      background: ACCENT,
+                      color: "#000",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "6px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      opacity: expenseSaving ? 0.6 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
                     {expenseSaving ? "Adding…" : "+ Add"}
                   </button>
                 </div>
               </div>
               {expenseLoading ? (
-                <p style={{ color: "#374151", textAlign: "center", padding: 24, fontSize: 13 }}>Loading…</p>
+                <p
+                  style={{
+                    color: "#374151",
+                    textAlign: "center",
+                    padding: 24,
+                    fontSize: 13,
+                  }}
+                >
+                  Loading…
+                </p>
               ) : Object.keys(expByMonth).length === 0 ? (
-                <p style={{ color: "#374151", textAlign: "center", padding: 24, fontSize: 13 }}>No expenses yet</p>
+                <p
+                  style={{
+                    color: "#374151",
+                    textAlign: "center",
+                    padding: 24,
+                    fontSize: 13,
+                  }}
+                >
+                  No expenses yet
+                </p>
               ) : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={XL.tbl}>
                     <thead>
                       <tr>
                         <th style={XL.thN} />
-                        {["Date", "Month", "Category", "Description", "Amount", ""].map(h => (
-                          <th key={h} style={XL.th(["Date", "Month", "Category", "Description"].includes(h))}>{h}</th>
+                        {[
+                          "Date",
+                          "Month",
+                          "Category",
+                          "Description",
+                          "Amount",
+                          "",
+                        ].map((h) => (
+                          <th
+                            key={h}
+                            style={XL.th(
+                              [
+                                "Date",
+                                "Month",
+                                "Category",
+                                "Description",
+                              ].includes(h),
+                            )}
+                          >
+                            {h}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.keys(expByMonth).sort().reverse().map(mk => {
-                        const rows = expByMonth[mk];
-                        const subtotal = rows.reduce((s, r) => s + (r.amount || 0), 0);
-                        const [yr, mo] = mk.split("-");
-                        const moLabel = new Date(parseInt(yr), parseInt(mo) - 1, 1).toLocaleDateString("en-MY", { month: "long", year: "numeric" });
-                        return (
-                          <React.Fragment key={mk}>
-                            <tr style={{ background: "#0a1020" }}>
-                              <td style={XL.tdN} />
-                              <td colSpan={4} style={{ ...XL.td(false), fontWeight: 600, color: "#e5e7eb", fontSize: 11 }}>{moLabel}</td>
-                              <td style={{ ...XL.td(true), fontWeight: 700, color: "#e5e7eb" }}>{rm(subtotal)}</td>
-                              <td style={{ border: "1px solid rgba(255,255,255,0.07)" }} />
-                            </tr>
-                            {rows.map((r, i) => {
-                              const catCfg = EXPENSE_CAT_COLORS[r.category] || EXPENSE_CAT_COLORS.misc;
-                              return (
-                                <tr key={r.id} style={XL.row(i)}>
-                                  <td style={XL.tdN}>{i + 1}</td>
-                                  <td style={{ ...XL.td(false), color: "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>{r.expense_date}</td>
-                                  <td style={{ ...XL.td(false), color: "#374151", fontSize: 10 }}>{moLabel}</td>
-                                  <td style={XL.td(false)}>
-                                    <span style={{ background: catCfg.bg, color: catCfg.color, borderRadius: 3, padding: "1px 7px", fontSize: 10, fontWeight: 600, textTransform: "capitalize" }}>{r.category}</span>
-                                  </td>
-                                  <td style={{ ...XL.td(false), color: "#e5e7eb" }}>
-                                    {r.description}
-                                    {r.listing_ref && <span style={{ marginLeft: 6, fontSize: 10, color: "#6b7280" }}>· {r.listing_ref}</span>}
-                                  </td>
-                                  <td style={{ ...XL.td(true), fontWeight: 600, color: "#e5e7eb", whiteSpace: "nowrap" }}>{rm(r.amount)}</td>
-                                  <td style={{ ...XL.td(true), width: 36 }}>
-                                    <button onClick={() => deleteExpense(r.id)} style={{ background: "none", border: "none", color: "#374151", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }} title="Delete">×</button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })}
+                      {Object.keys(expByMonth)
+                        .sort()
+                        .reverse()
+                        .map((mk) => {
+                          const rows = expByMonth[mk];
+                          const subtotal = rows.reduce(
+                            (s, r) => s + (r.amount || 0),
+                            0,
+                          );
+                          const [yr, mo] = mk.split("-");
+                          const moLabel = new Date(
+                            parseInt(yr),
+                            parseInt(mo) - 1,
+                            1,
+                          ).toLocaleDateString("en-MY", {
+                            month: "long",
+                            year: "numeric",
+                          });
+                          return (
+                            <React.Fragment key={mk}>
+                              <tr style={{ background: "#0a1020" }}>
+                                <td style={XL.tdN} />
+                                <td
+                                  colSpan={4}
+                                  style={{
+                                    ...XL.td(false),
+                                    fontWeight: 600,
+                                    color: "#e5e7eb",
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  {moLabel}
+                                </td>
+                                <td
+                                  style={{
+                                    ...XL.td(true),
+                                    fontWeight: 700,
+                                    color: "#e5e7eb",
+                                  }}
+                                >
+                                  {rm(subtotal)}
+                                </td>
+                                <td
+                                  style={{
+                                    border: "1px solid rgba(255,255,255,0.07)",
+                                  }}
+                                />
+                              </tr>
+                              {rows.map((r, i) => {
+                                const catCfg =
+                                  EXPENSE_CAT_COLORS[r.category] ||
+                                  EXPENSE_CAT_COLORS.misc;
+                                return (
+                                  <tr key={r.id} style={XL.row(i)}>
+                                    <td style={XL.tdN}>{i + 1}</td>
+                                    <td
+                                      style={{
+                                        ...XL.td(false),
+                                        color: "#6b7280",
+                                        fontSize: 11,
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {r.expense_date}
+                                    </td>
+                                    <td
+                                      style={{
+                                        ...XL.td(false),
+                                        color: "#374151",
+                                        fontSize: 10,
+                                      }}
+                                    >
+                                      {moLabel}
+                                    </td>
+                                    <td style={XL.td(false)}>
+                                      <span
+                                        style={{
+                                          background: catCfg.bg,
+                                          color: catCfg.color,
+                                          borderRadius: 3,
+                                          padding: "1px 7px",
+                                          fontSize: 10,
+                                          fontWeight: 600,
+                                          textTransform: "capitalize",
+                                        }}
+                                      >
+                                        {r.category}
+                                      </span>
+                                    </td>
+                                    <td
+                                      style={{
+                                        ...XL.td(false),
+                                        color: "#e5e7eb",
+                                      }}
+                                    >
+                                      {r.description}
+                                      {r.listing_ref && (
+                                        <span
+                                          style={{
+                                            marginLeft: 6,
+                                            fontSize: 10,
+                                            color: "#6b7280",
+                                          }}
+                                        >
+                                          · {r.listing_ref}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td
+                                      style={{
+                                        ...XL.td(true),
+                                        fontWeight: 600,
+                                        color: "#e5e7eb",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {rm(r.amount)}
+                                    </td>
+                                    <td style={{ ...XL.td(true), width: 36 }}>
+                                      <button
+                                        onClick={() => deleteExpense(r.id)}
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          color: "#374151",
+                                          cursor: "pointer",
+                                          fontSize: 14,
+                                          padding: 0,
+                                          lineHeight: 1,
+                                        }}
+                                        title="Delete"
+                                      >
+                                        ×
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
                       {expenseRows.length > 0 && (
-                        <tr style={{ background: "rgba(0,0,0,0.25)", borderTop: "2px solid rgba(255,255,255,0.08)" }}>
+                        <tr
+                          style={{
+                            background: "rgba(0,0,0,0.25)",
+                            borderTop: "2px solid rgba(255,255,255,0.08)",
+                          }}
+                        >
                           <td style={XL.tdN} />
-                          <td colSpan={4} style={{ ...XL.td(false), fontWeight: 700, color: "#6b7280", fontSize: 11 }}>Grand Total</td>
-                          <td style={{ ...XL.td(true), fontWeight: 700, color: "#e5e7eb" }}>{rm(expenseRows.reduce((s, r) => s + (r.amount || 0), 0))}</td>
-                          <td style={{ border: "1px solid rgba(255,255,255,0.07)" }} />
+                          <td
+                            colSpan={4}
+                            style={{
+                              ...XL.td(false),
+                              fontWeight: 700,
+                              color: "#6b7280",
+                              fontSize: 11,
+                            }}
+                          >
+                            Grand Total
+                          </td>
+                          <td
+                            style={{
+                              ...XL.td(true),
+                              fontWeight: 700,
+                              color: "#e5e7eb",
+                            }}
+                          >
+                            {rm(
+                              expenseRows.reduce(
+                                (s, r) => s + (r.amount || 0),
+                                0,
+                              ),
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              border: "1px solid rgba(255,255,255,0.07)",
+                            }}
+                          />
                         </tr>
                       )}
                     </tbody>
@@ -1500,63 +3043,265 @@ export default function AccountantPanel() {
                       <thead>
                         <tr>
                           <th style={XL.thN} />
-                          {["Checklist Item", "Status", "Action"].map(h => <th key={h} style={XL.th(h !== "Action")}>{h}</th>)}
+                          {["Checklist Item", "Status", "Action"].map((h) => (
+                            <th key={h} style={XL.th(h !== "Action")}>
+                              {h}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {[
-                          { key: "costs", label: "All sold units have costs posted", auto: true, checked: costsOk, sub: costsOk ? "All units posted" : `${closeData?._uncostedCount || 0} unit(s) missing purchase price` },
-                          { key: "commissions_approved", label: "Commissions reviewed", auto: false },
-                          { key: "ar_reviewed", label: "Outstanding receivables reviewed", auto: false },
-                          { key: "expenses_posted", label: "Expenses posted", auto: false },
-                        ].map(({ key, label, auto, checked: forcedCheck, sub }, idx) => {
-                          const isChecked = auto ? forcedCheck : !!closeData?.[key];
-                          return (
-                            <tr key={key} style={{ ...XL.row(idx), cursor: auto || isClosed ? "default" : "pointer" }} onClick={auto || isClosed ? undefined : () => toggleCloseItem(key)}>
-                              <td style={XL.tdN}>{idx + 1}</td>
-                              <td style={{ ...XL.td(false), color: isChecked ? "#e5e7eb" : "#6b7280" }}>
-                                {label}
-                                {sub && <div style={{ fontSize: 10, color: isChecked ? "#4ade80" : "#f87171", marginTop: 2 }}>{sub}</div>}
-                                {auto && !sub && <div style={{ fontSize: 9, color: "#374151", marginTop: 2 }}>Auto-validated</div>}
-                              </td>
-                              <td style={XL.td(true)}>
-                                <span style={{ background: isChecked ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", color: isChecked ? "#4ade80" : "#374151", borderRadius: 3, padding: "1px 8px", fontSize: 10, fontWeight: 600 }}>
-                                  {isChecked ? "✓ Done" : auto ? "—" : "Pending"}
-                                </span>
-                              </td>
-                              <td style={{ ...XL.td(true), width: 70 }}>
-                                {!auto && !isClosed && (
-                                  <button onClick={e => { e.stopPropagation(); toggleCloseItem(key); }} style={{ background: isChecked ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)", color: isChecked ? "#4ade80" : "#9ca3af", border: `1px solid ${isChecked ? "rgba(34,197,94,0.28)" : "rgba(255,255,255,0.08)"}`, borderRadius: 3, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>
-                                    {isChecked ? "Uncheck" : "Check"}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                          {
+                            key: "costs",
+                            label: "All sold units have costs posted",
+                            auto: true,
+                            checked: costsOk,
+                            sub: costsOk
+                              ? "All units posted"
+                              : `${closeData?._uncostedCount || 0} unit(s) missing purchase price`,
+                          },
+                          {
+                            key: "commissions_approved",
+                            label: "Commissions reviewed",
+                            auto: false,
+                          },
+                          {
+                            key: "ar_reviewed",
+                            label: "Outstanding receivables reviewed",
+                            auto: false,
+                          },
+                          {
+                            key: "expenses_posted",
+                            label: "Expenses posted",
+                            auto: false,
+                          },
+                        ].map(
+                          (
+                            { key, label, auto, checked: forcedCheck, sub },
+                            idx,
+                          ) => {
+                            const isChecked = auto
+                              ? forcedCheck
+                              : !!closeData?.[key];
+                            return (
+                              <tr
+                                key={key}
+                                style={{
+                                  ...XL.row(idx),
+                                  cursor:
+                                    auto || isClosed ? "default" : "pointer",
+                                }}
+                                onClick={
+                                  auto || isClosed
+                                    ? undefined
+                                    : () => toggleCloseItem(key)
+                                }
+                              >
+                                <td style={XL.tdN}>{idx + 1}</td>
+                                <td
+                                  style={{
+                                    ...XL.td(false),
+                                    color: isChecked ? "#e5e7eb" : "#6b7280",
+                                  }}
+                                >
+                                  {label}
+                                  {sub && (
+                                    <div
+                                      style={{
+                                        fontSize: 10,
+                                        color: isChecked
+                                          ? "#4ade80"
+                                          : "#f87171",
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      {sub}
+                                    </div>
+                                  )}
+                                  {auto && !sub && (
+                                    <div
+                                      style={{
+                                        fontSize: 9,
+                                        color: "#374151",
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      Auto-validated
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={XL.td(true)}>
+                                  <span
+                                    style={{
+                                      background: isChecked
+                                        ? "rgba(34,197,94,0.15)"
+                                        : "rgba(255,255,255,0.05)",
+                                      color: isChecked ? "#4ade80" : "#374151",
+                                      borderRadius: 3,
+                                      padding: "1px 8px",
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {isChecked
+                                      ? "✓ Done"
+                                      : auto
+                                        ? "—"
+                                        : "Pending"}
+                                  </span>
+                                </td>
+                                <td style={{ ...XL.td(true), width: 70 }}>
+                                  {!auto && !isClosed && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleCloseItem(key);
+                                      }}
+                                      style={{
+                                        background: isChecked
+                                          ? "rgba(34,197,94,0.12)"
+                                          : "rgba(255,255,255,0.05)",
+                                        color: isChecked
+                                          ? "#4ade80"
+                                          : "#9ca3af",
+                                        border: `1px solid ${isChecked ? "rgba(34,197,94,0.28)" : "rgba(255,255,255,0.08)"}`,
+                                        borderRadius: 3,
+                                        padding: "2px 8px",
+                                        fontSize: 10,
+                                        cursor: "pointer",
+                                        fontFamily: "'DM Sans',sans-serif",
+                                      }}
+                                    >
+                                      {isChecked ? "Uncheck" : "Check"}
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          },
+                        )}
                       </tbody>
                     </table>
                   </div>
 
                   {!isClosed && (
-                    <button onClick={doCloseMonth} disabled={!allChecked || closeSaving} style={{ background: allChecked ? ACCENT : "rgba(255,255,255,0.05)", color: allChecked ? "#000" : "#374151", border: "none", borderRadius: 6, padding: "8px 24px", fontSize: 12, fontWeight: 700, cursor: allChecked ? "pointer" : "not-allowed", marginBottom: 20, transition: "all 0.2s" }}>
+                    <button
+                      onClick={doCloseMonth}
+                      disabled={!allChecked || closeSaving}
+                      style={{
+                        background: allChecked
+                          ? ACCENT
+                          : "rgba(255,255,255,0.05)",
+                        color: allChecked ? "#000" : "#374151",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "8px 24px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: allChecked ? "pointer" : "not-allowed",
+                        marginBottom: 20,
+                        transition: "all 0.2s",
+                      }}
+                    >
                       {closeSaving ? "Closing…" : "Close Month"}
                     </button>
                   )}
 
-                  <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: 8,
+                      padding: 16,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 10,
+                      }}
+                    >
                       <div>
-                        <p style={{ fontSize: 10, color: ACCENT, textTransform: "uppercase", letterSpacing: 2, margin: 0 }}>AI Month Summary</p>
+                        <p
+                          style={{
+                            fontSize: 10,
+                            color: ACCENT,
+                            textTransform: "uppercase",
+                            letterSpacing: 2,
+                            margin: 0,
+                          }}
+                        >
+                          AI Month Summary
+                        </p>
                         {closeData?.ai_generated_at && !aiGenerating && (
-                          <p style={{ fontSize: 9, color: "#374151", marginTop: 2 }}>Generated {new Date(closeData.ai_generated_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                          <p
+                            style={{
+                              fontSize: 9,
+                              color: "#374151",
+                              marginTop: 2,
+                            }}
+                          >
+                            Generated{" "}
+                            {new Date(
+                              closeData.ai_generated_at,
+                            ).toLocaleDateString("en-MY", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
                         )}
                       </div>
-                      <button onClick={generateAiSummary} disabled={!isClosed || aiGenerating} style={{ background: isClosed ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)", color: isClosed ? ACCENT : "#374151", border: `1px solid ${isClosed ? "rgba(34,197,94,0.28)" : "rgba(255,255,255,0.06)"}`, borderRadius: 4, padding: "4px 12px", fontSize: 11, fontWeight: 600, cursor: isClosed && !aiGenerating ? "pointer" : "not-allowed" }}>
-                        {aiGenerating ? "Generating…" : !isClosed ? "Close month first" : aiSummary ? "Regenerate" : "Generate Summary"}
+                      <button
+                        onClick={generateAiSummary}
+                        disabled={!isClosed || aiGenerating}
+                        style={{
+                          background: isClosed
+                            ? "rgba(34,197,94,0.12)"
+                            : "rgba(255,255,255,0.04)",
+                          color: isClosed ? ACCENT : "#374151",
+                          border: `1px solid ${isClosed ? "rgba(34,197,94,0.28)" : "rgba(255,255,255,0.06)"}`,
+                          borderRadius: 4,
+                          padding: "4px 12px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor:
+                            isClosed && !aiGenerating
+                              ? "pointer"
+                              : "not-allowed",
+                        }}
+                      >
+                        {aiGenerating
+                          ? "Generating…"
+                          : !isClosed
+                            ? "Close month first"
+                            : aiSummary
+                              ? "Regenerate"
+                              : "Generate Summary"}
                       </button>
                     </div>
-                    <textarea readOnly value={aiSummary || (isClosed ? "Click Generate Summary to create an AI summary of this month." : "Month must be closed before generating a summary.")} rows={10} style={{ ...inp, resize: "vertical", color: aiSummary ? "#e5e7eb" : "#374151", cursor: "default", lineHeight: 1.7 }} />
+                    <textarea
+                      readOnly
+                      value={
+                        aiSummary ||
+                        (isClosed
+                          ? "Click Generate Summary to create an AI summary of this month."
+                          : "Month must be closed before generating a summary.")
+                      }
+                      rows={10}
+                      style={{
+                        ...inp,
+                        resize: "vertical",
+                        color: aiSummary ? "#e5e7eb" : "#374151",
+                        cursor: "default",
+                        lineHeight: 1.7,
+                      }}
+                    />
                   </div>
                 </>
               )}
@@ -1567,44 +3312,184 @@ export default function AccountantPanel() {
           {activeNav === "advisor" && (
             <div style={{ display: "flex", height: "100%" }}>
               {/* Left 60%: chat panel */}
-              <div style={{ flex: 3, display: "flex", flexDirection: "column", borderRight: "1px solid rgba(255,255,255,0.07)", minHeight: 0 }}>
-                <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{
+                  flex: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRight: "1px solid rgba(255,255,255,0.07)",
+                  minHeight: 0,
+                }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    padding: 16,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
                   {advisorMessages.length === 0 ? (
-                    <p style={{ color: "#374151", fontSize: 13, textAlign: "center", margin: "auto" }}>Ask a question or use a preset from the right panel.</p>
-                  ) : advisorMessages.map((m, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-                      <div style={{ maxWidth: "82%", background: m.role === "user" ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.04)", border: `1px solid ${m.role === "user" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)"}`, borderRadius: m.role === "user" ? "10px 10px 3px 10px" : "10px 10px 10px 3px", padding: "9px 13px", fontSize: 13, color: m.role === "user" ? "#86efac" : "#e5e7eb", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
-                        {m.content || <span style={{ color: "#374151" }}>…</span>}
+                    <p
+                      style={{
+                        color: "#374151",
+                        fontSize: 13,
+                        textAlign: "center",
+                        margin: "auto",
+                      }}
+                    >
+                      Ask a question or use a preset from the right panel.
+                    </p>
+                  ) : (
+                    advisorMessages.map((m, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            m.role === "user" ? "flex-end" : "flex-start",
+                        }}
+                      >
+                        <div
+                          style={{
+                            maxWidth: "82%",
+                            background:
+                              m.role === "user"
+                                ? "rgba(34,197,94,0.10)"
+                                : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${m.role === "user" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)"}`,
+                            borderRadius:
+                              m.role === "user"
+                                ? "10px 10px 3px 10px"
+                                : "10px 10px 10px 3px",
+                            padding: "9px 13px",
+                            fontSize: 13,
+                            color: m.role === "user" ? "#86efac" : "#e5e7eb",
+                            whiteSpace: "pre-wrap",
+                            lineHeight: 1.65,
+                          }}
+                        >
+                          {m.content || (
+                            <span style={{ color: "#374151" }}>…</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                   <div ref={advisorEndRef} />
                 </div>
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 14px", display: "flex", gap: 8, flexShrink: 0 }}>
-                  <input value={advisorInput} onChange={e => setAdvisorInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendAdvisor())} placeholder="Ask about this month's finances…" disabled={advisorSending} style={{ ...inp, flex: 1, padding: "8px 12px" }} />
-                  <button onClick={() => sendAdvisor()} disabled={advisorSending || !advisorInput.trim()} style={{ background: ACCENT, color: "#000", border: "none", borderRadius: 6, padding: "0 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: advisorSending || !advisorInput.trim() ? 0.5 : 1 }}>
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(255,255,255,0.07)",
+                    padding: "10px 14px",
+                    display: "flex",
+                    gap: 8,
+                    flexShrink: 0,
+                  }}
+                >
+                  <input
+                    value={advisorInput}
+                    onChange={(e) => setAdvisorInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      (e.preventDefault(), sendAdvisor())
+                    }
+                    placeholder="Ask about this month's finances…"
+                    disabled={advisorSending}
+                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                  />
+                  <button
+                    onClick={() => sendAdvisor()}
+                    disabled={advisorSending || !advisorInput.trim()}
+                    style={{
+                      background: ACCENT,
+                      color: "#000",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "0 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      opacity: advisorSending || !advisorInput.trim() ? 0.5 : 1,
+                    }}
+                  >
                     {advisorSending ? "…" : "Send"}
                   </button>
                   {advisorMessages.length > 0 && !advisorSending && (
-                    <button onClick={() => setAdvisorMessages([])} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, color: "#374151", fontSize: 11, padding: "0 10px", cursor: "pointer" }}>Clear</button>
+                    <button
+                      onClick={() => setAdvisorMessages([])}
+                      style={{
+                        background: "none",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 6,
+                        color: "#374151",
+                        fontSize: 11,
+                        padding: "0 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
               </div>
 
               {/* Right 40%: presets sidebar */}
-              <div style={{ flex: 2, padding: 14, overflowY: "auto", background: "#080e18" }}>
-                <p style={{ fontSize: 9, color: "#374151", textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, marginBottom: 10 }}>Preset Questions</p>
-                {ADVISOR_PRESETS.map(p => (
-                  <button key={p} onClick={() => sendAdvisor(p)} disabled={advisorSending} style={{ width: "100%", display: "block", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4, color: "#9ca3af", fontSize: 12, padding: "9px 12px", cursor: advisorSending ? "not-allowed" : "pointer", textAlign: "left", lineHeight: 1.4, marginBottom: 6, fontFamily: "'DM Sans',sans-serif", opacity: advisorSending ? 0.5 : 1 }}>
+              <div
+                style={{
+                  flex: 2,
+                  padding: 14,
+                  overflowY: "auto",
+                  background: "#080e18",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 9,
+                    color: "#374151",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.16em",
+                    fontWeight: 700,
+                    marginBottom: 10,
+                  }}
+                >
+                  Preset Questions
+                </p>
+                {ADVISOR_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => sendAdvisor(p)}
+                    disabled={advisorSending}
+                    style={{
+                      width: "100%",
+                      display: "block",
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: 4,
+                      color: "#9ca3af",
+                      fontSize: 12,
+                      padding: "9px 12px",
+                      cursor: advisorSending ? "not-allowed" : "pointer",
+                      textAlign: "left",
+                      lineHeight: 1.4,
+                      marginBottom: 6,
+                      fontFamily: "'DM Sans',sans-serif",
+                      opacity: advisorSending ? 0.5 : 1,
+                    }}
+                  >
                     {p}
                   </button>
                 ))}
               </div>
             </div>
           )}
-
-        </div>{/* end grid area */}
-      </div>{/* end main content */}
+        </div>
+        {/* end grid area */}
+      </div>
+      {/* end main content */}
     </div>
   );
 }
