@@ -1,24 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { supabase } from '../supabaseClient';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { supabase } from "../supabaseClient";
 
 const Field = ({ id, label, focused, children }) => (
-  <div className={`field ${focused === id ? 'is-focused' : ''}`}>
+  <div className={`field ${focused === id ? "is-focused" : ""}`}>
     <label>{label}</label>
     {children}
   </div>
 );
 
-const TextInput = ({ id, type = 'text', placeholder, value, onChange, onFocusChange }) => (
+const TextInput = ({
+  id,
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  onFocusChange,
+}) => (
   <div className="field-inner">
     <input
       type={type}
       placeholder={placeholder}
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       onFocus={() => onFocusChange(id)}
-      onBlur={() => onFocusChange('')}
+      onBlur={() => onFocusChange("")}
       autoComplete="off"
     />
     <div className="field-bar" />
@@ -29,20 +36,22 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const [unconfirmed, setUnconfirmed] = useState(searchParams.get('unconfirmed') === '1');
-  const [focused, setFocused] = useState('');
+  const [unconfirmed, setUnconfirmed] = useState(
+    searchParams.get("unconfirmed") === "1",
+  );
+  const [focused, setFocused] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
 
   useEffect(() => {
-    document.title = t('login.meta.title', { defaultValue: 'ShiftOS · Login' });
+    document.title = t("login.meta.title", { defaultValue: "ShiftOS · Login" });
   }, [t]);
 
   useEffect(() => {
@@ -54,10 +63,10 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
-        redirectTo: 'https://xdrive.my/auth/callback'
-      }
+        redirectTo: "https://xdrive.my/auth/callback",
+      },
     });
     if (error) setError(error.message);
   };
@@ -65,72 +74,210 @@ export default function LoginPage() {
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('subdomain, role, dealer_id, onboarding_complete')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("subdomain, role, dealer_id, onboarding_complete")
+      .eq("id", user.id)
       .maybeSingle();
 
     const subdomain = profile?.subdomain;
     const role = profile?.role;
 
-    if (role === 'superadmin' || role === 'dealer') {
+    if (role === "superadmin" || role === "dealer") {
       if (profile?.onboarding_complete === false) {
-        window.location.href = 'https://xdrive.my/onboarding';
+        window.location.href = "https://xdrive.my/onboarding";
         return;
       }
       if (subdomain) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         const accessToken = session.access_token;
         const refreshToken = session.refresh_token;
         window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
       } else {
-        window.location.href = 'https://xdrive.my/dashboard';
+        window.location.href = "https://xdrive.my/dashboard";
       }
-    } else if (role === 'salesman') {
+    } else if (role === "salesman") {
       if (profile?.dealer_id) {
-        window.location.href = 'https://xdrive.my/salesman';
+        window.location.href = "https://xdrive.my/salesman";
       } else {
-        window.location.href = 'https://xdrive.my/salesman-lite';
+        window.location.href = "https://xdrive.my/salesman-lite";
       }
     } else {
-      window.location.href = 'https://xdrive.my/salesman';
+      window.location.href = "https://xdrive.my/salesman";
     }
   };
 
   const handleLogin = async () => {
-    if (!email || !password) { setError('Please enter your email and password.'); return; }
-    setError(''); setLoading(true);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) { setError(signInError.message); setLoading(false); return; }
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    const { data, error: signInError } = await supabase.auth.signInWithPassword(
+      { email, password },
+    );
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
     await redirectByRole(data.user);
     setLoading(false);
   };
 
   if (unconfirmed) {
-    const unconfirmedEmail = searchParams.get('email') || '';
+    const unconfirmedEmail = searchParams.get("email") || "";
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '24px 16px', background: '#0a0a0c', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
-          <span style={{ width: 30, height: 30, background: '#dc2626', borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 24,
+          padding: "24px 16px",
+          background: "#0a0a0c",
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            color: "#fff",
+          }}
+        >
+          <span
+            style={{
+              width: 30,
+              height: 30,
+              background: "#dc2626",
+              borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 18,
+              letterSpacing: 1,
+            }}
+          >
+            S
+          </span>
+          <span
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              letterSpacing: 3,
+              fontSize: 28,
+            }}
+          >
+            ShiftOS
+          </span>
         </div>
-        <div style={{ width: 'min(420px, 100%)', background: '#111114', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}>
-          <div style={{ width: 56, height: 56, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.5"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
+        <div
+          style={{
+            width: "min(420px, 100%)",
+            background: "#111114",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 20,
+            padding: "48px 40px",
+            textAlign: "center",
+            boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              background: "rgba(251,191,36,0.1)",
+              border: "1px solid rgba(251,191,36,0.25)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 20px",
+            }}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth="1.5"
+            >
+              <path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+            </svg>
           </div>
-          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: '#fff', letterSpacing: 2, marginBottom: 12 }}>CONFIRM YOUR EMAIL</h2>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 24 }}>Your account isn't confirmed yet. Check your inbox for the confirmation link before signing in.</p>
-          {resendSent && <p style={{ fontSize: 12, color: '#4ade80', marginBottom: 16 }}>Confirmation email resent!</p>}
+          <h2
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 28,
+              color: "#fff",
+              letterSpacing: 2,
+              marginBottom: 12,
+            }}
+          >
+            CONFIRM YOUR EMAIL
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.45)",
+              lineHeight: 1.6,
+              marginBottom: 24,
+            }}
+          >
+            Your account isn't confirmed yet. Check your inbox for the
+            confirmation link before signing in.
+          </p>
+          {resendSent && (
+            <p style={{ fontSize: 12, color: "#4ade80", marginBottom: 16 }}>
+              Confirmation email resent!
+            </p>
+          )}
           {unconfirmedEmail && (
-            <button onClick={async () => {
-              setResendLoading(true); setResendSent(false);
-              await supabase.auth.resend({ type: 'signup', email: unconfirmedEmail });
-              setResendLoading(false); setResendSent(true);
-            }} disabled={resendLoading} style={{ width: '100%', padding: '13px', background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8, color: '#f87171', fontSize: 13, fontWeight: 600, cursor: resendLoading ? 'not-allowed' : 'pointer', marginBottom: 16 }}>
-              {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+            <button
+              onClick={async () => {
+                setResendLoading(true);
+                setResendSent(false);
+                await supabase.auth.resend({
+                  type: "signup",
+                  email: unconfirmedEmail,
+                });
+                setResendLoading(false);
+                setResendSent(true);
+              }}
+              disabled={resendLoading}
+              style={{
+                width: "100%",
+                padding: "13px",
+                background: "rgba(220,38,38,0.12)",
+                border: "1px solid rgba(220,38,38,0.3)",
+                borderRadius: 8,
+                color: "#f87171",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: resendLoading ? "not-allowed" : "pointer",
+                marginBottom: 16,
+              }}
+            >
+              {resendLoading ? "Sending..." : "Resend confirmation email"}
             </button>
           )}
-          <button onClick={() => setUnconfirmed(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 12, cursor: 'pointer' }}>
+          <button
+            onClick={() => setUnconfirmed(false)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.3)",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
             Back to sign in
           </button>
         </div>
@@ -186,24 +333,73 @@ export default function LoginPage() {
           <span className="center-brand-text">ShiftOS</span>
         </div>
 
-        <div className={`login-form-panel ${mounted ? 'mounted' : ''}`}>
-          <form noValidate onSubmit={e => { e.preventDefault(); handleLogin(); }} style={{ display: 'contents' }}>
+        <div className={`login-form-panel ${mounted ? "mounted" : ""}`}>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            style={{ display: "contents" }}
+          >
             <div className="form-scroll">
               <div className="form-heading">
                 <p className="eyebrow">Restricted Access</p>
                 <h2>SIGN IN</h2>
               </div>
               <Field id="email" label="Email Address" focused={focused}>
-                <TextInput id="email" type="email" placeholder="admin@shiftos.my" value={email} onChange={setEmail} onFocusChange={setFocused} />
+                <TextInput
+                  id="email"
+                  type="email"
+                  placeholder="admin@shiftos.my"
+                  value={email}
+                  onChange={setEmail}
+                  onFocusChange={setFocused}
+                />
               </Field>
               <Field id="password" label="Password" focused={focused}>
                 <div className="field-inner">
-                  <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} onFocus={() => setFocused('password')} onBlur={() => setFocused('')} style={{ paddingRight: '40px' }} />
-                  <button className="pw-toggle" type="button" onClick={() => setShowPassword(p => !p)} tabIndex={-1}>
-                    {showPassword
-                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    }
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setFocused("password")}
+                    onBlur={() => setFocused("")}
+                    style={{ paddingRight: "40px" }}
+                  />
+                  <button
+                    className="pw-toggle"
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
                   </button>
                   <div className="field-bar" />
                 </div>
@@ -214,38 +410,129 @@ export default function LoginPage() {
             <div className="submit-bar">
               <button type="submit" className="btn-submit" disabled={loading}>
                 <div className="btn-shimmer" />
-                {loading
-                  ? <span className="loading-dots"><span>·</span><span>·</span><span>·</span></span>
-                  : 'ACCESS DASHBOARD'
-                }
+                {loading ? (
+                  <span className="loading-dots">
+                    <span>·</span>
+                    <span>·</span>
+                    <span>·</span>
+                  </span>
+                ) : (
+                  "ACCESS DASHBOARD"
+                )}
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0' }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em' }}>OR</span>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  margin: "12px 0",
+                }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    background: "rgba(255,255,255,0.08)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.25)",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  OR
+                </span>
+                <div
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    background: "rgba(255,255,255,0.08)",
+                  }}
+                />
               </div>
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                style={{ width: '100%', padding: '13px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', marginBottom: 12 }}
+                style={{
+                  width: "100%",
+                  padding: "13px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 4,
+                  color: "#fff",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  marginBottom: 12,
+                }}
               >
-                <svg width="18" height="18" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.332 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
-                  <path d="M6.306 14.691l6.571 4.819C14.655 15.108 19.001 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
-                  <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.311 0-9.823-3.422-11.387-8.172l-6.516 5.022C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
-                  <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.332 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
+                    fill="#FFC107"
+                  />
+                  <path
+                    d="M6.306 14.691l6.571 4.819C14.655 15.108 19.001 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
+                    fill="#FF3D00"
+                  />
+                  <path
+                    d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.311 0-9.823-3.422-11.387-8.172l-6.516 5.022C9.505 39.556 16.227 44 24 44z"
+                    fill="#4CAF50"
+                  />
+                  <path
+                    d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
+                    fill="#1976D2"
+                  />
                 </svg>
                 Continue with Google
               </button>
               <a
                 href="/onboarding"
-                style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 4, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 4, color: '#f87171', fontSize: 13, fontWeight: 500, textDecoration: 'none', transition: 'background 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "12px 0",
+                  marginBottom: 4,
+                  background: "rgba(220,38,38,0.06)",
+                  border: "1px solid rgba(220,38,38,0.18)",
+                  borderRadius: 4,
+                  color: "#f87171",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textDecoration: "none",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(220,38,38,0.12)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "rgba(220,38,38,0.06)")
+                }
               >
                 Create free account →
               </a>
-              <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.2)', marginBottom: 6, letterSpacing: '0.04em' }}>
+              <p
+                style={{
+                  textAlign: "center",
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.2)",
+                  marginBottom: 6,
+                  letterSpacing: "0.04em",
+                }}
+              >
                 Free for salesmen · 14-day trial for dealers
               </p>
               <p className="footer-note">ShiftOS · Secure Admin Access</p>
