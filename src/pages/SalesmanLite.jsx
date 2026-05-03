@@ -243,6 +243,9 @@ export default function SalesmanLite() {
   const [tiktokListing, setTiktokListing] = useState(null);
   const [editListing, setEditListing] = useState(null);
 
+  // tour
+  const [tourStep, setTourStep] = useState(null);
+
   // broadcast
   const [broadcastCar, setBroadcastCar] = useState(null);
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -336,6 +339,8 @@ export default function SalesmanLite() {
 
       setProfile(profileData);
       setLoading(false);
+
+      if (!localStorage.getItem("sl_tour_done")) setTourStep(0);
 
       // fetch listings with full columns for car detail popup
       Promise.all([
@@ -5115,6 +5120,163 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       </div>
     );
 
+  // ── TOUR ─────────────────────────────────────────────────────────────────
+
+  const TOUR_STEPS = [
+    {
+      emoji: "👋",
+      title: "Welcome to ShiftOS Lite",
+      body: "Quick tour to get you up and running in 30 seconds. You can skip anytime.",
+      arrow: null,
+    },
+    {
+      emoji: "📊",
+      title: "Dashboard",
+      body: isMobile ? "Bottom nav → first icon. See your active leads, listings, stale follow-ups, and recent activity at a glance." : "Left sidebar → Dashboard. See your active leads, listings, stale follow-ups, and recent activity at a glance.",
+      arrow: isMobile ? "↓ bottom left" : "← left sidebar",
+    },
+    {
+      emoji: "🚗",
+      title: "My Listings",
+      body: "Add your cars here. Each card shows views, WhatsApp taps, and a CVR bar — 🔥 means buyers are clicking, 💤 means it needs a refresh.",
+      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
+    },
+    {
+      emoji: "👥",
+      title: "Leads",
+      body: "Track every buyer through the pipeline — New → Contacted → Test Drive → Won. Heat scores show who needs attention. Use WA to ping stale leads.",
+      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
+    },
+    {
+      emoji: "💬",
+      title: "Enquiries",
+      body: "Incoming messages from buyers on your listings land here. Use WA Reply templates to respond fast and convert them into Leads.",
+      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
+    },
+    {
+      emoji: "📅",
+      title: "Bookings",
+      body: "Viewing appointments booked through your profile appear here. Confirm, cancel, or send a WA reminder with one tap.",
+      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
+    },
+    {
+      emoji: "🔗",
+      title: "Join a Dealership",
+      body: "Got an invite code from your dealer? Enter it under Join Dealership to unlock the full panel — shared stock, team leads, and more.",
+      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
+    },
+  ];
+
+  const dismissTour = () => {
+    localStorage.setItem("sl_tour_done", "1");
+    setTourStep(null);
+  };
+
+  const renderTour = () => {
+    if (tourStep === null) return null;
+    const step = TOUR_STEPS[tourStep];
+    const isLast = tourStep === TOUR_STEPS.length - 1;
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000,
+          background: "rgba(5,7,14,0.82)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 20px",
+        }}
+        onClick={dismissTour}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "min(420px, 100%)",
+            background: "#111827",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 16,
+            padding: "28px 24px 20px",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.7)",
+          }}
+        >
+          {/* Step emoji + arrow hint */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                {step.emoji}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, color: "#4b5563", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  Step {tourStep + 1} of {TOUR_STEPS.length}
+                </p>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9", marginTop: 2 }}>
+                  {step.title}
+                </p>
+              </div>
+            </div>
+            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, fontSize: 18, lineHeight: 1 }}>✕</button>
+          </div>
+
+          <p style={{ margin: "0 0 12px", fontSize: 14, color: "#94a3b8", lineHeight: 1.65 }}>
+            {step.body}
+          </p>
+
+          {step.arrow && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 8, padding: "5px 10px", marginBottom: 16 }}>
+              <span style={{ fontSize: 12, color: "#93c5fd", fontWeight: 600 }}>{step.arrow}</span>
+            </div>
+          )}
+
+          {/* Progress dots */}
+          <div style={{ display: "flex", gap: 5, marginBottom: 18 }}>
+            {TOUR_STEPS.map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  height: 3,
+                  flex: i === tourStep ? 2 : 1,
+                  borderRadius: 99,
+                  background: i === tourStep ? "#3b82f6" : i < tourStep ? "rgba(59,130,246,0.35)" : "rgba(255,255,255,0.08)",
+                  transition: "flex 0.3s, background 0.3s",
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {tourStep > 0 && (
+              <button
+                onClick={() => setTourStep((s) => s - 1)}
+                style={{ padding: "9px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, cursor: "pointer" }}
+              >
+                Back
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={dismissTour}
+              style={{ padding: "9px 14px", borderRadius: 8, background: "none", border: "none", color: "#4b5563", fontSize: 12, cursor: "pointer" }}
+            >
+              Skip
+            </button>
+            <button
+              onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
+              style={{ padding: "9px 20px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              {isLast ? "Got it 🎉" : "Next →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── LOADING ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -5669,6 +5831,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {renderWAModal()}
       {renderNotifPanel()}
       {renderCarDetailPopup()}
+      {renderTour()}
 
       {/* Broadcast modal */}
       {broadcastCar &&
