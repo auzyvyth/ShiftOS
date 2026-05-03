@@ -117,6 +117,7 @@ export default function AccountantPanel() {
   const [overviewStats, setOverviewStats] = useState(null);
   const [overviewRows, setOverviewRows] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewKey, setOverviewKey] = useState(0);
 
   // ── Inline grid editing ───────────────────────────────────────
   const [editingCell, setEditingCell] = useState(null); // { rowIdx, field }
@@ -185,15 +186,15 @@ export default function AccountantPanel() {
 
   // ── Auth ──────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
+    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
+      if (error || !user) {
         navigate("/login");
         return;
       }
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", data.session.user.id)
+        .eq("id", user.id)
         .maybeSingle();
       if (!p || p.role !== "accountant") {
         navigate("/login");
@@ -228,33 +229,79 @@ export default function AccountantPanel() {
   }, [navigate]);
 
   // ── Overview fetch ────────────────────────────────────────────
+  // Primary: car_listings (source of truth for sold cars)
+  // Enrichment: stock_units (purchase price, days in stock, GP)
   useEffect(() => {
     if (activeNav !== "overview" || !profile?.dealer_id) return;
     setOverviewLoading(true);
+    const dealerId = profile.dealer_id;
     const start = new Date(viewMonth);
     const end = new Date(start);
     end.setMonth(end.getMonth() + 1);
-    supabase
-      .from("stock_units")
-      .select(
-        "id,purchase_price,recon_cost,sold_price,gross_profit,days_in_stock,sold_date,car_listings(brand,model,year)",
-      )
-      .eq("dealer_id", profile.dealer_id)
-      .eq("status", "sold")
-      .gte("sold_date", start.toISOString())
-      .lt("sold_date", end.toISOString())
-      .order("sold_date", { ascending: false })
-      .then(({ data }) => {
-        const rows = (data || []).map((r) => ({ ...r, stock_unit_id: r.id }));
-        const totalRevenue = rows.reduce((s, r) => s + (r.sold_price || 0), 0);
-        const totalGP = rows.reduce((s, r) => s + (r.gross_profit || 0), 0);
-        const unitsSold = rows.length;
-        const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
-        setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
-        setOverviewRows(rows);
-        setOverviewLoading(false);
+
+    Promise.all([
+      supabase
+        .from("car_listings")
+        .select("id,brand,model,year,selling_price,recon_cost,sold_at")
+        .eq("dealer_id", dealerId)
+        .eq("status", "sold")
+        .gte("sold_at", start.toISOString())
+        .lt("sold_at", end.toISOString())
+        .order("sold_at", { ascending: false }),
+      supabase
+        .from("stock_units")
+        .select("id,listing_id,purchase_price,recon_cost,sold_price,gross_profit,days_in_stock")
+        .eq("dealer_id", dealerId),
+    ]).then(([{ data: cars }, { data: units }]) => {
+      const unitMap = {};
+      (units || []).forEach((u) => { unitMap[u.listing_id] = u; });
+
+      const rows = (cars || []).map((car) => {
+        const unit = unitMap[car.id] || {};
+        const purchase = unit.purchase_price || 0;
+        const recon = unit.recon_cost ?? car.recon_cost ?? 0;
+        const sold = unit.sold_price || car.selling_price || 0;
+        const gp = unit.gross_profit != null ? unit.gross_profit : sold - purchase - recon;
+        return {
+          car_listing_id: car.id,
+          stock_unit_id: unit.id || null,
+          car_listings: { year: car.year, brand: car.brand, model: car.model },
+          purchase_price: purchase,
+          recon_cost: recon,
+          sold_price: sold,
+          gross_profit: gp,
+          days_in_stock: unit.days_in_stock ?? null,
+        };
       });
-  }, [activeNav, profile, viewMonth]);
+
+      const totalRevenue = rows.reduce((s, r) => s + (r.sold_price || 0), 0);
+      const totalGP = rows.reduce((s, r) => s + (r.gross_profit || 0), 0);
+      const unitsSold = rows.length;
+      const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+      setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
+      setOverviewRows(rows);
+      setOverviewLoading(false);
+    });
+  }, [activeNav, profile, viewMonth, overviewKey]);
+
+  // ── Overview realtime ─────────────────────────────────────────
+  useEffect(() => {
+    if (!profile?.dealer_id) return;
+    const dealerId = profile.dealer_id;
+    const bump = () => setOverviewKey((k) => k + 1);
+    const ch = supabase
+      .channel("acct_overview_" + dealerId)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "car_listings",
+        filter: `dealer_id=eq.${dealerId}`,
+      }, bump)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "stock_units",
+        filter: `dealer_id=eq.${dealerId}`,
+      }, bump)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [profile]);
 
   // ── Save inline cell edit ─────────────────────────────────────
   const saveCellEdit = useCallback(async () => {
@@ -263,11 +310,11 @@ export default function AccountantPanel() {
     const row = overviewRows[rowIdx];
     if (!row) return;
     const numVal = parseFloat(cellDraft) || 0;
-    const purchase =
-      field === "purchase_price" ? numVal : row.purchase_price || 0;
-    const recon = field === "recon_cost" ? numVal : row.recon_cost || 0;
-    const sold = field === "sold_price" ? numVal : row.sold_price || 0;
-    const newGP = sold - purchase - recon;
+    const purchase = field === "purchase_price" ? numVal : row.purchase_price || 0;
+    const recon    = field === "recon_cost"     ? numVal : row.recon_cost    || 0;
+    const sold     = field === "sold_price"     ? numVal : row.sold_price    || 0;
+    const newGP    = sold - purchase - recon;
+
     // optimistic update + live summary recalc
     setOverviewRows((prev) => {
       const updated = prev.map((r, i) => {
@@ -275,20 +322,61 @@ export default function AccountantPanel() {
         return { ...r, [field]: numVal, gross_profit: newGP };
       });
       const totalRevenue = updated.reduce((s, r) => s + (r.sold_price || 0), 0);
-      const totalGP = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
-      const unitsSold = updated.length;
-      const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+      const totalGP      = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
+      const unitsSold    = updated.length;
+      const avgMargin    = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
       setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
       return updated;
     });
     setEditingCell(null);
     setCellSaving(true);
-    await supabase
-      .from("stock_units")
-      .update({ [field]: numVal, gross_profit: newGP })
-      .eq("id", row.stock_unit_id);
+
+    if (row.stock_unit_id) {
+      // existing stock_unit — just update it
+      await supabase
+        .from("stock_units")
+        .update({ [field]: numVal, gross_profit: newGP })
+        .eq("id", row.stock_unit_id);
+    } else {
+      // no stock_unit yet — create one scoped to this listing
+      const { data: newUnit } = await supabase
+        .from("stock_units")
+        .insert({
+          dealer_id: profile.dealer_id,
+          listing_id: row.car_listing_id,
+          status: "sold",
+          sold_price: row.sold_price,
+          recon_cost: row.recon_cost,
+          [field]: numVal,
+          gross_profit: newGP,
+        })
+        .select("id")
+        .single();
+      if (newUnit) {
+        setOverviewRows((prev) =>
+          prev.map((r, i) =>
+            i === rowIdx ? { ...r, stock_unit_id: newUnit.id } : r,
+          ),
+        );
+      }
+    }
+
+    // Keep car_listings in sync for the two fields it stores
+    if (field === "sold_price") {
+      await supabase
+        .from("car_listings")
+        .update({ selling_price: numVal })
+        .eq("id", row.car_listing_id);
+    }
+    if (field === "recon_cost") {
+      await supabase
+        .from("car_listings")
+        .update({ recon_cost: numVal })
+        .eq("id", row.car_listing_id);
+    }
+
     setCellSaving(false);
-  }, [editingCell, cellDraft, overviewRows, cellSaving]);
+  }, [editingCell, cellDraft, overviewRows, cellSaving, profile]);
 
   useEffect(() => {
     if (editingCell) cellInputRef.current?.select();
