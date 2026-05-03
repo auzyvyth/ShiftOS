@@ -237,7 +237,7 @@ export default function LoginPage() {
                 </svg>
                 Continue with Google
               </button>
-              <
+              <a
                 href="/onboarding"
                 style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 4, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 4, color: '#f87171', fontSize: 13, fontWeight: 500, textDecoration: 'none', transition: 'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
