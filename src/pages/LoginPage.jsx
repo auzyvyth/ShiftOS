@@ -153,8 +153,8 @@ export default function LoginPage() {
     );
     if (signInError) {
       const isInvalidCreds =
-        signInError.message.toLowerCase().includes('invalid') ||
-        signInError.message.toLowerCase().includes('credentials') ||
+        signInError.message.toLowerCase().includes("invalid") ||
+        signInError.message.toLowerCase().includes("credentials") ||
         signInError.status === 400;
 
       if (isInvalidCreds) {
