@@ -239,6 +239,7 @@ export default function OnboardingPage() {
       setUserId(uid);
       setUserEmail(data.session.user.email);
       setEmailConfirmed(!!data.session.user.email_confirmed_at);
+      const meta = data.session.user.user_metadata || {};
       const { data: prof } = await supabase
         .from("profiles")
         .select("*")
@@ -251,6 +252,8 @@ export default function OnboardingPage() {
           updates.accountType = "dealership";
         else if (prof.role === "salesman") updates.accountType = "salesman";
         if (prof.full_name) updates.fullName = prof.full_name;
+        else if (!v.fullName && (meta.full_name || meta.name))
+          updates.fullName = meta.full_name || meta.name;
         if (prof.phone) updates.phone = prof.phone;
         if (prof.dealership) updates.dealerName = prof.dealership;
         if (prof.subdomain) {
@@ -266,6 +269,8 @@ export default function OnboardingPage() {
           }
         }
         if (Object.keys(updates).length) setV((p) => ({ ...p, ...updates }));
+      } else if (meta.full_name || meta.name) {
+        setV((p) => ({ ...p, fullName: p.fullName || meta.full_name || meta.name }));
       }
       setAuthReady(true);
     });
@@ -414,7 +419,7 @@ export default function OnboardingPage() {
               ic_deadline: v.ic
                 ? null
                 : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: profileData?.selected_plan || "standard",
+              selected_plan: v.accountType === 'salesman' ? 'salesman_free' : 'standard',
             }
           : {
               id: userId,
@@ -433,7 +438,7 @@ export default function OnboardingPage() {
               ic_deadline: v.ic
                 ? null
                 : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: profileData?.selected_plan || "standard",
+              selected_plan: v.accountType === 'salesman' ? 'salesman_free' : 'standard',
             };
         const { error: err } = await supabase.from("profiles").upsert(payload);
         if (err) throw err;
@@ -683,7 +688,9 @@ export default function OnboardingPage() {
               {stage.opt
                 ? "OPTIONAL"
                 : isReview
-                  ? "14-DAY FREE TRIAL — NO CARD REQUIRED"
+                  ? v.accountType === "salesman"
+                    ? "FREE FOREVER — NO CARD REQUIRED"
+                    : "14-DAY FREE TRIAL — NO CARD REQUIRED"
                   : stage.id === "type"
                     ? "WELCOME"
                     : "QUESTION"}
@@ -697,12 +704,12 @@ export default function OnboardingPage() {
                   {
                     val: "dealership",
                     label: "Dealership",
-                    sub: "A business with a team",
+                    sub: "Full team dashboard · RM700/mo after trial",
                   },
                   {
                     val: "salesman",
                     label: "Sole Salesman",
-                    sub: "An individual selling independently",
+                    sub: "Free forever · No credit card needed",
                   },
                 ].map((c) => (
                   <button

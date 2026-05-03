@@ -52,6 +52,16 @@ export default function LoginPage() {
     });
   }, []);
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://xdrive.my/auth/callback'
+      }
+    });
+    if (error) setError(error.message);
+  };
+
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
@@ -209,7 +219,25 @@ export default function LoginPage() {
                   : 'ACCESS DASHBOARD'
                 }
               </button>
-              <a
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0' }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em' }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+              </div>
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                style={{ width: '100%', padding: '13px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', marginBottom: 12 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.332 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
+                  <path d="M6.306 14.691l6.571 4.819C14.655 15.108 19.001 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
+                  <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.311 0-9.823-3.422-11.387-8.172l-6.516 5.022C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
+                  <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+                </svg>
+                Continue with Google
+              </button>
+              <
                 href="/onboarding"
                 style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 4, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 4, color: '#f87171', fontSize: 13, fontWeight: 500, textDecoration: 'none', transition: 'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
@@ -218,7 +246,7 @@ export default function LoginPage() {
                 Create free account →
               </a>
               <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.2)', marginBottom: 6, letterSpacing: '0.04em' }}>
-                14-day free trial · No credit card required
+                Free for salesmen · 14-day trial for dealers
               </p>
               <p className="footer-note">ShiftOS · Secure Admin Access</p>
             </div>
