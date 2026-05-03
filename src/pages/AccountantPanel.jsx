@@ -68,7 +68,8 @@ const ADVISOR_PRESETS = [
 ];
 
 async function streamAnthropic(messages, systemPrompt, onChunk) {
-  const AI_PROXY = `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/ai/messages`;
+  const AI_PROXY =
+    "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
   const body = { model: ANTH_MODEL, max_tokens: 1024, stream: true, messages };
   if (systemPrompt) body.system = systemPrompt;
   const res = await fetch(AI_PROXY, {
@@ -118,6 +119,10 @@ export default function AccountantPanel() {
   const [overviewRows, setOverviewRows] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewKey, setOverviewKey] = useState(0);
+  const [netProfitData, setNetProfitData] = useState({
+    expenses: 0,
+    commPaid: 0,
+  });
 
   // ── Inline grid editing ───────────────────────────────────────
   const [editingCell, setEditingCell] = useState(null); // { rowIdx, field }
@@ -234,6 +239,7 @@ export default function AccountantPanel() {
   useEffect(() => {
     if (activeNav !== "overview" || !profile?.dealer_id) return;
     setOverviewLoading(true);
+    setNetProfitData({ expenses: 0, commPaid: 0 });
     const dealerId = profile.dealer_id;
     const start = new Date(viewMonth);
     const end = new Date(start);
@@ -250,38 +256,90 @@ export default function AccountantPanel() {
         .order("sold_at", { ascending: false }),
       supabase
         .from("stock_units")
-        .select("id,listing_id,purchase_price,recon_cost,sold_price,gross_profit,days_in_stock")
+        .select(
+          "id,listing_id,purchase_price,recon_cost,sold_price,gross_profit,days_in_stock,included_services_cost",
+        )
         .eq("dealer_id", dealerId),
-    ]).then(([{ data: cars }, { data: units }]) => {
-      const unitMap = {};
-      (units || []).forEach((u) => { unitMap[u.listing_id] = u; });
+      supabase
+        .from("expense_entries")
+        .select("amount")
+        .eq("dealer_id", dealerId)
+        .gte("expense_date", start.toISOString().slice(0, 10))
+        .lt("expense_date", end.toISOString().slice(0, 10)),
+      supabase
+        .from("deal_financials")
+        .select("commission_amount")
+        .eq("dealer_id", dealerId)
+        .eq("commission_paid", true)
+        .gte("commission_paid_at", start.toISOString())
+        .lt("commission_paid_at", end.toISOString()),
+    ]).then(
+      ([
+        { data: cars },
+        { data: units },
+        { data: expData },
+        { data: commData },
+      ]) => {
+        const unitMap = {};
+        (units || []).forEach((u) => {
+          unitMap[u.listing_id] = u;
+        });
 
-      const rows = (cars || []).map((car) => {
-        const unit = unitMap[car.id] || {};
-        const purchase = unit.purchase_price || 0;
-        const recon = unit.recon_cost ?? car.recon_cost ?? 0;
-        const sold = unit.sold_price || car.selling_price || 0;
-        const gp = unit.gross_profit != null ? unit.gross_profit : sold - purchase - recon;
-        return {
-          car_listing_id: car.id,
-          stock_unit_id: unit.id || null,
-          car_listings: { year: car.year, brand: car.brand, model: car.model },
-          purchase_price: purchase,
-          recon_cost: recon,
-          sold_price: sold,
-          gross_profit: gp,
-          days_in_stock: unit.days_in_stock ?? null,
-        };
-      });
+        const rows = (cars || []).map((car) => {
+          const unit = unitMap[car.id] || {};
+          const purchase = unit.purchase_price || 0;
+          const recon = unit.recon_cost ?? car.recon_cost ?? 0;
+          const sold = unit.sold_price || car.selling_price || 0;
+          const services = unit.included_services_cost ?? 0;
+          const gp =
+            unit.gross_profit != null
+              ? unit.gross_profit
+              : sold - purchase - recon - services;
+          return {
+            car_listing_id: car.id,
+            stock_unit_id: unit.id || null,
+            car_listings: {
+              year: car.year,
+              brand: car.brand,
+              model: car.model,
+            },
+            purchase_price: purchase,
+            recon_cost: recon,
+            sold_price: sold,
+            gross_profit: gp,
+            days_in_stock: unit.days_in_stock ?? null,
+            services_cost: services,
+          };
+        });
 
-      const totalRevenue = rows.reduce((s, r) => s + (r.sold_price || 0), 0);
-      const totalGP = rows.reduce((s, r) => s + (r.gross_profit || 0), 0);
-      const unitsSold = rows.length;
-      const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
-      setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
-      setOverviewRows(rows);
-      setOverviewLoading(false);
-    });
+        const totalRevenue = rows.reduce((s, r) => s + (r.sold_price || 0), 0);
+        const totalGP = rows.reduce((s, r) => s + (r.gross_profit || 0), 0);
+        const unitsSold = rows.length;
+        const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+        const totalServicesCost = rows.reduce(
+          (s, r) => s + (r.services_cost || 0),
+          0,
+        );
+        setOverviewStats({
+          totalRevenue,
+          totalGP,
+          unitsSold,
+          avgMargin,
+          totalServicesCost,
+        });
+        const totalExpenses = (expData || []).reduce(
+          (s, r) => s + (r.amount || 0),
+          0,
+        );
+        const totalCommPaid = (commData || []).reduce(
+          (s, r) => s + (r.commission_amount || 0),
+          0,
+        );
+        setNetProfitData({ expenses: totalExpenses, commPaid: totalCommPaid });
+        setOverviewRows(rows);
+        setOverviewLoading(false);
+      },
+    );
   }, [activeNav, profile, viewMonth, overviewKey]);
 
   // ── Overview realtime ─────────────────────────────────────────
@@ -291,14 +349,26 @@ export default function AccountantPanel() {
     const bump = () => setOverviewKey((k) => k + 1);
     const ch = supabase
       .channel("acct_overview_" + dealerId)
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "car_listings",
-        filter: `dealer_id=eq.${dealerId}`,
-      }, bump)
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "stock_units",
-        filter: `dealer_id=eq.${dealerId}`,
-      }, bump)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "car_listings",
+          filter: `dealer_id=eq.${dealerId}`,
+        },
+        bump,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stock_units",
+          filter: `dealer_id=eq.${dealerId}`,
+        },
+        bump,
+      )
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [profile]);
@@ -310,10 +380,11 @@ export default function AccountantPanel() {
     const row = overviewRows[rowIdx];
     if (!row) return;
     const numVal = parseFloat(cellDraft) || 0;
-    const purchase = field === "purchase_price" ? numVal : row.purchase_price || 0;
-    const recon    = field === "recon_cost"     ? numVal : row.recon_cost    || 0;
-    const sold     = field === "sold_price"     ? numVal : row.sold_price    || 0;
-    const newGP    = sold - purchase - recon;
+    const purchase =
+      field === "purchase_price" ? numVal : row.purchase_price || 0;
+    const recon = field === "recon_cost" ? numVal : row.recon_cost || 0;
+    const sold = field === "sold_price" ? numVal : row.sold_price || 0;
+    const newGP = sold - purchase - recon - (row.services_cost || 0);
 
     // optimistic update + live summary recalc
     setOverviewRows((prev) => {
@@ -322,10 +393,20 @@ export default function AccountantPanel() {
         return { ...r, [field]: numVal, gross_profit: newGP };
       });
       const totalRevenue = updated.reduce((s, r) => s + (r.sold_price || 0), 0);
-      const totalGP      = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
-      const unitsSold    = updated.length;
-      const avgMargin    = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
-      setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
+      const totalGP = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
+      const totalServicesCost = updated.reduce(
+        (s, r) => s + (r.services_cost || 0),
+        0,
+      );
+      const unitsSold = updated.length;
+      const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+      setOverviewStats({
+        totalRevenue,
+        totalGP,
+        unitsSold,
+        avgMargin,
+        totalServicesCost,
+      });
       return updated;
     });
     setEditingCell(null);
@@ -1753,7 +1834,7 @@ export default function AccountantPanel() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(4,1fr)",
+                  gridTemplateColumns: "repeat(6,1fr)",
                   borderBottom: "2px solid rgba(34,197,94,0.15)",
                   background: "rgba(34,197,94,0.03)",
                 }}
@@ -1787,13 +1868,40 @@ export default function AccountantPanel() {
                         ? "—"
                         : `${overviewStats.avgMargin.toFixed(1)}%`,
                   },
+                  {
+                    label: "Services Revenue",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : `RM ${overviewStats.totalServicesCost.toLocaleString()}`,
+                    accent: "#4ade80",
+                  },
+                  {
+                    label: "Net Profit",
+                    value:
+                      overviewLoading || !overviewStats
+                        ? "—"
+                        : `RM ${(overviewStats.totalGP - netProfitData.expenses - netProfitData.commPaid).toLocaleString()}`,
+                    accent: overviewStats
+                      ? overviewStats.totalGP -
+                          netProfitData.expenses -
+                          netProfitData.commPaid >=
+                        0
+                        ? "#4ade80"
+                        : "#f87171"
+                      : ACCENT,
+                    breakdown:
+                      overviewLoading || !overviewStats
+                        ? null
+                        : `GP ${rm(overviewStats.totalGP)} − Exp ${rm(netProfitData.expenses)} − Comm ${rm(netProfitData.commPaid)}`,
+                  },
                 ].map((c, i) => (
                   <div
                     key={c.label}
                     style={{
                       padding: "10px 16px",
                       borderRight:
-                        i < 3 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                        i < 5 ? "1px solid rgba(255,255,255,0.07)" : "none",
                     }}
                   >
                     <p
@@ -1812,7 +1920,7 @@ export default function AccountantPanel() {
                       style={{
                         fontSize: 18,
                         fontWeight: 700,
-                        color: ACCENT,
+                        color: c.accent || ACCENT,
                         margin: 0,
                         fontFamily: "'Bebas Neue',sans-serif",
                         letterSpacing: 1,
@@ -1820,6 +1928,18 @@ export default function AccountantPanel() {
                     >
                       {c.value}
                     </p>
+                    {c.breakdown && (
+                      <p
+                        style={{
+                          fontSize: 9,
+                          color: "#374151",
+                          margin: "4px 0 0",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {c.breakdown}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1833,6 +1953,7 @@ export default function AccountantPanel() {
                         "Car",
                         "Purchase ✎",
                         "Recon ✎",
+                        "Services",
                         "Sold ✎",
                         "GP",
                         "Margin %",
@@ -1854,7 +1975,7 @@ export default function AccountantPanel() {
                     {overviewLoading ? (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           style={{
                             padding: 20,
                             textAlign: "center",
@@ -1868,7 +1989,7 @@ export default function AccountantPanel() {
                     ) : overviewRows.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           style={{
                             padding: 20,
                             textAlign: "center",
@@ -2025,6 +2146,9 @@ export default function AccountantPanel() {
                               field="recon_cost"
                               value={r.recon_cost}
                             />
+                            <td style={{ ...XL.td(true), color: "#9ca3af" }}>
+                              {rm(r.services_cost)}
+                            </td>
                             <EditableCell
                               rowIdx={i}
                               field="sold_price"
@@ -2200,7 +2324,7 @@ export default function AccountantPanel() {
                                 style={{ ...XL.tdN, background: "#090e18" }}
                               />
                               <td
-                                colSpan={8}
+                                colSpan={9}
                                 style={{
                                   padding: "14px 16px",
                                   border: "1px solid rgba(255,255,255,0.07)",
@@ -2232,11 +2356,6 @@ export default function AccountantPanel() {
                                       type: "number",
                                     },
                                     {
-                                      label: "Loan Bank",
-                                      field: "loan_bank",
-                                      type: "text",
-                                    },
-                                    {
                                       label: "Cash Balance (RM)",
                                       field: "cash_balance",
                                       type: "number",
@@ -2265,6 +2384,154 @@ export default function AccountantPanel() {
                                       />
                                     </div>
                                   ))}
+                                  {/* Loan Bank selector */}
+                                  {(() => {
+                                    const MY_BANKS = [
+                                      "Maybank",
+                                      "CIMB",
+                                      "Public Bank",
+                                      "RHB",
+                                      "Hong Leong Bank",
+                                      "AmBank",
+                                      "Bank Islam",
+                                      "Bank Rakyat",
+                                      "Affin Bank",
+                                      "Alliance Bank",
+                                      "OCBC",
+                                      "Standard Chartered",
+                                      "BSN",
+                                      "Other",
+                                    ];
+                                    const cur = val("loan_bank") || "";
+                                    const selectVal = MY_BANKS.includes(cur)
+                                      ? cur
+                                      : cur
+                                        ? "Other"
+                                        : "";
+                                    return (
+                                      <div>
+                                        <p style={label11}>Loan Bank</p>
+                                        <select
+                                          value={selectVal}
+                                          onChange={(e) => {
+                                            if (e.target.value !== "Other") {
+                                              setDealField(
+                                                row.id,
+                                                "loan_bank",
+                                                e.target.value,
+                                              );
+                                            } else {
+                                              setDealField(
+                                                row.id,
+                                                "loan_bank",
+                                                "",
+                                              );
+                                            }
+                                          }}
+                                          style={inp}
+                                        >
+                                          <option value="">
+                                            — Select bank —
+                                          </option>
+                                          {MY_BANKS.map((b) => (
+                                            <option key={b} value={b}>
+                                              {b}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        {selectVal === "Other" && (
+                                          <input
+                                            type="text"
+                                            value={cur}
+                                            onChange={(e) =>
+                                              setDealField(
+                                                row.id,
+                                                "loan_bank",
+                                                e.target.value,
+                                              )
+                                            }
+                                            placeholder="Enter bank name"
+                                            style={{ ...inp, marginTop: 4 }}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* Interest rate */}
+                                  <div>
+                                    <p style={label11}>
+                                      Interest Rate (% p.a.)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={val("loan_interest_rate") ?? ""}
+                                      onChange={(e) =>
+                                        setDealField(
+                                          row.id,
+                                          "loan_interest_rate",
+                                          parseFloat(e.target.value) || 0,
+                                        )
+                                      }
+                                      style={inp}
+                                    />
+                                  </div>
+                                  {/* Tenure */}
+                                  <div>
+                                    <p style={label11}>Tenure (months)</p>
+                                    <input
+                                      type="number"
+                                      value={val("loan_tenure_months") ?? ""}
+                                      onChange={(e) =>
+                                        setDealField(
+                                          row.id,
+                                          "loan_tenure_months",
+                                          parseInt(e.target.value) || 0,
+                                        )
+                                      }
+                                      style={inp}
+                                    />
+                                  </div>
+                                  {/* Monthly instalment — read-only computed */}
+                                  {(() => {
+                                    const amt =
+                                      parseFloat(val("loan_amount")) || 0;
+                                    const rate =
+                                      parseFloat(val("loan_interest_rate")) ||
+                                      0;
+                                    const tenure =
+                                      parseInt(val("loan_tenure_months")) || 0;
+                                    const monthly =
+                                      tenure > 0
+                                        ? (amt +
+                                            amt *
+                                              (rate / 100) *
+                                              (tenure / 12)) /
+                                          tenure
+                                        : 0;
+                                    return (
+                                      <div>
+                                        <p style={label11}>
+                                          Monthly Instalment (RM)
+                                        </p>
+                                        <div
+                                          style={{
+                                            ...inp,
+                                            color: "#4ade80",
+                                            fontWeight: 600,
+                                            background: "rgba(74,222,128,0.06)",
+                                            border:
+                                              "1px solid rgba(74,222,128,0.15)",
+                                            cursor: "default",
+                                          }}
+                                        >
+                                          {tenure > 0
+                                            ? `RM ${monthly.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                            : "—"}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                   <div>
                                     <p style={label11}>Status</p>
                                     <select
@@ -2456,7 +2723,7 @@ export default function AccountantPanel() {
                           style={{ ...inp, width: 90 }}
                         >
                           <option value="percent">%</option>
-                          <option value="flat">RM flat</option>
+                          <option value="fixed">RM flat</option>
                         </select>
                       </div>
                       <div style={{ minWidth: 80 }}>
