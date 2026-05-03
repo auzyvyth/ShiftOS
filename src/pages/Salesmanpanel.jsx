@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
   LogOut,
@@ -232,18 +233,18 @@ export default function SalesmanPanel() {
 
   // ── auth + profile ────────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      if (error || !data.session) {
+    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
+      if (error || !user) {
         setLoading(false);
         navigate("/login");
         return;
       }
 
-      setUserId(data.session.user.id);
+      setUserId(user.id);
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", data.session.user.id)
+        .eq("id", user.id)
         .maybeSingle();
 
       if (profileError || !profileData) {
@@ -427,6 +428,8 @@ export default function SalesmanPanel() {
     supabase
       .from("leads")
       .select("*, car_listings(brand, model, year, selling_price)")
+      .eq("salesman_id", userId)
+      .eq("dealer_id", profile?.dealer_id)
       .eq("is_deleted", false)
       .order("updated_at", { ascending: false })
       .then(async ({ data }) => {
@@ -534,7 +537,7 @@ Rules:
   // ── loan data ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.id) return;
-    const dealerId = profile.dealer_id || profile.id;
+    const dealerId = getDealerIdFromProfile(profile);
     supabase
       .from("leads")
       .select("id, buyer_name, phone")
@@ -4967,7 +4970,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   const submitLoan = async () => {
     if (!loanForm.bank_name || !loanForm.loan_amount || !loanForm.loan_tenure) return;
     setLoanSaving(true);
-    const dealerId = profile?.dealer_id || profile?.id;
+    const dealerId = getDealerIdFromProfile(profile);
     const banksPayload = loanForm.bank_name ? [{
       name:            loanForm.bank_name,
       rate:            parseFloat(loanForm.interest_rate) || 0,

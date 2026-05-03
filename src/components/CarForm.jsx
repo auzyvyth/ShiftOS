@@ -483,14 +483,14 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Identity", icon: Car, desc: "Brand & model" },
-  { id: 2, label: "Specs", icon: Gauge, desc: "Type & engine" },
-  { id: 3, label: "Condition", icon: Check, desc: "Mileage & colour" },
-  { id: 4, label: "History", icon: ShieldCheck, desc: "Recon & import" },
-  { id: 5, label: "Location", icon: MapPin, desc: "State & city" },
-  { id: 6, label: "Pricing", icon: DollarSign, desc: "Prices & discount" },
-  { id: 7, label: "Details", icon: FileText, desc: "Specs & features" },
-  { id: 8, label: "Photos", icon: Camera, desc: "Upload images" },
+  { id: 1, label: "Photos",    icon: Camera,      desc: "Upload images first" },
+  { id: 2, label: "Identity",  icon: Car,         desc: "Brand & model" },
+  { id: 3, label: "Condition", icon: Check,       desc: "Mileage & colour" },
+  { id: 4, label: "Specs",     icon: Gauge,       desc: "Type & engine" },
+  { id: 5, label: "History",   icon: ShieldCheck, desc: "Recon & import" },
+  { id: 6, label: "Location",  icon: MapPin,      desc: "State & city" },
+  { id: 7, label: "Pricing",   icon: DollarSign,  desc: "Prices & discount" },
+  { id: 8, label: "Details",   icon: FileText,    desc: "Specs, features & docs" },
 ];
 
 const DOC_TYPES = [
@@ -765,6 +765,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [copied, setCopied] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  const [draftId, setDraftId] = useState(null);
+  const [imgProgress, setImgProgress] = useState([]);
+  // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
   const formRef = useRef(null);
@@ -1011,7 +1014,64 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       );
     set("images", [...form.images, ...accepted]);
     setPreviews((p) => [...p, ...accepted.map((f) => URL.createObjectURL(f))]);
+    uploadImagesEager(accepted); // fire and forget
     e.target.value = "";
+  };
+
+  const createDraftIfNeeded = async (firstUrl) => {
+    if (draftId) return;
+    if (!dealerId) return;
+    try {
+      const { data, error } = await supabase
+        .from("car_listings")
+        .insert({ dealer_id: dealerId, status: "draft", images: [firstUrl] })
+        .select("id")
+        .single();
+      if (!error && data) setDraftId(data.id);
+    } catch {}
+  };
+
+  const uploadImagesEager = async (files) => {
+    const startIdx = imgProgress.length;
+    setImgProgress((p) => [
+      ...p,
+      ...files.map((f) => ({ name: f.name, status: "uploading" })),
+    ]);
+
+    const results = await Promise.allSettled(
+      files.map(async (file, i) => {
+        const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error } = await supabase.storage
+          .from("car-images")
+          .upload(path, file);
+        if (error) {
+          setImgProgress((p) =>
+            p.map((e, j) =>
+              j === startIdx + i ? { ...e, status: "error" } : e,
+            ),
+          );
+          throw error;
+        }
+        const url = supabase.storage
+          .from("car-images")
+          .getPublicUrl(path).data.publicUrl;
+        setForm((f) => {
+          const imgs = [...f.images];
+          const fileIdx = imgs.indexOf(file);
+          if (fileIdx >= 0) imgs[fileIdx] = url;
+          return { ...f, images: imgs };
+        });
+        setImgProgress((p) =>
+          p.map((e, j) =>
+            j === startIdx + i ? { ...e, status: "done" } : e,
+          ),
+        );
+        return url;
+      }),
+    );
+
+    const firstSuccess = results.find((r) => r.status === "fulfilled");
+    if (firstSuccess) createDraftIfNeeded(firstSuccess.value);
   };
 
   const moveToFirst = (i) => {
@@ -1146,13 +1206,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   };
 
   const canNext = () => {
-    if (step === 1) return form.brand && form.model && form.year;
-    if (step === 2) return form.bodyType && form.fuelType;
+    if (step === 1) return form.images.length > 0;
+    if (step === 2) return form.brand && form.model && form.year;
     if (step === 3) return form.mileage && form.colour && form.condition;
-    if (step === 4) return true; // History step — always optional
-    if (step === 5) return form.state && form.city;
-    if (step === 6) return form.basePrice && form.sellingPrice;
-    if (step === 8) return form.images.length > 0;
+    if (step === 4) return form.bodyType && form.fuelType;
+    if (step === 5) return true;
+    if (step === 6) return form.state && form.city;
+    if (step === 7) return form.basePrice && form.sellingPrice;
     return true;
   };
 
@@ -1297,29 +1357,41 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           setUploading(false);
           return;
         }
-        console.log(
-          "[CarForm] insert dealer_id:",
-          dealerId,
-          "| role:",
-          profile?.role,
-        );
-        const { data, error } = await supabase
-          .from("car_listings")
-          .insert([
-            {
-              dealer_id: dealerId,
-              ...payload,
-              status: "active",
-              // salesman_lite owns and sells their own listings
-              ...(profile?.role === "salesman"
-                ? { assigned_to: profile.id }
-                : {}),
-            },
-          ])
-          .select()
-          .single();
-        if (error) throw error;
-        const savedListing = data;
+        let savedListing;
+        if (draftId) {
+          const { data, error } = await supabase
+            .from("car_listings")
+            .update({ ...payload, status: "active" })
+            .eq("id", draftId)
+            .select()
+            .single();
+          if (error) throw error;
+          savedListing = data;
+        } else {
+          console.log(
+            "[CarForm] insert dealer_id:",
+            dealerId,
+            "| role:",
+            profile?.role,
+          );
+          const { data, error } = await supabase
+            .from("car_listings")
+            .insert([
+              {
+                dealer_id: dealerId,
+                ...payload,
+                status: "active",
+                // salesman_lite owns and sells their own listings
+                ...(profile?.role === "salesman"
+                  ? { assigned_to: profile.id }
+                  : {}),
+              },
+            ])
+            .select()
+            .single();
+          if (error) throw error;
+          savedListing = data;
+        }
         onCreate(savedListing);
         // Sync services to linked stock_unit (if one is auto-created)
         if (savedListing?.id) {
@@ -1337,6 +1409,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         setDraggingIndex(null);
         setDropTargetIndex(null);
         setStep(1);
+        setDraftId(null);
+        setImgProgress([]);
       }
     } catch (err) {
       alert("Error: " + err.message);
@@ -1425,8 +1499,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         )}
       </div>
 
-      {/* ── Step 1: Identity ── */}
-      {step === 1 && (
+      {/* ── Step 2: Identity ── */}
+      {step === 2 && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Brand" required>
@@ -1473,8 +1547,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 2: Specs ── */}
-      {step === 2 && (
+      {/* ── Step 4: Specs ── */}
+      {step === 4 && (
         <div className="space-y-6">
           <Field label="Body Type" required>
             <PillSelect
@@ -1646,8 +1720,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 4: History (Recon & Import) ── */}
-      {step === 4 && (
+      {/* ── Step 5: History (Recon & Import) ── */}
+      {step === 5 && (
         <div className="space-y-6">
           {/* Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-800 border border-gray-700 rounded-2xl">
@@ -1813,8 +1887,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 5: Location ── */}
-      {step === 5 && (
+      {/* ── Step 6: Location ── */}
+      {step === 6 && (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -1850,8 +1924,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 6: Pricing ── */}
-      {step === 6 && (
+      {/* ── Step 7: Pricing ── */}
+      {step === 7 && (
         <div className="space-y-5">
           <Field
             label="Base Price (RM)"
@@ -2159,8 +2233,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 7: Details ── */}
-      {step === 7 && (
+      {/* ── Step 8: Details ── */}
+      {step === 8 && (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea
@@ -2195,8 +2269,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 8: Photos ── */}
-      {step === 8 && (
+      {/* ── Step 1: Photos ── */}
+      {step === 1 && (
         <div className="space-y-5">
           <label className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group">
             <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
@@ -2216,6 +2290,25 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               className="hidden"
             />
           </label>
+          {imgProgress.filter(p => p.status !== 'done').length > 0 && (
+            <div className="space-y-1.5">
+              {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-800
+                     border border-gray-700 rounded-lg text-xs">
+                  {p.status === 'uploading'
+                    ? <div className="w-3 h-3 border border-white/30 border-t-white
+                           rounded-full animate-spin flex-shrink-0" />
+                    : <span className="text-red-400 flex-shrink-0">✕</span>}
+                  <span className="text-gray-400 truncate">{p.name}</span>
+                  <span className={p.status === 'error'
+                    ? 'text-red-400 ml-auto flex-shrink-0'
+                    : 'text-gray-500 ml-auto flex-shrink-0'}>
+                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {previews.length > 0 && (
             <>
               <div className="sticky top-3 z-20 rounded-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-sm p-3 sm:p-4 space-y-2.5">

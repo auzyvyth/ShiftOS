@@ -263,10 +263,11 @@ export default function AccountantPanel() {
     const row = overviewRows[rowIdx];
     if (!row) return;
     const numVal = parseFloat(cellDraft) || 0;
-    const purchase = field === "purchase_price" ? numVal : (row.purchase_price || 0);
-    const recon    = field === "recon_cost"     ? numVal : (row.recon_cost     || 0);
-    const sold     = field === "sold_price"     ? numVal : (row.sold_price     || 0);
-    const newGP    = sold - purchase - recon;
+    const purchase =
+      field === "purchase_price" ? numVal : row.purchase_price || 0;
+    const recon = field === "recon_cost" ? numVal : row.recon_cost || 0;
+    const sold = field === "sold_price" ? numVal : row.sold_price || 0;
+    const newGP = sold - purchase - recon;
     // optimistic update + live summary recalc
     setOverviewRows((prev) => {
       const updated = prev.map((r, i) => {
@@ -274,9 +275,9 @@ export default function AccountantPanel() {
         return { ...r, [field]: numVal, gross_profit: newGP };
       });
       const totalRevenue = updated.reduce((s, r) => s + (r.sold_price || 0), 0);
-      const totalGP      = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
-      const unitsSold    = updated.length;
-      const avgMargin    = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
+      const totalGP = updated.reduce((s, r) => s + (r.gross_profit || 0), 0);
+      const unitsSold = updated.length;
+      const avgMargin = totalRevenue > 0 ? (totalGP / totalRevenue) * 100 : 0;
       setOverviewStats({ totalRevenue, totalGP, unitsSold, avgMargin });
       return updated;
     });
@@ -815,7 +816,12 @@ export default function AccountantPanel() {
   // ── Excel-style grid helpers ─────────────────────────────────
   const XL = {
     // width: auto so table uses natural column widths and scrolls horizontally
-    tbl: { width: "auto", minWidth: "100%", borderCollapse: "collapse", fontSize: 12 },
+    tbl: {
+      width: "auto",
+      minWidth: "100%",
+      borderCollapse: "collapse",
+      fontSize: 12,
+    },
     // col size hints — callers can override minWidth per column type
     th: (left, minW = 110) => ({
       padding: "6px 10px",
@@ -1744,7 +1750,13 @@ export default function AccountantPanel() {
                         "Margin %",
                         "Days",
                       ].map((h) => (
-                        <th key={h} style={XL.th(h === "Car", h === "Car" ? 200 : h === "Days" ? 80 : 110)}>
+                        <th
+                          key={h}
+                          style={XL.th(
+                            h === "Car",
+                            h === "Car" ? 200 : h === "Days" ? 80 : 110,
+                          )}
+                        >
                           {h}
                         </th>
                       ))}
@@ -1893,11 +1905,24 @@ export default function AccountantPanel() {
                         };
 
                         return (
-                          <tr key={i} style={XL.row(i)}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.04)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.018)"; }}>
+                          <tr
+                            key={i}
+                            style={XL.row(i)}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background =
+                                "rgba(34,197,94,0.04)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background =
+                                i % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.018)";
+                            }}
+                          >
                             <td style={XL.tdN}>{i + 1}</td>
-                            <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>
+                            <td
+                              style={{ ...XL.td(false, 200), color: "#e5e7eb" }}
+                            >
                               {car
                                 ? `${car.year} ${car.brand} ${car.model}`
                                 : "—"}
@@ -2013,14 +2038,24 @@ export default function AccountantPanel() {
                         <React.Fragment key={row.id}>
                           <tr
                             style={{ ...XL.row(idx), cursor: "pointer" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.04)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.018)"; }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background =
+                                "rgba(34,197,94,0.04)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background =
+                                idx % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.018)";
+                            }}
                             onClick={() =>
                               setExpandedDealId(isOpen ? null : row.id)
                             }
                           >
                             <td style={XL.tdN}>{idx + 1}</td>
-                            <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>
+                            <td
+                              style={{ ...XL.td(false, 200), color: "#e5e7eb" }}
+                            >
                               {car
                                 ? `${car.year} ${car.brand} ${car.model}`
                                 : "—"}
