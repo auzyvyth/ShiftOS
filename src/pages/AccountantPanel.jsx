@@ -67,6 +67,23 @@ const ADVISOR_PRESETS = [
   "What are our top expense categories?",
 ];
 
+const MY_BANK_RATES = {
+  "Maybank":            2.42,
+  "CIMB":               2.42,
+  "Public Bank":        2.28,
+  "RHB":                2.40,
+  "Hong Leong Bank":    2.35,
+  "AmBank":             2.50,
+  "Bank Islam":         2.72,
+  "Bank Rakyat":        2.65,
+  "Affin Bank":         2.50,
+  "Alliance Bank":      2.45,
+  "OCBC":               2.40,
+  "Standard Chartered": 2.38,
+  "BSN":                2.25,
+  "Other":              2.50,
+};
+
 async function streamAnthropic(messages, systemPrompt, onChunk) {
   const AI_PROXY =
     "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
@@ -188,6 +205,22 @@ export default function AccountantPanel() {
   const [advisorInput, setAdvisorInput] = useState("");
   const [advisorSending, setAdvisorSending] = useState(false);
   const advisorEndRef = useRef(null);
+
+  // ── Accounts Receivable ───────────────────────────────────────
+  const [arRows, setArRows] = useState([]);
+  const [arLoading, setArLoading] = useState(false);
+  const [arDisbursing, setArDisbursing] = useState({});
+
+  // ── Stock Valuation ───────────────────────────────────────────
+  const [stockRows, setStockRows] = useState([]);
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockStats, setStockStats] = useState(null);
+
+  // ── KPI Dashboard ─────────────────────────────────────────────
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiMonthly, setKpiMonthly] = useState([]);
+  const [kpiSalesmen, setKpiSalesmen] = useState([]);
+  const [kpiSummary, setKpiSummary] = useState(null);
 
   // ── Auth ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -955,6 +988,150 @@ export default function AccountantPanel() {
     advisorEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [advisorMessages]);
 
+  // ── Accounts Receivable fetch ─────────────────────────────────
+  useEffect(() => {
+    if (activeNav !== "ar" || !profile?.dealer_id) return;
+    setArLoading(true);
+    supabase
+      .from("deal_financials")
+      .select("*, car_listings(brand,model,year,selling_price,sold_at), profiles!salesman_id(full_name)")
+      .eq("dealer_id", profile.dealer_id)
+      .eq("loan_disbursed", false)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setArRows(data || []);
+        setArLoading(false);
+      });
+  }, [activeNav, profile]);
+
+  const markDisbursed = useCallback(async (row) => {
+    setArDisbursing((p) => ({ ...p, [row.id]: true }));
+    await supabase
+      .from("deal_financials")
+      .update({ loan_disbursed: true, status: "disbursed" })
+      .eq("id", row.id);
+    setArRows((prev) => prev.filter((r) => r.id !== row.id));
+    setArDisbursing((p) => ({ ...p, [row.id]: false }));
+  }, []);
+
+  // ── Stock Valuation fetch ─────────────────────────────────────
+  useEffect(() => {
+    if (activeNav !== "stock" || !profile?.dealer_id) return;
+    setStockLoading(true);
+    const dealerId = profile.dealer_id;
+    Promise.all([
+      supabase
+        .from("car_listings")
+        .select("id,brand,model,year,selling_price,condition,created_at,status")
+        .eq("dealer_id", dealerId)
+        .in("status", ["active", "reserved"])
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("stock_units")
+        .select("listing_id,purchase_price,recon_cost")
+        .eq("dealer_id", dealerId),
+    ]).then(([{ data: cars }, { data: units }]) => {
+      const unitMap = {};
+      (units || []).forEach((u) => { if (u.listing_id) unitMap[u.listing_id] = u; });
+      const today = Date.now();
+      const rows = (cars || []).map((car) => {
+        const unit = unitMap[car.id] || {};
+        const purchase = unit.purchase_price || 0;
+        const recon    = unit.recon_cost    || 0;
+        const selling  = car.selling_price  || 0;
+        const days     = Math.floor((today - new Date(car.created_at).getTime()) / 86400000);
+        const interest = +(purchase * 0.04 / 365 * days).toFixed(2);
+        const margin   = selling > 0 ? ((selling - purchase - recon) / selling) * 100 : 0;
+        return { ...car, purchase_price: purchase, recon_cost: recon, days, interest, margin };
+      });
+      const totalFloor = rows.reduce((s, r) => s + r.purchase_price, 0);
+      setStockStats({
+        total: rows.length,
+        totalFloor,
+        monthlyInterest: Math.round(totalFloor * 0.04 / 12),
+        stale: rows.filter((r) => r.days > 60).length,
+      });
+      setStockRows(rows);
+      setStockLoading(false);
+    });
+  }, [activeNav, profile]);
+
+  // ── KPI Dashboard fetch ───────────────────────────────────────
+  useEffect(() => {
+    if (activeNav !== "kpi" || !profile?.dealer_id) return;
+    setKpiLoading(true);
+    const dealerId = profile.dealer_id;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 6);
+    cutoff.setDate(1);
+    Promise.all([
+      supabase
+        .from("stock_units")
+        .select("gross_profit,days_in_stock,sold_price,included_services_cost,sold_date,car_listings(assigned_to,profiles!assigned_to(full_name))")
+        .eq("dealer_id", dealerId)
+        .eq("status", "sold")
+        .gte("sold_date", cutoff.toISOString())
+        .not("sold_date", "is", null)
+        .order("sold_date"),
+      supabase
+        .from("expense_entries")
+        .select("amount,expense_date")
+        .eq("dealer_id", dealerId)
+        .gte("expense_date", cutoff.toISOString().slice(0, 10)),
+    ]).then(([{ data: soldRaw }, { data: expRaw }]) => {
+      const sold = soldRaw || [];
+      const exps = expRaw || [];
+
+      const byMonth = {};
+      sold.forEach((r) => {
+        const mk = (r.sold_date || "").slice(0, 7);
+        if (!mk) return;
+        if (!byMonth[mk]) byMonth[mk] = { gp: 0, units: 0, services: 0, days: 0 };
+        byMonth[mk].gp       += r.gross_profit           || 0;
+        byMonth[mk].units    += 1;
+        byMonth[mk].services += r.included_services_cost || 0;
+        byMonth[mk].days     += r.days_in_stock          || 0;
+      });
+      const expByMonth = {};
+      exps.forEach((r) => {
+        const mk = (r.expense_date || "").slice(0, 7);
+        expByMonth[mk] = (expByMonth[mk] || 0) + (r.amount || 0);
+      });
+
+      const monthly = Object.keys(byMonth).sort().map((mk) => ({
+        month: mk,
+        units:   byMonth[mk].units,
+        totalGP: byMonth[mk].gp,
+        gpu:     byMonth[mk].units > 0 ? byMonth[mk].gp / byMonth[mk].units : 0,
+        services: byMonth[mk].services,
+        expenses: expByMonth[mk] || 0,
+        net:     byMonth[mk].gp - (expByMonth[mk] || 0),
+        avgDays: byMonth[mk].units > 0 ? byMonth[mk].days / byMonth[mk].units : 0,
+      }));
+
+      const smap = {};
+      sold.forEach((r) => {
+        const name = r.car_listings?.profiles?.full_name || "Unassigned";
+        if (!smap[name]) smap[name] = { gp: 0, units: 0 };
+        smap[name].gp    += r.gross_profit || 0;
+        smap[name].units += 1;
+      });
+      const salesmen = Object.entries(smap)
+        .map(([name, v]) => ({ name, ...v, gpu: v.units ? v.gp / v.units : 0 }))
+        .sort((a, b) => b.gp - a.gp);
+
+      const latest    = monthly[monthly.length - 1];
+      const avgGpu    = sold.length > 0 ? sold.reduce((s, r) => s + (r.gross_profit || 0), 0) / sold.length : 0;
+      const avgDays   = sold.length > 0 ? sold.reduce((s, r) => s + (r.days_in_stock || 0), 0) / sold.length : 0;
+      const breakEven = latest && latest.gpu > 0 ? Math.ceil(latest.expenses / latest.gpu) : null;
+
+      setKpiMonthly(monthly);
+      setKpiSalesmen(salesmen);
+      setKpiSummary({ avgGpu, avgDays, breakEven, latestNet: latest?.net ?? 0, latestExpenses: latest?.expenses ?? 0, totalUnits: sold.length });
+      setKpiLoading(false);
+    });
+  }, [activeNav, profile]);
+
   // ─────────────────────────────────────────────────────────────
   if (loading)
     return (
@@ -974,12 +1151,15 @@ export default function AccountantPanel() {
     );
 
   const NAV = [
-    { id: "overview", label: "P&L Overview" },
-    { id: "deals", label: "Deal Tracker" },
-    { id: "commissions", label: "Commissions" },
-    { id: "expenses", label: "Expenses" },
-    { id: "close", label: "Month Close" },
-    { id: "advisor", label: "AI Advisor" },
+    { id: "overview",     label: "P&L Overview" },
+    { id: "deals",        label: "Deal Tracker" },
+    { id: "commissions",  label: "Commissions" },
+    { id: "expenses",     label: "Expenses" },
+    { id: "close",        label: "Month Close" },
+    { id: "ar",           label: "Receivables" },
+    { id: "stock",        label: "Stock Value" },
+    { id: "kpi",          label: "KPIs" },
+    { id: "advisor",      label: "AI Advisor" },
   ];
 
   // ── Excel-style grid helpers ─────────────────────────────────
@@ -1782,6 +1962,33 @@ export default function AccountantPanel() {
               )}
             </>
           )}
+          {activeNav === "ar" && (
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              {arLoading ? "Loading…" : (
+                <>{arRows.length} deal{arRows.length !== 1 ? "s" : ""} awaiting disbursement · Outstanding:{" "}
+                <strong style={{ color: "#f87171" }}>
+                  {rm(arRows.reduce((s, r) => s + (r.loan_amount || 0), 0))}
+                </strong></>
+              )}
+            </span>
+          )}
+          {activeNav === "stock" && (
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              {stockLoading ? "Loading…" : stockStats ? (
+                <>Floor plan: <strong style={{ color: "#e5e7eb" }}>{rm(stockStats.totalFloor)}</strong>
+                {" · "}Est. monthly interest: <strong style={{ color: "#fbbf24" }}>{rm(stockStats.monthlyInterest)}</strong>
+                {stockStats.stale > 0 && <> · <strong style={{ color: "#f87171" }}>{stockStats.stale} stale (&gt;60d)</strong></>}</>
+              ) : null}
+            </span>
+          )}
+          {activeNav === "kpi" && (
+            <span style={{ fontSize: 11, color: "#4b5563" }}>
+              {kpiLoading ? "Loading…" : kpiSummary ? (
+                <>6-month avg GPU: <strong style={{ color: "#4ade80" }}>{rm(Math.round(kpiSummary.avgGpu))}</strong>
+                {kpiSummary.breakEven !== null && <> · Break-even: <strong style={{ color: "#e5e7eb" }}>{kpiSummary.breakEven} units/mo</strong></>}</>
+              ) : null}
+            </span>
+          )}
           {activeNav === "advisor" && (
             <div
               style={{
@@ -2354,6 +2561,7 @@ export default function AccountantPanel() {
                                       label: "Loan Amount (RM)",
                                       field: "loan_amount",
                                       type: "number",
+                                      defaultVal: () => val("loan_amount") || Math.max(0, (row.selling_price || 0) - (val("deposit_received") || 0)) || "",
                                     },
                                     {
                                       label: "Cash Balance (RM)",
@@ -2365,12 +2573,12 @@ export default function AccountantPanel() {
                                       field: "commission_amount",
                                       type: "number",
                                     },
-                                  ].map(({ label, field, type }) => (
+                                  ].map(({ label, field, type, defaultVal }) => (
                                     <div key={field}>
                                       <p style={label11}>{label}</p>
                                       <input
                                         type={type}
-                                        value={val(field) ?? ""}
+                                        value={defaultVal ? defaultVal() : (val(field) ?? "")}
                                         onChange={(e) =>
                                           setDealField(
                                             row.id,
@@ -2415,17 +2623,11 @@ export default function AccountantPanel() {
                                           value={selectVal}
                                           onChange={(e) => {
                                             if (e.target.value !== "Other") {
-                                              setDealField(
-                                                row.id,
-                                                "loan_bank",
-                                                e.target.value,
-                                              );
+                                              setDealField(row.id, "loan_bank", e.target.value);
+                                              const rate = MY_BANK_RATES[e.target.value];
+                                              if (rate) setDealField(row.id, "loan_interest_rate", rate);
                                             } else {
-                                              setDealField(
-                                                row.id,
-                                                "loan_bank",
-                                                "",
-                                              );
+                                              setDealField(row.id, "loan_bank", "");
                                             }
                                           }}
                                           style={inp}
@@ -2481,7 +2683,7 @@ export default function AccountantPanel() {
                                     <p style={label11}>Tenure (months)</p>
                                     <input
                                       type="number"
-                                      value={val("loan_tenure_months") ?? ""}
+                                      value={val("loan_tenure_months") || 84}
                                       onChange={(e) =>
                                         setDealField(
                                           row.id,
@@ -2517,17 +2719,44 @@ export default function AccountantPanel() {
                                         <div
                                           style={{
                                             ...inp,
-                                            color: "#4ade80",
-                                            fontWeight: 600,
                                             background: "rgba(74,222,128,0.06)",
-                                            border:
-                                              "1px solid rgba(74,222,128,0.15)",
+                                            border: "1px solid rgba(74,222,128,0.15)",
                                             cursor: "default",
                                           }}
                                         >
-                                          {tenure > 0
-                                            ? `RM ${monthly.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                            : "—"}
+                                          {tenure > 0 ? (
+                                            <div>
+                                              <div style={{ color: "#4ade80", fontWeight: 700, fontSize: 13 }}>
+                                                RM {monthly.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo
+                                              </div>
+                                              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>
+                                                Total: RM {(monthly * tenure).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                {" · "}Interest: RM {(monthly * tenure - amt).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                              </div>
+                                            </div>
+                                          ) : "—"}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                  {(() => {
+                                    const loanAmt = parseFloat(val("loan_amount")) || 0;
+                                    const sellPrice = row.selling_price || 0;
+                                    const ltv = sellPrice > 0 ? (loanAmt / sellPrice) * 100 : 0;
+                                    const margin = sellPrice > 0 ? ((sellPrice - loanAmt) / sellPrice) * 100 : 0;
+                                    if (!loanAmt || !sellPrice) return null;
+                                    return (
+                                      <div>
+                                        <p style={label11}>Loan-to-Value</p>
+                                        <div style={{
+                                          ...inp,
+                                          color: ltv > 90 ? "#f87171" : ltv > 70 ? "#fbbf24" : "#4ade80",
+                                          fontWeight: 600,
+                                          background: "rgba(255,255,255,0.03)",
+                                          cursor: "default",
+                                          fontSize: 11,
+                                        }}>
+                                          {ltv.toFixed(1)}% LTV · {margin.toFixed(1)}% margin
                                         </div>
                                       </div>
                                     );
@@ -3876,6 +4105,251 @@ export default function AccountantPanel() {
               </div>
             </div>
           )}
+          {/* ── ACCOUNTS RECEIVABLE ── */}
+          {activeNav === "ar" && (
+            <div>
+              {/* Summary */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "2px solid rgba(239,68,68,0.15)", background: "rgba(239,68,68,0.02)" }}>
+                {[
+                  { label: "Awaiting Disbursement", value: arLoading ? "—" : String(arRows.filter(r => !r.loan_disbursed).length) },
+                  { label: "Total Outstanding", value: arLoading ? "—" : rm(arRows.reduce((s,r) => s + (r.loan_amount||0), 0)), color: "#f87171" },
+                  { label: "Avg Days Outstanding", value: arLoading || !arRows.length ? "—" : `${Math.round(arRows.reduce((s,r) => s + Math.floor((Date.now()-new Date(r.created_at).getTime())/86400000),0)/arRows.length)} days` },
+                  { label: "Deposits Collected", value: arLoading ? "—" : rm(arRows.reduce((s,r) => s + (r.deposit_received||0), 0)), color: "#4ade80" },
+                ].map((c, i) => (
+                  <div key={c.label} style={{ padding: "10px 16px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
+                    <p style={{ fontSize: 9, color: "#334155", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, margin: "0 0 4px" }}>{c.label}</p>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: c.color || ACCENT, margin: 0, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: 1 }}>{c.value}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Table */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={XL.tbl}>
+                  <thead>
+                    <tr>
+                      <th style={XL.thN} />
+                      {["Car","Salesman","Selling Price","Deposit Received","Loan Amount","Bank","Days Since Sale","Status",""].map((h) => (
+                        <th key={h} style={XL.th(["Car","Salesman","Bank",""].includes(h), h === "Car" ? 200 : 110)}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {arLoading ? (
+                      <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
+                    ) : arRows.length === 0 ? (
+                      <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "#4ade80", border: "1px solid rgba(255,255,255,0.07)" }}>✓ All loans disbursed — no outstanding receivables</td></tr>
+                    ) : arRows.map((row, i) => {
+                      const car = row.car_listings;
+                      const days = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000);
+                      const ageColor = days > 14 ? "#f87171" : days > 7 ? "#fbbf24" : "#4ade80";
+                      const sc = DEAL_STATUS_COLORS[row.status] || DEAL_STATUS_COLORS.pending;
+                      return (
+                        <tr key={row.id} style={XL.row(i)} onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.04)"} onMouseLeave={e => e.currentTarget.style.background = i%2===0?"transparent":"rgba(255,255,255,0.018)"}>
+                          <td style={XL.tdN}>{i + 1}</td>
+                          <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>{car ? `${car.year} ${car.brand} ${car.model}` : "—"}</td>
+                          <td style={{ ...XL.td(false), color: "#9ca3af" }}>{row.profiles?.full_name || "—"}</td>
+                          <td style={{ ...XL.td(true), color: "#e5e7eb" }}>{rm(row.selling_price)}</td>
+                          <td style={{ ...XL.td(true), color: "#9ca3af" }}>{rm(row.deposit_received)}</td>
+                          <td style={{ ...XL.td(true), color: "#fbbf24" }}>{rm(row.loan_amount)}</td>
+                          <td style={{ ...XL.td(false), color: "#9ca3af" }}>{row.loan_bank || "—"}</td>
+                          <td style={{ ...XL.td(true), color: ageColor, fontWeight: 600 }}>{days}d</td>
+                          <td style={XL.td(true)}>
+                            <span style={{ background: sc.bg, color: sc.color, borderRadius: 3, padding: "1px 7px", fontSize: 10, fontWeight: 600 }}>
+                              {row.status || "pending"}
+                            </span>
+                          </td>
+                          <td style={{ ...XL.td(false), padding: "4px 8px" }}>
+                            <button
+                              onClick={() => markDisbursed(row)}
+                              disabled={!!arDisbursing[row.id]}
+                              style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, color: "#60a5fa", fontSize: 10, fontWeight: 600, padding: "3px 10px", cursor: "pointer", opacity: arDisbursing[row.id] ? 0.5 : 1, fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap" }}
+                            >
+                              {arDisbursing[row.id] ? "Saving…" : "Mark Disbursed"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── STOCK VALUATION ── */}
+          {activeNav === "stock" && (
+            <div>
+              {/* Summary */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "2px solid rgba(234,179,8,0.15)", background: "rgba(234,179,8,0.02)" }}>
+                {[
+                  { label: "Units in Stock", value: stockLoading ? "—" : String(stockStats?.total ?? 0) },
+                  { label: "Floor Plan Exposure", value: stockLoading ? "—" : rm(stockStats?.totalFloor ?? 0), color: "#e5e7eb" },
+                  { label: "Est. Monthly Interest (4% p.a.)", value: stockLoading ? "—" : rm(stockStats?.monthlyInterest ?? 0), color: "#fbbf24" },
+                  { label: "Stale Units (>60 days)", value: stockLoading ? "—" : String(stockStats?.stale ?? 0), color: (stockStats?.stale ?? 0) > 0 ? "#f87171" : "#4ade80" },
+                ].map((c, i) => (
+                  <div key={c.label} style={{ padding: "10px 16px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
+                    <p style={{ fontSize: 9, color: "#334155", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, margin: "0 0 4px" }}>{c.label}</p>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: c.color || ACCENT, margin: 0, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: 1 }}>{c.value}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Table */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={XL.tbl}>
+                  <thead>
+                    <tr>
+                      <th style={XL.thN} />
+                      {["Car","Cond.","Status","Days","Purchase","Recon","Asking","Margin %","Est. Interest"].map((h) => (
+                        <th key={h} style={XL.th(["Car","Cond.","Status"].includes(h), h==="Car"?200:h==="Days"||h==="Cond."||h==="Status"?80:110)}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockLoading ? (
+                      <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>Loading…</td></tr>
+                    ) : stockRows.length === 0 ? (
+                      <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No active stock</td></tr>
+                    ) : stockRows.map((r, i) => {
+                      const ageColor = r.days > 60 ? "#f87171" : r.days > 30 ? "#fbbf24" : "#4ade80";
+                      const marginColor = r.margin < 5 ? "#f87171" : r.margin < 10 ? "#fbbf24" : "#4ade80";
+                      return (
+                        <tr key={r.id} style={XL.row(i)} onMouseEnter={e => e.currentTarget.style.background="rgba(234,179,8,0.04)"} onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":"rgba(255,255,255,0.018)"}>
+                          <td style={XL.tdN}>{i + 1}</td>
+                          <td style={{ ...XL.td(false, 200), color: "#e5e7eb" }}>{r.year} {r.brand} {r.model}</td>
+                          <td style={{ ...XL.td(false, 80), color: "#9ca3af", textTransform: "capitalize" }}>{r.condition || "—"}</td>
+                          <td style={{ ...XL.td(false, 80) }}>
+                            <span style={{ background: r.status==="reserved"?"rgba(251,191,36,0.12)":"rgba(74,222,128,0.12)", color: r.status==="reserved"?"#fbbf24":"#4ade80", borderRadius: 3, padding: "1px 6px", fontSize: 10, fontWeight: 600 }}>{r.status}</span>
+                          </td>
+                          <td style={{ ...XL.td(true, 80), color: ageColor, fontWeight: 600 }}>{r.days}d</td>
+                          <td style={{ ...XL.td(true), color: r.purchase_price ? "#9ca3af" : "#374151" }}>{r.purchase_price ? rm(r.purchase_price) : "—"}</td>
+                          <td style={{ ...XL.td(true), color: "#9ca3af" }}>{r.recon_cost ? rm(r.recon_cost) : "—"}</td>
+                          <td style={{ ...XL.td(true), color: "#e5e7eb" }}>{rm(r.selling_price)}</td>
+                          <td style={{ ...XL.td(true), color: marginColor, fontWeight: 600 }}>{r.purchase_price ? `${r.margin.toFixed(1)}%` : "—"}</td>
+                          <td style={{ ...XL.td(true), color: r.interest > 500 ? "#f87171" : "#6b7280" }}>{r.purchase_price ? rm(Math.round(r.interest)) : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── KPI DASHBOARD ── */}
+          {activeNav === "kpi" && (
+            <div style={{ padding: 16 }}>
+              {kpiLoading ? (
+                <p style={{ textAlign: "center", color: "#374151", padding: 40 }}>Loading…</p>
+              ) : !kpiSummary ? null : (
+                <>
+                  {/* Summary cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 20 }}>
+                    {[
+                      { label: "6-Month Avg GPU", value: rm(Math.round(kpiSummary.avgGpu)), color: "#4ade80" },
+                      { label: "Avg Days in Stock", value: `${kpiSummary.avgDays.toFixed(1)} days`, color: kpiSummary.avgDays > 60 ? "#f87171" : kpiSummary.avgDays > 30 ? "#fbbf24" : "#4ade80" },
+                      { label: "Break-Even (this mo.)", value: kpiSummary.breakEven !== null ? `${kpiSummary.breakEven} units` : "—", color: "#e5e7eb" },
+                      { label: "Latest Month Net", value: rm(Math.round(kpiSummary.latestNet)), color: kpiSummary.latestNet >= 0 ? "#4ade80" : "#f87171" },
+                    ].map((c) => (
+                      <div key={c.label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "12px 16px" }}>
+                        <p style={{ fontSize: 9, color: "#334155", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, margin: "0 0 6px" }}>{c.label}</p>
+                        <p style={{ fontSize: 20, fontWeight: 700, color: c.color, margin: 0, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: 1 }}>{c.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Monthly trend */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                    {/* Monthly table */}
+                    <div>
+                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 8 }}>Monthly Trend (6 months)</p>
+                      <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6 }}>
+                        <table style={{ ...XL.tbl, fontSize: 11 }}>
+                          <thead>
+                            <tr>
+                              {["Month","Units","Total GP","Avg GPU","Expenses","Net"].map(h => (
+                                <th key={h} style={{ ...XL.th(h==="Month", 80), fontSize: 9 }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kpiMonthly.length === 0 ? (
+                              <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No data</td></tr>
+                            ) : kpiMonthly.map((m, i) => {
+                              const [yr, mo] = m.month.split("-");
+                              const label = new Date(+yr, +mo - 1, 1).toLocaleDateString("en-MY", { month: "short", year: "2-digit" });
+                              return (
+                                <tr key={m.month} style={XL.row(i)}>
+                                  <td style={{ ...XL.td(false, 80), color: "#e5e7eb", fontWeight: 600 }}>{label}</td>
+                                  <td style={{ ...XL.td(true, 60), color: "#9ca3af" }}>{m.units}</td>
+                                  <td style={{ ...XL.td(true), color: "#4ade80" }}>{rm(Math.round(m.totalGP))}</td>
+                                  <td style={{ ...XL.td(true), color: "#22c55e", fontWeight: 600 }}>{rm(Math.round(m.gpu))}</td>
+                                  <td style={{ ...XL.td(true), color: "#f87171" }}>{rm(Math.round(m.expenses))}</td>
+                                  <td style={{ ...XL.td(true), color: m.net >= 0 ? "#4ade80" : "#f87171", fontWeight: 700 }}>{rm(Math.round(m.net))}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Salesman ranking */}
+                    <div>
+                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 8 }}>Salesman GP Ranking (6 months)</p>
+                      <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, overflow: "hidden" }}>
+                        <table style={{ ...XL.tbl, fontSize: 11 }}>
+                          <thead>
+                            <tr>
+                              {["#","Name","Units","Total GP","Avg GPU"].map(h => (
+                                <th key={h} style={{ ...XL.th(h==="Name", h==="#"?40:110), fontSize: 9 }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kpiSalesmen.length === 0 ? (
+                              <tr><td colSpan={5} style={{ padding: 16, textAlign: "center", color: "#374151", border: "1px solid rgba(255,255,255,0.07)" }}>No data</td></tr>
+                            ) : kpiSalesmen.map((s, i) => (
+                              <tr key={s.name} style={XL.row(i)}>
+                                <td style={{ ...XL.tdN, color: i === 0 ? "#fbbf24" : "#4b5563" }}>{i + 1}</td>
+                                <td style={{ ...XL.td(false), color: "#e5e7eb", fontWeight: i === 0 ? 700 : 400 }}>{s.name}</td>
+                                <td style={{ ...XL.td(true, 60), color: "#9ca3af" }}>{s.units}</td>
+                                <td style={{ ...XL.td(true), color: "#4ade80" }}>{rm(Math.round(s.gp))}</td>
+                                <td style={{ ...XL.td(true), color: "#22c55e", fontWeight: 600 }}>{rm(Math.round(s.gpu))}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Break-even analysis */}
+                  {kpiSummary.breakEven !== null && (
+                    <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "14px 18px" }}>
+                      <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 10 }}>Break-Even Analysis (current month)</p>
+                      <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div>
+                          <p style={{ fontSize: 9, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Monthly Expenses</p>
+                          <p style={{ fontSize: 16, color: "#f87171", fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif" }}>{rm(Math.round(kpiSummary.latestExpenses))}</p>
+                        </div>
+                        <div style={{ color: "#374151", fontSize: 20, alignSelf: "center" }}>÷</div>
+                        <div>
+                          <p style={{ fontSize: 9, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Avg GPU</p>
+                          <p style={{ fontSize: 16, color: "#4ade80", fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif" }}>{rm(Math.round(kpiSummary.avgGpu))}</p>
+                        </div>
+                        <div style={{ color: "#374151", fontSize: 20, alignSelf: "center" }}>=</div>
+                        <div>
+                          <p style={{ fontSize: 9, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Units to Break Even</p>
+                          <p style={{ fontSize: 22, color: "#e5e7eb", fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: 1 }}>{kpiSummary.breakEven} units</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
         </div>
         {/* end grid area */}
       </div>
