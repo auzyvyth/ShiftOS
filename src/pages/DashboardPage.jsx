@@ -5521,7 +5521,10 @@ export default function DashboardPage() {
         },
         (payload) => {
           setListings((prev) => {
-            if (payload.eventType === "INSERT") return [payload.new, ...prev];
+            if (payload.eventType === "INSERT") {
+              if (prev.some((l) => l.id === payload.new.id)) return prev;
+              return [payload.new, ...prev];
+            }
             if (payload.eventType === "UPDATE")
               return prev.map((l) =>
                 l.id === payload.new.id ? { ...l, ...payload.new } : l,
