@@ -52,6 +52,14 @@ export default function AuthCallbackPage() {
       }
     };
 
+    // Bail out immediately if Supabase already signalled an error in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    if (urlParams.get('error') || hashParams.get('error')) {
+      window.location.href = '/login?error=auth_failed';
+      return;
+    }
+
     // onAuthStateChange fires as soon as Supabase finishes exchanging
     // the magic link / OAuth hash tokens — more reliable than getSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

@@ -245,6 +245,7 @@ export default function SalesmanLite() {
 
   // tour
   const [tourStep, setTourStep] = useState(null);
+  const [tourTarget, setTourTarget] = useState(null);
 
   // broadcast
   const [broadcastCar, setBroadcastCar] = useState(null);
@@ -534,6 +535,20 @@ export default function SalesmanLite() {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (tourStep === null) { setTourTarget(null); return; }
+    const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "merge"];
+    const tab = TOUR_TABS[tourStep];
+    if (!tab) { setTourTarget(null); return; }
+    switchTab(tab);
+    const measure = () => {
+      const el = document.querySelector(`[data-tour-id="${tab}"]`);
+      if (el) setTourTarget(el.getBoundingClientRect());
+    };
+    const t = setTimeout(measure, 60);
+    return () => clearTimeout(t);
+  }, [tourStep]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -5123,157 +5138,174 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
   const TOUR_STEPS = [
-    {
-      emoji: "👋",
-      title: "Welcome to ShiftOS Lite",
-      body: "Quick tour to get you up and running in 30 seconds. You can skip anytime.",
-      arrow: null,
-    },
-    {
-      emoji: "📊",
-      title: "Dashboard",
-      body: isMobile ? "Bottom nav → first icon. See your active leads, listings, stale follow-ups, and recent activity at a glance." : "Left sidebar → Dashboard. See your active leads, listings, stale follow-ups, and recent activity at a glance.",
-      arrow: isMobile ? "↓ bottom left" : "← left sidebar",
-    },
-    {
-      emoji: "🚗",
-      title: "My Listings",
-      body: "Add your cars here. Each card shows views, WhatsApp taps, and a CVR bar — 🔥 means buyers are clicking, 💤 means it needs a refresh.",
-      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
-    },
-    {
-      emoji: "👥",
-      title: "Leads",
-      body: "Track every buyer through the pipeline — New → Contacted → Test Drive → Won. Heat scores show who needs attention. Use WA to ping stale leads.",
-      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
-    },
-    {
-      emoji: "💬",
-      title: "Enquiries",
-      body: "Incoming messages from buyers on your listings land here. Use WA Reply templates to respond fast and convert them into Leads.",
-      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
-    },
-    {
-      emoji: "📅",
-      title: "Bookings",
-      body: "Viewing appointments booked through your profile appear here. Confirm, cancel, or send a WA reminder with one tap.",
-      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
-    },
-    {
-      emoji: "🔗",
-      title: "Join a Dealership",
-      body: "Got an invite code from your dealer? Enter it under Join Dealership to unlock the full panel — shared stock, team leads, and more.",
-      arrow: isMobile ? "↓ bottom nav" : "← left sidebar",
-    },
+    { emoji: "👋", title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
+    { emoji: "📊", title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
+    { emoji: "🚗", title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. 🔥 = buyers are clicking. 💤 = needs a refresh or price drop." },
+    { emoji: "👥", title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
+    { emoji: "💬", title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
+    { emoji: "📅", title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
+    { emoji: "🔗", title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
   ];
 
   const dismissTour = () => {
     localStorage.setItem("sl_tour_done", "1");
     setTourStep(null);
+    setTourTarget(null);
   };
 
   const renderTour = () => {
     if (tourStep === null) return null;
     const step = TOUR_STEPS[tourStep];
     const isLast = tourStep === TOUR_STEPS.length - 1;
+    const isWelcome = tourStep === 0;
+
+    // Compute bubble position from the measured target rect
+    let bubbleStyle = {};
+    let arrowEl = null;
+    const PAD = 12;
+    const BUBBLE_W = isMobile ? Math.min(320, window.innerWidth - 32) : 300;
+
+    if (!tourTarget || isWelcome) {
+      // Center on screen for welcome step or if target not found
+      bubbleStyle = {
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: BUBBLE_W,
+        zIndex: 1002,
+      };
+    } else if (isMobile) {
+      // Mobile: nav at bottom → bubble sits above the highlighted tab
+      const centerX = tourTarget.left + tourTarget.width / 2;
+      const bubbleLeft = Math.max(8, Math.min(centerX - BUBBLE_W / 2, window.innerWidth - BUBBLE_W - 8));
+      bubbleStyle = {
+        position: "fixed",
+        bottom: window.innerHeight - tourTarget.top + PAD,
+        left: bubbleLeft,
+        width: BUBBLE_W,
+        zIndex: 1002,
+      };
+      // Arrow pointing down toward the tab
+      const arrowLeft = centerX - bubbleLeft - 8;
+      arrowEl = (
+        <div style={{
+          position: "absolute",
+          bottom: -8,
+          left: Math.max(12, Math.min(arrowLeft, BUBBLE_W - 28)),
+          width: 0,
+          height: 0,
+          borderLeft: "8px solid transparent",
+          borderRight: "8px solid transparent",
+          borderTop: "8px solid #1e2d3d",
+        }} />
+      );
+    } else {
+      // Desktop: sidebar at left → bubble sits to the right of the highlighted item
+      const topPos = Math.max(8, Math.min(tourTarget.top + tourTarget.height / 2 - 80, window.innerHeight - 220));
+      bubbleStyle = {
+        position: "fixed",
+        top: topPos,
+        left: tourTarget.right + PAD,
+        width: BUBBLE_W,
+        zIndex: 1002,
+      };
+      // Arrow pointing left toward the sidebar item
+      arrowEl = (
+        <div style={{
+          position: "absolute",
+          left: -8,
+          top: Math.min(60, tourTarget.height / 2 + 8),
+          width: 0,
+          height: 0,
+          borderTop: "8px solid transparent",
+          borderBottom: "8px solid transparent",
+          borderRight: "8px solid #1e2d3d",
+        }} />
+      );
+    }
 
     return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1000,
-          background: "rgba(5,7,14,0.82)",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 20px",
-        }}
-        onClick={dismissTour}
-      >
+      <>
+        {/* Highlight ring around the target nav item — no backdrop */}
+        {tourTarget && !isWelcome && (
+          <div
+            style={{
+              position: "fixed",
+              left: tourTarget.left - 3,
+              top: tourTarget.top - 3,
+              width: tourTarget.width + 6,
+              height: tourTarget.height + 6,
+              borderRadius: isMobile ? 8 : 10,
+              border: "2px solid #3b82f6",
+              boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
+              pointerEvents: "none",
+              zIndex: 1001,
+              transition: "all 0.25s ease",
+            }}
+          />
+        )}
+
+        {/* Bubble */}
         <div
-          onClick={(e) => e.stopPropagation()}
           style={{
-            width: "min(420px, 100%)",
+            ...bubbleStyle,
             background: "#111827",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 16,
-            padding: "28px 24px 20px",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.7)",
+            border: "1px solid rgba(59,130,246,0.3)",
+            borderRadius: 14,
+            padding: "18px 18px 14px",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+            animation: "tourPop 0.18s ease",
           }}
         >
-          {/* Step emoji + arrow hint */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
-                {step.emoji}
-              </div>
+          <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
+          {arrowEl}
+
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <span style={{ fontSize: 20 }}>{step.emoji}</span>
               <div>
-                <p style={{ margin: 0, fontSize: 11, color: "#4b5563", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  Step {tourStep + 1} of {TOUR_STEPS.length}
+                <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                  {tourStep + 1} / {TOUR_STEPS.length}
                 </p>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9", marginTop: 2 }}>
-                  {step.title}
-                </p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
               </div>
             </div>
-            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, fontSize: 18, lineHeight: 1 }}>✕</button>
+            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}>✕</button>
           </div>
 
-          <p style={{ margin: "0 0 12px", fontSize: 14, color: "#94a3b8", lineHeight: 1.65 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
             {step.body}
           </p>
 
-          {step.arrow && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 8, padding: "5px 10px", marginBottom: 16 }}>
-              <span style={{ fontSize: 12, color: "#93c5fd", fontWeight: 600 }}>{step.arrow}</span>
-            </div>
-          )}
-
-          {/* Progress dots */}
-          <div style={{ display: "flex", gap: 5, marginBottom: 18 }}>
+          {/* Progress bar */}
+          <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
             {TOUR_STEPS.map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  height: 3,
-                  flex: i === tourStep ? 2 : 1,
-                  borderRadius: 99,
-                  background: i === tourStep ? "#3b82f6" : i < tourStep ? "rgba(59,130,246,0.35)" : "rgba(255,255,255,0.08)",
-                  transition: "flex 0.3s, background 0.3s",
-                }}
-              />
+              <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
             ))}
           </div>
 
           {/* Buttons */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
-              <button
-                onClick={() => setTourStep((s) => s - 1)}
-                style={{ padding: "9px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, cursor: "pointer" }}
-              >
-                Back
+              <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
+                ← Back
               </button>
             )}
             <div style={{ flex: 1 }} />
-            <button
-              onClick={dismissTour}
-              style={{ padding: "9px 14px", borderRadius: 8, background: "none", border: "none", color: "#4b5563", fontSize: 12, cursor: "pointer" }}
-            >
+            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
               Skip
             </button>
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
-              style={{ padding: "9px 20px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "7px 16px", borderRadius: 7, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
               {isLast ? "Got it 🎉" : "Next →"}
             </button>
           </div>
         </div>
-      </div>
+      </>
     );
   };
 
@@ -5344,6 +5376,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             return (
               <button
                 key={tab}
+                data-tour-id={tab}
                 onClick={() => switchTab(tab)}
                 style={{
                   flex: 1,
@@ -5487,6 +5520,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
             <button
               key={tab}
+              data-tour-id={tab}
               onClick={() => switchTab(tab)}
               style={{
                 display: "flex",
