@@ -164,16 +164,24 @@ export default function LoginPage() {
           .eq("email", email.trim())
           .maybeSingle();
         if (existingProfile) {
+          // Account exists but no password — Google/OTP user
           setError("");
+          setShowForgotPassword(false);
           setShowMagicLink(true);
           setMagicEmail(email.trim());
         } else {
-          setError(signInError.message);
+          // No account found at all
+          setError(
+            "No account found with that email. Check for typos or create a free account.",
+          );
+          setShowMagicLink(false);
+          setShowForgotPassword(false);
         }
-        // Always surface forgot password on any credential failure
-        setShowForgotPassword(true);
       } else {
+        // Other errors (e.g. email not confirmed) — just show the message
         setError(signInError.message);
+        setShowMagicLink(false);
+        setShowForgotPassword(false);
       }
       setLoading(false);
       return;
