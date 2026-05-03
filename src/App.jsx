@@ -23,6 +23,7 @@ import MindMapPage from "./pages/MindMapPage";
 import DealerSlugRedirect from "./pages/DealerSlugRedirect";
 import SalesmanProfilePage from "./pages/SalesmanProfilePage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ImportStockPage from "./pages/ImportStockPage";
 import "./i18n/config";
 
@@ -54,6 +55,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/auth/confirm" element={<AuthConfirmPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
         {/* Protected — XDrive */}
         <Route path="/dashboard" element={<DashboardPage />} />
