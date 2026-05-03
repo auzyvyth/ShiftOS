@@ -1,41 +1,61 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 export default function AuthCallbackPage() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const handle = async () => {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (error) throw error;
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        );
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) throw new Error('no_session');
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          timeout,
+        ]);
+
+        const session = sessionResult?.data?.session;
+        if (!session?.user) {
+          window.location.href = '/login?error=auth_failed';
+          return;
+        }
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('subdomain, role, dealer_id, onboarding_complete')
+          .select('id, role, subdomain, dealer_id, onboarding_complete')
           .eq('id', session.user.id)
           .maybeSingle();
 
         if (!profile || profile.onboarding_complete === false) {
-          window.location.href = '/onboarding';
+          navigate('/onboarding');
           return;
         }
 
         const { role, subdomain, dealer_id } = profile;
 
-        if (role === 'superadmin' || role === 'dealer') {
+        if (role === 'dealer' || role === 'superadmin') {
           if (subdomain) {
             const accessToken = session.access_token;
             const refreshToken = session.refresh_token;
             window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
           } else {
-            window.location.href = '/dashboard';
+            navigate('/dashboard');
           }
         } else if (role === 'salesman') {
-          window.location.href = dealer_id ? '/salesman' : '/salesman-lite';
+          navigate(dealer_id ? '/salesman' : '/salesman-lite');
+        } else if (role === 'manager') {
+          navigate('/manager');
+        } else if (role === 'accountant') {
+          navigate('/accountant');
+        } else if (role === 'fi_officer') {
+          navigate('/fi');
+        } else if (role === 'admin') {
+          navigate('/admin');
         } else {
-          window.location.href = '/salesman';
+          navigate('/salesman');
         }
       } catch {
         window.location.href = '/login?error=auth_failed';
@@ -46,30 +66,73 @@ export default function AuthCallbackPage() {
   }, []);
 
   return (
-    <>
+    <div style={{
+      minHeight: '100vh',
+      background: '#080C14',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 20,
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        .cb-root { min-height: 100vh; background: #080C14; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; font-family: 'DM Sans', sans-serif; }
-        .cb-brand { display: flex; align-items: center; gap: 10px; color: #fff; }
-        .cb-icon { width: 36px; height: 36px; background: #dc2626; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
-        .cb-name { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 32px; line-height: 1; }
-        .cb-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 18px; color: rgba(255,255,255,0.35); }
-        .cb-dots span { animation: blink 1.4s infinite both; color: #dc2626; font-size: 28px; }
-        .cb-dots span:nth-child(2) { animation-delay: .2s; }
-        .cb-dots span:nth-child(3) { animation-delay: .4s; }
-        @keyframes blink { 0%,80%,100% { opacity:0; } 40% { opacity:1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400&display=swap');
+        @keyframes cb-pulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.4); }
+          50% { box-shadow: 0 0 36px rgba(220,38,38,0.75), 0 0 60px rgba(220,38,38,0.15); }
+        }
+        @keyframes cb-blink {
+          0%, 80%, 100% { opacity: 0; }
+          40% { opacity: 1; }
+        }
+        .cb-icon { animation: cb-pulse 2.4s ease-in-out infinite; }
+        .cb-dot { animation: cb-blink 1.4s infinite both; color: rgba(220,38,38,0.8); }
+        .cb-dot:nth-child(2) { animation-delay: 0.2s; }
+        .cb-dot:nth-child(3) { animation-delay: 0.4s; }
       `}</style>
-      <div className="cb-root">
-        <div className="cb-brand">
-          <span className="cb-icon">S</span>
-          <span className="cb-name">ShiftOS</span>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div
+          className="cb-icon"
+          style={{
+            width: 34,
+            height: 34,
+            background: '#dc2626',
+            borderRadius: 7,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+          }}
+        >
+          ⚡
         </div>
-        <div className="cb-dots">
-          <span>·</span><span>·</span><span>·</span>
-        </div>
-        <p className="cb-label">SIGNING YOU IN</p>
+        <span style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 26,
+          letterSpacing: 4,
+          color: '#E8EDF5',
+        }}>
+          SHIFTOS
+        </span>
       </div>
-    </>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4 }}>
+        <span className="cb-dot" style={{ fontSize: 22 }}>·</span>
+        <span className="cb-dot" style={{ fontSize: 22 }}>·</span>
+        <span className="cb-dot" style={{ fontSize: 22 }}>·</span>
+      </div>
+
+      <p style={{
+        fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: 13,
+        letterSpacing: 4,
+        color: 'rgba(232,237,245,0.3)',
+        marginTop: 2,
+      }}>
+        SIGNING YOU IN
+      </p>
+    </div>
   );
 }
