@@ -5638,7 +5638,7 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("car_listings")
-        .update({ status: "sold" })
+        .update({ status: "sold", sold_at: new Date().toISOString() })
         .eq("id", markSoldListing.id)
         .select();
       if (error) throw error;
