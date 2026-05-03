@@ -23,6 +23,15 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        const params = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const type = params.get('type') || hashParams.get('type');
+
+        if (type === 'recovery') {
+          navigate('/reset-password');
+          return;
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('id, role, subdomain, dealer_id, onboarding_complete')

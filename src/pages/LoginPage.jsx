@@ -49,6 +49,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  const [showMagicLink, setShowMagicLink] = useState(false);
+  const [magicEmail, setMagicEmail] = useState("");
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     document.title = t("login.meta.title", { defaultValue: "ShiftOS · Login" });
@@ -60,6 +67,32 @@ export default function LoginPage() {
       if (data.session) redirectByRole(data.session.user);
     });
   }, []);
+
+  const handleMagicLink = async () => {
+    if (!magicEmail) return;
+    setMagicLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: magicEmail.trim(),
+      options: { emailRedirectTo: "https://xdrive.my/auth/callback" },
+    });
+    setMagicLoading(false);
+    if (error) setError(error.message);
+    else setMagicSent(true);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError("Enter your email above first.");
+      return;
+    }
+    setResetLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: "https://xdrive.my/reset-password",
+    });
+    setResetLoading(false);
+    if (error) setError(error.message);
+    else setResetSent(true);
+  };
 
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -119,7 +152,22 @@ export default function LoginPage() {
       { email, password },
     );
     if (signInError) {
-      setError(signInError.message);
+      if (signInError.message === "Invalid login credentials") {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", email.trim())
+          .maybeSingle();
+        if (existingProfile) {
+          setError("");
+          setShowMagicLink(true);
+          setMagicEmail(email.trim());
+        } else {
+          setError(signInError.message);
+        }
+      } else {
+        setError(signInError.message);
+      }
       setLoading(false);
       return;
     }
@@ -405,6 +453,73 @@ export default function LoginPage() {
                 </div>
               </Field>
               {error && <div className="error-msg">&#9888; {error}</div>}
+              {showMagicLink && (
+                <div
+                  style={{
+                    background: "rgba(251,191,36,0.08)",
+                    border: "1px solid rgba(251,191,36,0.2)",
+                    borderRadius: 4,
+                    padding: "12px 14px",
+                    marginBottom: 14,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "rgba(251,191,36,0.85)",
+                      lineHeight: 1.6,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Looks like you signed up with Google or a magic link. We'll
+                    send you a sign in link instead.
+                  </p>
+                  <input
+                    type="email"
+                    value={magicEmail}
+                    onChange={(e) => setMagicEmail(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 4,
+                      padding: "10px 12px",
+                      color: "#fff",
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 13,
+                      outline: "none",
+                      marginBottom: 8,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {magicSent ? (
+                    <p style={{ fontSize: 12, color: "#4ade80" }}>
+                      Magic link sent! Check your inbox.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleMagicLink}
+                      disabled={magicLoading}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        background: "rgba(251,191,36,0.15)",
+                        border: "1px solid rgba(251,191,36,0.3)",
+                        borderRadius: 4,
+                        color: "#fbbf24",
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: 14,
+                        letterSpacing: 2,
+                        cursor: magicLoading ? "not-allowed" : "pointer",
+                        opacity: magicLoading ? 0.6 : 1,
+                      }}
+                    >
+                      {magicLoading ? "SENDING…" : "SEND MAGIC LINK"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="submit-bar">
@@ -498,6 +613,69 @@ export default function LoginPage() {
                 </svg>
                 Continue with Google
               </button>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword((p) => !p)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "rgba(255,255,255,0.25)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  width: "100%",
+                  textAlign: "center",
+                  marginBottom: 8,
+                  padding: "2px 0",
+                }}
+              >
+                Forgot password?
+              </button>
+              {showForgotPassword && (
+                <div style={{ marginBottom: 12 }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.3)",
+                      marginBottom: 8,
+                      textAlign: "center",
+                    }}
+                  >
+                    We'll send a reset link to your email above.
+                  </p>
+                  {resetSent ? (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#4ade80",
+                        textAlign: "center",
+                      }}
+                    >
+                      Reset link sent! Check your inbox.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePasswordReset}
+                      disabled={resetLoading}
+                      style={{
+                        width: "100%",
+                        padding: "11px",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 4,
+                        color: "rgba(255,255,255,0.6)",
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: 14,
+                        letterSpacing: 2,
+                        cursor: resetLoading ? "not-allowed" : "pointer",
+                        opacity: resetLoading ? 0.6 : 1,
+                      }}
+                    >
+                      {resetLoading ? "SENDING…" : "SEND RESET LINK"}
+                    </button>
+                  )}
+                </div>
+              )}
               <a
                 href="/onboarding"
                 style={{
