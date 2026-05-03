@@ -6,72 +6,78 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handle = async () => {
-      try {
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 3000)
-        );
+    const routeSession = async (session) => {
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const type = params.get('type') || hashParams.get('type');
 
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          timeout,
-        ]);
+      if (type === 'recovery') {
+        navigate('/reset-password');
+        return;
+      }
 
-        const session = sessionResult?.data?.session;
-        if (!session?.user) {
-          window.location.href = '/login?error=auth_failed';
-          return;
-        }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role, subdomain, dealer_id, onboarding_complete')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-        const params = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.slice(1));
-        const type = params.get('type') || hashParams.get('type');
+      if (!profile || profile.onboarding_complete === false) {
+        navigate('/onboarding');
+        return;
+      }
 
-        if (type === 'recovery') {
-          navigate('/reset-password');
-          return;
-        }
+      const { role, subdomain, dealer_id } = profile;
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, role, subdomain, dealer_id, onboarding_complete')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (!profile || profile.onboarding_complete === false) {
-          navigate('/onboarding');
-          return;
-        }
-
-        const { role, subdomain, dealer_id } = profile;
-
-        if (role === 'dealer' || role === 'superadmin') {
-          if (subdomain) {
-            const accessToken = session.access_token;
-            const refreshToken = session.refresh_token;
-            window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
-          } else {
-            navigate('/dashboard');
-          }
-        } else if (role === 'salesman') {
-          navigate(dealer_id ? '/salesman' : '/salesman-lite');
-        } else if (role === 'manager') {
-          navigate('/manager');
-        } else if (role === 'accountant') {
-          navigate('/accountant');
-        } else if (role === 'fi_officer') {
-          navigate('/fi');
-        } else if (role === 'admin') {
-          navigate('/admin');
+      if (role === 'dealer' || role === 'superadmin') {
+        if (subdomain) {
+          const accessToken = session.access_token;
+          const refreshToken = session.refresh_token;
+          window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
         } else {
-          navigate('/salesman');
+          navigate('/dashboard');
         }
-      } catch {
-        window.location.href = '/login?error=auth_failed';
+      } else if (role === 'salesman') {
+        navigate(dealer_id ? '/salesman' : '/salesman-lite');
+      } else if (role === 'manager') {
+        navigate('/manager');
+      } else if (role === 'accountant') {
+        navigate('/accountant');
+      } else if (role === 'fi_officer') {
+        navigate('/fi');
+      } else if (role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/salesman');
       }
     };
 
-    handle();
+    // onAuthStateChange fires as soon as Supabase finishes exchanging
+    // the magic link / OAuth hash tokens — more reliable than getSession()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe();
+          clearTimeout(fallbackTimer);
+          try {
+            await routeSession(session);
+          } catch {
+            window.location.href = '/login?error=auth_failed';
+          }
+        }
+      }
+    );
+
+    // Safety net: if nothing fires within 10s, bail out
+    const fallbackTimer = setTimeout(() => {
+      subscription.unsubscribe();
+      window.location.href = '/login?error=auth_failed';
+    }, 10000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   return (

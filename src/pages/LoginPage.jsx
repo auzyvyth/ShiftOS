@@ -152,7 +152,12 @@ export default function LoginPage() {
       { email, password },
     );
     if (signInError) {
-      if (signInError.message === "Invalid login credentials") {
+      const isInvalidCreds =
+        signInError.message.toLowerCase().includes('invalid') ||
+        signInError.message.toLowerCase().includes('credentials') ||
+        signInError.status === 400;
+
+      if (isInvalidCreds) {
         const { data: existingProfile } = await supabase
           .from("profiles")
           .select("id")
@@ -165,6 +170,8 @@ export default function LoginPage() {
         } else {
           setError(signInError.message);
         }
+        // Always surface forgot password on any credential failure
+        setShowForgotPassword(true);
       } else {
         setError(signInError.message);
       }
