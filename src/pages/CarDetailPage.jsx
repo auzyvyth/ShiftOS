@@ -98,61 +98,32 @@ function Skeleton() {
         @keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
         .sk { background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
               background-size: 600px 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+        .sk-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px; display: flex; gap: 32px; box-sizing: border-box; min-height: calc(100vh - 52px); }
+        .sk-gallery { flex: 1.3; display: flex; gap: 8px; min-height: 320px; }
+        .sk-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+        @media (max-width: 900px) {
+          .sk-wrap { flex-direction: column; padding: 16px; gap: 20px; }
+          .sk-gallery { flex: none; height: clamp(200px,52vw,360px); }
+          .sk-info { flex: none; justify-content: flex-start; }
+        }
       `}</style>
-      <div
-        style={{
-          height: 52,
-          background: "rgba(8,12,20,0.92)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      />
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "20px 24px",
-          display: "flex",
-          gap: 32,
-          height: "calc(100vh - 52px)",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ flex: 1.3, display: "flex", gap: 8 }}>
+      <div style={{ height: 52, background: "rgba(8,12,20,0.92)", borderBottom: "1px solid rgba(255,255,255,0.06)" }} />
+      <div className="sk-wrap">
+        <div className="sk-gallery">
           <div className="sk" style={{ flex: 1 }} />
-          <div
-            style={{
-              width: 68,
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
+          <div style={{ width: 68, display: "flex", flexDirection: "column", gap: 6 }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} className="sk" style={{ height: 50 }} />
             ))}
           </div>
         </div>
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 16,
-          }}
-        >
+        <div className="sk-info">
           <div className="sk" style={{ height: 14, width: "35%" }} />
           <div className="sk" style={{ height: 44, width: "80%" }} />
           <div className="sk" style={{ height: 12, width: "55%" }} />
-          <div
-            className="sk"
-            style={{ height: 1, width: "100%", marginTop: 8 }}
-          />
+          <div className="sk" style={{ height: 1, width: "100%", marginTop: 8 }} />
           <div className="sk" style={{ height: 48, width: "60%" }} />
-          <div
-            className="sk"
-            style={{ height: 160, borderRadius: 12, marginTop: 16 }}
-          />
+          <div className="sk" style={{ height: 160, borderRadius: 12, marginTop: 16 }} />
         </div>
       </div>
     </div>
@@ -881,10 +852,18 @@ export default function CarDetailPage() {
           .cdp-similar-scroll::-webkit-scrollbar { display: none; }
         }
         @media (max-width: 600px) { .cdp-stats-grid { grid-template-columns: repeat(2,1fr); } }
-        @media (max-width: 480px) { .cdp-arrow { display: none; } }
+        @media (max-width: 480px) {
+          .cdp-arrow { display: none; }
+          .cdp-header { padding: 0 14px !important; }
+          .cdp-car-title { font-size: clamp(2rem, 8vw, 4.4rem) !important; }
+          .cdp-sidebar { padding: 20px 14px !important; }
+          .cdp-body-wrap { padding: 16px 14px 80px !important; }
+          .cdp-row { flex-wrap: wrap; gap: 4px; }
+          .cdp-row span:last-child { text-align: left !important; }
+        }
         @media (max-width: 900px) {
           .cdp-body-wrap { flex-direction: column !important; padding: 24px 20px 80px !important; }
-          .cdp-sidebar { position: static !important; width: 100% !important; max-width: 480px !important; max-height: none !important; }
+          .cdp-sidebar { position: static !important; width: 100% !important; max-width: 100% !important; max-height: none !important; padding: 22px 18px !important; }
         }
       `}</style>
 
@@ -1256,6 +1235,7 @@ export default function CarDetailPage() {
               {car.brand}
             </p>
             <h1
+              className="cdp-car-title"
               style={{
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: "clamp(3rem,5vw,4.4rem)",
