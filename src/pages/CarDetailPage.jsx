@@ -11,7 +11,7 @@ import {
   ChevronRight,
   ArrowLeft,
   ZoomIn,
-  ZoomOut,git
+  ZoomOut,
   X,
   Calculator,
   Shield,
