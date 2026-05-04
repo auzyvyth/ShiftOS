@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { X, Share2, Check, ExternalLink, Plus, MessageCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
+import { useCompare } from '../hooks/useCompare';
 
 const SELECT_COLS = [
   'id','slug','year','brand','model','variant',
@@ -132,6 +133,7 @@ function SectionHeader({ label, colSpan }) {
 
 export default function ComparePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { removeFromCompare } = useCompare();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -170,6 +172,7 @@ export default function ComparePage() {
   }, [cars]);
 
   const removeCar = (id) => {
+    removeFromCompare(id);
     const remaining = cars.filter((c) => c.id !== id);
     const newParams = new URLSearchParams();
     remaining.forEach((c, i) => newParams.set(paramKeys[i], c.slug));
