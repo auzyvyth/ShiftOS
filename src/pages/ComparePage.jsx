@@ -44,6 +44,7 @@ function Row({ label, values, highlight, renderCell }) {
   return (
     <tr>
       <td
+        className="cp-label-col"
         style={{
           position: 'sticky',
           left: 0,
@@ -65,6 +66,8 @@ function Row({ label, values, highlight, renderCell }) {
         return (
           <td
             key={i}
+            className="cp-cell"
+            data-label={label}
             style={{
               padding: '10px 16px',
               fontSize: 13,
@@ -88,6 +91,7 @@ function SectionHeader({ label, colSpan }) {
     <tr>
       <td
         colSpan={colSpan + 1}
+        className="cp-section-td"
         style={{
           padding: '14px 14px 8px',
           fontSize: 10,
@@ -232,6 +236,21 @@ export default function ComparePage() {
         .cp-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         .cp-table th, .cp-table td { vertical-align: top; }
         .cp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+        @media (max-width: 640px) {
+          .cp-label-col { display: none !important; }
+          .cp-cell::before {
+            content: attr(data-label);
+            display: block;
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin-bottom: 3px;
+          }
+          .cp-section-td { position: static !important; }
+          .cp-table { table-layout: auto; }
+        }
       `}</style>
 
       <div style={{ minHeight: '100vh', background: '#080C14', fontFamily: "'DM Sans',sans-serif", color: '#fff', paddingBottom: 80 }}>
@@ -267,7 +286,7 @@ export default function ComparePage() {
               {/* ── Car column headers ── */}
               <thead>
                 <tr style={{ background: '#0a1220' }}>
-                  <th style={{ position: 'sticky', left: 0, zIndex: 3, background: '#0a1220', borderBottom: '1px solid rgba(255,255,255,0.07)', width: 120, minWidth: 120 }} />
+                  <th className="cp-label-col" style={{ position: 'sticky', left: 0, zIndex: 3, background: '#0a1220', borderBottom: '1px solid rgba(255,255,255,0.07)', width: 120, minWidth: 120 }} />
                   {cars.map((car) => {
                     const img = car.images?.[0];
                     const name = [car.year, car.brand, car.model].filter(Boolean).join(' ');
