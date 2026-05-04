@@ -9,9 +9,12 @@ export default function CompareBar() {
   const navigate = useNavigate();
   const [cars, setCars] = useState({});
   const [open, setOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const panelRef = useRef(null);
+  const prevCountRef = useRef(compareIds.length);
+
+  // Track whether bubble just appeared (for pop animation)
+  const [justAppeared, setJustAppeared] = useState(compareIds.length > 0);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -19,15 +22,16 @@ export default function CompareBar() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  // Show/hide bubble
+  // Trigger pop animation only when going from 0 → 1+
   useEffect(() => {
-    if (compareIds.length >= 1) {
-      setVisible(true);
-    } else {
-      setOpen(false);
-      const t = setTimeout(() => setVisible(false), 300);
+    if (prevCountRef.current === 0 && compareIds.length > 0) {
+      setJustAppeared(true);
+      const t = setTimeout(() => setJustAppeared(false), 300);
+      prevCountRef.current = compareIds.length;
       return () => clearTimeout(t);
     }
+    if (compareIds.length === 0) setOpen(false);
+    prevCountRef.current = compareIds.length;
   }, [compareIds.length]);
 
   // Fetch car data for new IDs
@@ -36,7 +40,7 @@ export default function CompareBar() {
     if (!missing.length) return;
     supabase
       .from('car_listings')
-      .select('id, year, brand, model, variant, selling_price, images')
+      .select('id, year, brand, model, selling_price, images')
       .in('id', missing)
       .then(({ data }) => {
         if (!data) return;
@@ -52,15 +56,13 @@ export default function CompareBar() {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  if (!visible) return null;
+  if (compareIds.length === 0) return null;
 
   const count = compareIds.length;
   const canCompare = count >= 2;
@@ -75,23 +77,20 @@ export default function CompareBar() {
   return (
     <>
       <style>{`
-        @keyframes cb-pop-in {
-          from { transform: scale(0.7); opacity: 0; }
-          to   { transform: scale(1);   opacity: 1; }
+        @keyframes cb-pop {
+          0%   { transform: scale(0.6); opacity: 0; }
+          70%  { transform: scale(1.08); }
+          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes cb-panel-up {
-          from { transform: translateY(12px); opacity: 0; }
+          from { transform: translateY(10px); opacity: 0; }
           to   { transform: translateY(0);    opacity: 1; }
         }
-        .cb-bubble {
-          animation: cb-pop-in 0.22s cubic-bezier(0.34,1.56,0.64,1) both;
-        }
-        .cb-panel {
-          animation: cb-panel-up 0.2s ease both;
-        }
-        .cb-car-item:hover { background: rgba(255,255,255,0.07) !important; }
-        .cb-bubble-btn:hover { transform: scale(1.06); }
-        .cb-bubble-btn { transition: transform 0.15s; }
+        .cb-bubble-anim { animation: cb-pop 0.28s cubic-bezier(0.34,1.56,0.64,1) both; }
+        .cb-panel-anim  { animation: cb-panel-up 0.2s ease both; }
+        .cb-car-row:hover { background: rgba(255,255,255,0.07) !important; }
+        .cb-action-btn { transition: opacity 0.15s, transform 0.15s; }
+        .cb-action-btn:hover { opacity: 0.85; transform: scale(1.03); }
       `}</style>
 
       <div
@@ -112,7 +111,7 @@ export default function CompareBar() {
         {/* ── Expanded panel ── */}
         {open && (
           <div
-            className="cb-panel"
+            className="cb-panel-anim"
             style={{
               background: 'rgba(8,12,20,0.98)',
               border: '1px solid rgba(255,255,255,0.1)',
@@ -131,7 +130,7 @@ export default function CompareBar() {
               </span>
               <button
                 onClick={clearCompare}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: "'DM Sans',sans-serif" }}
               >
                 Clear all
               </button>
@@ -142,24 +141,17 @@ export default function CompareBar() {
               {compareIds.map((id) => {
                 const car = cars[id];
                 const img = car?.images?.[0];
-                const name = car
-                  ? [car.year, car.brand, car.model].filter(Boolean).join(' ')
-                  : '…';
-                const price = car?.selling_price
-                  ? `RM ${Number(car.selling_price).toLocaleString('en-MY')}`
-                  : null;
+                const name = car ? [car.year, car.brand, car.model].filter(Boolean).join(' ') : '…';
+                const price = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString('en-MY')}` : null;
                 return (
                   <div
                     key={id}
-                    className="cb-car-item"
+                    className="cb-car-row"
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
+                      display: 'flex', alignItems: 'center', gap: 10,
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.07)',
-                      borderRadius: 10,
-                      padding: '8px 10px',
+                      borderRadius: 10, padding: '8px 10px',
                       transition: 'background 0.15s',
                     }}
                   >
@@ -188,12 +180,9 @@ export default function CompareBar() {
                 <div
                   key={`empty-${i}`}
                   style={{
-                    height: 52,
-                    borderRadius: 10,
+                    height: 52, borderRadius: 10,
                     border: '1px dashed rgba(255,255,255,0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>+ add a car</span>
@@ -205,19 +194,14 @@ export default function CompareBar() {
             <button
               onClick={handleCompare}
               disabled={!canCompare}
+              className="cb-action-btn"
               style={{
                 width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 7,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                 background: canCompare ? '#dc2626' : 'rgba(255,255,255,0.05)',
-                border: 'none',
-                borderRadius: 10,
+                border: 'none', borderRadius: 10,
                 color: canCompare ? '#fff' : 'rgba(255,255,255,0.25)',
-                fontSize: 13,
-                fontWeight: 700,
-                padding: '11px',
+                fontSize: 13, fontWeight: 700, padding: '11px',
                 cursor: canCompare ? 'pointer' : 'not-allowed',
                 transition: 'background 0.2s',
                 fontFamily: "'DM Sans',sans-serif",
@@ -231,40 +215,29 @@ export default function CompareBar() {
 
         {/* ── Floating bubble ── */}
         <button
-          className="cb-bubble cb-bubble-btn"
+          className={justAppeared ? 'cb-bubble-anim' : ''}
           onClick={() => setOpen((o) => !o)}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
+            display: 'flex', alignItems: 'center', gap: 8,
             background: open ? '#b91c1c' : '#dc2626',
-            border: 'none',
-            borderRadius: 50,
+            border: 'none', borderRadius: 50,
             padding: '10px 16px 10px 12px',
-            color: '#fff',
-            cursor: 'pointer',
-            boxShadow: '0 8px 32px rgba(220,38,38,0.45)',
+            color: '#fff', cursor: 'pointer',
+            boxShadow: '0 8px 32px rgba(220,38,38,0.5)',
             fontFamily: "'DM Sans', sans-serif",
+            transition: 'background 0.2s',
           }}
         >
           <ArrowLeftRight size={16} />
           <span style={{ fontSize: 13, fontWeight: 700 }}>
             {count} {count === 1 ? 'car' : 'cars'}
           </span>
-          <span
-            style={{
-              background: 'rgba(255,255,255,0.25)',
-              borderRadius: 50,
-              width: 18,
-              height: 18,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 10,
-              fontWeight: 800,
-              marginLeft: 2,
-            }}
-          >
+          <span style={{
+            background: 'rgba(255,255,255,0.25)', borderRadius: 50,
+            width: 18, height: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 800, marginLeft: 2,
+          }}>
             {count}
           </span>
         </button>
