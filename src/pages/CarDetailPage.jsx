@@ -1569,7 +1569,7 @@ export default function CarDetailPage() {
                     Chat with {firstName}
                   </a>
                 )}
-                {salesmanProfile.plan === 'salesman_full' && salesmanProfile.slug && (
+                {salesmanProfile.slug && (
                   <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color:'#60a5fa', textDecoration:'none' }}>
                     View all listings →
                   </Link>
@@ -2377,7 +2377,7 @@ export default function CarDetailPage() {
                       Chat with {firstName}
                     </a>
                   )}
-                  {salesmanProfile.plan === 'salesman_full' && salesmanProfile.slug && (
+                  {salesmanProfile.slug && (
                     <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: '#60a5fa', textDecoration: 'none' }}>
                       View all listings →
                     </Link>

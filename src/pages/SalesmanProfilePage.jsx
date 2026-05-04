@@ -94,8 +94,16 @@ export default function SalesmanProfilePage() {
 
       <div className="sp-root">
 
+        {/* ── Back bar ── */}
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <Link to="/cars" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', textDecoration: 'none' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to marketplace
+          </Link>
+        </div>
+
         {/* ── Hero ── */}
-        <div style={{ background: 'linear-gradient(180deg, #0a1220 0%, #060c14 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '48px 24px 36px' }}>
+        <div style={{ background: 'linear-gradient(180deg, #0a1220 0%, #060c14 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '40px 24px 36px' }}>
           <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
 
             {/* Avatar */}
