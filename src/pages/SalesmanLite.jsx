@@ -351,7 +351,7 @@ export default function SalesmanLite() {
       setProfile(profileData);
       setLoading(false);
 
-      if (!localStorage.getItem("sl_tour_done")) setTourStep(0);
+      if (!profileData.onboarding_tour_done) setTourStep(0);
 
       // fetch listings with full columns for car detail popup
       Promise.all([
@@ -1118,19 +1118,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-      const views = carEvts.filter((e) => e.event_type === "car_view").length;
-      const waTaps = carEvts.filter(
-        (e) => e.event_type === "whatsapp_click",
-      ).length;
+      const views = carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
+      const waTaps = carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
       const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
     const totalViews = analyticsEvents.filter(
-      (e) => e.event_type === "car_view",
+      (e) => ["car_view", "link_visit"].includes(e.event_type),
     ).length;
     const totalWATaps = analyticsEvents.filter(
-      (e) => e.event_type === "whatsapp_click",
+      (e) => ["whatsapp_click", "call_click"].includes(e.event_type),
     ).length;
     const bestCVRStat = listingStats.reduce((best, s) => {
       if (s.cvr !== null && (best === null || s.cvr > best.cvr)) return s;
@@ -5177,9 +5175,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   ];
 
   const dismissTour = () => {
-    localStorage.setItem("sl_tour_done", "1");
     setTourStep(null);
     setTourTarget(null);
+    supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
   };
 
   const renderTour = () => {
