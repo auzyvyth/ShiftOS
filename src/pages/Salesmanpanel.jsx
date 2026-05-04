@@ -257,6 +257,13 @@ export default function SalesmanPanel() {
         return;
       }
 
+      // Lite accounts (salesman without a dealer_id) belong on /salesman-lite
+      if (!profileData.dealer_id) {
+        navigate("/salesman-lite", { replace: true });
+        setLoading(false);
+        return;
+      }
+
       setProfile(profileData);
       setLoading(false);
 
