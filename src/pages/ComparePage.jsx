@@ -231,7 +231,7 @@ export default function ComparePage() {
         body { background: #080C14; }
         .cp-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         .cp-table th, .cp-table td { vertical-align: top; }
-        .cp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .cp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
       `}</style>
 
       <div style={{ minHeight: '100vh', background: '#080C14', fontFamily: "'DM Sans',sans-serif", color: '#fff', paddingBottom: 80 }}>
@@ -256,7 +256,8 @@ export default function ComparePage() {
           </div>
 
           {/* ── Comparison table ── */}
-          <div className="cp-wrap" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+          <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+          <div className="cp-wrap">
             <table className="cp-table" style={{ minWidth: 120 + n * 160 }}>
               <colgroup>
                 <col style={{ width: 120 }} />
@@ -380,6 +381,7 @@ export default function ComparePage() {
                 />
               </tbody>
             </table>
+          </div>
           </div>
 
           {/* ── Verdict ── */}
