@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock, BadgeCheck } from 'lucide-react';
+import { MapPin, Gauge, Settings2, MessageCircle, Fuel, Flame, Clock, BadgeCheck, ArrowLeftRight } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent, getSlugFromURL } from '../utils/analytics';
+import HeartButton from './HeartButton';
+import { useCompare } from '../hooks/useCompare';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -20,8 +22,10 @@ const XDRIVE_PHONE = '60174155191';
 
 const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const navigate = useNavigate();
+  const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [imgError,  setImgError]  = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const inCompare = isInCompare(car.id);
 
   const brand         = car.brand || car.make || 'Unknown';
   const model         = car.model || '';
@@ -176,12 +180,20 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             )}
           </div>
 
-          {/* Year badge */}
-          {year && (
-            <div style={{ position:'absolute', top:'10px', right:'10px', background:'rgba(0,0,0,0.7)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', color:'white', fontSize:'11px', fontWeight:'600', padding:'3px 8px', borderRadius:'6px' }}>
-              {year}
+          {/* Year badge + heart */}
+          <div style={{ position:'absolute', top:'10px', right:'10px', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
+            {year && (
+              <div style={{ background:'rgba(0,0,0,0.7)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', color:'white', fontSize:'11px', fontWeight:'600', padding:'3px 8px', borderRadius:'6px' }}>
+                {year}
+              </div>
+            )}
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', borderRadius:8, padding:'5px 7px', border:'1px solid rgba(255,255,255,0.1)' }}
+            >
+              <HeartButton listingId={car.id} size={16} />
             </div>
-          )}
+          </div>
 
           {/* Grade badge + import country (bottom-left of image) */}
           {(hasGrade || (isRecon && importCountry)) && (
@@ -245,6 +257,27 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                 </span>
               ))}
             </div>
+          )}
+
+          {/* Compare toggle */}
+          {!isSold && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                inCompare ? removeFromCompare(car.id) : addToCompare(car.id);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                background: inCompare ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
+                border: inCompare ? '1px solid rgba(220,38,38,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8, padding: '7px 10px', width: '100%', marginBottom: 8,
+                color: inCompare ? '#f87171' : '#6b7280', fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.18s',
+              }}
+            >
+              <ArrowLeftRight size={12} />
+              {inCompare ? 'Remove from Compare' : 'Add to Compare'}
+            </button>
           )}
 
           {/* WhatsApp CTA */}
