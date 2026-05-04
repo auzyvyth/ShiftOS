@@ -40,7 +40,7 @@ export default function CompareBar() {
     if (!missing.length) return;
     supabase
       .from('car_listings')
-      .select('id, year, brand, model, selling_price, images')
+      .select('id, slug, year, brand, model, selling_price, images')
       .in('id', missing)
       .then(({ data }) => {
         if (!data) return;
@@ -69,7 +69,10 @@ export default function CompareBar() {
 
   const handleCompare = () => {
     const params = new URLSearchParams();
-    compareIds.forEach((id, i) => params.set(['a', 'b', 'c'][i], id));
+    compareIds.forEach((id, i) => {
+      const slug = cars[id]?.slug;
+      if (slug) params.set(['a', 'b', 'c', 'd'][i], slug);
+    });
     navigate(`/compare?${params.toString()}`);
     setOpen(false);
   };
@@ -176,7 +179,7 @@ export default function CompareBar() {
               })}
 
               {/* Empty slots */}
-              {Array.from({ length: 3 - count }).map((_, i) => (
+              {Array.from({ length: 4 - count }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
                   style={{
