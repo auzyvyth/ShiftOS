@@ -365,6 +365,12 @@ export default function SalesmanPremium() {
         return;
       }
 
+      // Only premium standalone accounts belong here
+      if (profileData.plan !== "salesman_premium") {
+        navigate("/salesman-lite", { replace: true });
+        return;
+      }
+
       setProfile(profileData);
       setLoading(false);
 
