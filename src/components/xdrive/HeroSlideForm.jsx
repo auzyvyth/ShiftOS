@@ -597,12 +597,16 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
               {/* WhatsApp */}
               <div>
                 <Label>WhatsApp Number</Label>
-                <input
-                  value={form.whatsapp_number}
-                  onChange={e => setForm(f => ({ ...f, whatsapp_number: e.target.value }))}
-                  placeholder="+60123456789"
-                  className={iCls}
-                />
+                <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
+                  <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+                  <input
+                    type="tel"
+                    value={(form.whatsapp_number||'').replace(/^\+?60/,'')}
+                    onChange={e => setForm(f => ({ ...f, whatsapp_number: '+60'+e.target.value.replace(/\D/g,'') }))}
+                    placeholder="123456789"
+                    className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                  />
+                </div>
               </div>
 
               {/* Image */}

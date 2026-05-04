@@ -1590,17 +1590,16 @@ export default function AdminPanel() {
                       >
                         WhatsApp Number
                       </label>
-                      <input
-                        value={settings.whatsapp_number || ""}
-                        onChange={(e) =>
-                          setSettings((s) => ({
-                            ...s,
-                            whatsapp_number: e.target.value,
-                          }))
-                        }
-                        style={inp}
-                        placeholder="+601X-XXXXXXX"
-                      />
+                      <div style={{ display:'flex', alignItems:'center', ...inp, padding:0, overflow:'hidden' }}>
+                        <span style={{ padding:'10px 12px', color:'#6b7280', background:'rgba(255,255,255,0.03)', borderRight:'1px solid rgba(255,255,255,0.08)', fontSize:13, whiteSpace:'nowrap', flexShrink:0 }}>+60</span>
+                        <input
+                          type="tel"
+                          value={(settings.whatsapp_number||'').replace(/^\+?60/,'')}
+                          onChange={(e) => setSettings((s) => ({ ...s, whatsapp_number: '+60'+e.target.value.replace(/\D/g,'') }))}
+                          style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'#e5e7eb', fontSize:13, padding:'10px 12px', fontFamily:'inherit' }}
+                          placeholder="X-XXXXXXX"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label

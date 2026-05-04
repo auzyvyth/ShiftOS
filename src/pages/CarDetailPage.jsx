@@ -11,7 +11,7 @@ import {
   ChevronRight,
   ArrowLeft,
   ZoomIn,
-  ZoomOut,
+  ZoomOut,git
   X,
   Calculator,
   Shield,
@@ -600,18 +600,16 @@ export default function CarDetailPage() {
     }
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
-    const { error: bookErr } = await supabase
-      .from("appointments")
-      .insert({
-        dealer_id: car.dealer_id,
-        salesman_id: salesmanId,
-        car_listing_id: car.id,
-        buyer_name: form.name,
-        buyer_phone: form.phone,
-        appointment_date: dt.toISOString(),
-        notes: form.notes || null,
-        status: "confirmed",
-      });
+    const { error: bookErr } = await supabase.from("appointments").insert({
+      dealer_id: car.dealer_id,
+      salesman_id: salesmanId,
+      car_listing_id: car.id,
+      buyer_name: form.name,
+      buyer_phone: form.phone,
+      appointment_date: dt.toISOString(),
+      notes: form.notes || null,
+      status: "confirmed",
+    });
     setSubmitting(false);
     if (bookErr) {
       console.error("[handleBook] insert error:", bookErr.message, bookErr);
@@ -854,21 +852,28 @@ export default function CarDetailPage() {
         .cdp-lb-arrow-l { left: 20px; }
         .cdp-lb-arrow-r { right: 20px; }
 
-        /* ── show/hide helpers ── */
-        @media (min-width: 901px) { .cdp-mobile-only { display: none !important; } }
-        @media (max-width: 900px)  { .cdp-desktop-only { display: none !important; } }
-
-        /* ── mobile bar (≤900px) ── */
-        @media (max-width: 900px) {
-          .cdp-root { padding-bottom: 74px; }
+        /* ── mobile ── */
+        @media (max-width: 768px) {
+          .cdp-root { padding-bottom: 70px; }
+          .cdp-mosaic-grid { display: none; }
+          .cdp-mosaic-mobile { display: block; height: clamp(240px,56vw,400px); }
           .cdp-mobile-bar {
             display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-            border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 8px;
+            border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 10px;
           }
-          .cdp-mobile-bar-wa { flex: 2; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border: none; cursor: pointer; background: #22c55e; color: white; padding: 13px 0; border-top: 2px solid #16a34a; }
+          .cdp-mobile-bar-wa { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border: none; cursor: pointer; background: #22c55e; color: white; padding: 13px 0; border-top: 2px solid #16a34a; }
+          .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; background: transparent; color: #e2e8f0; padding: 13px 0; border: 1px solid rgba(255,255,255,0.12); }
+          .cdp-similar-grid { display: none; }
+          .cdp-similar-scroll { display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+          .cdp-similar-scroll::-webkit-scrollbar { display: none; }
         }
+        @media (max-width: 600px) { .cdp-stats-grid { grid-template-columns: repeat(2,1fr); } }
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
+        @media (max-width: 900px) {
+          .cdp-body-wrap { flex-direction: column !important; padding: 24px 20px 80px !important; }
+          .cdp-sidebar { position: static !important; width: 100% !important; max-width: 480px !important; max-height: none !important; }
+        }
       `}</style>
 
       <div className="cdp-root">
@@ -889,7 +894,7 @@ export default function CarDetailPage() {
         {/* ── SECTION 1: Photo Mosaic ── */}
         <div ref={heroRef}>
           {/* Desktop 3-cell grid */}
-          <div className="cdp-mosaic-grid cdp-desktop-only">
+          <div className="cdp-mosaic-grid">
             {/* Primary — spans both rows */}
             <div
               className="cdp-mosaic-cell cdp-mosaic-primary"
@@ -1058,9 +1063,9 @@ export default function CarDetailPage() {
             </div>
           </div>
 
-          {/* Mobile single swipeable panel — desktop-only since M1 handles mobile */}
+          {/* Mobile single swipeable panel */}
           <div
-            className="cdp-mosaic-mobile cdp-desktop-only"
+            className="cdp-mosaic-mobile"
             onTouchStart={galleryTouchStart}
             onTouchEnd={galleryTouchEnd}
           >
@@ -1164,417 +1169,8 @@ export default function CarDetailPage() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════
-            MOBILE LAYOUT (≤900px) — M1 through M8
-            ══════════════════════════════════════════ */}
-
-        {/* M1 — Swipeable image */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,62vw,420px)', overflow:'hidden', background:'#080f18' }}
-          onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
-          {!imgLoaded && <div className="cdp-img-shimmer" />}
-          <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
-            src={images[activeIdx]} alt={carTitle} fetchPriority="high"
-            style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0, transition:'opacity 0.8s ease' }}
-            onLoad={e => { setImgLoaded(true); e.currentTarget.style.opacity = '1'; }}
-            onError={e => { e.target.src='/placeholder-car.jpg'; setImgLoaded(true); }}
-          />
-          <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          <div style={{ position:'absolute', bottom:14, left:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"'DM Sans',sans-serif", fontWeight:500 }}>
-            {activeIdx + 1} / {imgCount}
-          </div>
-          <button onClick={() => setLbOpen(true)}
-            style={{ position:'absolute', bottom:12, right:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'6px 12px', fontSize:11, color:'white', fontWeight:600, fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
-            <Camera size={11} style={{ color:'#dc2626' }} /> All photos
-          </button>
-          {imgCount > 1 && (() => {
-            const DOT_SLOT = 12;
-            const rawOffset = -(activeIdx - 2) * DOT_SLOT;
-            const minOffset = imgCount > 5 ? -(imgCount - 5) * DOT_SLOT : 0;
-            const trackShift = Math.min(0, Math.max(minOffset, rawOffset));
-            return (
-              <div className="cdp-dots" style={{ zIndex:4 }}>
-                <div style={{ display:'flex', gap:6, transform:`translateX(${trackShift}px)`, transition:'transform 0.35s ease' }}>
-                  {images.map((_, i) => {
-                    const dist = Math.abs(i - activeIdx);
-                    return (
-                      <button key={i} className={`cdp-dot${i === activeIdx ? ' active' : ''}`}
-                        onClick={() => go(i, i > activeIdx ? 'next' : 'prev')} aria-label={`Image ${i + 1}`}
-                        style={{ opacity: dist===0?1:dist===1?0.65:dist===2?0.35:0, transform: dist===0?'scaleX(2.8)':dist===1?'scale(0.9)':dist===2?'scale(0.7)':'scale(0)', pointerEvents: dist>2?'none':'auto' }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* M2 — Identity block */}
-        <div className="cdp-mobile-only" style={{ padding:'20px 18px 0' }}>
-          {(isRecon || isHot || hasDocuments) && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-              {isRecon && <span style={{ background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.25)', color:'#c084fc', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Recon</span>}
-              {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}>Hot Deal</span>}
-              {hasDocuments && <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.28)', color:'#4ade80', fontSize:'10px', padding:'3px 10px', borderRadius:'4px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 }}><BadgeCheck size={11} /> Verified Docs</span>}
-            </div>
-          )}
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.26em', color:'#dc2626', fontWeight:700, marginBottom:4 }}>{car.brand}</p>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color:'white', lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
-            {car.model}{car.variant ? ' '+car.variant : ''}
-          </h1>
-          <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:16 }}>
-            {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
-          </p>
-          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color:'white', lineHeight:1, margin:0 }}>
-              {fmtPrice(car.selling_price)}
-            </p>
-            {calcMonthly(car.selling_price) && (
-              <span style={{ fontSize:12, color:'#475569' }}>
-                ~<span style={{ color:'#64748b' }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
-              </span>
-            )}
-          </div>
-          {isHot && (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-              <span style={{ fontSize:13, color:'#1e293b', textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
-              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
-            </div>
-          )}
-          <div style={{ height:1, marginBottom:20, background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
-        </div>
-
-        {/* M3 — Quick stats 2×4 */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
-            {[
-              { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
-              { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
-              { label:'Transmission', value: car.transmission || '—' },
-              { label:'Fuel',         value: car.fuel_type || '—' },
-              { label:'Colour',       value: car.colour || '—' },
-              { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
-              { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
-              { label:'Loan',         value: car.loan_eligible === false ? 'Not Eligible' : 'Eligible' },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ padding:'14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:5 }}>{label}</p>
-                <p style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, margin:0 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* M4 — CTA card */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
-          <div style={{ background:'#0a1625', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
-            <button className="cdp-wa-btn" onClick={handleWhatsApp}
-              style={{ width:'100%', background:'#22c55e', color:'white', border:'none', borderTop:'2px solid #16a34a', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(34,197,94,0.2)', marginBottom:8, letterSpacing:'0.02em' }}>
-              WhatsApp Dealer
-            </button>
-            <div style={{ display:'flex', gap:8 }}>
-              {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
-                  <Phone size={13} /> Call
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                  document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
-                }}
-                style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
-                Book Visit
-              </button>
-            </div>
-            {car.warranty_months > 0 && (
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, padding:'8px 12px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:9 }}>
-                <ShieldCheck size={13} style={{ color:'#4ade80', flexShrink:0 }} />
-                <span style={{ fontSize:12, color:'#4ade80', fontWeight:600 }}>{car.warranty_months}-month warranty included</span>
-              </div>
-            )}
-            {car.deposit_amount > 0 && (
-              <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
-            )}
-            <button onClick={() => setCalcOpen(true)}
-              style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.06)', color:'#475569', borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
-              <Calculator size={13} /> Financing Calculator
-            </button>
-            <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'14px 0' }} />
-            {/* Dealer row */}
-            {(() => {
-              const isAgent = !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile.full_name || 'Agent') : dealerName;
-              const avatarSrc = isAgent ? salesmanProfile.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
-              return (
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  {avatarSrc
-                    ? <img src={avatarSrc} alt={displayName} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                    : <div style={{ width:32, height:32, borderRadius:'50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', border:'1px solid rgba(255,255,255,0.08)' }}>
-                        {displayName[0]?.toUpperCase()}
-                      </div>
-                  }
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:13, color:'white', fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
-                    <p style={{ fontSize:11, color: isAgent ? '#60a5fa' : '#334155' }}>
-                      {isAgent ? 'Independent Agent' : (
-                        <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
-                          <span style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80', display:'inline-block', animation:'cdp-pulse 2s ease infinite' }} />
-                          Verified Dealer
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div style={{ textAlign:'right' }}>
-                    {listedDays !== null && <p style={{ fontSize:10, color:'#1e293b' }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize:10, color:'#1e293b' }}>👁 {viewCount}</p>}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* M5 — Description + tabs + sections */}
-        <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color:'#334155', fontWeight:700, marginBottom:12 }}>About this car</p>
-          <p style={{ fontSize:14, color:'#64748b', lineHeight:1.9, marginBottom:28 }}>
-            {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
-          </p>
-          {/* Tabs */}
-          {(() => {
-            const tabs = [
-              { key:'specs', label:'Specs' },
-              ...(parseTags(car.features).length > 0 ? [{ key:'features', label:'Features' }] : []),
-              ...(parseTags(car.options).length  > 0 ? [{ key:'options',  label:'Options'  }] : []),
-            ];
-            return (
-              <>
-                <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-                  {tabs.map(t => (
-                    <button key={t.key} onClick={() => setDetailTab(t.key)}
-                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? 'white' : '#334155', padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s', letterSpacing:'0.05em' }}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                {detailTab === 'specs' && (
-                  <div>
-                    {[
-                      { key:'Registration Date', val: car.registration_date || car.local_reg_date || '—' },
-                      { key:'VIN / Chassis',     val: car.vin_number || '—' },
-                      { key:'Condition',         val: car.condition || '—' },
-                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':'#334155' }} />{car.chassis_status||'—'}</span> },
-                      { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
-                      { key:'Previous Owners',   val: car.previous_owners ?? '—' },
-                      { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
-                      { key:'Loan Eligible',     val: car.loan_eligible === false ? 'No' : 'Yes' },
-                      { key:'Warranty',          val: car.warranty_months > 0 ? car.warranty_months+' months' : 'None' },
-                      { key:'Deposit to Reserve',val: car.deposit_amount > 0 ? 'RM '+fmt(car.deposit_amount) : '—' },
-                      ...(isRecon ? [
-                        { key:'Import Country', val: car.import_country || '—' },
-                        { key:'Auction House',  val: car.auction_house  || '—' },
-                        { key:'Exterior Grade', val: car.auction_grade  || '—' },
-                        { key:'Interior Grade', val: car.interior_grade || '—' },
-                      ] : []),
-                    ].map(({ key, val }) => (
-                      <div key={key} className="cdp-row">
-                        <span style={{ fontSize:'13px', color:'#64748b' }}>{key}</span>
-                        <span style={{ fontSize:'13px', color:'#f1f5f9', textAlign:'right' }}>{val}</span>
-                      </div>
-                    ))}
-                    {isRecon && Array.isArray(car.damage_map) && car.damage_map.length > 0 && (
-                      <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color:'#334155', fontWeight:700, marginBottom:14 }}>Condition Map</p>
-                        <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'16px 20px' }}>
-                          <DamageMap value={car.damage_map} readOnly />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {detailTab === 'features' && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-                    {parseTags(car.features).map((tag, i) => (
-                      <span key={i} style={{ padding:'5px 12px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', fontSize:'12px', color:'#64748b', background:'rgba(255,255,255,0.02)' }}>{tag}</span>
-                    ))}
-                  </div>
-                )}
-                {detailTab === 'options' && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-                    {parseTags(car.options).map((tag, i) => (
-                      <span key={i} style={{ padding:'5px 12px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', fontSize:'12px', color:'#64748b', background:'rgba(255,255,255,0.02)' }}>{tag}</span>
-                    ))}
-                  </div>
-                )}
-              </>
-            );
-          })()}
-          {/* What's included */}
-          {Array.isArray(car.included_services) && car.included_services.length > 0 && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>What's Included</p>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                {car.included_services.map((svc, i) => {
-                  const cfg = getCategoryCfg(svc.category);
-                  const CatIcon = cfg.icon;
-                  return (
-                    <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:`${cfg.color}10`, border:`1px solid ${cfg.color}28`, borderRadius:8, padding:'6px 13px' }}>
-                      <CatIcon size={13} style={{ color:cfg.color, flexShrink:0 }} />
-                      <span style={{ fontSize:12, color:cfg.color, fontWeight:600 }}>{svc.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {car.included_services_cost > 0 && (
-                <p style={{ fontSize:11, color:'#334155', marginTop:12 }}>Estimated add-on value: <span style={{ color:'#60a5fa', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
-              )}
-            </div>
-          )}
-          {/* Verified documents */}
-          {hasDocuments && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-                <BadgeCheck size={13} style={{ color:'#4ade80' }} />
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700 }}>Verified Documents</p>
-              </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-                {car.car_documents.map((doc, i) => {
-                  const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
-                  return (
-                    <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display:'inline-flex', alignItems:'center', gap:8, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30`, borderRadius:10, padding:'9px 14px', textDecoration:'none', transition:'background 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = `${cfg.color}1a`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = `${cfg.color}0d`; }}>
-                      <BadgeCheck size={13} style={{ color:cfg.color, flexShrink:0 }} />
-                      <div>
-                        <p style={{ fontSize:12, fontWeight:600, color:cfg.color, margin:0 }}>{cfg.label}</p>
-                        <p style={{ fontSize:10, color:'#334155', margin:'1px 0 0', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</p>
-                      </div>
-                      <ExternalLink size={11} style={{ color:cfg.color, opacity:0.6, flexShrink:0, marginLeft:2 }} />
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {/* Video */}
-          {car.video_url && getEmbedUrl(car.video_url) && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14, display:'flex', alignItems:'center', gap:7 }}>
-                <PlayCircle size={13} style={{ color:'#dc2626' }} /> Watch Walkthrough
-              </p>
-              <div style={{ position:'relative', paddingBottom:'56.25%', height:0, borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,0.07)' }}>
-                <iframe src={getEmbedUrl(car.video_url)} style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%' }} allowFullScreen title={`${car.year} ${car.brand} ${car.model} walkthrough`} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* M6 — Booking form */}
-        <div className="cdp-mobile-only" id="booking-form-mobile" style={{ padding:'0 18px', marginBottom:40 }}>
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', fontWeight:700, marginBottom:16 }}>Book a Viewing</p>
-          <div style={{ background:'#0a1625', border:'1px solid rgba(220,38,38,0.1)', borderRadius:14, padding:'20px' }}>
-            {booked ? (
-              <div style={{ padding:'24px 0', textAlign:'center' }}>
-                <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:20, color:'#4ade80' }}>✓</div>
-                <p style={{ fontSize:'15px', color:'white', marginBottom:6, fontWeight:600 }}>Viewing Booked</p>
-                <p style={{ fontSize:'13px', color:'#475569' }}>We'll reach out on WhatsApp shortly.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleBook}>
-                <input type="text" placeholder="Your name" required value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'name')} />
-                <input type="tel" placeholder="Phone number" required value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'phone')} />
-                <input type="date" required min={today} value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'date'), colorScheme:'dark' }} />
-                <select value={form.time}
-                  onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                  onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'time'), cursor:'pointer' }}>
-                  {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                    <option key={t} value={t} style={{ background:'#0d1117' }}>
-                      {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
-                    </option>
-                  ))}
-                </select>
-                <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'notes'), resize:'vertical', minHeight:72 }} />
-                <button type="submit" disabled={submitting}
-                  style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily:"'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing:'0.02em', transition:'opacity .2s', boxShadow:'0 4px 20px rgba(220,38,38,0.25)' }}>
-                  {submitting ? 'Booking…' : 'Confirm Viewing'}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-
-        {/* M7 — Salesman card */}
-        {salesmanProfile && (() => {
-          const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-          const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
-          const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
-          return (
-            <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
-              <div style={{ background:'#0b1422', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-                  {salesmanProfile.avatar_url
-                    ? <img src={salesmanProfile.avatar_url} alt={salesmanProfile.full_name} style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                    : <div style={{ width:52, height:52, borderRadius:'50%', background:'#1d4ed8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-                        {(salesmanProfile.full_name || 'S')[0].toUpperCase()}
-                      </div>
-                  }
-                  <div>
-                    <p style={{ fontSize:15, fontWeight:700, color:'white', margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                    {salesmanProfile.job_title && <p style={{ fontSize:12, color:'#475569', margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                    <p style={{ fontSize:11, color:'#1e293b', margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
-                  </div>
-                </div>
-                {waHref && (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer"
-                    style={{ display:'block', width:'100%', background:'#22c55e', color:'white', borderRadius:9, padding:'12px 0', fontWeight:700, fontSize:13, fontFamily:"'DM Sans',sans-serif", textAlign:'center', textDecoration:'none', boxSizing:'border-box', letterSpacing:'0.02em' }}>
-                    Chat with {firstName}
-                  </a>
-                )}
-                {salesmanProfile.plan === 'salesman_full' && salesmanProfile.slug && (
-                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', marginTop:10, fontSize:12, color:'#60a5fa', textDecoration:'none' }}>
-                    View all listings →
-                  </Link>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* M8 — Similar cars */}
-        {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:80 }}>
-            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#1e293b', margin:'0 0 6px', fontWeight:700 }}>You might also like</p>
-            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color:'white', margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
-              More {car.brand}
-            </h2>
-            <div style={{ display:'flex', overflowX:'auto', gap:14, scrollSnapType:'x mandatory', scrollbarWidth:'none', WebkitOverflowScrolling:'touch', marginLeft:-18, marginRight:-18, paddingLeft:18, paddingRight:18 }}>
-              {similarCars.map(s => (
-                <div key={s.id} style={{ flexShrink:0, width:'72vw', scrollSnapAlign:'start' }}>
-                  <CarCard car={s} ctaContext={ctaCtx} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── SECTION 2: Body (desktop only) ── */}
-        <div className="cdp-body-wrap cdp-desktop-only">
+        {/* ── SECTION 2: Body ── */}
+        <div className="cdp-body-wrap">
           {/* ── LEFT COLUMN ── */}
           <div className="cdp-body-left">
             {/* Title block */}
@@ -2140,15 +1736,51 @@ export default function CarDetailPage() {
                           textDecoration: "none",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = `${cfg.color}1a`; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = `${cfg.color}0d`; }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = `${cfg.color}1a`)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = `${cfg.color}0d`)
+                        }
                       >
-                        <BadgeCheck size={13} style={{ color: cfg.color, flexShrink: 0 }} />
+                        <BadgeCheck
+                          size={13}
+                          style={{ color: cfg.color, flexShrink: 0 }}
+                        />
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: cfg.color, margin: 0 }}>{cfg.label}</p>
-                          <p style={{ fontSize: 10, color: '#334155', margin: '1px 0 0', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</p>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: cfg.color,
+                              margin: 0,
+                            }}
+                          >
+                            {cfg.label}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 10,
+                              color: "#334155",
+                              margin: "1px 0 0",
+                              maxWidth: 160,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {doc.name}
+                          </p>
                         </div>
-                        <ExternalLink size={11} style={{ color: cfg.color, opacity: 0.6, flexShrink: 0, marginLeft: 2 }} />
+                        <ExternalLink
+                          size={11}
+                          style={{
+                            color: cfg.color,
+                            opacity: 0.6,
+                            flexShrink: 0,
+                            marginLeft: 2,
+                          }}
+                        />
                       </a>
                     );
                   })}
@@ -2156,238 +1788,923 @@ export default function CarDetailPage() {
               </div>
             )}
 
-            {/* VIDEO WALKTHROUGH */}
+            {/* Video walkthrough */}
             {car.video_url && getEmbedUrl(car.video_url) && (
-              <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <PlayCircle size={13} style={{ color: '#dc2626' }} /> Watch Walkthrough
+              <div
+                style={{
+                  marginTop: 40,
+                  paddingTop: 32,
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.18em",
+                    color: "#334155",
+                    fontWeight: 700,
+                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                  }}
+                >
+                  <PlayCircle size={13} style={{ color: "#dc2626" }} /> Watch
+                  Walkthrough
                 </p>
-                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <iframe src={getEmbedUrl(car.video_url)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} allowFullScreen title={`${car.year} ${car.brand} ${car.model} walkthrough`} />
+                <div
+                  style={{
+                    position: "relative",
+                    paddingBottom: "56.25%",
+                    height: 0,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}
+                >
+                  <iframe
+                    src={getEmbedUrl(car.video_url)}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                    }}
+                    allowFullScreen
+                    title={`${car.year} ${car.brand} ${car.model} walkthrough`}
+                  />
                 </div>
               </div>
             )}
 
-            {/* BOOKING FORM */}
+            {/* Booking form */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Book a Viewing</p>
-              <div style={{ maxWidth: 480, background: '#0a1625', border: '1px solid rgba(220,38,38,0.1)', borderRadius: 16, padding: 28 }}>
+              <p
+                style={{
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                  color: "#334155",
+                  fontWeight: 700,
+                  marginBottom: 16,
+                }}
+              >
+                Book a Viewing
+              </p>
+              <div
+                style={{
+                  maxWidth: 480,
+                  background: "#0a1625",
+                  border: "1px solid rgba(220,38,38,0.1)",
+                  borderRadius: 16,
+                  padding: "28px",
+                }}
+              >
                 {booked ? (
-                  <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 20, color: '#4ade80' }}>✓</div>
-                    <p style={{ fontSize: '15px', color: 'white', marginBottom: 6, fontWeight: 600 }}>Viewing Booked</p>
-                    <p style={{ fontSize: '13px', color: '#475569' }}>We'll reach out on WhatsApp shortly.</p>
+                  <div style={{ padding: "24px 0", textAlign: "center" }}>
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "50%",
+                        background: "rgba(34,197,94,0.1)",
+                        border: "1px solid rgba(34,197,94,0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 16px",
+                        fontSize: 20,
+                        color: "#4ade80",
+                      }}
+                    >
+                      ✓
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "15px",
+                        color: "white",
+                        marginBottom: 6,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Viewing Booked
+                    </p>
+                    <p style={{ fontSize: "13px", color: "#475569" }}>
+                      We'll reach out on WhatsApp shortly.
+                    </p>
                   </div>
                 ) : (
                   <form onSubmit={handleBook}>
-                    <input type="text" placeholder="Your name" required value={form.name}
-                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                      onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'name')} />
-                    <input type="tel" placeholder="Phone number" required value={form.phone}
-                      onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                      onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'phone')} />
-                    <input type="date" required min={today} value={form.date}
-                      onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                      onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'date'), colorScheme: 'dark' }} />
-                    <select value={form.time}
-                      onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                      onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'time'), cursor: 'pointer' }}>
-                      {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                        <option key={t} value={t} style={{ background: '#0d1117' }}>
-                          {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
+                    <input
+                      type="text"
+                      placeholder="Your name"
+                      required
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      onFocus={() => setFocused("name")}
+                      onBlur={() => setFocused(null)}
+                      style={inputStyle(focusedField === "name")}
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Phone number"
+                      required
+                      value={form.phone}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, phone: e.target.value }))
+                      }
+                      onFocus={() => setFocused("phone")}
+                      onBlur={() => setFocused(null)}
+                      style={inputStyle(focusedField === "phone")}
+                    />
+                    <input
+                      type="date"
+                      required
+                      min={today}
+                      value={form.date}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, date: e.target.value }))
+                      }
+                      onFocus={() => setFocused("date")}
+                      onBlur={() => setFocused(null)}
+                      style={{
+                        ...inputStyle(focusedField === "date"),
+                        colorScheme: "dark",
+                      }}
+                    />
+                    <select
+                      value={form.time}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, time: e.target.value }))
+                      }
+                      onFocus={() => setFocused("time")}
+                      onBlur={() => setFocused(null)}
+                      style={{
+                        ...inputStyle(focusedField === "time"),
+                        cursor: "pointer",
+                      }}
+                    >
+                      {[
+                        "09:00",
+                        "10:00",
+                        "11:00",
+                        "12:00",
+                        "13:00",
+                        "14:00",
+                        "15:00",
+                        "16:00",
+                        "17:00",
+                      ].map((t) => (
+                        <option
+                          key={t}
+                          value={t}
+                          style={{ background: "#0d1117" }}
+                        >
+                          {parseInt(t) < 12
+                            ? `${parseInt(t)}:00 AM`
+                            : parseInt(t) === 12
+                              ? "12:00 PM"
+                              : `${parseInt(t) - 12}:00 PM`}
                         </option>
                       ))}
                     </select>
-                    <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
-                      onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                      onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'notes'), resize: 'vertical', minHeight: 72 }} />
-                    <button type="submit" disabled={submitting}
-                      style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: '9px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing: '0.02em', transition: 'opacity .2s', boxShadow: '0 4px 20px rgba(220,38,38,0.25)' }}>
-                      {submitting ? 'Booking…' : 'Confirm Viewing'}
+                    <textarea
+                      placeholder="Notes (optional)"
+                      rows={3}
+                      value={form.notes}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, notes: e.target.value }))
+                      }
+                      onFocus={() => setFocused("notes")}
+                      onBlur={() => setFocused(null)}
+                      style={{
+                        ...inputStyle(focusedField === "notes"),
+                        resize: "vertical",
+                        minHeight: 72,
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      style={{
+                        width: "100%",
+                        background: "#dc2626",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "9px",
+                        padding: "13px",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        cursor: submitting ? "not-allowed" : "pointer",
+                        fontFamily: "'DM Sans',sans-serif",
+                        opacity: submitting ? 0.6 : 1,
+                        letterSpacing: "0.02em",
+                        transition: "opacity .2s",
+                        boxShadow: "0 4px 20px rgba(220,38,38,0.25)",
+                      }}
+                    >
+                      {submitting ? "Booking…" : "Confirm Viewing"}
                     </button>
                   </form>
                 )}
               </div>
             </div>
 
-            {/* SIMILAR CARS */}
+            {/* Similar cars */}
             {similarCars.length > 0 && (
               <div style={{ marginTop: 64 }}>
-                <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#1e293b', margin: '0 0 6px', fontWeight: 700 }}>You might also like</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-                  <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: 'white', margin: 0, flexShrink: 0, borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
-                    More {car.brand}
-                  </h2>
-                </div>
+                <p
+                  style={{
+                    fontSize: "10px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.2em",
+                    color: "#1e293b",
+                    margin: "0 0 6px",
+                    fontWeight: 700,
+                  }}
+                >
+                  You might also like
+                </p>
+                <h2
+                  style={{
+                    fontFamily: "'Bebas Neue',sans-serif",
+                    fontSize: "2.4rem",
+                    letterSpacing: "0.06em",
+                    color: "white",
+                    margin: "0 0 32px",
+                    animation: "cdp-fadeUp .6s ease .2s both",
+                    borderLeft: "3px solid #dc2626",
+                    paddingLeft: "14px",
+                  }}
+                >
+                  More {car.brand}
+                </h2>
                 <div className="cdp-similar-grid">
-                  {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
+                  {similarCars.map((s) => (
+                    <CarCard key={s.id} car={s} ctaContext={ctaCtx} />
+                  ))}
                 </div>
                 <div className="cdp-similar-scroll">
-                  {similarCars.map(s => (
-                    <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
+                  {similarCars.map((s) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        flexShrink: 0,
+                        width: "72vw",
+                        scrollSnapAlign: "start",
+                      }}
+                    >
                       <CarCard car={s} ctaContext={ctaCtx} />
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>{/* end left column */}
+          </div>
+          {/* end left column */}
 
-          {/* ── RIGHT SIDEBAR ── */}
-          <div className="cdp-sidebar" style={{ width: 360, flexShrink: 0, position: 'sticky', top: 76, maxHeight: 'calc(100vh - 92px)', overflowY: 'auto', scrollbarWidth: 'none', background: 'linear-gradient(160deg, #09111f 0%, #0a1220 100%)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '28px 24px' }}>
-
-            {/* DEALER TOPBAR */}
+          {/* ── SIDEBAR ── */}
+          <div className="cdp-sidebar">
+            {/* Dealer topbar */}
             {(() => {
               const isAgent = !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile.full_name || 'Agent') : dealerName;
-              const avatarSrc = isAgent ? salesmanProfile.avatar_url : (dealer?.site_logo_url || dealer?.avatar_url);
+              const displayName = isAgent
+                ? salesmanProfile.full_name || "Agent"
+                : dealerName;
+              const avatarSrc = isAgent
+                ? salesmanProfile.avatar_url
+                : dealer?.site_logo_url || dealer?.avatar_url;
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  {avatarSrc
-                    ? <img src={avatarSrc} alt={displayName} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 32, height: 32, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        {displayName[0]?.toUpperCase()}
-                      </div>
-                  }
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 20,
+                    paddingBottom: 16,
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  {avatarSrc ? (
+                    <img
+                      src={avatarSrc}
+                      alt={displayName}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        background: isAgent ? "#1d4ed8" : "#111e2e",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      {displayName[0]?.toUpperCase()}
+                    </div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, color: 'white', fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
-                    <p style={{ fontSize: 11, color: isAgent ? '#60a5fa' : '#334155' }}>
-                      {isAgent ? 'Independent Agent' : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'cdp-pulse 2s ease infinite' }} />
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "white",
+                        fontWeight: 600,
+                        marginBottom: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {displayName}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        color: isAgent ? "#60a5fa" : "#334155",
+                      }}
+                    >
+                      {isAgent ? (
+                        "Independent Agent"
+                      ) : (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#4ade80",
+                              display: "inline-block",
+                              animation: "cdp-pulse 2s ease infinite",
+                            }}
+                          />
                           Verified Dealer
                         </span>
                       )}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    {listedDays !== null && <p style={{ fontSize: 10, color: '#1e293b' }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize: 10, color: '#1e293b' }}>👁 {viewCount}</p>}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: 2,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {listedDays !== null && (
+                      <p
+                        style={{
+                          fontSize: "10px",
+                          color: "#1e293b",
+                          whiteSpace: "nowrap",
+                          margin: 0,
+                        }}
+                      >
+                        {listedDays}d ago
+                      </p>
+                    )}
+                    {viewCount > 0 && (
+                      <p
+                        style={{
+                          fontSize: "10px",
+                          color: "#1e293b",
+                          whiteSpace: "nowrap",
+                          margin: 0,
+                        }}
+                      >
+                        👁 {viewCount}
+                      </p>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
-            {/* PRICE BLOCK */}
+            {/* Price block */}
             <div style={{ marginBottom: 4 }}>
-              <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 6 }}>Asking Price</p>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: 'white', lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
+              <p
+                style={{
+                  fontSize: "9px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.18em",
+                  color: "#334155",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
+                Asking Price
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Bebas Neue',sans-serif",
+                  fontSize: "clamp(2.4rem,3.5vw,3rem)",
+                  color: "white",
+                  lineHeight: 1,
+                  margin: 0,
+                }}
+              >
+                {fmtPrice(car.selling_price)}
+              </p>
               {calcMonthly(car.selling_price) && (
-                <p style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
+                <p style={{ fontSize: "12px", color: "#475569", marginTop: 4 }}>
+                  ~
+                  <span style={{ color: "#94a3b8", fontWeight: 500 }}>
+                    RM {fmt(calcMonthly(car.selling_price))}
+                  </span>
+                  /mo
+                </p>
               )}
               {isHot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                  <span style={{ fontSize: 13, color: '#1e293b', textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "13px",
+                      color: "#1e293b",
+                      textDecoration: "line-through",
+                    }}
+                  >
+                    {fmtPrice(car.original_price)}
+                  </span>
+                  <span
+                    style={{
+                      background: "rgba(220,38,38,0.1)",
+                      border: "1px solid rgba(220,38,38,0.2)",
+                      color: "#f87171",
+                      fontSize: "11px",
+                      padding: "2px 10px",
+                      borderRadius: "20px",
+                      fontWeight: 600,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    SAVE {fmtPrice(saving)}
+                  </span>
                 </div>
               )}
             </div>
-            <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
+            <div
+              style={{
+                height: 1,
+                background:
+                  "linear-gradient(to right, rgba(220,38,38,0.35), transparent)",
+                margin: "14px 0 16px",
+              }}
+            />
 
-            {/* TRUST BADGES */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {isRecon && <span style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', color: '#c084fc', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Recon</span>}
-              {isHot && <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', color: '#f87171', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Hot Deal</span>}
-              {hasDocuments && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><BadgeCheck size={11} /> Verified Docs</span>}
-              {car.warranty_months > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><ShieldCheck size={11} /> {car.warranty_months}m Warranty</span>}
+            {/* Trust badges */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 16,
+              }}
+            >
+              {isRecon && (
+                <span
+                  style={{
+                    background: "rgba(168,85,247,0.1)",
+                    border: "1px solid rgba(168,85,247,0.25)",
+                    color: "#c084fc",
+                    fontSize: "10px",
+                    padding: "3px 10px",
+                    borderRadius: "4px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                  }}
+                >
+                  Recon
+                </span>
+              )}
+              {isHot && (
+                <span
+                  style={{
+                    background: "rgba(220,38,38,0.1)",
+                    border: "1px solid rgba(220,38,38,0.28)",
+                    color: "#f87171",
+                    fontSize: "10px",
+                    padding: "3px 10px",
+                    borderRadius: "4px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                  }}
+                >
+                  Hot Deal
+                </span>
+              )}
+              {hasDocuments && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "rgba(34,197,94,0.08)",
+                    border: "1px solid rgba(34,197,94,0.28)",
+                    color: "#4ade80",
+                    fontSize: "10px",
+                    padding: "3px 10px",
+                    borderRadius: "4px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                  }}
+                >
+                  <BadgeCheck size={11} /> Verified Docs
+                </span>
+              )}
+              {car.warranty_months > 0 && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "rgba(34,197,94,0.08)",
+                    border: "1px solid rgba(34,197,94,0.28)",
+                    color: "#4ade80",
+                    fontSize: "10px",
+                    padding: "3px 10px",
+                    borderRadius: "4px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                  }}
+                >
+                  <ShieldCheck size={11} /> {car.warranty_months}mo Warranty
+                </span>
+              )}
             </div>
             {car.deposit_amount > 0 && (
-              <p style={{ fontSize: 11, color: '#475569', marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "#475569",
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                RM {fmt(car.deposit_amount)} deposit to reserve
+              </p>
             )}
 
-            {/* CTA BUTTONS */}
-            <button className="cdp-wa-btn" onClick={handleWhatsApp}
-              style={{ width: '100%', background: '#22c55e', color: 'white', border: 'none', borderTop: '2px solid #16a34a', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(34,197,94,0.2)', transition: 'transform .15s, box-shadow .2s' }}>
+            {/* CTA buttons */}
+            <button
+              className="cdp-wa-btn"
+              onClick={handleWhatsApp}
+              style={{
+                width: "100%",
+                background: "#22c55e",
+                color: "white",
+                border: "none",
+                borderTop: "2px solid #16a34a",
+                borderRadius: "10px",
+                padding: "14px",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+                letterSpacing: "0.02em",
+                boxShadow: "0 4px 24px rgba(34,197,94,0.2)",
+                transition: "transform .15s, box-shadow .2s",
+              }}
+            >
               WhatsApp Dealer
             </button>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               {contactPhone && (
-                <button onClick={handleCall}
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                <button
+                  onClick={handleCall}
+                  style={{
+                    flex: 1,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#94a3b8",
+                    borderRadius: "10px",
+                    padding: "11px",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans',sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    transition: "all .2s",
+                  }}
+                >
                   <Phone size={13} /> Call
                 </button>
               )}
               <button
                 onClick={() => {
-                  trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                  bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  trackEvent(supabase, "booking_click", {
+                    car_id: car.id,
+                    car_name: `${car.brand} ${car.model} ${car.year}`,
+                    dealer_id: car.dealer_id,
+                    metadata: { source: "car_detail" },
+                  });
+                  bookingRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
                 }}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                style={{
+                  flex: 1,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#94a3b8",
+                  borderRadius: "10px",
+                  padding: "11px",
+                  fontWeight: 500,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
+                  transition: "all .2s",
+                }}
+              >
                 Book Visit
               </button>
             </div>
-
-            <button onClick={() => setCalcOpen(true)}
-              style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
+            <button
+              onClick={() => setCalcOpen(true)}
+              style={{
+                marginTop: 8,
+                width: "100%",
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.06)",
+                color: "#475569",
+                borderRadius: "10px",
+                padding: "10px",
+                fontWeight: 500,
+                fontSize: "12px",
+                cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                letterSpacing: "0.05em",
+                transition: "all .2s",
+              }}
+            >
               <Calculator size={13} /> Financing Calculator
             </button>
 
-            {/* SALESMAN CARD */}
-            {salesmanProfile && (() => {
-              const waPhone = (salesmanProfile.whatsapp_number || '').replace(/\D/g, '');
-              const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
-              const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
-              return (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-                    {salesmanProfile.avatar_url
-                      ? <img src={salesmanProfile.avatar_url} alt={salesmanProfile.full_name} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                      : <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#1d4ed8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff' }}>
-                          {(salesmanProfile.full_name || 'S')[0].toUpperCase()}
+            {/* Salesman card */}
+            {salesmanProfile &&
+              (() => {
+                const waPhone = (salesmanProfile.whatsapp_number || "").replace(
+                  /\D/g,
+                  "",
+                );
+                const waHref = waPhone
+                  ? `https://wa.me/${waPhone.startsWith("6") ? waPhone : "6" + waPhone}`
+                  : null;
+                const firstName = (salesmanProfile.full_name || "Agent").split(
+                  " ",
+                )[0];
+                return (
+                  <div
+                    style={{
+                      marginTop: 20,
+                      paddingTop: 16,
+                      borderTop: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {salesmanProfile.avatar_url ? (
+                        <img
+                          src={salesmanProfile.avatar_url}
+                          alt={salesmanProfile.full_name}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "50%",
+                            background: "#1d4ed8",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 18,
+                            fontWeight: 700,
+                            color: "#fff",
+                          }}
+                        >
+                          {(salesmanProfile.full_name || "S")[0].toUpperCase()}
                         </div>
-                    }
-                    <div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: 'white', margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                      {salesmanProfile.job_title && <p style={{ fontSize: 12, color: '#475569', margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                      <p style={{ fontSize: 11, color: '#1e293b', margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
+                      )}
+                      <div>
+                        <p
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: "white",
+                            margin: 0,
+                          }}
+                        >
+                          {salesmanProfile.full_name || "Agent"}
+                        </p>
+                        {salesmanProfile.job_title && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "#475569",
+                              margin: "2px 0 0",
+                            }}
+                          >
+                            {salesmanProfile.job_title}
+                          </p>
+                        )}
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "#1e293b",
+                            margin: "2px 0 0",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Independent Agent · XDrive
+                        </p>
+                      </div>
                     </div>
+                    {waHref && (
+                      <a
+                        href={waHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          background: "#22c55e",
+                          color: "white",
+                          borderRadius: 9,
+                          padding: "11px 0",
+                          fontWeight: 700,
+                          fontSize: 13,
+                          fontFamily: "'DM Sans',sans-serif",
+                          textAlign: "center",
+                          textDecoration: "none",
+                          boxSizing: "border-box",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        Chat with {firstName}
+                      </a>
+                    )}
+                    {salesmanProfile.plan === "salesman_full" &&
+                      salesmanProfile.slug && (
+                        <Link
+                          to={`/s/${salesmanProfile.slug}`}
+                          style={{
+                            display: "block",
+                            textAlign: "center",
+                            marginTop: 10,
+                            fontSize: 12,
+                            color: "#60a5fa",
+                            textDecoration: "none",
+                          }}
+                        >
+                          View all listings →
+                        </Link>
+                      )}
                   </div>
-                  {waHref && (
-                    <a href={waHref} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'block', width: '100%', background: '#22c55e', color: 'white', borderRadius: 9, padding: '12px 0', fontWeight: 700, fontSize: 13, fontFamily: "'DM Sans',sans-serif", textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box', letterSpacing: '0.02em' }}>
-                      Chat with {firstName}
-                    </a>
-                  )}
-                  {salesmanProfile.plan === 'salesman_full' && salesmanProfile.slug && (
-                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: '#60a5fa', textDecoration: 'none' }}>
-                      View all listings →
-                    </Link>
-                  )}
-                </div>
-              );
-            })()}
-          </div>{/* end sidebar */}
-        </div>{/* end body wrap */}
+                );
+              })()}
+          </div>
+          {/* end sidebar */}
+        </div>
+        {/* end body wrap */}
 
         {/* ── calculator modal ── */}
         {calcOpen && (
-          <div onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}>
-            <div style={{ width: '100%', maxWidth: 860, background: '#0b1422', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, overflow: 'hidden' }}>
-              <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setCalcOpen(false);
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 200,
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+              fontFamily: "'DM Sans',sans-serif",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 860,
+                background: "#0b1422",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 20,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "18px 24px",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <div>
-                  <p style={{ color: 'white', fontWeight: 700, fontSize: 14, margin: '0 0 2px', letterSpacing: '0.02em' }}>Financing &amp; Cost Calculator</p>
-                  <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{carTitle}</p>
+                  <p
+                    style={{
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      margin: "0 0 2px",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    Financing &amp; Cost Calculator
+                  </p>
+                  <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>
+                    {carTitle}
+                  </p>
                 </div>
-                <button onClick={() => setCalcOpen(false)}
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: 'all .2s' }}>
+                <button
+                  onClick={() => setCalcOpen(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "50%",
+                    width: 34,
+                    height: 34,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "#64748b",
+                    transition: "all .2s",
+                  }}
+                >
                   <X size={16} />
                 </button>
               </div>
-              <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ maxHeight: "80vh", overflowY: "auto" }}>
                 <FinancingCalculator
                   initialPrice={car.selling_price}
                   engineCc={car.engine_cc}
                   bodyType={car.body_type}
                   carName={carTitle}
-                  carYear={car.year ? String(car.year) : ''}
-                  carColor={car.colour || ''}
+                  carYear={car.year ? String(car.year) : ""}
+                  carColor={car.colour || ""}
                   flat
                 />
               </div>
@@ -2397,82 +2714,205 @@ export default function CarDetailPage() {
 
         {/* ── lightbox ── */}
         {lbOpen && (
-          <div className="cdp-lb-overlay"
-            onClick={e => { if (e.target === e.currentTarget) closeLb(); }}
-            onMouseMove={lbMouseMove} onMouseUp={lbMouseUp} onMouseLeave={lbMouseUp}>
-            <button className="cdp-lb-close" onClick={closeLb} aria-label="Close"><X size={18} /></button>
-            {imgCount > 1 && <span className="cdp-lb-counter">{activeIdx + 1} / {imgCount}</span>}
+          <div
+            className="cdp-lb-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeLb();
+            }}
+            onMouseMove={lbMouseMove}
+            onMouseUp={lbMouseUp}
+            onMouseLeave={lbMouseUp}
+          >
+            <button
+              className="cdp-lb-close"
+              onClick={closeLb}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+            {imgCount > 1 && (
+              <span className="cdp-lb-counter">
+                {activeIdx + 1} / {imgCount}
+              </span>
+            )}
             {imgCount > 1 && (
               <>
-                <button className="cdp-lb-arrow cdp-lb-arrow-l" onClick={() => go(prevIdx, 'prev')} aria-label="Previous"><ChevronLeft size={22} /></button>
-                <button className="cdp-lb-arrow cdp-lb-arrow-r" onClick={() => go(nextIdx, 'next')} aria-label="Next"><ChevronRight size={22} /></button>
+                <button
+                  className="cdp-lb-arrow cdp-lb-arrow-l"
+                  onClick={() => go(prevIdx, "prev")}
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button
+                  className="cdp-lb-arrow cdp-lb-arrow-r"
+                  onClick={() => go(nextIdx, "next")}
+                  aria-label="Next"
+                >
+                  <ChevronRight size={22} />
+                </button>
               </>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', cursor: lbZoom > 1 ? (lbDrag.current.active ? 'grabbing' : 'grab') : 'default', overflow: 'hidden' }}
-              onMouseDown={lbMouseDown} onWheel={lbWheel} onTouchStart={lbTouchStart} onTouchEnd={lbTouchEnd}>
-              <img className="cdp-lb-img" src={images[activeIdx]} alt={carTitle} draggable={false}
-                style={{ transform: `translate(${lbPan.x}px,${lbPan.y}px) scale(${lbZoom})`, transformOrigin: 'center center', transition: lbDrag.current.active ? 'none' : 'transform 0.08s ease' }}
-                onError={e => { e.target.src = '/placeholder-car.jpg'; }}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                height: "100%",
+                cursor:
+                  lbZoom > 1
+                    ? lbDrag.current.active
+                      ? "grabbing"
+                      : "grab"
+                    : "default",
+                overflow: "hidden",
+              }}
+              onMouseDown={lbMouseDown}
+              onWheel={lbWheel}
+              onTouchStart={lbTouchStart}
+              onTouchEnd={lbTouchEnd}
+            >
+              <img
+                className="cdp-lb-img"
+                src={images[activeIdx]}
+                alt={carTitle}
+                draggable={false}
+                style={{
+                  transform: `translate(${lbPan.x}px,${lbPan.y}px) scale(${lbZoom})`,
+                  transformOrigin: "center center",
+                  transition: lbDrag.current.active
+                    ? "none"
+                    : "transform 0.08s ease",
+                }}
+                onError={(e) => {
+                  e.target.src = "/placeholder-car.jpg";
+                }}
               />
             </div>
             <div className="cdp-lb-zoom-bar">
-              <button className="cdp-lb-zoom-btn" onClick={() => { setLbZoom(z => Math.max(0.5, z - 0.25)); setLbPan({ x: 0, y: 0 }); }} aria-label="Zoom out"><ZoomOut size={16} /></button>
-              <span className="cdp-lb-zoom-label">{Math.round(lbZoom * 100)}%</span>
-              <button className="cdp-lb-zoom-btn" onClick={() => setLbZoom(z => Math.min(5, z + 0.25))} aria-label="Zoom in"><ZoomIn size={16} /></button>
-              <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)', margin: '0 2px' }} />
-              <button className="cdp-lb-zoom-btn" onClick={() => { setLbZoom(1); setLbPan({ x: 0, y: 0 }); }}
-                style={{ fontSize: 11, fontFamily: "'DM Sans',sans-serif", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>Reset</button>
+              <button
+                className="cdp-lb-zoom-btn"
+                onClick={() => {
+                  setLbZoom((z) => Math.max(0.5, z - 0.25));
+                  setLbPan({ x: 0, y: 0 });
+                }}
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={16} />
+              </button>
+              <span className="cdp-lb-zoom-label">
+                {Math.round(lbZoom * 100)}%
+              </span>
+              <button
+                className="cdp-lb-zoom-btn"
+                onClick={() => setLbZoom((z) => Math.min(5, z + 0.25))}
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={16} />
+              </button>
+              <div
+                style={{
+                  width: 1,
+                  height: 14,
+                  background: "rgba(255,255,255,0.15)",
+                  margin: "0 2px",
+                }}
+              />
+              <button
+                className="cdp-lb-zoom-btn"
+                onClick={() => {
+                  setLbZoom(1);
+                  setLbPan({ x: 0, y: 0 });
+                }}
+                style={{
+                  fontSize: 11,
+                  fontFamily: "'DM Sans',sans-serif",
+                  color: "rgba(255,255,255,0.5)",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Reset
+              </button>
             </div>
           </div>
         )}
-
       </div>
+      {/* end cdp-root */}
 
       {/* ── mobile sticky bar ── */}
       <div className="cdp-mobile-bar">
-        <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp} style={{ flex:2 }}>
+        <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
           WhatsApp
         </button>
         {contactPhone && (
-          <button onClick={handleCall}
-            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'#e2e8f0', fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', padding:'13px 0' }}>
+          <button
+            className="cdp-mobile-bar-book"
+            onClick={handleCall}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
             <Phone size={14} /> Call
           </button>
         )}
-        <button
-          onClick={() => document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' })}
-          style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'#e2e8f0', fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', padding:'13px 0' }}>
-          Book
-        </button>
       </div>
 
       {/* ── enquiry modal ── */}
       {showEnquiryModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div style={{ background: '#0b1628', border: '1px solid rgba(220,38,38,0.15)', borderRadius: '20px' }} className="p-6 w-full max-w-sm">
-            <h3 className="text-white font-semibold text-lg mb-1">Contact Dealer</h3>
-            <p className="text-gray-500 text-sm mb-4">Enter your details to continue to WhatsApp</p>
+          <div
+            style={{
+              background: "#0b1628",
+              border: "1px solid rgba(220,38,38,0.15)",
+              borderRadius: "20px",
+            }}
+            className="p-6 w-full max-w-sm"
+          >
+            <h3 className="text-white font-semibold text-lg mb-1">
+              Contact Dealer
+            </h3>
+            <p className="text-gray-500 text-sm mb-4">
+              Enter your details to continue to WhatsApp
+            </p>
             <input
               placeholder="Your name"
               value={enquiryForm.name}
-              onChange={e => setEnquiryForm(p => ({ ...p, name: e.target.value }))}
+              onChange={(e) =>
+                setEnquiryForm((p) => ({ ...p, name: e.target.value }))
+              }
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
             />
             <input
               placeholder="Phone number (e.g. 0123456789)"
               value={enquiryForm.phone}
-              onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
+              onChange={(e) =>
+                setEnquiryForm((p) => ({ ...p, phone: e.target.value }))
+              }
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
             />
             <button
               onClick={handleEnquirySubmit}
-              disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}
+              disabled={
+                !enquiryForm.name || !enquiryForm.phone || enquirySubmitting
+              }
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm"
-              style={{ borderTop: '2px solid #16a34a', letterSpacing: '0.02em' }}
+              style={{
+                borderTop: "2px solid #16a34a",
+                letterSpacing: "0.02em",
+              }}
             >
-              {enquirySubmitting ? 'Opening WhatsApp...' : 'Continue to WhatsApp'}
+              {enquirySubmitting
+                ? "Opening WhatsApp..."
+                : "Continue to WhatsApp"}
             </button>
-            <button onClick={() => setShowEnquiryModal(false)} className="w-full mt-2 text-gray-500 text-sm py-2">
+            <button
+              onClick={() => setShowEnquiryModal(false)}
+              className="w-full mt-2 text-gray-500 text-sm py-2"
+            >
               Cancel
             </button>
           </div>
@@ -2481,4 +2921,3 @@ export default function CarDetailPage() {
     </>
   );
 }
-                 

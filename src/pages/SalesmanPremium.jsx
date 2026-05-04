@@ -215,6 +215,9 @@ export default function SalesmanPremium() {
     whatsapp_number: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
 
@@ -313,6 +316,7 @@ export default function SalesmanPremium() {
         full_name: profile.full_name || "",
         whatsapp_number: profile.whatsapp_number || "",
       });
+      setAvatarUrl(profile.avatar_url || "");
     }
   }, [profile]);
 
@@ -4707,111 +4711,84 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       fontFamily: "'DM Sans', sans-serif",
     };
 
+    const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "");
+
+    const handleAvatarUpload = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setAvatarUploading(true);
+      const ext = file.name.split(".").pop();
+      const path = `${userId}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) { toast.error("Upload failed: " + upErr.message); setAvatarUploading(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
+      setAvatarUrl(publicUrl);
+      setProfile((p) => ({ ...p, avatar_url: publicUrl }));
+      setAvatarUploading(false);
+      toast.success("Profile photo updated");
+    };
+
     const handleSave = async () => {
       setSettingsSaving(true);
-      await supabase
-        .from("profiles")
-        .update({
-          full_name: settingsForm.full_name,
-          whatsapp_number: settingsForm.whatsapp_number,
-        })
-        .eq("id", userId);
-      setProfile((p) => ({
-        ...p,
-        full_name: settingsForm.full_name,
-        whatsapp_number: settingsForm.whatsapp_number,
-      }));
+      const phone = "+60" + localPhone.replace(/\D/g, "");
+      await supabase.from("profiles").update({ full_name: settingsForm.full_name, whatsapp_number: phone }).eq("id", userId);
+      setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone }));
+      setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
       setSettingsSaving(false);
       toast.success("Profile updated");
     };
 
+    const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
+
     return (
       <div style={{ maxWidth: 480 }}>
-        <p
-          style={{
-            margin: "0 0 20px",
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#f1f5f9",
-          }}
-        >
-          Profile Settings
-        </p>
+        <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Profile Settings</p>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {avatarUrl
+              ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
+              : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>{initials}</div>
+            }
+            <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
+              style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "#2563eb", border: "2px solid #05070e", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              {avatarUploading
+                ? <div style={{ width: 10, height: 10, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              }
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || "Your Name"}</p>
+            <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>Shown on your listings & profile page</p>
+            <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
+              {avatarUploading ? "Uploading…" : "Change photo"}
+            </button>
+          </div>
+        </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label
-              style={{
-                fontSize: 11,
-                color: "#6b7280",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Full Name
-            </label>
-            <input
-              value={settingsForm.full_name}
-              onChange={(e) =>
-                setSettingsForm((p) => ({ ...p, full_name: e.target.value }))
-              }
-              placeholder="Your full name"
-              style={inputStyle}
-            />
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
+            <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder="Your full name" style={inputStyle} />
           </div>
           <div>
-            <label
-              style={{
-                fontSize: 11,
-                color: "#6b7280",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              WhatsApp Number
-            </label>
-            <input
-              value={settingsForm.whatsapp_number}
-              onChange={(e) =>
-                setSettingsForm((p) => ({
-                  ...p,
-                  whatsapp_number: e.target.value,
-                }))
-              }
-              placeholder="e.g. 60123456789"
-              style={inputStyle}
-            />
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
+            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+              <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
+              <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789"
+                style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+            </div>
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
           </div>
           <div>
-            <label
-              style={{
-                fontSize: 11,
-                color: "#6b7280",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Username / Slug
-            </label>
-            <input
-              value={profile?.slug || ""}
-              readOnly
-              style={{
-                ...inputStyle,
-                color: "#4b5563",
-                cursor: "not-allowed",
-                background: "rgba(255,255,255,0.02)",
-              }}
-            />
-            <p
-              style={{
-                margin: "5px 0 0",
-                fontSize: 10,
-                color: "#374151",
-              }}
-            >
-              Contact support to change your username.
-            </p>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
+            <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
           </div>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           <button
             onClick={handleSave}
             disabled={settingsSaving}
@@ -5376,7 +5353,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 12, marginBottom: 16 }}>
           {[
             { label: "Buyer Name", key: "buyer_name", ph: "Ahmad bin Ali" },
-            { label: "Phone", key: "buyer_phone", ph: "0123456789" },
+            { label: "Phone", key: "buyer_phone", ph: "123456789" },
             { label: "IC Number", key: "buyer_ic", ph: "901231-10-1234" },
             { label: "Car Model", key: "car_model", ph: "Toyota Vios 2020" },
             { label: "Car Price (RM)", key: "car_price", ph: "85000", type: "number" },
@@ -5386,11 +5363,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           ].map(({ label, key, ph, type = "text", step }) => (
             <div key={key}>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>{label}</label>
-              <input type={type} step={step} placeholder={ph} style={loanInputSx} value={loanForm[key]}
-                onChange={(e) => key === "loan_amount" || key === "interest_rate"
-                  ? recalcLoanForm({ ...loanForm, [key]: e.target.value })
-                  : setLoanForm((f) => ({ ...f, [key]: e.target.value }))}
-              />
+              {key === "buyer_phone" ? (
+                <div style={{ display:"flex", alignItems:"center", ...loanInputSx, padding:0, overflow:"hidden" }}>
+                  <span style={{ padding:"8px 10px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
+                  <input type="tel" placeholder={ph} style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#fff", fontSize:13, padding:"8px 10px", fontFamily:"inherit" }}
+                    value={(loanForm.buyer_phone||'').replace(/^\+?60/,'')}
+                    onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} />
+                </div>
+              ) : (
+                <input type={type} step={step} placeholder={ph} style={loanInputSx} value={loanForm[key]}
+                  onChange={(e) => key === "loan_amount" || key === "interest_rate"
+                    ? recalcLoanForm({ ...loanForm, [key]: e.target.value })
+                    : setLoanForm((f) => ({ ...f, [key]: e.target.value }))}
+                />
+              )}
             </div>
           ))}
           <div>

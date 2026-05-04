@@ -1084,13 +1084,16 @@ function SettingsTab({ profile, onProfileUpdate }) {
             />
           </SettingsField>
           <SettingsField label="Phone Number">
-            <input
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              type="text"
-              placeholder="+60 12-345 6789"
-              className={iCls}
-            />
+            <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
+              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+              <input
+                type="tel"
+                value={(contactPhone||'').replace(/^\+?60/,'')}
+                onChange={(e) => setContactPhone('+60'+e.target.value.replace(/\D/g,''))}
+                placeholder="X-XXXXXXX"
+                className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+              />
+            </div>
           </SettingsField>
         </div>
 
@@ -3677,14 +3680,17 @@ function TeamTab({ managerDealership, dealerId }) {
                       <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
                         Phone
                       </label>
-                      <input
-                        type="tel"
-                        placeholder="+60 12-345 6789"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        autoComplete="off"
-                        className={inputCls}
-                      />
+                      <div className={`flex items-center overflow-hidden ${inputCls}`} style={{ padding:0 }}>
+                        <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+                        <input
+                          type="tel"
+                          value={(phone||'').replace(/^\+?60/,'')}
+                          onChange={(e) => setPhone('+60'+e.target.value.replace(/\D/g,''))}
+                          placeholder="X-XXXXXXX"
+                          autoComplete="off"
+                          className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                        />
+                      </div>
                     </div>
                     {newRole !== "salesman" && (
                       <div>
@@ -4938,7 +4944,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer IC</label><input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><input value={genForm.buyer_phone} onChange={e => setGenForm(p => ({ ...p, buyer_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5" /></div></div>
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
@@ -4949,7 +4955,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><input value={genForm.sa_phone} onChange={e => setGenForm(p => ({ ...p, sa_phone: e.target.value }))} placeholder="+601X" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span><input type="tel" value={(genForm.sa_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, sa_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5" /></div></div>
                 </div>
                 <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>

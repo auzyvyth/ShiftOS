@@ -5174,9 +5174,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Phone</label>
-            <input type="text" placeholder="e.g. 0123456789" style={loanInputSx}
-              value={loanForm.buyer_phone}
-              onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: e.target.value }))} />
+            <div style={{ display:"flex", alignItems:"center", ...loanInputSx, padding:0, overflow:"hidden" }}>
+              <span style={{ padding:"8px 10px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
+              <input type="tel" placeholder="123456789"
+                value={(loanForm.buyer_phone||'').replace(/^\+?60/,'')}
+                onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))}
+                style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#fff", fontSize:13, padding:"8px 10px", fontFamily:"inherit" }} />
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>IC Number</label>
@@ -6344,17 +6348,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   >
                     Phone
                   </label>
-                  <input
-                    value={addLeadForm.phone}
-                    onChange={(e) =>
-                      setAddLeadForm((p) => ({ ...p, phone: e.target.value }))
-                    }
-                    placeholder="e.g. 0123456789"
+                  <div style={{ display:"flex", alignItems:"center", width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, overflow:"hidden" }}>
+                    <span style={{ padding:"9px 12px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
+                    <input
+                    type="tel"
+                    value={(addLeadForm.phone||'').replace(/^\+?60/,'')}
+                    onChange={(e) => setAddLeadForm((p) => ({ ...p, phone: '+60'+e.target.value.replace(/\D/g,'') }))}
+                    placeholder="123456789"
                     style={{
-                      width: "100%",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
+                      flex: 1,
+                      background: "transparent",
+                      border: "none",
                       color: "#e5e7eb",
                       fontSize: 13,
                       padding: "9px 12px",
@@ -6362,6 +6366,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       boxSizing: "border-box",
                     }}
                   />
+                  </div>
                 </div>
                 <div>
                   <label
