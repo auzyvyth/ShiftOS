@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  ArrowLeftRight,
   ZoomIn,
   ZoomOut,
   X,
@@ -27,6 +28,8 @@ import {
   ExternalLink,
   Camera,
 } from "lucide-react";
+import HeartButton from "../components/HeartButton";
+import { useCompare } from "../hooks/useCompare";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -216,6 +219,7 @@ export default function CarDetailPage() {
   const [car, setCar] = useState(null);
   const [dealer, setDealer] = useState(null);
   const ctaCtx = useCTAContext();
+  const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [similarCars, setSimilarCars] = useState([]);
@@ -837,6 +841,9 @@ export default function CarDetailPage() {
         /* ── CTA button hover ── */
         .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; }
 
+        /* ── header action pills ── */
+        @media (max-width: 480px) { .cdp-compare-label { display: none; } }
+
         /* ── lightbox ── */
         .cdp-lb-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.96); display: flex; align-items: center; justify-content: center; user-select: none; }
         .cdp-lb-img { max-width: 90vw; max-height: 88vh; object-fit: contain; display: block; transition: transform 0.08s linear; pointer-events: none; }
@@ -885,9 +892,61 @@ export default function CarDetailPage() {
           <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
             {carTitle}
           </span>
-          <button className="cdp-enquire-btn" onClick={handleWhatsApp}>
-            Enquire
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8,
+                padding: "6px 8px",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <HeartButton listingId={car?.id} size={16} />
+            </div>
+            <button
+              onClick={() => {
+                if (!car?.id) return;
+                isInCompare(car.id)
+                  ? removeFromCompare(car.id)
+                  : addToCompare(car.id);
+              }}
+              style={{
+                background:
+                  car?.id && isInCompare(car.id)
+                    ? "rgba(220,38,38,0.15)"
+                    : "rgba(255,255,255,0.06)",
+                border:
+                  car?.id && isInCompare(car.id)
+                    ? "1px solid rgba(220,38,38,0.4)"
+                    : "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8,
+                padding: "6px 10px",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                color:
+                  car?.id && isInCompare(car.id)
+                    ? "#f87171"
+                    : "rgba(255,255,255,0.5)",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+                transition: "all 0.18s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <ArrowLeftRight size={13} />
+              <span className="cdp-compare-label">
+                {car?.id && isInCompare(car.id) ? "In Compare" : "Compare"}
+              </span>
+            </button>
+            <button className="cdp-enquire-btn" onClick={handleWhatsApp}>
+              Enquire
+            </button>
+          </div>
           <div className="cdp-header-redline" />
         </header>
 
@@ -2379,6 +2438,65 @@ export default function CarDetailPage() {
               </p>
             )}
 
+            {/* Save + Compare row */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  borderRadius: 10,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'DM Sans',sans-serif",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                }}
+              >
+                <HeartButton listingId={car?.id} size={15} />
+                Save
+              </div>
+              <button
+                onClick={() => {
+                  if (!car?.id) return;
+                  isInCompare(car.id)
+                    ? removeFromCompare(car.id)
+                    : addToCompare(car.id);
+                }}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  background:
+                    car?.id && isInCompare(car.id)
+                      ? "rgba(220,38,38,0.1)"
+                      : "rgba(255,255,255,0.04)",
+                  border:
+                    car?.id && isInCompare(car.id)
+                      ? "1px solid rgba(220,38,38,0.3)"
+                      : "1px solid rgba(255,255,255,0.09)",
+                  borderRadius: 10,
+                  padding: "10px 0",
+                  color: car?.id && isInCompare(car.id) ? "#f87171" : "#94a3b8",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
+                  transition: "all 0.18s",
+                }}
+              >
+                <ArrowLeftRight size={14} />
+                {car?.id && isInCompare(car.id) ? "In Compare" : "Compare"}
+              </button>
+            </div>
+
             {/* CTA buttons */}
             <button
               className="cdp-wa-btn"
@@ -2842,6 +2960,69 @@ export default function CarDetailPage() {
 
       {/* ── mobile sticky bar ── */}
       <div className="cdp-mobile-bar">
+        {/* Save icon */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            padding: "0 4px",
+            flexShrink: 0,
+          }}
+        >
+          <HeartButton listingId={car?.id} size={20} />
+          <span
+            style={{
+              fontSize: 9,
+              color: "rgba(255,255,255,0.35)",
+              fontFamily: "'DM Sans',sans-serif",
+            }}
+          >
+            Save
+          </span>
+        </div>
+        {/* Compare icon */}
+        <button
+          onClick={() => {
+            if (!car?.id) return;
+            isInCompare(car.id)
+              ? removeFromCompare(car.id)
+              : addToCompare(car.id);
+          }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 4px",
+            flexShrink: 0,
+          }}
+        >
+          <ArrowLeftRight
+            size={20}
+            color={
+              car?.id && isInCompare(car.id)
+                ? "#f87171"
+                : "rgba(255,255,255,0.35)"
+            }
+          />
+          <span
+            style={{
+              fontSize: 9,
+              color:
+                car?.id && isInCompare(car.id)
+                  ? "#f87171"
+                  : "rgba(255,255,255,0.35)",
+              fontFamily: "'DM Sans',sans-serif",
+            }}
+          >
+            {car?.id && isInCompare(car.id) ? "Added" : "Compare"}
+          </span>
+        </button>
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>
           WhatsApp
         </button>
