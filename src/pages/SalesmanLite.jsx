@@ -4635,9 +4635,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         return;
       }
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const bustedUrl = `${publicUrl}?t=${Date.now()}`;
       await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
-      setAvatarUrl(publicUrl);
-      setProfile((p) => ({ ...p, avatar_url: publicUrl }));
+      setAvatarUrl(bustedUrl);
+      setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
       setAvatarUploading(false);
       toast.success("Profile photo updated");
     };
@@ -4672,23 +4673,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {/* Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <div style={{ position: "relative", flexShrink: 0 }}>
+          <div
+            style={{ position: "relative", flexShrink: 0, cursor: avatarUploading ? "default" : "pointer" }}
+            onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+            title="Change profile photo"
+          >
             {avatarUrl
-              ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
+              ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", display: "block" }} />
               : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>
                   {initials}
                 </div>
             }
-            <button
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={avatarUploading}
-              style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "#2563eb", border: "2px solid #05070e", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            {/* Hover / loading overlay */}
+            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: avatarUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}
+              onMouseEnter={e => { if (!avatarUploading) e.currentTarget.style.background = "rgba(0,0,0,0.45)"; }}
+              onMouseLeave={e => { if (!avatarUploading) e.currentTarget.style.background = "rgba(0,0,0,0)"; }}
             >
               {avatarUploading
-                ? <div style={{ width: 10, height: 10, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0, transition: "opacity 0.2s" }} className="avatar-cam-icon"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               }
-            </button>
+            </div>
             <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
           </div>
           <div>
@@ -4736,7 +4741,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
           </div>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
           <button
             onClick={handleSave}
             disabled={settingsSaving}
