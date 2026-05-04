@@ -11,6 +11,7 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import SalesmanPanel from "./pages/Salesmanpanel";
 import SalesmanLite from "./pages/SalesmanLite";
+import SalesmanPremium from "./pages/SalesmanPremium";
 import OnboardingPage from "./pages/OnboardingPage";
 import AdminPanel from "./pages/AdminPanel";
 import AdminPage from "./pages/AdminPage";
@@ -65,6 +66,7 @@ function App() {
         <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
         <Route path="/salesman" element={<SalesmanPanel />} />
         <Route path="/salesman-lite" element={<SalesmanLite />} />
+        <Route path="/salesman-premium" element={<SalesmanPremium />} />
         <Route path="/manager" element={<ManagerPanel />} />
         <Route path="/accountant" element={<AccountantPanel />} />
         <Route path="/fi" element={<FIPanel />} />

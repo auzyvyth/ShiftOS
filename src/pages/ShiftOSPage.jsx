@@ -1673,15 +1673,13 @@ export default function ShiftOSPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/onboarding"
                 className="shiftos-btn-ghost"
                 style={{ justifyContent: "center" }}
               >
                 Daftar Percuma
-              </a>
+              </Link>
             </div>
 
             {/* Salesman Premium */}
@@ -1732,15 +1730,13 @@ export default function ShiftOSPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/onboarding"
                 className="shiftos-btn-red"
                 style={{ justifyContent: "center" }}
               >
                 Mula Sekarang
-              </a>
+              </Link>
             </div>
           </div>
         </section>
