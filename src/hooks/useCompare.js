@@ -4,40 +4,42 @@ const SS_KEY = 'xdrive_compare';
 const MAX = 3;
 
 function readSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SS_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '[]'); } catch { return []; }
 }
 
-export function useCompare() {
-  const [compareIds, setCompareIds] = useState(() => readSession());
+// ── Singleton store ──────────────────────────────────
+// All hook instances share this state and get notified together.
+let _state = readSession();
+const _listeners = new Set();
 
-  // Keep sessionStorage in sync whenever compareIds changes
+function _setState(next) {
+  _state = next;
+  sessionStorage.setItem(SS_KEY, JSON.stringify(next));
+  _listeners.forEach(fn => fn(next));
+}
+// ─────────────────────────────────────────────────────
+
+export function useCompare() {
+  const [compareIds, setCompareIds] = useState(_state);
+
   useEffect(() => {
-    sessionStorage.setItem(SS_KEY, JSON.stringify(compareIds));
-  }, [compareIds]);
+    const handler = (next) => setCompareIds([...next]);
+    _listeners.add(handler);
+    return () => _listeners.delete(handler);
+  }, []);
 
   const addToCompare = useCallback((id) => {
-    setCompareIds((prev) => {
-      if (prev.includes(id) || prev.length >= MAX) return prev;
-      return [...prev, id];
-    });
+    if (_state.includes(id) || _state.length >= MAX) return;
+    _setState([..._state, id]);
   }, []);
 
   const removeFromCompare = useCallback((id) => {
-    setCompareIds((prev) => prev.filter((x) => x !== id));
+    _setState(_state.filter(x => x !== id));
   }, []);
 
-  const isInCompare = useCallback(
-    (id) => compareIds.includes(id),
-    [compareIds],
-  );
+  const isInCompare = useCallback((id) => _state.includes(id), [compareIds]);
 
-  const clearCompare = useCallback(() => {
-    setCompareIds([]);
-  }, []);
+  const clearCompare = useCallback(() => _setState([]), []);
 
   return { compareIds, addToCompare, removeFromCompare, isInCompare, clearCompare };
 }
