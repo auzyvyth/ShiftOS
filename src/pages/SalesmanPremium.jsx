@@ -374,7 +374,7 @@ export default function SalesmanPremium() {
       setProfile(profileData);
       setLoading(false);
 
-      if (!localStorage.getItem("sp_tour_done")) setTourStep(0);
+      if (!profileData.onboarding_tour_done) setTourStep(0);
 
       // premium — commission + sold count
       supabase.from("car_listings").select("commission_amount, brand, model, year, sold_at")
@@ -400,13 +400,13 @@ export default function SalesmanPremium() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, ai_captions",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, ai_captions",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -419,6 +419,9 @@ export default function SalesmanPremium() {
           })
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         setMyListings(merged);
+        const seedMap = {};
+        merged.forEach((c) => { if (c.ai_captions) seedMap[c.id] = c.ai_captions; });
+        if (Object.keys(seedMap).length) setAiCaptions(seedMap);
       });
 
       // fetch analytics events (30d, scoped by salesman slug)
@@ -456,7 +459,7 @@ export default function SalesmanPremium() {
       // fetch leads
       supabase
         .from("leads")
-        .select("*, car_listings(brand, model, year, selling_price)")
+        .select("*, ai_score, ai_score_reason, ai_scored_at, car_listings(brand, model, year, selling_price)")
         .eq("salesman_id", uid)
         .eq("is_deleted", false)
         .order("updated_at", { ascending: false })
@@ -464,6 +467,13 @@ export default function SalesmanPremium() {
           const rows = lds || [];
           setLeads(rows);
           setLeadsLoading(false);
+
+          // Seed scores from persisted columns
+          const seeded = {};
+          rows.forEach((l) => {
+            if (l.ai_score) seeded[l.id] = { score: l.ai_score, reason: l.ai_score_reason };
+          });
+          if (Object.keys(seeded).length) setLeadScores(seeded);
 
           // AI lead scoring — fire-and-forget
           if (rows.length > 0) {
@@ -482,6 +492,16 @@ export default function SalesmanPremium() {
                 const map = {};
                 parsed.forEach((r) => { if (r.id) map[r.id] = { score: r.score, reason: r.reason }; });
                 setLeadScores(map);
+                const now = new Date().toISOString();
+                supabase.from("leads").upsert(
+                  Object.entries(map).map(([id, { score, reason }]) => ({
+                    id,
+                    ai_score: score,
+                    ai_score_reason: reason,
+                    ai_scored_at: now,
+                  })),
+                  { onConflict: "id" }
+                );
               }
             } catch { /* silent */ }
             finally { setScoreLoading(false); }
@@ -881,6 +901,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
       const parsed = JSON.parse(raw);
       setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
+      supabase.from("car_listings").update({ ai_captions: parsed }).eq("id", car.id);
     } catch {
       setAiCaptions((p) => ({
         ...p,
@@ -917,6 +938,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     setBroadcastDone(false);
   };
 
+  // broadcast_logs(id uuid pk, salesman_id uuid, car_listing_id uuid,
+  //   lead_id uuid, message text, sent_at timestamptz)
   const runBroadcast = (eligibleLeads) => {
     const capped = eligibleLeads.slice(0, 10);
     setBroadcastProgress({ current: 0, total: capped.length });
@@ -929,6 +952,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             "_blank",
             "noopener,noreferrer",
           );
+          supabase.from("broadcast_logs").insert({
+            salesman_id: userId,
+            car_listing_id: broadcastCar?.id,
+            lead_id: lead.id,
+            message: broadcastMsg,
+            sent_at: new Date().toISOString(),
+          });
         }
         setBroadcastProgress({ current: i + 1, total: capped.length });
         if (i === capped.length - 1) setBroadcastDone(true);
@@ -5549,9 +5579,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   ];
 
   const dismissTour = () => {
-    localStorage.setItem("sp_tour_done", "1");
     setTourStep(null);
     setTourTarget(null);
+    supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
   };
 
   const renderTour = () => {
