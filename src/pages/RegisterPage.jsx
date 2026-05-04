@@ -555,7 +555,13 @@ export default function RegisterPage() {
                   </div>
                   <div className="rfield">
                     <label>WhatsApp Number *</label>
-                    <input type="tel" placeholder="+60123456789" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} />
+                    <div style={{ display:'flex', alignItems:'center', border:'1px solid rgba(255,255,255,0.12)', borderRadius:4, overflow:'hidden', background:'rgba(255,255,255,0.04)' }}>
+                      <span style={{ padding:'12px 12px', color:'rgba(255,255,255,0.35)', background:'rgba(255,255,255,0.03)', borderRight:'1px solid rgba(255,255,255,0.08)', fontSize:14, whiteSpace:'nowrap', flexShrink:0 }}>+60</span>
+                      <input type="tel" placeholder="123456789"
+                        value={(whatsapp||'').replace(/^\+?60/,'')}
+                        onChange={e => setWhatsapp('+60'+e.target.value.replace(/\D/g,''))}
+                        style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'#fff', fontSize:14, padding:'12px 10px', fontFamily:'inherit' }} />
+                    </div>
                   </div>
                 </div>
 

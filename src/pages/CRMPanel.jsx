@@ -2090,14 +2090,16 @@ function BookingsTab({ userId, listings, salesmen }) {
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
                     Buyer Phone
                   </label>
-                  <input
-                    value={addForm.buyer_phone}
-                    onChange={(e) =>
-                      setAddForm((p) => ({ ...p, buyer_phone: e.target.value }))
-                    }
-                    placeholder="+601X"
-                    className={iCls}
-                  />
+                  <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
+                    <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+                    <input
+                      type="tel"
+                      value={(addForm.buyer_phone||'').replace(/^\+?60/,'')}
+                      onChange={(e) => setAddForm((p) => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))}
+                      placeholder="X-XXXXXXX"
+                      className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -2670,7 +2672,14 @@ function PipelinePanel({ userId }) {
                 {[{ key: "buyer_name", label: "Name", placeholder: "Buyer name" }, { key: "phone", label: "Phone", placeholder: "e.g. 0123456789" }, { key: "notes", label: "Notes", placeholder: "Any notes..." }].map(({ key, label, placeholder }) => (
                   <div key={key}>
                     <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
-                    <input value={addLeadForm[key]} onChange={(e) => setAddLeadForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                    {key === "phone" ? (
+                      <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, overflow:"hidden" }}>
+                        <span style={{ padding:"9px 12px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
+                        <input type="tel" value={(addLeadForm.phone||'').replace(/^\+?60/,'')} onChange={(e) => setAddLeadForm((p) => ({ ...p, phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="123456789" style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#e5e7eb", fontSize:13, padding:"9px 12px", fontFamily:"'DM Sans',sans-serif" }} />
+                      </div>
+                    ) : (
+                      <input value={addLeadForm[key]} onChange={(e) => setAddLeadForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                    )}
                   </div>
                 ))}
               </div>

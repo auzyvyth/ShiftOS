@@ -134,13 +134,16 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* Phone */}
           <div>
             <label className="text-xs font-medium text-gray-400 block mb-1.5">Phone Number <span className="text-red-500">*</span></label>
-            <input
-              value={form.phone}
-              onChange={e => set('phone', e.target.value)}
-              className={`${inp} ${errors.phone ? 'border-red-500/50' : ''}`}
-              placeholder="+601X-XXXXXXX"
-              type="tel"
-            />
+            <div className={`flex items-center overflow-hidden ${inp.replace('w-full','').trim()} ${errors.phone ? 'border-red-500/50' : ''}`} style={{ padding:0 }}>
+              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+              <input
+                value={(form.phone||'').replace(/^\+?60/,'')}
+                onChange={e => set('phone', '+60'+e.target.value.replace(/\D/g,''))}
+                className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                placeholder="X-XXXXXXX"
+                type="tel"
+              />
+            </div>
             {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
           </div>
 
