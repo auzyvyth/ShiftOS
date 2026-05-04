@@ -841,8 +841,13 @@ export default function CarDetailPage() {
         /* ── CTA button hover ── */
         .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; }
 
-        /* ── header action pills ── */
-        @media (max-width: 480px) { .cdp-compare-label { display: none; } }
+        /* ── header action pills — hide on mobile, they live in mobile bar ── */
+        .cdp-header-actions { display: flex; align-items: center; gap: 8px; }
+        .cdp-mobile-enquire { display: none !important; }
+        @media (max-width: 768px) {
+          .cdp-header-actions { display: none; }
+          .cdp-mobile-enquire { display: inline-flex !important; }
+        }
 
         /* ── lightbox ── */
         .cdp-lb-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.96); display: flex; align-items: center; justify-content: center; user-select: none; }
@@ -865,12 +870,12 @@ export default function CarDetailPage() {
           .cdp-mosaic-grid { display: none; }
           .cdp-mosaic-mobile { display: block; height: clamp(240px,56vw,400px); }
           .cdp-mobile-bar {
-            display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+            display: flex; align-items: center; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-            border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 10px;
+            border-top: 1px solid rgba(255,255,255,0.07); padding: 10px 14px; gap: 8px;
           }
-          .cdp-mobile-bar-wa { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border: none; cursor: pointer; background: #22c55e; color: white; padding: 13px 0; border-top: 2px solid #16a34a; }
-          .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; background: transparent; color: #e2e8f0; padding: 13px 0; border: 1px solid rgba(255,255,255,0.12); }
+          .cdp-mobile-bar-wa { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border: none; cursor: pointer; background: #22c55e; color: white; padding: 12px 0; border-top: 2px solid #16a34a; }
+          .cdp-mobile-bar-book { flex: 0 0 auto; border-radius: 10px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; background: transparent; color: #e2e8f0; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.12); }
           .cdp-similar-grid { display: none; }
           .cdp-similar-scroll { display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
           .cdp-similar-scroll::-webkit-scrollbar { display: none; }
@@ -892,7 +897,7 @@ export default function CarDetailPage() {
           <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
             {carTitle}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="cdp-header-actions">
             <div
               style={{
                 background: "rgba(255,255,255,0.06)",
@@ -939,14 +944,19 @@ export default function CarDetailPage() {
               }}
             >
               <ArrowLeftRight size={13} />
-              <span className="cdp-compare-label">
-                {car?.id && isInCompare(car.id) ? "In Compare" : "Compare"}
-              </span>
+              {car?.id && isInCompare(car.id) ? "In Compare" : "Compare"}
             </button>
             <button className="cdp-enquire-btn" onClick={handleWhatsApp}>
               Enquire
             </button>
           </div>
+          {/* Mobile: just the Enquire button */}
+          <button
+            className="cdp-enquire-btn cdp-mobile-enquire"
+            onClick={handleWhatsApp}
+          >
+            Enquire
+          </button>
           <div className="cdp-header-redline" />
         </header>
 
