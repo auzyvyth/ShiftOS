@@ -208,7 +208,12 @@ export default function SalesmanPanel() {
   const [loanSaving, setLoanSaving] = useState(false);
   const [loanEditId, setLoanEditId] = useState(null);
   const [loanEditStatus, setLoanEditStatus] = useState("");
-  const [loanEditCommission, setLoanEditCommission] = useState("");
+
+  // ── reschedule modal
+  const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleNote, setRescheduleNote] = useState("");
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
 
   // ── stale leads (48h no contact, exclude won/lost)
   useEffect(() => {
@@ -415,22 +420,6 @@ export default function SalesmanPanel() {
       .limit(10)
       .then(({ data }) => setManagerNotes(data || []));
 
-    // Enquiries via ref slug
-    if (profile?.slug) {
-      supabase
-        .from("whatsapp_enquiries")
-        .select("*, car_listings(brand, model, year, images)")
-        .eq("ref_slug", profile.slug)
-        .order("created_at", { ascending: false })
-        .limit(20)
-        .then(({ data }) => {
-          setEnquiries(data || []);
-          setEnquiriesLoading(false);
-        });
-    } else {
-      setEnquiriesLoading(false);
-    }
-
     // Leads assigned to this salesman
     supabase
       .from("leads")
@@ -540,6 +529,21 @@ Rules:
       supabase.removeChannel(listingsCh);
     };
   }, [userId]);
+
+  // ── enquiries — depends on profile.slug which resolves after userId ────────
+  useEffect(() => {
+    if (!profile?.slug) { setEnquiriesLoading(false); return; }
+    supabase
+      .from("whatsapp_enquiries")
+      .select("*, car_listings(brand, model, year, images)")
+      .eq("ref_slug", profile.slug)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setEnquiries(data || []);
+        setEnquiriesLoading(false);
+      });
+  }, [profile?.slug]);
 
   // ── loan data ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -784,6 +788,32 @@ Rules:
       .from("appointments")
       .update({ status: newStatus })
       .eq("id", apptId);
+  };
+
+  const openReschedule = (appt) => {
+    const d = new Date(appt.appointment_date);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    setRescheduleDate(d.toISOString().slice(0, 16));
+    setRescheduleNote(appt.notes || "");
+    setRescheduleAppt(appt);
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleAppt || !rescheduleDate) return;
+    setRescheduleSaving(true);
+    const updates = {
+      appointment_date: new Date(rescheduleDate).toISOString(),
+      status: "rescheduled",
+      ...(rescheduleNote.trim() ? { notes: rescheduleNote.trim() } : {}),
+    };
+    await supabase.from("appointments").update(updates).eq("id", rescheduleAppt.id);
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === rescheduleAppt.id ? { ...a, ...updates } : a)),
+    );
+    setRescheduleSaving(false);
+    setRescheduleAppt(null);
+    setRescheduleDate("");
+    setRescheduleNote("");
   };
 
   const handleListingCopy = (car, type) => {
@@ -2505,9 +2535,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const cvr = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
     const features = parseTags(car.features);
     const options = parseTags(car.options);
-    const tabs = ["specs", "features", "options"].filter(
-      (t) => t !== "specs" || true,
-    );
+    const tabs = ["specs", "features", "options"];
 
     const close = () => {
       setSelectedCar(null);
@@ -4084,7 +4112,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     "#fbbf24",
                     "rgba(251,191,36,0.08)",
                     "rgba(251,191,36,0.25)",
-                    () => updateApptStatus(appt.id, "rescheduled"),
+                    () => openReschedule(appt),
                   )}
                 </>
               )}
@@ -5021,7 +5049,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     );
     setLoanEditId(null);
     setLoanEditStatus("");
-    setLoanEditCommission("");
   };
 
   const deleteLoan = async (id) => {
@@ -7003,6 +7030,129 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       )}
 
       {/* TikTok Studio modal */}
+      {/* ── Reschedule Modal ─────────────────────────────────────────────── */}
+      {rescheduleAppt && (
+        <div
+          onClick={() => setRescheduleAppt(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1200,
+            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#0d1117",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 16,
+              padding: 24,
+              width: "100%",
+              maxWidth: 400,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
+                  Reschedule Appointment
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: "#4b5563" }}>
+                  {rescheduleAppt.buyer_name || "—"}
+                  {rescheduleAppt.car_listings
+                    ? ` · ${rescheduleAppt.car_listings.brand} ${rescheduleAppt.car_listings.model}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => setRescheduleAppt(null)}
+                style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current date */}
+            <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 8 }}>
+              <p style={{ margin: 0, fontSize: 11, color: "#92400e" }}>Current date</p>
+              <p style={{ margin: "2px 0 0", fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+                {new Date(rescheduleAppt.appointment_date).toLocaleString("en-MY", {
+                  weekday: "short", day: "numeric", month: "short",
+                  hour: "2-digit", minute: "2-digit", hour12: true,
+                })}
+              </p>
+            </div>
+
+            {/* New date picker */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                New date & time
+              </label>
+              <input
+                type="datetime-local"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  background: "#111827", border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8, color: "#f1f5f9", fontSize: 14,
+                  padding: "10px 12px", outline: "none",
+                }}
+              />
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Notes (optional)
+              </label>
+              <textarea
+                value={rescheduleNote}
+                onChange={(e) => setRescheduleNote(e.target.value)}
+                placeholder="Reason for reschedule, special instructions…"
+                rows={3}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  background: "#111827", border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8, color: "#f1f5f9", fontSize: 13,
+                  padding: "10px 12px", outline: "none", resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setRescheduleAppt(null)}
+                style={{
+                  flex: 1, padding: "10px", borderRadius: 8,
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReschedule}
+                disabled={!rescheduleDate || rescheduleSaving}
+                style={{
+                  flex: 2, padding: "10px", borderRadius: 8,
+                  background: rescheduleDate ? "#d97706" : "rgba(217,119,6,0.3)",
+                  border: "none", color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: rescheduleDate ? "pointer" : "not-allowed",
+                  opacity: rescheduleSaving ? 0.7 : 1,
+                }}
+              >
+                {rescheduleSaving ? "Saving…" : "Confirm Reschedule"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tiktokListing && (
         <div
           style={

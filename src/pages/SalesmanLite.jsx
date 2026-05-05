@@ -230,7 +230,7 @@ export default function SalesmanLite() {
 
   // listings sort/filter
   const [sortBy, setSortBy] = useState("newest");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("available");
 
   // per-listing analytics (carStatsMap)
   const [carStatsMap, setCarStatsMap] = useState({});
@@ -466,12 +466,38 @@ export default function SalesmanLite() {
                 table: "whatsapp_enquiries",
                 filter: `dealer_id=eq.${uid}`,
               },
-              (payload) => {
+              async (payload) => {
                 if (payload.eventType === "INSERT") {
                   setEnquiries((p) => [payload.new, ...p]);
                   toast("New enquiry!", {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
+                  // auto-add to lead pipeline
+                  const { data: newLead } = await supabase
+                    .from("leads")
+                    .insert({
+                      salesman_id: uid,
+                      dealer_id: null,
+                      buyer_name: payload.new.buyer_name || null,
+                      phone: payload.new.buyer_phone || null,
+                      notes: payload.new.buyer_message || null,
+                      car_listing_id: payload.new.listing_id || null,
+                      stage: "new",
+                      lead_source: "enquiry",
+                      is_deleted: false,
+                    })
+                    .select()
+                    .single();
+                  if (newLead) setLeads((p) => [newLead, ...p]);
+                  await supabase
+                    .from("whatsapp_enquiries")
+                    .update({ status: "converted" })
+                    .eq("id", payload.new.id);
+                  setEnquiries((p) =>
+                    p.map((e) =>
+                      e.id === payload.new.id ? { ...e, status: "converted" } : e,
+                    ),
+                  );
                 }
                 if (payload.eventType === "UPDATE")
                   setEnquiries((p) =>
@@ -1756,10 +1782,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       (c) => c.status === "available",
     ).length;
 
-    const filtered =
-      filterStatus === "all"
-        ? enriched
-        : enriched.filter((e) => e.car.status === filterStatus);
+    const filtered = enriched.filter((e) => e.car.status === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "price_desc")
@@ -1845,90 +1868,82 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {myListings.length > 0 && !showAddForm && (
           <>
-            {/* Summary strip */}
+            {/* Status tabs — same pattern as DashboardPage listings panel */}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                marginBottom: 14,
-                padding: "10px 14px",
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
+                gap: 0,
+                borderBottom: "1px solid rgba(255,255,255,0.07)",
+                marginBottom: 0,
               }}
             >
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
-                  {activeCount}
-                </span>{" "}
-                active
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
-                ·
-              </span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#ef4444", fontWeight: 600 }}>
-                  🔥 {hotCount}
-                </span>{" "}
-                hot
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
-                ·
-              </span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                <span style={{ color: "#6b7280", fontWeight: 600 }}>
-                  💤 {staleCount}
-                </span>{" "}
-                stale
-              </span>
-            </div>
-
-            {/* Sort / filter strip */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                marginBottom: 14,
-              }}
-            >
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
-                Sort:
-              </span>
-              <button
-                style={SEL_STYLE(sortBy === "newest")}
-                onClick={() => setSortBy("newest")}
-              >
-                Newest
-              </button>
-              <button
-                style={SEL_STYLE(sortBy === "price_desc")}
-                onClick={() => setSortBy("price_desc")}
-              >
-                Price ↓
-              </button>
-              <button
-                style={SEL_STYLE(sortBy === "price_asc")}
-                onClick={() => setSortBy("price_asc")}
-              >
-                Price ↑
-              </button>
-              <span style={{ flex: 1 }} />
-              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>
-                Status:
-              </span>
-              {["all", "available", "reserved", "pending"].map((s) => (
+              {[
+                { key: "available", label: "Active",   count: myListings.filter((c) => c.status === "available").length },
+                { key: "reserved",  label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
+                { key: "sold",      label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
+              ].map(({ key, label, count }) => (
                 <button
-                  key={s}
-                  style={SEL_STYLE(filterStatus === s)}
-                  onClick={() => setFilterStatus(s)}
+                  key={key}
+                  onClick={() => setFilterStatus(key)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "10px 16px",
+                    fontSize: 13,
+                    fontWeight: filterStatus === key ? 600 : 400,
+                    fontFamily: "'DM Sans', sans-serif",
+                    color: filterStatus === key ? "#f9fafb" : "#4b5563",
+                    borderBottom: filterStatus === key ? "2px solid #dc2626" : "2px solid transparent",
+                    marginBottom: -1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    transition: "color 0.15s",
+                  }}
                 >
-                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                  {label}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "1px 7px",
+                      borderRadius: 4,
+                      lineHeight: 1.6,
+                      background: filterStatus === key ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                      color: filterStatus === key ? "#f87171" : "#374151",
+                    }}
+                  >
+                    {count}
+                  </span>
                 </button>
               ))}
+
+              {/* Hot / stale pills pushed to the right */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, paddingRight: 4 }}>
+                {hotCount > 0 && (
+                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600 }}>🔥 {hotCount} hot</span>
+                )}
+                {staleCount > 0 && (
+                  <span style={{ fontSize: 11, color: "#6b7280" }}>💤 {staleCount} stale</span>
+                )}
+              </div>
+            </div>
+
+            {/* Sort row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                padding: "10px 0 14px",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#4b5563", marginRight: 2 }}>Sort:</span>
+              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
+              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
+              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
             </div>
           </>
         )}
@@ -1993,7 +2008,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               fontSize: 13,
             }}
           >
-            No listings match this filter.
+            No {filterStatus} listings.
           </div>
         ) : (
           <div
@@ -2006,49 +2021,50 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             }}
           >
             {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
-              const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
-              const img = car.images?.[0];
-              const name = [car.year, car.brand, car.model, car.variant]
-                .filter(Boolean)
-                .join(" ");
+              const isSold     = car.status === "sold";
+              const isReserved = car.status === "reserved";
+              const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+              const img  = car.images?.[0];
+              const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
               const price = car.selling_price
                 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
                 : "—";
-              const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
+              const cvrLabel   = cvr !== null ? cvr.toFixed(1) : "0";
               const isHovering = cvrHover === car.id;
+              const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
               return (
                 <div
                   key={car.id}
                   style={{
                     background: "#0d1117",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: isSold
+                      ? "1px solid rgba(255,255,255,0.04)"
+                      : isReserved
+                        ? "1px solid rgba(251,191,36,0.22)"
+                        : "1px solid rgba(255,255,255,0.07)",
                     borderRadius: 12,
                     overflow: "hidden",
+                    opacity: isSold ? 0.62 : 1,
+                    transition: "opacity 0.2s",
                   }}
                 >
+                  {/* Image */}
                   {img ? (
                     <img
                       src={img}
                       alt={name}
-                      onClick={() => {
-                        setSelectedCar(car);
-                        setCarDetailImgIdx(0);
-                        setCarDetailTab("specs");
-                      }}
+                      onClick={openDetail}
                       style={{
                         width: "100%",
                         height: 150,
                         objectFit: "cover",
                         cursor: "pointer",
+                        filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none",
                       }}
                     />
                   ) : (
                     <div
-                      onClick={() => {
-                        setSelectedCar(car);
-                        setCarDetailImgIdx(0);
-                        setCarDetailTab("specs");
-                      }}
+                      onClick={openDetail}
                       style={{
                         width: "100%",
                         height: 150,
@@ -2057,31 +2073,57 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         alignItems: "center",
                         justifyContent: "center",
                         cursor: "pointer",
+                        filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none",
                       }}
                     >
                       <Car size={32} color="#374151" />
                     </div>
                   )}
+
+                  {/* Sold stamp overlay bar */}
+                  {isSold && (
+                    <div style={{
+                      background: "rgba(107,114,128,0.18)",
+                      borderBottom: "1px solid rgba(107,114,128,0.2)",
+                      padding: "5px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        ✓ Sold
+                      </span>
+                      {car.sold_at && (
+                        <span style={{ fontSize: 10, color: "#4b5563" }}>
+                          · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Reserved banner */}
+                  {isReserved && (
+                    <div style={{
+                      background: "rgba(251,191,36,0.07)",
+                      borderBottom: "1px solid rgba(251,191,36,0.15)",
+                      padding: "5px 14px",
+                    }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        🔒 Reserved
+                      </span>
+                    </div>
+                  )}
+
                   <div style={{ padding: "12px 14px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        marginBottom: 4,
-                      }}
-                    >
+                    {/* Title + badge row */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
                       <p
-                        onClick={() => {
-                          setSelectedCar(car);
-                          setCarDetailImgIdx(0);
-                          setCarDetailTab("specs");
-                        }}
+                        onClick={openDetail}
                         style={{
                           margin: 0,
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#e5e7eb",
+                          color: isSold ? "#6b7280" : "#e5e7eb",
                           lineHeight: 1.3,
                           flex: 1,
                           marginRight: 8,
@@ -2092,229 +2134,112 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       </p>
                       <StatusBadge status={car.status} />
                     </div>
-                    <p
-                      style={{
-                        margin: "0 0 8px",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#60a5fa",
-                      }}
-                    >
+
+                    {/* Price */}
+                    <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
                       {price}
                     </p>
-                    <p
-                      style={{
-                        margin: "0 0 8px",
-                        fontSize: 11,
-                        color: "#4b5563",
-                      }}
-                    >
+
+                    {/* Meta */}
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
                       {[
-                        car.mileage
-                          ? `${Number(car.mileage).toLocaleString()} km`
-                          : null,
+                        car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
                         car.transmission,
                         car.colour,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      ].filter(Boolean).join(" · ")}
                     </p>
 
-                    {/* CVR heatmap bar */}
-                    <div
-                      style={{ marginBottom: 10, position: "relative" }}
-                      onMouseEnter={() => setCvrHover(car.id)}
-                      onMouseLeave={() => setCvrHover(null)}
-                    >
+                    {/* CVR bar — hidden for sold */}
+                    {!isSold && (
                       <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: 4,
-                        }}
+                        style={{ marginBottom: 10, position: "relative" }}
+                        onMouseEnter={() => setCvrHover(car.id)}
+                        onMouseLeave={() => setCvrHover(null)}
                       >
-                        <span style={{ fontSize: 10, color: "#4b5563" }}>
-                          {views} views · {enqs} enquiries
-                        </span>
-                        {isHot && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: "#ef4444",
-                              fontWeight: 600,
-                            }}
-                          >
-                            🔥 Hot
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: "#4b5563" }}>
+                            {views} views · {enqs} enquiries
                           </span>
-                        )}
-                        {isStale && !isHot && (
-                          <span style={{ fontSize: 10, color: "#6b7280" }}>
-                            💤 Stale
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 99,
-                          background: "rgba(255,255,255,0.06)",
-                          overflow: "visible",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${cvrFill}%`,
-                            background: isHot ? "#ef4444" : "#3b82f6",
-                            borderRadius: 99,
-                            transition: "width 0.3s",
-                          }}
-                        />
-                      </div>
-                      {isHovering && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: "calc(100% + 6px)",
-                            left: 0,
-                            background: "#1e293b",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            borderRadius: 7,
-                            padding: "5px 10px",
-                            fontSize: 11,
-                            color: "#e2e8f0",
-                            whiteSpace: "nowrap",
-                            zIndex: 10,
-                            pointerEvents: "none",
+                          {isHot && <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>🔥 Hot</span>}
+                          {isStale && !isHot && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
+                        </div>
+                        <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible" }}>
+                          <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
+                        </div>
+                        {isHovering && (
+                          <div style={{
+                            position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                            background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "#e2e8f0",
+                            whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
                             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                          }}>
+                            {views} views · {enqs} enquiries ·{" "}
+                            <span style={{ color: isHot ? "#ef4444" : "#60a5fa", fontWeight: 600 }}>
+                              {cvrLabel}% CVR
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons — sold shows view-only; reserved hides broadcast */}
+                    {isSold ? (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={openDetail}
+                          style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
+                        <button
+                          onClick={() => handleListingCopy(car, "link")}
+                          style={{
+                            fontSize: 10, padding: "4px 8px", borderRadius: 6, textAlign: "center", cursor: "pointer",
+                            background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af",
                           }}
                         >
-                          {views} views · {enqs} enquiries ·{" "}
-                          <span
-                            style={{
-                              color: isHot ? "#ef4444" : "#60a5fa",
-                              fontWeight: 600,
-                            }}
+                          {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
+                        </button>
+                        <button
+                          onClick={() => handleListingCopy(car, "wa")}
+                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}
+                        >
+                          WA Caption
+                        </button>
+                        {!isReserved && (
+                          <button
+                            onClick={() => openBroadcast(car)}
+                            style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}
                           >
-                            {cvrLabel}% CVR
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div
-                      style={{
-                        display: isMobile ? "grid" : "flex",
-                        gridTemplateColumns: isMobile ? "1fr 1fr" : undefined,
-                        gap: 6,
-                        flexWrap: isMobile ? undefined : "wrap",
-                      }}
-                    >
-                      <button
-                        onClick={() => handleListingCopy(car, "link")}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background:
-                            listingCopied[car.id] === "link"
-                              ? "rgba(34,197,94,0.15)"
-                              : "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          color:
-                            listingCopied[car.id] === "link"
-                              ? "#4ade80"
-                              : "#9ca3af",
-                          cursor: "pointer",
-                          textAlign: "center",
-                        }}
-                      >
-                        {listingCopied[car.id] === "link"
-                          ? "✓ Copied"
-                          : "Copy Link"}
-                      </button>
-                      <button
-                        onClick={() => handleListingCopy(car, "wa")}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background: "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          color: "#9ca3af",
-                          cursor: "pointer",
-                          textAlign: "center",
-                        }}
-                      >
-                        WA Caption
-                      </button>
-                      <button
-                        onClick={() => openBroadcast(car)}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background: "rgba(249,115,22,0.1)",
-                          border: "1px solid rgba(249,115,22,0.25)",
-                          color: "#fb923c",
-                          cursor: "pointer",
-                          textAlign: "center",
-                        }}
-                      >
-                        Broadcast
-                      </button>
-                      <button
-                        onClick={() => generateAiCaptions(car)}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background: "rgba(168,85,247,0.1)",
-                          border: "1px solid rgba(168,85,247,0.25)",
-                          color: "#c084fc",
-                          cursor: "pointer",
-                          textAlign: "center",
-                        }}
-                      >
-                        AI Caption
-                      </button>
-                      <button
-                        onClick={() => setTiktokListing(car)}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background: "rgba(239,68,68,0.1)",
-                          border: "1px solid rgba(239,68,68,0.25)",
-                          color: "#f87171",
-                          cursor: "pointer",
-                          textAlign: "center",
-                        }}
-                      >
-                        TikTok
-                      </button>
-                      <button
-                        onClick={() => setEditListing(car)}
-                        style={{
-                          fontSize: 10,
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          background: "rgba(56,189,248,0.08)",
-                          border: "1px solid rgba(56,189,248,0.25)",
-                          color: "#64b4ff",
-                          cursor: "pointer",
-                          textAlign: "center",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Pencil size={10} />
-                        Edit
-                      </button>
-                    </div>
+                            Broadcast
+                          </button>
+                        )}
+                        <button
+                          onClick={() => generateAiCaptions(car)}
+                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}
+                        >
+                          AI Caption
+                        </button>
+                        <button
+                          onClick={() => setTiktokListing(car)}
+                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
+                        >
+                          TikTok
+                        </button>
+                        <button
+                          onClick={() => setEditListing(car)}
+                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)", color: "#64b4ff", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}
+                        >
+                          <Pencil size={10} /> Edit
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -4072,17 +3997,22 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 ) : (
                   <button
                     onClick={async () => {
-                      await supabase.from("leads").insert({
-                        salesman_id: userId,
-                        dealer_id: null,
-                        buyer_name: enq.buyer_name,
-                        phone: enq.buyer_phone,
-                        notes: enq.buyer_message,
-                        car_listing_id: enq.listing_id || null,
-                        stage: "new",
-                        lead_source: "enquiry",
-                        is_deleted: false,
-                      });
+                      const { data: newLead } = await supabase
+                        .from("leads")
+                        .insert({
+                          salesman_id: userId,
+                          dealer_id: null,
+                          buyer_name: enq.buyer_name,
+                          phone: enq.buyer_phone,
+                          notes: enq.buyer_message,
+                          car_listing_id: enq.listing_id || null,
+                          stage: "new",
+                          lead_source: "enquiry",
+                          is_deleted: false,
+                        })
+                        .select()
+                        .single();
+                      if (newLead) setLeads((p) => [newLead, ...p]);
                       await supabase
                         .from("whatsapp_enquiries")
                         .update({ status: "converted" })
