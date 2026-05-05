@@ -1436,7 +1436,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       (c) => c.status === "available",
     ).length;
 
-    const filtered = enriched.filter((e) => e.car.status === filterStatus);
+    const filtered = enriched.filter((e) => (e.car.status || "available") === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "price_desc")
@@ -1532,7 +1532,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               }}
             >
               {[
-                { key: "available", label: "Active",   count: myListings.filter((c) => c.status === "available").length },
+                { key: "available", label: "Active",   count: myListings.filter((c) => (c.status || "available") === "available").length },
                 { key: "reserved",  label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
                 { key: "sold",      label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
               ].map(({ key, label, count }) => (
