@@ -225,7 +225,7 @@ const CarsPage = () => {
     let query = supabase
       .from('car_listings')
       .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)')
-      .eq('status', 'active')
+      .eq('status', 'available')
       .order('created_at', { ascending: false });
 
     if (tenant?.id) {
