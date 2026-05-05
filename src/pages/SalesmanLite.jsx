@@ -214,7 +214,9 @@ export default function SalesmanLite() {
     whatsapp_number: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState(
+    () => localStorage.getItem("salesman_lite_avatar") || ""
+  );
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
   const [editingReminder, setEditingReminder] = useState(null);
@@ -268,6 +270,25 @@ export default function SalesmanLite() {
   const [mergeStatus, setMergeStatus] = useState("idle");
   const [mergeMsg, setMergeMsg] = useState("");
 
+  // quick brief
+  const [quickBriefCar, setQuickBriefCar] = useState(null);
+  const [briefCopied, setBriefCopied] = useState(false);
+
+  // loan calculator
+  const [loanCalcLead, setLoanCalcLead] = useState(null);
+  const [loanPrice, setLoanPrice] = useState("");
+  const [loanDown, setLoanDown] = useState("10");
+  const [loanRate, setLoanRate] = useState("3.5");
+  const [loanYears, setLoanYears] = useState("7");
+
+  // objection playbook
+  const [playbookLeadId, setPlaybookLeadId] = useState(null);
+
+  // deposit receipt
+  const [depositModal, setDepositModal] = useState(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositCopied, setDepositCopied] = useState(false);
+
   const channelRef = useRef(null);
   const [appointments, setAppointments] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
@@ -295,7 +316,9 @@ export default function SalesmanLite() {
         full_name: profile.full_name || "",
         whatsapp_number: profile.whatsapp_number || "",
       });
-      setAvatarUrl(profile.avatar_url || "");
+      const av = profile.avatar_url || "";
+      setAvatarUrl(av);
+      if (av) localStorage.setItem("salesman_lite_avatar", av);
     }
   }, [profile]);
 
@@ -2248,6 +2271,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         >
                           WA Caption
                         </button>
+                        <button
+                          onClick={() => { setQuickBriefCar(car); setBriefCopied(false); }}
+                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8", cursor: "pointer", textAlign: "center" }}
+                        >
+                          Brief
+                        </button>
                         {!isReserved && (
                           <button
                             onClick={() => openBroadcast(car)}
@@ -3496,10 +3525,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <button
                   onClick={() => {
                     const car = lead.car_listings;
-                    const carName = car
-                      ? `${car.brand} ${car.model}`
-                      : "kereta tu";
-                    const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
+                    const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
+                    const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
+                    const msg = isStale
+                      ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+                      : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
                     setWaModalMessage(msg);
                     setWaModalLead(lead);
                   }}
@@ -3516,8 +3546,101 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   WA
                 </button>
               )}
+              <button
+                onClick={() => {
+                  const price = lead.car_listings?.selling_price || "";
+                  setLoanPrice(String(price));
+                  setLoanCalcLead(lead);
+                }}
+                style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", cursor: "pointer" }}
+              >
+                Loan
+              </button>
+              <button
+                onClick={() => setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id)}
+                style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)", color: "#c084fc", cursor: "pointer" }}
+              >
+                Scripts
+              </button>
+              {lead.stage === "deposit_taken" && (
+                <button
+                  onClick={() => { setDepositModal(lead); setDepositAmount(""); setDepositCopied(false); }}
+                  style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
+                >
+                  Receipt
+                </button>
+              )}
             </div>
           )}
+
+          {/* Objection Playbook */}
+          {playbookLeadId === lead.id && (() => {
+            const stage = lead.stage;
+            const car = lead.car_listings;
+            const carName = car ? `${car.year || ""} ${car.brand} ${car.model}`.trim() : "this car";
+            const scripts = {
+              price: {
+                label: "Price too high",
+                color: "#f87171",
+                lines: [
+                  `"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${car?.selling_price ? Math.round(car.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`,
+                  `"What's your target price? Let me see what I can work out — I want to make this happen for you."`,
+                  `"This is already ${car?.original_price && car.original_price > car.selling_price ? `RM ${(car.original_price - car.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`,
+                ]
+              },
+              mileage: {
+                label: "High mileage concern",
+                color: "#fb923c",
+                lines: [
+                  `"Mileage matters less than service history. A well-maintained ${carName} at ${car?.mileage ? Number(car.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`,
+                  `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`,
+                  `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`,
+                ]
+              },
+              timing: {
+                label: "Not ready yet",
+                color: "#fbbf24",
+                lines: [
+                  `"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`,
+                  `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`,
+                  `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`,
+                ]
+              },
+              trust: {
+                label: "Not sure / need to think",
+                color: "#93c5fd",
+                lines: [
+                  `"What specific questions can I answer right now? Let's remove all the uncertainty together."`,
+                  `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`,
+                  `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`,
+                ]
+              },
+            };
+            if (stage === "negotiating" || stage === "viewing_booked" || stage === "test_drive" || stage === "contacted") {
+              return (
+                <div style={{ marginTop: 8, background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "10px 12px" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+                  {Object.entries(scripts).map(([key, s]) => (
+                    <div key={key} style={{ marginBottom: 8 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 600, color: s.color }}>{s.label}</p>
+                      {s.lines.map((line, i) => (
+                        <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 3 }}>
+                          <p style={{ margin: 0, fontSize: 10, color: "#6b7280", lineHeight: 1.5, flex: 1 }}>{line}</p>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g, "")); toast.success("Copied!"); }}
+                            style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: 1 }}
+                          >
+                            <Copy size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       );
     };
@@ -4603,6 +4726,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const bustedUrl = `${publicUrl}?t=${Date.now()}`;
       await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
       setAvatarUrl(bustedUrl);
+      localStorage.setItem("salesman_lite_avatar", bustedUrl);
       setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
       setAvatarUploading(false);
       toast.success("Profile photo updated");
@@ -5575,9 +5699,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 fontWeight: 700,
                 color: "#93c5fd",
                 flexShrink: 0,
+                overflow: "hidden",
               }}
             >
-              {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                : (profile?.full_name || profile?.slug || "S")[0].toUpperCase()
+              }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p
@@ -6317,6 +6445,186 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           />
         </div>
       )}
+
+      {/* ── Quick Brief Modal ── */}
+      {quickBriefCar && (() => {
+        const car = quickBriefCar;
+        const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+        const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "P.O.R";
+        const monthly = car.selling_price ? Math.round(car.selling_price * 0.9 * 1.245 / 84) : null;
+        const link = car.slug ? `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}` : null;
+        const brief = [
+          `🚗 *${name}*`,
+          `💰 ${price}${monthly ? ` (est. RM ${monthly.toLocaleString()}/mo)` : ""}`,
+          car.mileage ? `📍 ${Number(car.mileage).toLocaleString()} km` : null,
+          car.transmission ? `⚙️ ${car.transmission}` : null,
+          car.colour ? `🎨 ${car.colour}` : null,
+          car.condition ? `✅ Condition: ${car.condition}` : null,
+          car.city || car.state ? `📌 ${[car.city, car.state].filter(Boolean).join(", ")}` : null,
+          link ? `\n🔗 ${link}` : null,
+        ].filter(Boolean).join("\n");
+        return (
+          <div onClick={() => setQuickBriefCar(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Quick Brief</p>
+                <button onClick={() => setQuickBriefCar(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+              <textarea
+                readOnly
+                value={brief}
+                rows={10}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#e5e7eb", fontSize: 13, lineHeight: 1.7, padding: "10px 12px", resize: "none", outline: "none", fontFamily: "inherit" }}
+              />
+              <button
+                onClick={() => { navigator.clipboard.writeText(brief); setBriefCopied(true); setTimeout(() => setBriefCopied(false), 2000); }}
+                style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, background: briefCopied ? "rgba(34,197,94,0.15)" : "rgba(56,189,248,0.15)", border: `1px solid ${briefCopied ? "rgba(34,197,94,0.4)" : "rgba(56,189,248,0.4)"}`, color: briefCopied ? "#4ade80" : "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                {briefCopied ? <><Check size={14}/> Copied!</> : <><Copy size={14}/> Copy Brief</>}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Loan Calculator Modal ── */}
+      {loanCalcLead && (() => {
+        const car = loanCalcLead.car_listings;
+        const p = parseFloat(loanPrice) || 0;
+        const downAmt = p * (parseFloat(loanDown) / 100);
+        const principal = p - downAmt;
+        const r = parseFloat(loanRate) / 100;
+        const y = parseFloat(loanYears);
+        const monthly = principal > 0 && y > 0 ? Math.round(principal * (1 + r * y) / (y * 12)) : null;
+        const tenures = [5, 7, 9];
+        return (
+          <div onClick={() => setLoanCalcLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Loan Calculator</p>
+                <button onClick={() => setLoanCalcLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+              {car && <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{loanCalcLead.buyer_name || "Lead"} · {car.year} {car.brand} {car.model}</p>}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                {[
+                  { label: "Price (RM)", value: loanPrice, set: setLoanPrice, placeholder: "e.g. 85000" },
+                  { label: "Down Payment (%)", value: loanDown, set: setLoanDown, placeholder: "e.g. 10" },
+                  { label: "Interest Rate (%)", value: loanRate, set: setLoanRate, placeholder: "e.g. 3.5" },
+                  { label: "Tenure (years)", value: loanYears, set: setLoanYears, placeholder: "e.g. 7" },
+                ].map(({ label, value, set, placeholder }) => (
+                  <div key={label}>
+                    <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
+                    <input
+                      type="number"
+                      value={value}
+                      onChange={e => set(e.target.value)}
+                      placeholder={placeholder}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#f1f5f9", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                ))}
+              </div>
+              {monthly !== null && (
+                <>
+                  <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 10, textAlign: "center" }}>
+                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Est. Monthly</p>
+                    <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: "#fbbf24", letterSpacing: 1 }}>RM {monthly.toLocaleString()}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{loanYears}yr · {loanRate}% · {loanDown}% down</p>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                    {tenures.map(t => {
+                      const m = Math.round(principal * (1 + r * t) / (t * 12));
+                      return (
+                        <div key={t} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                          <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase" }}>{t} yrs</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e5e7eb" }}>RM {m.toLocaleString()}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const car = loanCalcLead.car_listings;
+                      const carName = car ? `${car.year} ${car.brand} ${car.model}` : "the car";
+                      const msg = `Hi ${loanCalcLead.buyer_name || ""}! Based on ${carName} at RM ${Number(loanPrice).toLocaleString()}, here's your rough monthly:\n\n${tenures.map(t => `• ${t} tahun: RM ${Math.round(principal*(1+r*t)/(t*12)).toLocaleString()}/bulan`).join("\n")}\n\n(${loanDown}% down, ${loanRate}% interest rate)\n\nBoleh kita discuss further? 😊`;
+                      setWaModalMessage(msg);
+                      setWaModalLead(loanCalcLead);
+                      setLoanCalcLead(null);
+                    }}
+                    style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24", cursor: "pointer" }}
+                  >
+                    Send via WhatsApp
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Deposit Receipt Modal ── */}
+      {depositModal && (() => {
+        const lead = depositModal;
+        const car = lead.car_listings;
+        const carName = car ? `${car.year || ""} ${car.brand} ${car.model}`.trim() : "Vehicle";
+        const today = new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" });
+        const receipt = [
+          `📋 *DEPOSIT RECEIPT*`,
+          `━━━━━━━━━━━━━━━━━━`,
+          `Date: ${today}`,
+          `Buyer: ${lead.buyer_name || "—"}`,
+          lead.phone ? `Contact: ${lead.phone}` : null,
+          ``,
+          `Vehicle: ${carName}`,
+          car?.selling_price ? `Agreed Price: RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null,
+          `Deposit Paid: RM ${depositAmount || "___"}`,
+          ``,
+          `This deposit confirms the buyer's intention to purchase the above vehicle. Balance payable upon completion of sale.`,
+          ``,
+          `Salesman: ${profile?.full_name || "—"}`,
+          profile?.whatsapp_number ? `Contact: ${profile.whatsapp_number}` : null,
+        ].filter(s => s !== null).join("\n");
+        return (
+          <div onClick={() => setDepositModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Deposit Receipt</p>
+                <button onClick={() => setDepositModal(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+              <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name || "Lead"} · {carName}</p>
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deposit Amount (RM)</p>
+                <input
+                  type="number"
+                  value={depositAmount}
+                  onChange={e => setDepositAmount(e.target.value)}
+                  placeholder="e.g. 1000"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#f1f5f9", fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+              <textarea readOnly value={receipt} rows={12} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#e5e7eb", fontSize: 12, lineHeight: 1.7, padding: "10px 12px", resize: "none", outline: "none", fontFamily: "inherit", marginBottom: 12 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(receipt); setDepositCopied(true); setTimeout(() => setDepositCopied(false), 2000); }}
+                  style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: depositCopied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${depositCopied ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.12)"}`, color: depositCopied ? "#4ade80" : "#9ca3af", cursor: "pointer" }}
+                >
+                  {depositCopied ? "Copied ✓" : "Copy Text"}
+                </button>
+                <button
+                  onClick={() => {
+                    const phone = (lead.phone || "").replace(/\D/g, "");
+                    if (phone) window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(receipt)}`, "_blank", "noopener,noreferrer");
+                    setDepositModal(null);
+                  }}
+                  style={{ padding: "10px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)", color: "#4ade80", cursor: "pointer" }}
+                >
+                  Send via WA
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
