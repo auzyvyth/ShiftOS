@@ -295,6 +295,9 @@ export default function SalesmanLite() {
   // objection playbook
   const [playbookLeadId, setPlaybookLeadId] = useState(null);
 
+  // mobile lead stage filter
+  const [mobileLeadStage, setMobileLeadStage] = useState("new");
+
   // deposit receipt
   const [depositModal, setDepositModal] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
@@ -3375,91 +3378,112 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </button>
         </div>
 
-        {isMobile && leads.length > 0 && (
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>
-            swipe to see more →
-          </p>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            overflowX: "auto",
-            paddingBottom: 8,
-            scrollSnapType: isMobile ? "x mandatory" : undefined,
-          }}
-        >
-          {activeStages.map((stage) => {
-            const sc = STAGE_COLOR[stage] || {};
-            const stageLeads = leads
-              .filter((l) => l.stage === stage)
-              .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
-            return (
-              <div
-                key={stage}
-                style={{
-                  minWidth: isMobile ? 170 : 200,
-                  flexShrink: 0,
-                  scrollSnapAlign: isMobile ? "start" : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span
+        {isMobile ? (
+          <>
+            {/* Mobile: pill filter row */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+              {activeStages.map((stage) => {
+                const sc = STAGE_COLOR[stage] || {};
+                const count = leads.filter((l) => l.stage === stage).length;
+                const isActive = mobileLeadStage === stage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => setMobileLeadStage(stage)}
                     style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      borderRadius: 99,
                       fontSize: 11,
-                      fontWeight: 600,
-                      color: sc.tx || "#9ca3af",
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: "pointer",
+                      background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
+                      border: isActive ? "1px solid rgba(37,99,235,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      color: isActive ? "#93c5fd" : "#4b5563",
                       textTransform: "capitalize",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {stage.replace(/_/g, " ")}
-                  </span>
-                  <span
-                    style={{
+                    <span style={{
                       fontSize: 10,
-                      background: sc.bg,
-                      border: `1px solid ${sc.border}`,
-                      color: sc.tx,
+                      fontWeight: 700,
+                      color: isActive ? (sc.tx || "#93c5fd") : "#374151",
+                      background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.06)",
                       borderRadius: 99,
-                      padding: "1px 6px",
-                    }}
-                  >
-                    {stageLeads.length}
-                  </span>
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {stageLeads.length === 0 && (
-                    <div
-                      style={{
-                        height: 60,
-                        borderRadius: 10,
-                        border: "1px dashed rgba(255,255,255,0.07)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span style={{ fontSize: 11, color: "#374151" }}>
-                        Empty
-                      </span>
-                    </div>
-                  )}
+                      padding: "0px 6px",
+                      lineHeight: 1.6,
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile: vertical card list for selected stage */}
+            {(() => {
+              const stageLeads = leads
+                .filter((l) => l.stage === mobileLeadStage)
+                .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+              if (stageLeads.length === 0) {
+                return (
+                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })()}
+          </>
+        ) : (
+          /* Desktop: horizontal kanban scroll */
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              overflowX: "auto",
+              paddingBottom: 8,
+            }}
+          >
+            {activeStages.map((stage) => {
+              const sc = STAGE_COLOR[stage] || {};
+              const stageLeads = leads
+                .filter((l) => l.stage === stage)
+                .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+              return (
+                <div
+                  key={stage}
+                  style={{ minWidth: 200, flexShrink: 0 }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
+                      {stage.replace(/_/g, " ")}
+                    </span>
+                    <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
+                      {stageLeads.length}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {stageLeads.length === 0 && (
+                      <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                      </div>
+                    )}
+                    {stageLeads.map((lead) => renderLeadCard(lead))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
