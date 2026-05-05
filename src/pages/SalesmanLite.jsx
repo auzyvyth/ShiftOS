@@ -455,7 +455,7 @@ export default function SalesmanLite() {
       if (slug) {
         supabase
           .from("analytics_events")
-          .select("event_type, car_id, car_name, created_at")
+          .select("event_type, car_id, car_name, created_at, session_id")
           .eq("salesman_slug", slug)
           .gte(
             "created_at",
@@ -466,17 +466,22 @@ export default function SalesmanLite() {
         // build per-listing stats map for CVR heatmap
         supabase
           .from("analytics_events")
-          .select("car_id, event_type")
+          .select("car_id, event_type, session_id")
           .eq("salesman_slug", slug)
           .then(({ data: evtData }) => {
             const map = {};
+            const viewedKeys = new Set();
+            const contactedKeys = new Set();
             (evtData || []).forEach((e) => {
               if (!e.car_id) return;
               if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
-              if (["car_view", "link_visit"].includes(e.event_type))
-                map[e.car_id].views++;
-              if (["whatsapp_click", "call_click"].includes(e.event_type))
-                map[e.car_id].enquiries++;
+              const key = `${e.car_id}:${e.session_id || e.car_id}`;
+              if (["car_view", "link_visit"].includes(e.event_type)) {
+                if (!viewedKeys.has(key)) { viewedKeys.add(key); map[e.car_id].views++; }
+              }
+              if (["whatsapp_click", "call_click"].includes(e.event_type)) {
+                if (!contactedKeys.has(key)) { contactedKeys.add(key); map[e.car_id].enquiries++; }
+              }
             });
             setCarStatsMap(map);
           });
@@ -1298,14 +1303,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-      const views = carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
-      const waTaps = carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
+      const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+      const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+      const views = viewSessions.size;
+      const waTaps = waSessions.size;
       const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-    const totalViews = analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
-    const totalWATaps = analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
+    const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
+    const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
     const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
     const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
     const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
