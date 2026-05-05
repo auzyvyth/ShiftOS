@@ -294,6 +294,28 @@ export default function SalesmanLite() {
   const [enquiries, setEnquiries] = useState([]);
   const [analyticsEvents, setAnalyticsEvents] = useState([]);
 
+  // ── local cache helpers ────────────────────────────────────────────────────
+  const CACHE_TTL = 30 * 60 * 1000; // 30 min
+  const readCache = (key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const { ts, data } = JSON.parse(raw);
+      return Date.now() - ts < CACHE_TTL ? data : null;
+    } catch { return null; }
+  };
+  const writeCache = (key, data) => {
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+  };
+  const precacheImages = (listings) => {
+    if (!("caches" in window)) return;
+    const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images : [])).filter(Boolean);
+    if (!urls.length) return;
+    caches.open("slite-images-v1").then((cache) => {
+      urls.forEach((url) => cache.match(url).then((hit) => { if (!hit) cache.add(url).catch(() => {}); }));
+    }).catch(() => {});
+  };
+
   // stale leads (48h)
   useEffect(() => {
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
@@ -378,6 +400,16 @@ export default function SalesmanLite() {
 
       if (!profileData.onboarding_tour_done) setTourStep(0);
 
+      // seed from cache immediately so UI is instant
+      const cachedListings = readCache(`slite_listings_${uid}`);
+      if (cachedListings) setMyListings(cachedListings);
+      const cachedLeads = readCache(`slite_leads_${uid}`);
+      if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
+      const cachedEnquiries = readCache(`slite_enquiries_${uid}`);
+      if (cachedEnquiries) setEnquiries(cachedEnquiries);
+      const cachedAppts = readCache(`slite_appts_${uid}`);
+      if (cachedAppts) setAppointments(cachedAppts);
+
       // fetch listings with full columns for car detail popup
       Promise.all([
         supabase
@@ -402,6 +434,8 @@ export default function SalesmanLite() {
           })
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         setMyListings(merged);
+        writeCache(`slite_listings_${uid}`, merged);
+        precacheImages(merged);
       });
 
       // fetch analytics events (30d, scoped by salesman slug)
@@ -444,8 +478,10 @@ export default function SalesmanLite() {
         .eq("is_deleted", false)
         .order("updated_at", { ascending: false })
         .then(({ data: lds }) => {
-          setLeads(lds || []);
+          const leads = lds || [];
+          setLeads(leads);
           setLeadsLoading(false);
+          writeCache(`slite_leads_${uid}`, leads);
 
           channelRef.current = supabase
             .channel("salesman-lite-rt-" + uid)
@@ -616,7 +652,11 @@ export default function SalesmanLite() {
         )
         .eq("salesman_id", uid)
         .order("appointment_date", { ascending: false })
-        .then(({ data: apts }) => setAppointments(apts || []));
+        .then(({ data: apts }) => {
+          const appts = apts || [];
+          setAppointments(appts);
+          writeCache(`slite_appts_${uid}`, appts);
+        });
 
       // fetch notifications
       supabase
@@ -638,6 +678,7 @@ export default function SalesmanLite() {
         .then(async ({ data: enqs }) => {
           const all = enqs || [];
           setEnquiries(all);
+          writeCache(`slite_enquiries_${uid}`, all);
           const pending = all.filter((e) => e.status === "new");
           if (!pending.length) return;
           const newLeads = await Promise.all(
