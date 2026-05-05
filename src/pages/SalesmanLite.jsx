@@ -270,6 +270,16 @@ export default function SalesmanLite() {
   const [mergeStatus, setMergeStatus] = useState("idle");
   const [mergeMsg, setMergeMsg] = useState("");
 
+  // listing status change
+  const [statusMenuCarId, setStatusMenuCarId] = useState(null);
+
+  const updateListingStatus = async (car, newStatus) => {
+    setStatusMenuCarId(null);
+    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
+    await supabase.from("car_listings").update({ status: newStatus }).eq("id", car.id);
+    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
+  };
+
   // quick brief
   const [quickBriefCar, setQuickBriefCar] = useState(null);
   const [briefCopied, setBriefCopied] = useState(false);
@@ -1707,6 +1717,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         ) : (
           <div
+            onClick={() => setStatusMenuCarId(null)}
             style={{
               display: "grid",
               gridTemplateColumns: isMobile
@@ -1827,7 +1838,40 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       >
                         {name}
                       </p>
-                      <StatusBadge status={car.status} />
+                      <div style={{ position: "relative", flexShrink: 0 }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id); }}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize cursor-pointer ${
+                            (car.status || "available") === "available" ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                            car.status === "reserved" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
+                            car.status === "sold" ? "bg-gray-700 text-gray-400 border-gray-600" :
+                            "bg-gray-700 text-gray-400 border-gray-600"
+                          }`}
+                        >
+                          {car.status || "available"} ▾
+                        </button>
+                        {statusMenuCarId === car.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, overflow: "hidden", minWidth: 110, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+                          >
+                            {[
+                              { key: "available", label: "Available", color: "#4ade80" },
+                              { key: "reserved",  label: "Reserved",  color: "#fbbf24" },
+                              { key: "sold",      label: "Sold",      color: "#9ca3af" },
+                            ].map(({ key, label, color }) => (
+                              <button
+                                key={key}
+                                onClick={() => updateListingStatus(car, key)}
+                                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", background: (car.status || "available") === key ? "rgba(255,255,255,0.06)" : "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: (car.status || "available") === key ? "#f1f5f9" : "#6b7280", fontWeight: (car.status || "available") === key ? 600 : 400 }}>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Price */}
