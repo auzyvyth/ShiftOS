@@ -1350,6 +1350,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const SL = { fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" };
 
+    const isNewUser = myListings.length === 0 && leads.length === 0;
+    const hasListingsNoLeads = myListings.length > 0 && leads.length === 0;
+
+    const STEP_CIRCLE = (done) => ({
+      width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 13, fontWeight: 700,
+      background: done ? "rgba(34,197,94,0.15)" : "rgba(37,99,235,0.15)",
+      border: done ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(37,99,235,0.25)",
+      color: done ? "#4ade80" : "#93c5fd",
+    });
+
     const kpis = [
       { label: "Pipeline", value: activeLeads.length, color: "#93c5fd", bg: "rgba(147,197,253,0.06)", border: "rgba(147,197,253,0.15)", accent: "#93c5fd", icon: "👤" },
       { label: "Listings", value: myListings.filter(c => c.status === "available").length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
@@ -1360,6 +1371,84 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+        {/* ── Start Here onboarding card ── */}
+        {isNewUser && !profile?.onboarding_tour_done && (
+          <div style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.03))", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 14, padding: 20, marginBottom: 4 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>👋 Welcome to ShiftOS Lite</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Here's how to make your first sale:</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 16 }}>
+              {[
+                {
+                  num: 1,
+                  done: myListings.length > 0,
+                  title: "Add your first listing",
+                  sub: "Upload photos, set price, publish to XDrive marketplace in 2 minutes.",
+                  cta: myListings.length === 0 ? null : null,
+                  ctaLabel: "Add Listing →",
+                  ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); },
+                  locked: false,
+                },
+                {
+                  num: 2,
+                  done: myListings.length > 0,
+                  title: "Share your listing link",
+                  sub: "Copy your car link and blast it on WhatsApp groups, Facebook, TikTok. Every share is a potential lead.",
+                  ctaLabel: "Go to Listings →",
+                  ctaAction: () => switchTab("listings"),
+                  locked: myListings.length === 0,
+                },
+                {
+                  num: 3,
+                  done: leads.length > 0,
+                  title: "Track your leads",
+                  sub: "Every enquiry auto-converts to a lead. Follow up, move stages, close deals.",
+                  ctaLabel: "View Pipeline →",
+                  ctaAction: () => switchTab("leads"),
+                  locked: myListings.length === 0,
+                },
+              ].map((step, idx) => (
+                <div key={step.num}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{step.title}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>{step.sub}</p>
+                    </div>
+                    {step.locked
+                      ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>Complete step 1 first</span>
+                      : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer", flexShrink: 0 }}>{step.ctaLabel}</button>
+                    }
+                  </div>
+                  {idx < 2 && <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "12px 0" }} />}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={async () => {
+                await supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+                setProfile((p) => ({ ...p, onboarding_tour_done: true }));
+              }}
+              style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0 }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* ── Listings live nudge ── */}
+        {hasListingsNoLeads && (
+          <div style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>📢</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>Your listings are live — now drive traffic</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>Share your car links on WhatsApp groups and Facebook car groups. Every click is a potential buyer.</p>
+            </div>
+            <button onClick={() => switchTab("listings")} style={{ fontSize: 11, fontWeight: 700, padding: "7px 12px", borderRadius: 8, background: "#92400e", border: "none", color: "#fbbf24", cursor: "pointer", flexShrink: 0 }}>
+              Share Links →
+            </button>
+          </div>
+        )}
 
         {/* ── KPI strip ── */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
