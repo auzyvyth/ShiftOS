@@ -212,6 +212,7 @@ export default function SalesmanLite() {
   const [settingsForm, setSettingsForm] = useState({
     full_name: "",
     whatsapp_number: "",
+    telegram_chat_id: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(
@@ -351,6 +352,7 @@ export default function SalesmanLite() {
       const av = profile.avatar_url || "";
       setAvatarUrl(av);
       if (av) localStorage.setItem("salesman_lite_avatar", av);
+      setSettingsForm((p) => ({ ...p, telegram_chat_id: profile.telegram_chat_id || "" }));
     }
   }, [profile]);
 
@@ -4421,12 +4423,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         .update({
           full_name: settingsForm.full_name,
           whatsapp_number: phone,
+          telegram_chat_id: settingsForm.telegram_chat_id || null,
         })
         .eq("id", userId);
       setProfile((p) => ({
         ...p,
         full_name: settingsForm.full_name,
         whatsapp_number: phone,
+        telegram_chat_id: settingsForm.telegram_chat_id || null,
       }));
       setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
       setSettingsSaving(false);
@@ -4501,6 +4505,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               />
             </div>
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <label style={{ fontSize: 11, color: "#6b7280" }}>✈️ Telegram Notifications</label>
+              {profile?.telegram_chat_id
+                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
+                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+              }
+            </div>
+            <input
+              value={settingsForm.telegram_chat_id}
+              onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))}
+              placeholder="e.g. 123456789"
+              style={inputStyle}
+            />
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
+              How to get your Chat ID: Open Telegram → search{" "}
+              <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>
+              {" "}→ send /start → copy the Id: number shown.
+            </p>
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
