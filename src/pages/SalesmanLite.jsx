@@ -281,6 +281,8 @@ export default function SalesmanLite() {
         (l) =>
           l.stage !== "won" &&
           l.stage !== "lost" &&
+          l.stage !== "closed_won" &&
+          l.stage !== "closed_lost" &&
           l.updated_at &&
           new Date(l.updated_at).getTime() < cutoff,
       ),
@@ -402,7 +404,7 @@ export default function SalesmanLite() {
             (evtData || []).forEach((e) => {
               if (!e.car_id) return;
               if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
-              if (["car_view", "link_visit"].includes(e.event_type))
+              if (["car_view", "link_visit", "card_click"].includes(e.event_type))
                 map[e.car_id].views++;
               if (["whatsapp_click", "call_click"].includes(e.event_type))
                 map[e.car_id].enquiries++;
@@ -541,7 +543,6 @@ export default function SalesmanLite() {
           "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)",
         )
         .eq("salesman_id", uid)
-        .eq("dealer_id", uid)
         .order("appointment_date", { ascending: false })
         .then(({ data: apts }) => setAppointments(apts || []));
 
@@ -554,7 +555,7 @@ export default function SalesmanLite() {
         .limit(30)
         .then(({ data: notifs }) => setNotifications(notifs || []));
 
-      // fetch enquiries
+      // fetch enquiries — auto-pipeline any "new" ones that arrived while offline
       supabase
         .from("whatsapp_enquiries")
         .select(
@@ -562,7 +563,42 @@ export default function SalesmanLite() {
         )
         .eq("dealer_id", uid)
         .order("created_at", { ascending: false })
-        .then(({ data: enqs }) => setEnquiries(enqs || []));
+        .then(async ({ data: enqs }) => {
+          const all = enqs || [];
+          setEnquiries(all);
+          const pending = all.filter((e) => e.status === "new");
+          if (!pending.length) return;
+          const newLeads = await Promise.all(
+            pending.map((e) =>
+              supabase
+                .from("leads")
+                .insert({
+                  salesman_id: uid,
+                  dealer_id: null,
+                  buyer_name: e.buyer_name || "Unknown",
+                  phone: e.buyer_phone || "",
+                  notes: e.buyer_message || null,
+                  car_listing_id: e.listing_id || null,
+                  stage: "new",
+                  lead_source: "enquiry",
+                  is_deleted: false,
+                })
+                .select()
+                .single()
+                .then(({ data }) => data),
+            ),
+          );
+          const inserted = newLeads.filter(Boolean);
+          if (inserted.length) setLeads((p) => [...inserted, ...p]);
+          const ids = pending.map((e) => e.id);
+          await supabase
+            .from("whatsapp_enquiries")
+            .update({ status: "converted" })
+            .in("id", ids);
+          setEnquiries((p) =>
+            p.map((e) => (ids.includes(e.id) ? { ...e, status: "converted" } : e)),
+          );
+        });
     });
   }, [navigate]);
 
@@ -1144,14 +1180,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-      const views = carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
+      const views = carEvts.filter((e) => ["car_view", "link_visit", "card_click"].includes(e.event_type)).length;
       const waTaps = carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
       const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
     const totalViews = analyticsEvents.filter(
-      (e) => ["car_view", "link_visit"].includes(e.event_type),
+      (e) => ["car_view", "link_visit", "card_click"].includes(e.event_type),
     ).length;
     const totalWATaps = analyticsEvents.filter(
       (e) => ["whatsapp_click", "call_click"].includes(e.event_type),
@@ -2749,10 +2785,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         padding: "8px 16px",
                         fontSize: 12,
                         color: carDetailTab === tab ? "#f3f4f6" : "#6b7280",
-                        borderBottom:
-                          carDetailTab === tab
-                            ? "2px solid #ef4444"
-                            : "2px solid transparent",
                         background: "none",
                         border: "none",
                         borderBottom:
@@ -3170,10 +3202,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
     );
     const lostLeads = leads.filter(
-      (l) =>
-        l.stage === "lost" ||
-        l.stage === "closed_lost" ||
-        l.stage === "closed_won",
+      (l) => l.stage === "lost" || l.stage === "closed_lost",
     );
 
     const renderLeadCard = (lead) => {
@@ -3511,7 +3540,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               color: "#f1f5f9",
             }}
           >
-            Lead Pipeline ({leads.filter((l) => l.stage !== "lost").length})
+            Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
           </p>
           <button
             onClick={() => setShowAddLead(true)}
@@ -4002,9 +4031,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         .insert({
                           salesman_id: userId,
                           dealer_id: null,
-                          buyer_name: enq.buyer_name,
-                          phone: enq.buyer_phone,
-                          notes: enq.buyer_message,
+                          buyer_name: enq.buyer_name || "Unknown",
+                          phone: enq.buyer_phone || "",
+                          notes: enq.buyer_message || null,
                           car_listing_id: enq.listing_id || null,
                           stage: "new",
                           lead_source: "enquiry",
@@ -4126,9 +4155,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
     const todayApts = appointments.filter((a) => isToday(a.appointment_date));
-    const upcomingApts = appointments.filter(
-      (a) => !isToday(a.appointment_date),
-    );
+    const upcomingApts = appointments.filter((a) => {
+      if (!a.appointment_date) return false;
+      const d = new Date(a.appointment_date);
+      return !isNaN(d) && !isToday(a.appointment_date) && d > new Date();
+    });
 
     const statusColors = {
       confirmed: {
