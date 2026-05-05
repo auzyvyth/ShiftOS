@@ -1171,35 +1171,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   const renderDashboard = () => {
     const activeLeads = leads.filter(
-      (l) => l.stage !== "lost" && l.stage !== "closed_lost",
+      (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
     );
+    const wonLeads = leads.filter((l) => l.stage === "won" || l.stage === "closed_won");
     const todayAppts = appointments.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
       if (isNaN(d)) return false;
       const today = new Date();
-      return (
-        d.getDate() === today.getDate() &&
-        d.getMonth() === today.getMonth() &&
-        d.getFullYear() === today.getFullYear()
-      );
+      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
     }).length;
-    const kpis = [
-      { label: "Active Leads", value: activeLeads.length, color: "#93c5fd" },
-      { label: "My Listings", value: myListings.length, color: "#4ade80" },
-      {
-        label: "Stale Leads",
-        value: staleLeads.length,
-        color: "#fb923c",
-        warn: staleLeads.length > 0,
-      },
-      { label: "Appts Today", value: todayAppts, color: "#c084fc" },
-      {
-        label: "New Enquiries",
-        value: enquiries.filter((e) => e.status === "new").length,
-        color: "#c084fc",
-      },
-    ];
+    const newEnqCount = enquiries.filter((e) => e.status === "new").length;
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
@@ -1209,569 +1191,151 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-    const totalViews = analyticsEvents.filter(
-      (e) => ["car_view", "link_visit", "card_click"].includes(e.event_type),
-    ).length;
-    const totalWATaps = analyticsEvents.filter(
-      (e) => ["whatsapp_click", "call_click"].includes(e.event_type),
-    ).length;
-    const bestCVRStat = listingStats.reduce((best, s) => {
-      if (s.cvr !== null && (best === null || s.cvr > best.cvr)) return s;
-      return best;
-    }, null);
-    const cvrColor = (cvr) =>
-      cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
-    const perfCarName = (car) =>
-      [car.year, car.brand, car.model].filter(Boolean).join(" ");
+    const totalViews = analyticsEvents.filter((e) => ["car_view", "link_visit", "card_click"].includes(e.event_type)).length;
+    const totalWATaps = analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
+    const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
+    const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+    const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
+    const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
+
+    const SL = { fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" };
+
+    const kpis = [
+      { label: "Pipeline", value: activeLeads.length, color: "#93c5fd", bg: "rgba(147,197,253,0.06)", border: "rgba(147,197,253,0.15)", accent: "#93c5fd", icon: "👤" },
+      { label: "Listings", value: myListings.filter(c => c.status === "available").length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
+      { label: "Follow-ups", value: staleLeads.length, color: staleLeads.length > 0 ? "#fb923c" : "#374151", bg: staleLeads.length > 0 ? "rgba(251,146,60,0.07)" : "rgba(255,255,255,0.02)", border: staleLeads.length > 0 ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.06)", accent: "#fb923c", icon: "⏰", warn: staleLeads.length > 0 },
+      { label: "Today", value: todayAppts, color: "#c084fc", bg: "rgba(192,132,252,0.06)", border: "rgba(192,132,252,0.15)", accent: "#c084fc", icon: "📅" },
+      { label: "Closed", value: wonLeads.length, color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.15)", accent: "#fbbf24", icon: "🏆" },
+    ];
 
     return (
-      <div>
-        <p
-          style={{
-            margin: "0 0 16px",
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#f1f5f9",
-          }}
-        >
-          Overview
-        </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-        {/* KPI cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)",
-            gap: 10,
-            marginBottom: 24,
-          }}
-        >
-          {kpis.map(({ label, value, color, warn }) => (
-            <div
-              key={label}
-              style={{
-                background: "#0d1117",
-                border: `1px solid ${warn ? "rgba(251,146,60,0.3)" : "rgba(255,255,255,0.07)"}`,
-                borderRadius: 10,
-                padding: "14px 16px",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontSize: 11,
-                  color: "#4b5563",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {label}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 28,
-                  fontFamily: "'Bebas Neue', sans-serif",
-                  letterSpacing: "1px",
-                  color,
-                }}
-              >
-                {value}
-              </p>
+        {/* ── KPI strip ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
+          {kpis.map(({ label, value, color, bg, border, icon, warn }) => (
+            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 14px 12px", position: "relative", overflow: "hidden" }}>
+              {warn && value > 0 && (
+                <span style={{ position: "absolute", top: 10, right: 10, width: 6, height: 6, borderRadius: "50%", background: "#fb923c", boxShadow: "0 0 0 3px rgba(251,146,60,0.2)" }} />
+              )}
+              <p style={{ margin: "0 0 6px", fontSize: 18 }}>{icon}</p>
+              <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 10, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
             </div>
           ))}
         </div>
 
-        {/* My Performance */}
-        <div style={{ marginBottom: 24 }}>
-          <p
-            style={{
-              margin: "0 0 12px",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#374151",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            My Performance (30d)
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                padding: "12px 14px",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontSize: 11,
-                  color: "#4b5563",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                Total Views
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 26,
-                  fontFamily: "'Bebas Neue', sans-serif",
-                  letterSpacing: "1px",
-                  color: "#93c5fd",
-                }}
-              >
-                {totalViews}
-              </p>
-            </div>
-            <div
-              style={{
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                padding: "12px 14px",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontSize: 11,
-                  color: "#4b5563",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                WA Taps
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 26,
-                  fontFamily: "'Bebas Neue', sans-serif",
-                  letterSpacing: "1px",
-                  color: "#4ade80",
-                }}
-              >
-                {totalWATaps}
-              </p>
-            </div>
-            <div
-              style={{
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                padding: "12px 14px",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontSize: 11,
-                  color: "#4b5563",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                Best CVR
-              </p>
-              {bestCVRStat ? (
-                <>
-                  <p
-                    style={{
-                      margin: "0 0 2px",
-                      fontSize: 22,
-                      fontFamily: "'Bebas Neue', sans-serif",
-                      letterSpacing: "1px",
-                      color: cvrColor(bestCVRStat.cvr),
-                    }}
-                  >
-                    {bestCVRStat.cvr.toFixed(1)}%
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 9,
-                      color: "#4b5563",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {perfCarName(bestCVRStat.car)}
-                  </p>
-                </>
-              ) : (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 26,
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    letterSpacing: "1px",
-                    color: "#374151",
-                  }}
-                >
-                  —
-                </p>
-              )}
-            </div>
-          </div>
-
-          {listingStats.length > 0 && (
-            <div
-              style={{
-                background: "#0d1117",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 42px 42px 42px 52px",
-                  padding: "7px 12px",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    color: "#374151",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  Listing
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    color: "#374151",
-                    textAlign: "center",
-                  }}
-                >
-                  Views
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    color: "#374151",
-                    textAlign: "center",
-                  }}
-                >
-                  WA
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    color: "#374151",
-                    textAlign: "center",
-                  }}
-                >
-                  Enq
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    color: "#374151",
-                    textAlign: "right",
-                  }}
-                >
-                  CVR
-                </p>
-              </div>
-              {listingStats.map(
-                ({ car, views, waTaps, enqCount, cvr }, idx) => (
-                  <div
-                    key={car.id}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 42px 42px 42px 52px",
-                      padding: "8px 12px",
-                      alignItems: "center",
-                      borderBottom:
-                        idx < listingStats.length - 1
-                          ? "1px solid rgba(255,255,255,0.04)"
-                          : "none",
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 11,
-                        color: "#e5e7eb",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        paddingRight: 6,
-                      }}
-                    >
-                      {perfCarName(car)}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#93c5fd",
-                        textAlign: "center",
-                      }}
-                    >
-                      {views}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#4ade80",
-                        textAlign: "center",
-                      }}
-                    >
-                      {waTaps}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#c084fc",
-                        textAlign: "center",
-                      }}
-                    >
-                      {enqCount}
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        textAlign: "right",
-                        color: cvr !== null ? cvrColor(cvr) : "#374151",
-                      }}
-                    >
-                      {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
-                    </p>
-                  </div>
-                ),
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Stale nudges */}
+        {/* ── Stale nudges ── */}
         {staleLeads.length > 0 && (
-          <div
-            style={{
-              background: "#0d1117",
-              border: "1px solid rgba(251,146,60,0.2)",
-              borderRadius: 10,
-              padding: "14px 16px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 12,
-              }}
-            >
-              <AlertCircle
-                size={14}
-                style={{ color: "#fb923c", flexShrink: 0 }}
-              />
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#fb923c",
-                }}
-              >
-                Follow-up Nudges ({staleLeads.length})
-              </p>
+          <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(251,146,60,0.1)" }}>
+              <AlertCircle size={13} style={{ color: "#fb923c", flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c" }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {staleLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#e5e7eb",
-                      }}
-                    >
-                      {lead.buyer_name || "—"}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
-                      No contact · {timeAgo(lead.updated_at)}
-                    </p>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {staleLeads.map((lead, i) => {
+                const car = lead.car_listings;
+                return (
+                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+                      {(lead.buyer_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{car ? `${car.brand} ${car.model}` : "no car"} · {timeAgo(lead.updated_at)}</p>
+                    </div>
+                    {lead.phone && (
+                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+                        WA
+                      </button>
+                    )}
                   </div>
-                  {lead.phone && (
-                    <button
-                      onClick={() => pingWA(lead)}
-                      style={{
-                        fontSize: 10,
-                        padding: "4px 10px",
-                        borderRadius: 6,
-                        background: "rgba(37,211,102,0.1)",
-                        border: "1px solid rgba(37,211,102,0.2)",
-                        color: "#4ade80",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      WA
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Activity feed */}
-        {(() => {
-          const feed = [
-            ...appointments.slice(0, 5).map((a) => ({
-              type: "booking",
-              label: `${a.buyer_name || "Someone"} booked a viewing`,
-              sub: a.car_listings
-                ? `${a.car_listings.brand} ${a.car_listings.model}`
-                : "",
-              ts: a.created_at,
-              dot: "#60a5fa",
-            })),
-            ...enquiries.slice(0, 5).map((e) => ({
-              type: "enquiry",
-              label: `${e.buyer_name || "Someone"} enquired`,
-              sub: e.car_listings
-                ? `${e.car_listings.brand} ${e.car_listings.model}`
-                : "",
-              ts: e.created_at,
-              dot: "#4ade80",
-            })),
-            ...leads
-              .filter((l) => l.stage === "won")
-              .slice(0, 3)
-              .map((l) => ({
-                type: "won",
-                label: `${l.buyer_name || "Lead"} marked won`,
-                sub: l.car_listings
-                  ? `${l.car_listings.brand} ${l.car_listings.model}`
-                  : "",
-                ts: l.updated_at,
-                dot: "#fbbf24",
-              })),
-          ]
-            .filter((f) => f.ts)
-            .sort((a, b) => new Date(b.ts) - new Date(a.ts))
-            .slice(0, 8);
+        {/* ── Performance ── */}
+        <div>
+          <p style={SL}>My Performance · 30d</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 8 }}>
+            {[
+              { label: "Views", value: totalViews, color: "#93c5fd", sub: "link + card + detail" },
+              { label: "WA Taps", value: totalWATaps, color: "#4ade80", sub: "whatsapp + calls" },
+              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", color: overallCVR !== null ? cvrColor(parseFloat(overallCVR)) : "#374151", sub: bestCVRStat ? `best: ${perfCarName(bestCVRStat.car)}` : "no data yet" },
+            ].map(({ label, value, color, sub }) => (
+              <div key={label} style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+                <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+                <p style={{ margin: "0 0 4px", fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
+                <p style={{ margin: 0, fontSize: 9, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>
+              </div>
+            ))}
+          </div>
 
+          {/* Funnel bar */}
+          {totalViews > 0 && (
+            <div style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>Conversion Funnel</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{totalViews} views → {totalWATaps} contacts</p>
+              </div>
+              <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min((totalWATaps / totalViews) * 100 * 10, 100)}%`, background: "linear-gradient(90deg,#3b82f6,#4ade80)", borderRadius: 99, transition: "width 0.6s ease" }} />
+              </div>
+            </div>
+          )}
+
+          {/* Per-listing table */}
+          {listingStats.length > 0 && (
+            <div style={{ marginTop: 8, background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                {["Listing", "Views", "WA", "CVR"].map((h, i) => (
+                  <p key={h} style={{ margin: 0, fontSize: 9, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
+                ))}
+              </div>
+              {listingStats.sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx) => (
+                <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "9px 14px", alignItems: "center", borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{perfCarName(car)}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#93c5fd", textAlign: "center" }}>{views}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4ade80", textAlign: "center" }}>{waTaps}</p>
+                  <div style={{ textAlign: "center" }}>
+                    {cvr !== null ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr), background: `${cvrColor(cvr)}15`, border: `1px solid ${cvrColor(cvr)}30`, borderRadius: 5, padding: "2px 7px" }}>{cvr.toFixed(1)}%</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "#374151" }}>—</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Activity feed ── */}
+        {(() => {
+          const ICONS = { booking: "📅", enquiry: "💬", won: "🏆" };
+          const COLORS = { booking: "#60a5fa", enquiry: "#4ade80", won: "#fbbf24" };
+          const feed = [
+            ...appointments.slice(0, 4).map((a) => ({ type: "booking", label: `${a.buyer_name || "Someone"} booked a viewing`, sub: a.car_listings ? `${a.car_listings.brand} ${a.car_listings.model}` : "", ts: a.created_at })),
+            ...enquiries.slice(0, 4).map((e) => ({ type: "enquiry", label: `${e.buyer_name || "Someone"} enquired`, sub: e.car_listings ? `${e.car_listings.brand} ${e.car_listings.model}` : "", ts: e.created_at })),
+            ...leads.filter((l) => l.stage === "won").slice(0, 3).map((l) => ({ type: "won", label: `${l.buyer_name || "Lead"} closed`, sub: l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "", ts: l.updated_at })),
+          ].filter((f) => f.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 7);
           if (!feed.length) return null;
           return (
-            <div style={{ marginTop: 20 }}>
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "#374151",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                Recent Activity
-              </p>
-              <div
-                style={{
-                  background: "#0d1117",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 10,
-                  overflow: "hidden",
-                }}
-              >
+            <div>
+              <p style={SL}>Recent Activity</p>
+              <div style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
                 {feed.map((f, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 14px",
-                      borderBottom:
-                        i < feed.length - 1
-                          ? "1px solid rgba(255,255,255,0.04)"
-                          : "none",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: "50%",
-                        background: f.dot,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: 12,
-                          color: "#e5e7eb",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {f.label}
-                      </p>
-                      {f.sub && (
-                        <p
-                          style={{ margin: 0, fontSize: 10, color: "#4b5563" }}
-                        >
-                          {f.sub}
-                        </p>
-                      )}
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: i < feed.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: `${COLORS[f.type]}12`, border: `1px solid ${COLORS[f.type]}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>
+                      {ICONS[f.type]}
                     </div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 10,
-                        color: "#374151",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {timeAgo(f.ts)}
-                    </p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</p>
+                      {f.sub && <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{f.sub}</p>}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(f.ts)}</p>
                   </div>
                 ))}
               </div>
@@ -1779,45 +1343,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           );
         })()}
 
-        {/* No-dealer banner */}
-        <div
-          style={{
-            marginTop: 20,
-            background: "rgba(37,99,235,0.07)",
-            border: "1px solid rgba(37,99,235,0.2)",
-            borderRadius: 10,
-            padding: "14px 16px",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 4px",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#93c5fd",
-            }}
-          >
-            Upgrade to full panel
-          </p>
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#4b5563" }}>
-            Ask your dealer for an invite code to unlock all features.
-          </p>
-          <button
-            onClick={() => setActiveTab("merge")}
-            style={{
-              fontSize: 12,
-              padding: "6px 14px",
-              borderRadius: 7,
-              background: "#2563eb",
-              border: "none",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Enter Invite Code →
+        {/* ── Upgrade nudge ── */}
+        <div style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>Join a dealership</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Get an invite code from your dealer to unlock the full panel.</p>
+          </div>
+          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "7px 14px", borderRadius: 8, background: "#1d4ed8", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+            Enter Code →
           </button>
         </div>
+
       </div>
     );
   };
