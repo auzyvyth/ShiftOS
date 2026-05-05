@@ -485,13 +485,69 @@ export default function SalesmanLite() {
         .from("leads")
         .select("*, car_listings(brand, model, year, selling_price)")
         .eq("salesman_id", uid)
-        .eq("is_deleted", false)
+        .or("is_deleted.eq.false,is_deleted.is.null")
         .order("updated_at", { ascending: false })
         .then(({ data: lds }) => {
-          const leads = lds || [];
-          setLeads(leads);
+          const fetchedLeads = lds || [];
+          setLeads(fetchedLeads);
           setLeadsLoading(false);
-          writeCache(`slite_leads_${uid}`, leads);
+          writeCache(`slite_leads_${uid}`, fetchedLeads);
+
+          // fetch enquiries after leads are settled to avoid race-condition overwrite
+          supabase
+            .from("whatsapp_enquiries")
+            .select(
+              "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
+            )
+            .or(`dealer_id.eq.${uid},salesman_id.eq.${uid}`)
+            .order("created_at", { ascending: false })
+            .then(async ({ data: enqs }) => {
+              const all = enqs || [];
+              setEnquiries(all);
+              writeCache(`slite_enquiries_${uid}`, all);
+              const pending = all.filter((e) => e.status === "new");
+              if (!pending.length) return;
+              const newLeads = await Promise.all(
+                pending.map(async (e) => {
+                  if (e.listing_id && e.buyer_phone) {
+                    const { data: existing } = await supabase
+                      .from("leads")
+                      .select("id")
+                      .eq("salesman_id", uid)
+                      .eq("car_listing_id", e.listing_id)
+                      .eq("phone", e.buyer_phone)
+                      .maybeSingle();
+                    if (existing) return null;
+                  }
+                  const { data } = await supabase
+                    .from("leads")
+                    .insert({
+                      salesman_id: uid,
+                      dealer_id: null,
+                      buyer_name: e.buyer_name || "Unknown",
+                      phone: e.buyer_phone || "",
+                      notes: e.buyer_message || null,
+                      car_listing_id: e.listing_id || null,
+                      stage: "new",
+                      lead_source: "enquiry",
+                      is_deleted: false,
+                    })
+                    .select()
+                    .single();
+                  return data;
+                }),
+              );
+              const inserted = newLeads.filter(Boolean);
+              if (inserted.length) setLeads((p) => [...inserted, ...p]);
+              const ids = pending.map((e) => e.id);
+              await supabase
+                .from("whatsapp_enquiries")
+                .update({ status: "converted" })
+                .in("id", ids);
+              setEnquiries((p) =>
+                p.map((e) => (ids.includes(e.id) ? { ...e, status: "converted" } : e)),
+              );
+            });
 
           channelRef.current = supabase
             .channel("salesman-lite-rt-" + uid)
@@ -677,61 +733,6 @@ export default function SalesmanLite() {
         .limit(30)
         .then(({ data: notifs }) => setNotifications(notifs || []));
 
-      // fetch enquiries — auto-pipeline any "new" ones that arrived while offline
-      supabase
-        .from("whatsapp_enquiries")
-        .select(
-          "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
-        )
-        .or(`dealer_id.eq.${uid},salesman_id.eq.${uid}`)
-        .order("created_at", { ascending: false })
-        .then(async ({ data: enqs }) => {
-          const all = enqs || [];
-          setEnquiries(all);
-          writeCache(`slite_enquiries_${uid}`, all);
-          const pending = all.filter((e) => e.status === "new");
-          if (!pending.length) return;
-          const newLeads = await Promise.all(
-            pending.map(async (e) => {
-              if (e.listing_id && e.buyer_phone) {
-                const { data: existing } = await supabase
-                  .from("leads")
-                  .select("id")
-                  .eq("salesman_id", uid)
-                  .eq("car_listing_id", e.listing_id)
-                  .eq("phone", e.buyer_phone)
-                  .maybeSingle();
-                if (existing) return null;
-              }
-              const { data } = await supabase
-                .from("leads")
-                .insert({
-                  salesman_id: uid,
-                  dealer_id: null,
-                  buyer_name: e.buyer_name || "Unknown",
-                  phone: e.buyer_phone || "",
-                  notes: e.buyer_message || null,
-                  car_listing_id: e.listing_id || null,
-                  stage: "new",
-                  lead_source: "enquiry",
-                  is_deleted: false,
-                })
-                .select()
-                .single();
-              return data;
-            }),
-          );
-          const inserted = newLeads.filter(Boolean);
-          if (inserted.length) setLeads((p) => [...inserted, ...p]);
-          const ids = pending.map((e) => e.id);
-          await supabase
-            .from("whatsapp_enquiries")
-            .update({ status: "converted" })
-            .in("id", ids);
-          setEnquiries((p) =>
-            p.map((e) => (ids.includes(e.id) ? { ...e, status: "converted" } : e)),
-          );
-        });
     });
   }, [navigate]);
 
