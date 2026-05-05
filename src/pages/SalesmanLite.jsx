@@ -427,7 +427,7 @@ export default function SalesmanLite() {
             (evtData || []).forEach((e) => {
               if (!e.car_id) return;
               if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
-              if (["car_view", "link_visit", "card_click"].includes(e.event_type))
+              if (["car_view", "link_visit"].includes(e.event_type))
                 map[e.car_id].views++;
               if (["whatsapp_click", "call_click"].includes(e.event_type))
                 map[e.car_id].enquiries++;
@@ -489,7 +489,7 @@ export default function SalesmanLite() {
                 event: "*",
                 schema: "public",
                 table: "whatsapp_enquiries",
-                filter: `dealer_id=eq.${uid}`,
+                filter: `salesman_id=eq.${uid}`,
               },
               async (payload) => {
                 if (payload.eventType === "INSERT") {
@@ -497,7 +497,56 @@ export default function SalesmanLite() {
                   toast("New enquiry!", {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
-                  // auto-add to lead pipeline
+                  const { data: newLead } = await supabase
+                    .from("leads")
+                    .insert({
+                      salesman_id: uid,
+                      dealer_id: null,
+                      buyer_name: payload.new.buyer_name || null,
+                      phone: payload.new.buyer_phone || null,
+                      notes: payload.new.buyer_message || null,
+                      car_listing_id: payload.new.listing_id || null,
+                      stage: "new",
+                      lead_source: "enquiry",
+                      is_deleted: false,
+                    })
+                    .select()
+                    .single();
+                  if (newLead) setLeads((p) => [newLead, ...p]);
+                  await supabase
+                    .from("whatsapp_enquiries")
+                    .update({ status: "converted" })
+                    .eq("id", payload.new.id);
+                  setEnquiries((p) =>
+                    p.map((e) =>
+                      e.id === payload.new.id ? { ...e, status: "converted" } : e,
+                    ),
+                  );
+                }
+                if (payload.eventType === "UPDATE")
+                  setEnquiries((p) =>
+                    p.map((e) =>
+                      e.id === payload.new.id ? { ...e, ...payload.new } : e,
+                    ),
+                  );
+              },
+            )
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "whatsapp_enquiries",
+                filter: `dealer_id=eq.${uid}`,
+              },
+              async (payload) => {
+                if (payload.eventType === "INSERT") {
+                  setEnquiries((p) =>
+                    p.find((e) => e.id === payload.new.id) ? p : [payload.new, ...p],
+                  );
+                  toast("New enquiry!", {
+                    description: payload.new.buyer_name || "Someone enquired",
+                  });
                   const { data: newLead } = await supabase
                     .from("leads")
                     .insert({
@@ -584,7 +633,7 @@ export default function SalesmanLite() {
         .select(
           "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
         )
-        .eq("dealer_id", uid)
+        .or(`dealer_id.eq.${uid},salesman_id.eq.${uid}`)
         .order("created_at", { ascending: false })
         .then(async ({ data: enqs }) => {
           const all = enqs || [];
@@ -592,8 +641,18 @@ export default function SalesmanLite() {
           const pending = all.filter((e) => e.status === "new");
           if (!pending.length) return;
           const newLeads = await Promise.all(
-            pending.map((e) =>
-              supabase
+            pending.map(async (e) => {
+              if (e.listing_id && e.buyer_phone) {
+                const { data: existing } = await supabase
+                  .from("leads")
+                  .select("id")
+                  .eq("salesman_id", uid)
+                  .eq("car_listing_id", e.listing_id)
+                  .eq("phone", e.buyer_phone)
+                  .maybeSingle();
+                if (existing) return null;
+              }
+              const { data } = await supabase
                 .from("leads")
                 .insert({
                   salesman_id: uid,
@@ -607,9 +666,9 @@ export default function SalesmanLite() {
                   is_deleted: false,
                 })
                 .select()
-                .single()
-                .then(({ data }) => data),
-            ),
+                .single();
+              return data;
+            }),
           );
           const inserted = newLeads.filter(Boolean);
           if (inserted.length) setLeads((p) => [...inserted, ...p]);
@@ -690,7 +749,7 @@ export default function SalesmanLite() {
     const now = new Date().toISOString();
     await supabase
       .from("leads")
-      .update({ stage: "lost", lost_reason: reason, updated_at: now })
+      .update({ stage: "lost", loss_reason: reason, updated_at: now })
       .eq("id", leadId);
     await supabase.from("lead_activities").insert({
       lead_id: leadId,
@@ -704,7 +763,7 @@ export default function SalesmanLite() {
     setLeads((p) =>
       p.map((l) =>
         l.id === leadId
-          ? { ...l, stage: "lost", lost_reason: reason, updated_at: now }
+          ? { ...l, stage: "lost", loss_reason: reason, updated_at: now }
           : l,
       ),
     );
@@ -791,7 +850,7 @@ export default function SalesmanLite() {
         stage: "new",
         lead_source: "manual",
         is_deleted: false,
-        lost_reason: null,
+        loss_reason: null,
       })
       .select()
       .single();
@@ -1185,13 +1244,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const listingStats = myListings.map((car) => {
       const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-      const views = carEvts.filter((e) => ["car_view", "link_visit", "card_click"].includes(e.event_type)).length;
+      const views = carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
       const waTaps = carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
       const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-    const totalViews = analyticsEvents.filter((e) => ["car_view", "link_visit", "card_click"].includes(e.event_type)).length;
+    const totalViews = analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).length;
     const totalWATaps = analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).length;
     const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
     const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
@@ -3387,7 +3446,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           flexShrink: 0,
                         }}
                       >
-                        {lead.lost_reason && (
+                        {lead.loss_reason && (
                           <span
                             style={{
                               fontSize: 10,
@@ -3399,7 +3458,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {lead.lost_reason}
+                            {lead.loss_reason}
                           </span>
                         )}
                         <button
