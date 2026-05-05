@@ -298,6 +298,9 @@ export default function SalesmanLite() {
   // mobile lead stage filter
   const [mobileLeadStage, setMobileLeadStage] = useState("new");
 
+  // link car to lead
+  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+
   // deposit receipt
   const [depositModal, setDepositModal] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
@@ -802,6 +805,23 @@ export default function SalesmanLite() {
     await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
     setLeads((p) => p.filter((l) => l.id !== leadId));
     setDeleteConfirmId(null);
+  };
+
+  const handleLinkCar = async (leadId, carId) => {
+    await supabase
+      .from("leads")
+      .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
+      .eq("id", leadId);
+    const car = myListings.find((c) => c.id === carId);
+    setLeads((p) => p.map((l) =>
+      l.id === leadId
+        ? { ...l, car_listing_id: carId, car_listings: car
+            ? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
+            : l.car_listings }
+        : l
+    ));
+    setLinkCarLeadId(null);
+    toast.success("Car linked to lead!");
   };
 
   const handleLostReason = async (leadId, reason) => {
@@ -3239,6 +3259,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   WA
                 </button>
               )}
+              <button
+                onClick={() => setLinkCarLeadId(lead.id)}
+                style={{
+                  fontSize: 10, padding: "3px 7px", borderRadius: 5, cursor: "pointer",
+                  background: lead.car_listing_id ? "rgba(255,255,255,0.04)" : "rgba(56,189,248,0.08)",
+                  border: lead.car_listing_id ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(56,189,248,0.2)",
+                  color: lead.car_listing_id ? "#6b7280" : "#38bdf8",
+                }}
+              >
+                {lead.car_listing_id ? "🚗 Change Car" : "🚗 Link Car"}
+              </button>
               <button
                 onClick={() => {
                   const price = lead.car_listings?.selling_price || "";
@@ -6357,6 +6388,51 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   Send via WA
                 </button>
               </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* ── Link Car Modal ── */}
+      {linkCarLeadId && (() => {
+        const lead = leads.find((l) => l.id === linkCarLeadId);
+        const available = myListings.filter((c) => c.status !== "sold");
+        return (
+          <div onClick={() => setLinkCarLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 20, paddingBottom: 36 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Link Car to Lead</p>
+                <button onClick={() => setLinkCarLeadId(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
+              </div>
+              {lead?.buyer_name && (
+                <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name}</p>
+              )}
+              {available.length === 0 ? (
+                <p style={{ fontSize: 12, color: "#4b5563", textAlign: "center", padding: "24px 0" }}>No listings yet. Add a listing first.</p>
+              ) : (
+                <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {available.map((car) => {
+                    const img = car.images?.[0];
+                    const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+                    const isLinked = lead?.car_listing_id === car.id;
+                    return (
+                      <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: `1px solid ${isLinked ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 10 }}>
+                        {img
+                          ? <img src={img} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                          : <div style={{ width: 48, height: 48, borderRadius: 6, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={20} color="#374151" /></div>
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
+                          {car.selling_price && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#60a5fa" }}>RM {Number(car.selling_price).toLocaleString("en-MY")}</p>}
+                        </div>
+                        {isLinked
+                          ? <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 600, flexShrink: 0 }}>✓ Linked</span>
+                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>Link →</button>
+                        }
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
