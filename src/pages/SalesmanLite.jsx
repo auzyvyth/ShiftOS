@@ -416,7 +416,11 @@ export default function SalesmanLite() {
       setProfile(profileData);
       setLoading(false);
 
-      if (!profileData.onboarding_tour_done) setTourStep(0);
+      if (
+        !profileData.onboarding_tour_done &&
+        profileData.created_at &&
+        Date.now() - new Date(profileData.created_at).getTime() < 7 * 24 * 60 * 60 * 1000
+      ) setTourStep(0);
 
       // seed from cache immediately so UI is instant
       const cachedListings = readCache(`slite_listings_${uid}`);
@@ -522,6 +526,7 @@ export default function SalesmanLite() {
               if (!pending.length) return;
               const newLeads = await Promise.all(
                 pending.map(async (e) => {
+                  if (!e.buyer_phone && !e.listing_id) return null;
                   if (e.listing_id && e.buyer_phone) {
                     const { data: existing } = await supabase
                       .from("leads")
@@ -612,6 +617,7 @@ export default function SalesmanLite() {
                   toast("New enquiry!", {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
+                  if (!payload.new.buyer_phone && !payload.new.listing_id) return;
                   const { data: newLead } = await supabase
                     .from("leads")
                     .insert({
@@ -662,6 +668,7 @@ export default function SalesmanLite() {
                   toast("New enquiry!", {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
+                  if (!payload.new.buyer_phone && !payload.new.listing_id) return;
                   const { data: newLead } = await supabase
                     .from("leads")
                     .insert({
@@ -5026,10 +5033,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     { emoji: "🔗", title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
   ];
 
-  const dismissTour = () => {
+  const dismissTour = async () => {
     setTourStep(null);
     setTourTarget(null);
-    supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+    setProfile((p) => ({ ...p, onboarding_tour_done: true }));
+    await supabase
+      .from("profiles")
+      .update({ onboarding_tour_done: true })
+      .eq("id", userId);
   };
 
   const renderTour = () => {
