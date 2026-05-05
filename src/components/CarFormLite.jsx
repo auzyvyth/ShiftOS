@@ -71,26 +71,32 @@ export default function CarFormLite({ onCreate }) {
   };
 
   const handleSubmit = async () => {
-    if (!profile) return;
     setError(""); setSaving(true);
 
     try {
+      const uid = profile?.id ?? (await supabase.auth.getSession()).data?.session?.user?.id;
+      if (!uid) { setError("Not logged in."); setSaving(false); return; }
+
       // Upload images
       const urls = await Promise.all(images.map(async (file) => {
         const ext = file.name.split(".").pop();
-        const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
         return publicUrl;
       }));
 
+      const slug = `${f.brand}-${f.model}-${f.year}-${Math.random().toString(36).slice(2, 7)}`
+        .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
       const { data, error: insErr } = await supabase
         .from("car_listings")
         .insert([{
-          dealer_id: profile.id,
-          assigned_to: profile.id,
-          status: "active",
+          dealer_id: uid,
+          assigned_to: uid,
+          status: "available",
+          slug,
           images: urls,
           brand: f.brand,
           model: f.model,
