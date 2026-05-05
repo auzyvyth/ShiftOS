@@ -1822,8 +1822,10 @@ export default function AccountantPanel() {
               />
               <button
                 onClick={async () => {
+                  /* eslint-disable import/no-unresolved */
                   const { utils, writeFile } =
                     await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+                  /* eslint-enable import/no-unresolved */
                   const rows = overviewRows.map((r) => ({
                     Car: r.car_listings
                       ? `${r.car_listings.year} ${r.car_listings.brand} ${r.car_listings.model}`

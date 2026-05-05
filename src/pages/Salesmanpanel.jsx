@@ -5411,14 +5411,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                                 style={{ background: "rgba(34,197,94,.15)", border: "1px solid rgba(34,197,94,.3)", color: "#4ade80", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
                                 Save
                               </button>
-                              <button onClick={() => { setLoanEditId(null); setLoanEditStatus(""); setLoanEditCommission(""); }}
+                              <button onClick={() => { setLoanEditId(null); setLoanEditStatus(""); }}
                                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#6b7280", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
                                 Cancel
                               </button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); setLoanEditCommission(""); }}
+                              <button onClick={() => { setLoanEditId(app.id); setLoanEditStatus(app.status); }}
                                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "#9ca3af", borderRadius: 5, padding: "4px 7px", cursor: "pointer" }}>
                                 <Pencil size={11} />
                               </button>
