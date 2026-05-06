@@ -202,7 +202,6 @@ export default function SalesmanPanel() {
   // AI advisor (analytics tab)
   const [aiMessages, setAiMessages] = useState([{ role: "assistant", content: "Hi! I'm your performance advisor. I can see your listings and help with pricing and conversions. What would you like to know?" }]);
   const [aiInput, setAiInput] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const aiEndRef = useRef(null);
   useEffect(() => {
