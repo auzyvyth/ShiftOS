@@ -1534,7 +1534,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     }).length;
     const newEnqCount = enquiries.filter((e) => e.status === "new").length;
 
-    const { overallCVR, bestCVRStat } = dashboardCVR;
+    const { totalViews, totalWATaps, overallCVR, bestCVRStat } = dashboardCVR;
     const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
 
