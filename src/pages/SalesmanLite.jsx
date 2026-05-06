@@ -204,9 +204,13 @@ export default function SalesmanLite() {
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deletingLeadId, setDeletingLeadId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
+  const [lostSavingId, setLostSavingId] = useState(null);
+  const [stageSavingId, setStageSavingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteVal, setEditNoteVal] = useState("");
+  const [notesSavingId, setNotesSavingId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
   const [waModalMsg, setWaModalMessage] = useState("");
 
@@ -474,33 +478,24 @@ export default function SalesmanLite() {
         precacheImages(merged);
       });
 
-      // fetch analytics events (30d, scoped by salesman slug)
+      // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
       const slug = profileData.slug;
       if (slug) {
         supabase
           .from("analytics_events")
           .select("event_type, car_id, car_name, created_at, session_id")
           .eq("salesman_slug", slug)
-          .gte(
-            "created_at",
-            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          )
-          .then(({ data: evts, error: evtsErr }) => {
+          .then(({ data: allEvts, error: evtsErr }) => {
             if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
-            setAnalyticsEvents(evts || []);
-          });
-
-        // build per-listing stats map for CVR heatmap
-        supabase
-          .from("analytics_events")
-          .select("car_id, event_type, session_id")
-          .eq("salesman_slug", slug)
-          .then(({ data: evtData, error: evtDataErr }) => {
-            if (evtDataErr) console.error("fetchCarStats:", evtDataErr);
+            const evts = allEvts || [];
+            // 30-day slice for the chart state
+            const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            setAnalyticsEvents(evts.filter(e => e.created_at >= cutoff30));
+            // build per-listing CVR map (all-time, session-deduped)
             const map = {};
             const viewedKeys = new Set();
             const contactedKeys = new Set();
-            (evtData || []).forEach((e) => {
+            evts.forEach((e) => {
               if (!e.car_id) return;
               if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
               const key = `${e.car_id}:${e.session_id || e.car_id}`;
@@ -544,41 +539,48 @@ export default function SalesmanLite() {
               writeCache(`slite_enquiries_${uid}`, all);
               const pending = all.filter((e) => e.status === "new");
               if (!pending.length) return;
-              const newLeads = await Promise.all(
-                pending.map(async (e) => {
-                  if (!e.buyer_phone && !e.listing_id) return null;
-                  if (e.listing_id && e.buyer_phone) {
-                    const { data: existing, error: existingErr } = await supabase
-                      .from("leads")
-                      .select("id")
-                      .eq("salesman_id", uid)
-                      .eq("car_listing_id", e.listing_id)
-                      .eq("phone", e.buyer_phone)
-                      .maybeSingle();
-                    if (existingErr) console.error("checkExistingLead:", existingErr);
-                    if (existing) return null;
-                  }
-                  const { data, error: insertLeadErr } = await supabase
+              // Deduplicate within the batch first (phone+listing key) before any DB call
+              const batchSeen = new Set();
+              const dedupedPending = pending.filter((e) => {
+                const key = `${e.buyer_phone || ""}::${e.listing_id || ""}`;
+                if (batchSeen.has(key)) return false;
+                batchSeen.add(key);
+                return true;
+              });
+              // Run conversions sequentially to avoid concurrent duplicate-check races
+              const newLeads = [];
+              for (const e of dedupedPending) {
+                if (!e.buyer_phone && !e.listing_id) continue;
+                if (e.listing_id && e.buyer_phone) {
+                  const { data: existing, error: existingErr } = await supabase
                     .from("leads")
-                    .insert({
-                      salesman_id: uid,
-                      dealer_id: null,
-                      buyer_name: e.buyer_name || "Unknown",
-                      phone: e.buyer_phone || "",
-                      notes: e.buyer_message || null,
-                      car_listing_id: e.listing_id || null,
-                      stage: "new",
-                      lead_source: "enquiry",
-                      is_deleted: false,
-                    })
-                    .select()
-                    .single();
-                  if (insertLeadErr) console.error("insertLeadFromEnquiry:", insertLeadErr);
-                  return data;
-                }),
-              );
-              const inserted = newLeads.filter(Boolean);
-              if (inserted.length) setLeads((p) => [...inserted, ...p]);
+                    .select("id")
+                    .eq("salesman_id", uid)
+                    .eq("car_listing_id", e.listing_id)
+                    .eq("phone", e.buyer_phone)
+                    .maybeSingle();
+                  if (existingErr) console.error("checkExistingLead:", existingErr);
+                  if (existing) continue;
+                }
+                const { data, error: insertLeadErr } = await supabase
+                  .from("leads")
+                  .insert({
+                    salesman_id: uid,
+                    dealer_id: null,
+                    buyer_name: e.buyer_name || "Unknown",
+                    phone: e.buyer_phone || "",
+                    notes: e.buyer_message || null,
+                    car_listing_id: e.listing_id || null,
+                    stage: "new",
+                    lead_source: "enquiry",
+                    is_deleted: false,
+                  })
+                  .select()
+                  .single();
+                if (insertLeadErr) console.error("insertLeadFromEnquiry:", insertLeadErr);
+                if (data) newLeads.push(data);
+              }
+              if (newLeads.length) setLeads((p) => [...newLeads, ...p]);
               const ids = pending.map((e) => e.id);
               const { error: convertEnqErr } = await supabase
                 .from("whatsapp_enquiries")
@@ -590,6 +592,7 @@ export default function SalesmanLite() {
               );
             });
 
+          if (channelRef.current) supabase.removeChannel(channelRef.current);
           channelRef.current = supabase
             .channel("salesman-lite-rt-" + uid)
             .on(
@@ -810,12 +813,14 @@ export default function SalesmanLite() {
   };
 
   const updateLeadStage = async (leadId, stage) => {
+    setStageSavingId(leadId);
     const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
     const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
     const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
+    setStageSavingId(null);
     if (stageErr) {
       console.error("updateLeadStage:", stageErr);
       toast.error("Failed to update lead stage");
@@ -843,14 +848,18 @@ export default function SalesmanLite() {
   };
 
   const saveLeadNote = async (leadId) => {
+    setNotesSavingId(leadId);
     const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
+    setNotesSavingId(null);
     if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
     setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
     setEditingNoteId(null);
   };
 
   const handleDeleteLead = async (leadId) => {
+    setDeletingLeadId(leadId);
     const { error: delErr } = await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    setDeletingLeadId(null);
     if (delErr) {
       console.error("handleDeleteLead:", delErr);
       toast.error("Failed to delete lead");
@@ -887,10 +896,12 @@ export default function SalesmanLite() {
     const oldStage = lead?.stage ?? null;
     const dealerId = lead?.dealer_id ?? null;
     const now = new Date().toISOString();
+    setLostSavingId(leadId);
     const { error: lostErr } = await supabase
       .from("leads")
       .update({ stage: "lost", loss_reason: reason, updated_at: now })
       .eq("id", leadId);
+    setLostSavingId(null);
     if (lostErr) {
       console.error("handleLostReason:", lostErr);
       toast.error("Failed to mark lead as lost");
@@ -1107,11 +1118,13 @@ export default function SalesmanLite() {
     );
   };
 
-  const generateAiCaptions = async (car) => {
+  const generateAiCaptions = async (car, force = false) => {
     setAiCaptionCar(car);
     setAiCaptionTab("wa");
     setCaptionCopied(false);
-    if (aiCaptions[car.id]) return;
+    const existing = aiCaptions[car.id];
+    // Skip if we already have a successful caption (not an error state) and not forcing retry
+    if (!force && existing && !existing.wa?.startsWith("Couldn't")) return;
     setAiCaptionLoading(true);
     const name = [car.year, car.brand, car.model, car.variant]
       .filter(Boolean)
@@ -1405,6 +1418,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       </div>
     );
 
+  // ── Memoised dashboard analytics (avoids recompute on every render) ─────────
+  const listingStats = useMemo(() => myListings.map((car) => {
+    const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
+    const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+    const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+    const views = viewSessions.size;
+    const waTaps = waSessions.size;
+    const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
+    const cvr = views > 0 ? (waTaps / views) * 100 : null;
+    return { car, views, waTaps, enqCount, cvr };
+  }), [myListings, analyticsEvents, enquiries]);
+
+  const dashboardCVR = useMemo(() => {
+    const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
+    const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
+    const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
+    const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+    return { totalViews, totalWATaps, overallCVR, bestCVRStat };
+  }, [analyticsEvents, listingStats]);
+
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
   const renderDashboard = () => {
@@ -1421,20 +1454,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     }).length;
     const newEnqCount = enquiries.filter((e) => e.status === "new").length;
 
-    const listingStats = myListings.map((car) => {
-      const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-      const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const views = viewSessions.size;
-      const waTaps = waSessions.size;
-      const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
-      const cvr = views > 0 ? (waTaps / views) * 100 : null;
-      return { car, views, waTaps, enqCount, cvr };
-    });
-    const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
-    const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+    const { overallCVR, bestCVRStat } = dashboardCVR;
     const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
 
@@ -1922,6 +1942,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             >
               Add your first car using the button above.
             </p>
+            <button
+              onClick={() => setEditListing({})}
+              style={{ marginTop: 14, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: 9, background: "#1d4ed8", border: "none", color: "#fff", cursor: "pointer" }}
+            >
+              + Add Listing
+            </button>
           </div>
         ) : sorted.length === 0 ? (
           <div
@@ -3267,8 +3293,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 6, color: "#e5e7eb", fontSize: 11, padding: "5px 8px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
-                <button onClick={() => saveLeadNote(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", cursor: "pointer", fontWeight: 600 }}>Save</button>
-                <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => saveLeadNote(lead.id)} disabled={notesSavingId === lead.id} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", cursor: notesSavingId === lead.id ? "not-allowed" : "pointer", fontWeight: 600, opacity: notesSavingId === lead.id ? 0.5 : 1 }}>{notesSavingId === lead.id ? "…" : "Save"}</button>
+                <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
           ) : (
@@ -3295,24 +3321,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </span>
               <button
                 onClick={() => handleDeleteLead(lead.id)}
+                disabled={deletingLeadId === lead.id}
                 style={{
                   fontSize: 10,
-                  padding: "3px 9px",
+                  padding: "6px 11px",
                   borderRadius: 5,
                   background: "rgba(239,68,68,0.12)",
                   border: "1px solid rgba(239,68,68,0.3)",
                   color: "#f87171",
-                  cursor: "pointer",
+                  cursor: deletingLeadId === lead.id ? "not-allowed" : "pointer",
                   fontWeight: 600,
+                  opacity: deletingLeadId === lead.id ? 0.5 : 1,
                 }}
               >
-                Yes
+                {deletingLeadId === lead.id ? "…" : "Yes"}
               </button>
               <button
                 onClick={() => setDeleteConfirmId(null)}
+                disabled={deletingLeadId === lead.id}
                 style={{
                   fontSize: 10,
-                  padding: "3px 9px",
+                  padding: "6px 11px",
                   borderRadius: 5,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -3347,24 +3376,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <button
                   key={r}
                   onClick={() => handleLostReason(lead.id, r)}
+                  disabled={lostSavingId === lead.id}
                   style={{
                     fontSize: 10,
-                    padding: "3px 8px",
+                    padding: "6px 10px",
                     borderRadius: 99,
                     background: "rgba(148,163,184,0.08)",
                     border: "1px solid rgba(148,163,184,0.2)",
                     color: "#cbd5e1",
-                    cursor: "pointer",
+                    cursor: lostSavingId === lead.id ? "not-allowed" : "pointer",
+                    opacity: lostSavingId === lead.id ? 0.5 : 1,
                   }}
                 >
-                  {r}
+                  {lostSavingId === lead.id ? "…" : r}
                 </button>
               ))}
               <button
                 onClick={() => setLostPromptId(null)}
                 style={{
                   fontSize: 10,
-                  padding: "3px 7px",
+                  padding: "6px 10px",
                   borderRadius: 5,
                   background: "transparent",
                   border: "none",
@@ -3382,7 +3413,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   onClick={() => updateLeadStage(lead.id, nextStage)}
                   style={{
                     fontSize: 10,
-                    padding: "3px 7px",
+                    padding: "6px 10px",
                     borderRadius: 5,
                     background: "rgba(255,255,255,0.05)",
                     border: "1px solid rgba(255,255,255,0.08)",
@@ -3398,7 +3429,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   onClick={() => updateLeadStage(lead.id, "won")}
                   style={{
                     fontSize: 10,
-                    padding: "3px 7px",
+                    padding: "6px 10px",
                     borderRadius: 5,
                     background: "rgba(34,197,94,0.08)",
                     border: "1px solid rgba(34,197,94,0.2)",
@@ -3417,7 +3448,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   }}
                   style={{
                     fontSize: 10,
-                    padding: "3px 7px",
+                    padding: "6px 10px",
                     borderRadius: 5,
                     background: "rgba(148,163,184,0.06)",
                     border: "1px solid rgba(148,163,184,0.18)",
@@ -3442,7 +3473,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   }}
                   style={{
                     fontSize: 10,
-                    padding: "3px 7px",
+                    padding: "6px 10px",
                     borderRadius: 5,
                     background: "rgba(37,211,102,0.1)",
                     border: "1px solid rgba(37,211,102,0.2)",
@@ -3456,7 +3487,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               <button
                 onClick={() => setLinkCarLeadId(lead.id)}
                 style={{
-                  fontSize: 10, padding: "3px 7px", borderRadius: 5, cursor: "pointer",
+                  fontSize: 10, padding: "6px 10px", borderRadius: 5, cursor: "pointer",
                   background: lead.car_listing_id ? "rgba(255,255,255,0.04)" : "rgba(56,189,248,0.08)",
                   border: lead.car_listing_id ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(56,189,248,0.2)",
                   color: lead.car_listing_id ? "#6b7280" : "#38bdf8",
@@ -3470,20 +3501,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   setLoanPrice(String(price));
                   setLoanCalcLead(lead);
                 }}
-                style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", cursor: "pointer" }}
               >
                 Loan
               </button>
               <button
                 onClick={() => setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id)}
-                style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)", color: "#c084fc", cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)", color: "#c084fc", cursor: "pointer" }}
               >
                 Scripts
               </button>
               {lead.stage === "deposit_taken" && (
                 <button
                   onClick={() => { setDepositModal(lead); setDepositAmount(""); setDepositCopied(false); }}
-                  style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
                 >
                   Receipt
                 </button>
@@ -3854,7 +3885,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           onClick={() => handleDeleteLead(lead.id)}
                           style={{
                             fontSize: 10,
-                            padding: "3px 9px",
+                            padding: "6px 11px",
                             borderRadius: 5,
                             background: "rgba(239,68,68,0.12)",
                             border: "1px solid rgba(239,68,68,0.3)",
@@ -3869,7 +3900,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           onClick={() => setDeleteConfirmId(null)}
                           style={{
                             fontSize: 10,
-                            padding: "3px 9px",
+                            padding: "6px 11px",
                             borderRadius: 5,
                             background: "rgba(255,255,255,0.05)",
                             border: "1px solid rgba(255,255,255,0.08)",
@@ -3906,11 +3937,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         Enquiries ({enquiries.length})
       </p>
       {enquiries.length === 0 && (
-        <div
-          style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
-        >
+        <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
           <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
+          <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Share your listing link to start getting enquiries.</p>
+          <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer" }}>
+            Go to Listings →
+          </button>
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -4012,7 +4045,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     }}
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(37,211,102,0.1)",
                       border: "1px solid rgba(37,211,102,0.2)",
@@ -4032,7 +4065,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     }
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background:
                         openTemplateId === enq.id
@@ -4061,7 +4094,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     }}
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(255,255,255,0.05)",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -4076,7 +4109,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   <span
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(34,197,94,0.1)",
                       border: "1px solid rgba(34,197,94,0.2)",
@@ -4117,7 +4150,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     }}
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(96,165,250,0.1)",
                       border: "1px solid rgba(96,165,250,0.2)",
@@ -4486,7 +4519,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     }}
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(37,211,102,0.1)",
                       border: "1px solid rgba(37,211,102,0.2)",
@@ -4500,7 +4533,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     onClick={() => setEditingReminder(null)}
                     style={{
                       fontSize: 10,
-                      padding: "3px 9px",
+                      padding: "6px 11px",
                       borderRadius: 6,
                       background: "rgba(255,255,255,0.05)",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -4520,7 +4553,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 }}
                 style={{
                   fontSize: 10,
-                  padding: "3px 9px",
+                  padding: "6px 11px",
                   borderRadius: 6,
                   background: "rgba(37,211,102,0.1)",
                   border: "1px solid rgba(37,211,102,0.2)",
@@ -4580,11 +4613,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         </div>
         {appointments.length === 0 && (
-          <div
-            style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}
-          >
+          <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
             <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+            <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear here when customers book a test drive.</p>
+            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer" }}>
+              Share a Listing →
+            </button>
           </div>
         )}
         {todayApts.length > 0 && (
@@ -5885,6 +5920,23 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 )}
               </button>
               <button
+                onClick={() => setTourStep(0)}
+                title="Show tour"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
+              >
+                ?
+              </button>
+              <button
                 onClick={handleLogout}
                 style={{
                   background: "rgba(255,255,255,0.04)",
@@ -5901,7 +5953,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             </>
           ) : (
-            <>
+<>
               <div style={{ flex: 1 }}>
                 <p
                   style={{
@@ -6380,7 +6432,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     delete next[aiCaptionCar.id];
                     return next;
                   });
-                  generateAiCaptions(aiCaptionCar);
+                  generateAiCaptions(aiCaptionCar, true);
                 }}
                 disabled={aiCaptionLoading}
                 style={{
