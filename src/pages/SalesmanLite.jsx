@@ -3510,7 +3510,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             </div>
           </div>
-          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563" }}>
             Added {timeAgo(lead.created_at)}
           </p>
           {carName && (
@@ -3524,7 +3524,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 margin: "0 0 4px",
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#60a5fa",
+                color: "#e5e7eb",
               }}
             >
               {carPrice}
@@ -3659,14 +3659,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             </div>
           ) : (
+            {/* Tier 1 — Stage actions */}
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {nextStage && lead.stage !== "won" && (
                 <button
                   onClick={() => updateLeadStage(lead.id, nextStage)}
                   style={{
-                    fontSize: 10,
-                    padding: "6px 10px",
-                    borderRadius: 5,
+                    fontSize: 11,
+                    padding: "6px 12px",
+                    borderRadius: 6,
                     background: "rgba(255,255,255,0.05)",
                     border: "1px solid rgba(255,255,255,0.08)",
                     color: "#6b7280",
@@ -3680,9 +3681,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <button
                   onClick={() => updateLeadStage(lead.id, "won")}
                   style={{
-                    fontSize: 10,
-                    padding: "6px 10px",
-                    borderRadius: 5,
+                    fontSize: 11,
+                    padding: "6px 12px",
+                    borderRadius: 6,
                     background: "rgba(34,197,94,0.08)",
                     border: "1px solid rgba(34,197,94,0.2)",
                     color: "#4ade80",
@@ -3699,9 +3700,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     setLostPromptId(lead.id);
                   }}
                   style={{
-                    fontSize: 10,
-                    padding: "6px 10px",
-                    borderRadius: 5,
+                    fontSize: 11,
+                    padding: "6px 12px",
+                    borderRadius: 6,
                     background: "rgba(148,163,184,0.06)",
                     border: "1px solid rgba(148,163,184,0.18)",
                     color: "#9ca3af",
@@ -3724,9 +3725,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     setWaModalLead(lead);
                   }}
                   style={{
-                    fontSize: 10,
-                    padding: "6px 10px",
-                    borderRadius: 5,
+                    fontSize: 11,
+                    padding: "6px 12px",
+                    borderRadius: 6,
                     background: "rgba(37,211,102,0.1)",
                     border: "1px solid rgba(37,211,102,0.2)",
                     color: "#4ade80",
@@ -3736,10 +3737,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   WA
                 </button>
               )}
+            </div>
+            {/* Tier 2 — Tools row */}
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 6 }}>
               <button
                 onClick={() => setLinkCarLeadId(lead.id)}
                 style={{
-                  fontSize: 10, padding: "6px 10px", borderRadius: 5, cursor: "pointer",
+                  fontSize: 10, padding: "4px 8px", borderRadius: 5, cursor: "pointer",
                   background: lead.car_listing_id ? "rgba(255,255,255,0.04)" : "rgba(56,189,248,0.08)",
                   border: lead.car_listing_id ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(56,189,248,0.2)",
                   color: lead.car_listing_id ? "#6b7280" : "#38bdf8",
@@ -3753,33 +3757,33 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   setLoanPrice(String(price));
                   setLoanCalcLead(lead);
                 }}
-                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", cursor: "pointer" }}
               >
                 Loan
               </button>
               <button
                 onClick={() => setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id)}
-                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)", color: "#c084fc", cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)", color: "#c084fc", cursor: "pointer" }}
               >
                 Scripts
               </button>
               {lead.stage === "deposit_taken" && (
                 <button
                   onClick={() => { setDepositModal(lead); setDepositAmount(""); setDepositCopied(false); }}
-                  style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
                 >
                   Receipt
                 </button>
               )}
               <button
                 onClick={() => { setLogCallLeadId(lead.id); setCallOutcome("answered"); setCallNote(""); }}
-                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
               >
                 <PhoneCall size={10} /> Call
               </button>
               <button
                 onClick={() => { setFollowUpModalLead(lead); setFollowUpDate(lead.follow_up_at ? lead.follow_up_at.slice(0,10) : ""); }}
-                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: lead.follow_up_at ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: lead.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: lead.follow_up_at ? "#fbbf24" : "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: lead.follow_up_at ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: lead.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: lead.follow_up_at ? "#fbbf24" : "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
               >
                 <Clock size={10} /> {lead.follow_up_at ? "Remind" : "Remind"}
               </button>
@@ -3788,7 +3792,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   if (expandedActivityLeadId === lead.id) { setExpandedActivityLeadId(null); }
                   else { fetchLeadActivities(lead.id); }
                 }}
-                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: expandedActivityLeadId === lead.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: expandedActivityLeadId === lead.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
               >
                 <History size={10} /> History
               </button>
@@ -4475,9 +4479,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       fontSize: 10,
                       padding: "6px 11px",
                       borderRadius: 6,
-                      background: "rgba(96,165,250,0.1)",
-                      border: "1px solid rgba(96,165,250,0.2)",
-                      color: "#f87171",
+                      background: "rgba(34,197,94,0.1)",
+                      border: "1px solid rgba(34,197,94,0.2)",
+                      color: "#4ade80",
                       cursor: "pointer",
                     }}
                   >
@@ -4678,8 +4682,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     fontSize: 9,
                     padding: "1px 5px",
                     borderRadius: 99,
-                    background: "rgba(96,165,250,0.15)",
-                    border: "1px solid rgba(96,165,250,0.3)",
+                    background: "rgba(220,38,38,0.12)",
+                    border: "1px solid rgba(220,38,38,0.3)",
                     color: "#f87171",
                     flexShrink: 0,
                     letterSpacing: "0.05em",
@@ -4719,7 +4723,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               margin: "0 0 2px",
               fontSize: 12,
               fontWeight: 600,
-              color: "#f87171",
+              color: "#e5e7eb",
             }}
           >
             📅 {dateStr}
