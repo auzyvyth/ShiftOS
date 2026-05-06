@@ -1549,13 +1549,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const STEP_CIRCLE = (done) => ({
       width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: 13, fontWeight: 700,
-      background: done ? "rgba(34,197,94,0.15)" : "rgba(37,99,235,0.15)",
-      border: done ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(37,99,235,0.25)",
-      color: done ? "#4ade80" : "#93c5fd",
+      background: done ? "rgba(34,197,94,0.15)" : "rgba(220,38,38,0.12)",
+      border: done ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(220,38,38,0.2)",
+      color: done ? "#4ade80" : "#f87171",
     });
 
     const kpis = [
-      { label: "Pipeline", value: activeLeads.length, color: "#93c5fd", bg: "rgba(147,197,253,0.06)", border: "rgba(147,197,253,0.15)", accent: "#93c5fd", icon: "👤" },
+      { label: "Pipeline", value: activeLeads.length, color: "#f87171", bg: "rgba(220,38,38,0.05)", border: "rgba(220,38,38,0.14)", accent: "#f87171", icon: "👤" },
       { label: "Listings", value: myListings.filter(c => c.status === "available").length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
       { label: "Follow-ups", value: staleLeads.length, color: staleLeads.length > 0 ? "#fb923c" : "#374151", bg: staleLeads.length > 0 ? "rgba(251,146,60,0.07)" : "rgba(255,255,255,0.02)", border: staleLeads.length > 0 ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.06)", accent: "#fb923c", icon: "⏰", warn: staleLeads.length > 0 },
       { label: "Today", value: todayAppts, color: "#c084fc", bg: "rgba(192,132,252,0.06)", border: "rgba(192,132,252,0.15)", accent: "#c084fc", icon: "📅" },
@@ -1656,7 +1656,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </div>
               <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
               <div>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#93c5fd", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => c.status === "available").length}</p>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => c.status === "available").length}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Live listings</p>
               </div>
             </div>
@@ -1675,13 +1675,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {/* ── Pipeline value ── */}
         {pipelineValue > 0 && (
-          <div style={{ background: "rgba(147,197,253,0.04)", border: "1px solid rgba(147,197,253,0.14)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <TrendingUp size={16} color="#93c5fd" />
+          <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.12)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <TrendingUp size={16} color="#f87171" />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 11, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>Pipeline Value</p>
-              <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 800, color: "#93c5fd", letterSpacing: "-0.02em" }}>RM {pipelineValue.toLocaleString("en-MY")}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 800, color: "#f87171", letterSpacing: "-0.02em" }}>RM {pipelineValue.toLocaleString("en-MY")}</p>
               <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Est. commission: RM {estimatedCommission.toLocaleString("en-MY")} · {activeLeads.filter(l => l.car_listings?.selling_price).length} deal{activeLeads.filter(l => l.car_listings?.selling_price).length !== 1 ? "s" : ""}</p>
             </div>
           </div>
@@ -1689,7 +1689,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {/* ── Start Here onboarding card ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
-          <div style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.03))", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 14, padding: 20, marginBottom: 4 }}>
+          <div style={{ background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(220,38,38,0.02))", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 14, padding: 20, marginBottom: 4 }}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>👋 Welcome to ShiftOS Lite</p>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Here's how to make your first sale:</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 16 }}>
@@ -1732,7 +1732,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
                     {step.locked
                       ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>Complete step 1 first</span>
-                      : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer", flexShrink: 0 }}>{step.ctaLabel}</button>
+                      : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0 }}>{step.ctaLabel}</button>
                     }
                   </div>
                   {idx < 2 && <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "12px 0" }} />}
@@ -1816,7 +1816,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <p style={SL}>My Performance · 30d</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 8 }}>
             {[
-              { label: "Views", value: totalViews, color: "#93c5fd", sub: "link + card + detail" },
+              { label: "Views", value: totalViews, color: "#f87171", sub: "link + card + detail" },
               { label: "WA Taps", value: totalWATaps, color: "#4ade80", sub: "whatsapp + calls" },
               { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", color: overallCVR !== null ? cvrColor(parseFloat(overallCVR)) : "#374151", sub: bestCVRStat ? `best: ${perfCarName(bestCVRStat.car)}` : "no data yet" },
             ].map(({ label, value, color, sub }) => (
@@ -1852,7 +1852,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {listingStats.sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx) => (
                 <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "9px 14px", alignItems: "center", borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                   <p style={{ margin: 0, fontSize: 11, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{perfCarName(car)}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#93c5fd", textAlign: "center" }}>{views}</p>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f87171", textAlign: "center" }}>{views}</p>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4ade80", textAlign: "center" }}>{waTaps}</p>
                   <div style={{ textAlign: "center" }}>
                     {cvr !== null ? (
@@ -1899,12 +1899,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         })()}
 
         {/* ── Upgrade nudge ── */}
-        <div style={{ background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.12)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>Join a dealership</p>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f87171" }}>Join a dealership</p>
             <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Get an invite code from your dealer to unlock the full panel.</p>
           </div>
-          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "7px 14px", borderRadius: 8, background: "#1d4ed8", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "7px 14px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
             Enter Code →
           </button>
         </div>
@@ -1946,11 +1946,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       padding: "5px 11px",
       borderRadius: 7,
       cursor: "pointer",
-      background: active ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)",
+      background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)",
       border: active
-        ? "1px solid rgba(59,130,246,0.4)"
+        ? "1px solid rgba(220,38,38,0.3)"
         : "1px solid rgba(255,255,255,0.08)",
-      color: active ? "#93c5fd" : "#6b7280",
+      color: active ? "#f87171" : "#6b7280",
       fontWeight: active ? 600 : 400,
     });
 
@@ -1981,7 +1981,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "#1d4ed8",
+              background: "#dc2626",
               border: "none",
               borderRadius: 8,
               color: "#fff",
@@ -2165,7 +2165,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </p>
             <button
               onClick={() => setEditListing({})}
-              style={{ marginTop: 14, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: 9, background: "#1d4ed8", border: "none", color: "#fff", cursor: "pointer" }}
+              style={{ marginTop: 14, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: 9, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer" }}
             >
               + Add Listing
             </button>
@@ -2378,7 +2378,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           {isStale && !isHot && <span style={{ fontSize: 10, color: "#6b7280" }}>💤 Stale</span>}
                         </div>
                         <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "visible" }}>
-                          <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
+                          <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? "#ef4444" : "#4b5563", borderRadius: 99, transition: "width 0.3s" }} />
                         </div>
                         {isHovering && (
                           <div style={{
@@ -2670,7 +2670,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                             background: "#0d0d0d",
                             border:
                               i === carDetailImgIdx
-                                ? "1px solid rgba(59,130,246,0.6)"
+                                ? "1px solid rgba(220,38,38,0.4)"
                                 : "1px solid rgba(255,255,255,0.08)",
                             overflow: "hidden",
                             opacity: i === carDetailImgIdx ? 1 : 0.45,
@@ -2867,9 +2867,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       <span
                         style={{
                           fontSize: 10,
-                          color: "#93c5fd",
-                          background: "rgba(59,130,246,0.12)",
-                          border: "1px solid rgba(59,130,246,0.25)",
+                          color: "#f87171",
+                          background: "rgba(220,38,38,0.1)",
+                          border: "1px solid rgba(220,38,38,0.2)",
                           borderRadius: 4,
                           padding: "1px 6px",
                         }}
@@ -3542,10 +3542,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 value={editNoteVal}
                 onChange={e => setEditNoteVal(e.target.value)}
                 rows={2}
-                style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 6, color: "#e5e7eb", fontSize: 11, padding: "5px 8px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 11, padding: "5px 8px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
-                <button onClick={() => saveLeadNote(lead.id)} disabled={notesSavingId === lead.id} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", cursor: notesSavingId === lead.id ? "not-allowed" : "pointer", fontWeight: 600, opacity: notesSavingId === lead.id ? 0.5 : 1 }}>{notesSavingId === lead.id ? "…" : "Save"}</button>
+                <button onClick={() => saveLeadNote(lead.id)} disabled={notesSavingId === lead.id} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: notesSavingId === lead.id ? "not-allowed" : "pointer", fontWeight: 600, opacity: notesSavingId === lead.id ? 0.5 : 1 }}>{notesSavingId === lead.id ? "…" : "Save"}</button>
                 <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
@@ -3864,7 +3864,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               },
               trust: {
                 label: "Not sure / need to think",
-                color: "#93c5fd",
+                color: "#f87171",
                 lines: [
                   `"What specific questions can I answer right now? Let's remove all the uncertainty together."`,
                   `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`,
@@ -3927,7 +3927,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "#1d4ed8",
+              background: "#dc2626",
               border: "none",
               borderRadius: 8,
               color: "#fff",
@@ -3979,9 +3979,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       fontSize: 11,
                       fontWeight: isActive ? 600 : 400,
                       cursor: "pointer",
-                      background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.04)",
-                      border: isActive ? "1px solid rgba(37,99,235,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                      color: isActive ? "#93c5fd" : "#4b5563",
+                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                      border: isActive ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: isActive ? "#f87171" : "#4b5563",
                       textTransform: "capitalize",
                       whiteSpace: "nowrap",
                     }}
@@ -3990,8 +3990,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: isActive ? (sc.tx || "#93c5fd") : "#374151",
-                      background: isActive ? "rgba(37,99,235,0.15)" : "rgba(255,255,255,0.06)",
+                      color: isActive ? (sc.tx || "#f87171") : "#374151",
+                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
                       borderRadius: 99,
                       padding: "0px 6px",
                       lineHeight: 1.6,
@@ -4264,7 +4264,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
           <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
           <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Share your listing link to start getting enquiries.</p>
-          <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer" }}>
+          <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
             Go to Listings →
           </button>
         </div>
@@ -4477,7 +4477,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       borderRadius: 6,
                       background: "rgba(96,165,250,0.1)",
                       border: "1px solid rgba(96,165,250,0.2)",
-                      color: "#93c5fd",
+                      color: "#f87171",
                       cursor: "pointer",
                     }}
                   >
@@ -4680,7 +4680,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     borderRadius: 99,
                     background: "rgba(96,165,250,0.15)",
                     border: "1px solid rgba(96,165,250,0.3)",
-                    color: "#93c5fd",
+                    color: "#f87171",
                     flexShrink: 0,
                     letterSpacing: "0.05em",
                   }}
@@ -4719,7 +4719,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               margin: "0 0 2px",
               fontSize: 12,
               fontWeight: 600,
-              color: "#93c5fd",
+              color: "#f87171",
             }}
           >
             📅 {dateStr}
@@ -4940,7 +4940,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
             <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
             <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear here when customers book a test drive.</p>
-            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer" }}>
+            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
               Share a Listing →
             </button>
           </div>
@@ -5158,7 +5158,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           >
             {avatarUrl
               ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", display: "block" }} />
-              : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>
+              : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>
                   {initials}
                 </div>
             }
@@ -5246,7 +5246,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             style={{
               padding: "10px 16px",
               borderRadius: 8,
-              background: "#2563eb",
+              background: "#dc2626",
               border: "none",
               color: "#fff",
               fontSize: 13,
@@ -5317,7 +5317,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           style={{
             padding: "10px 16px",
             borderRadius: 8,
-            background: mergeStatus === "success" ? "#16a34a" : "#2563eb",
+            background: mergeStatus === "success" ? "#16a34a" : "#dc2626",
             border: "none",
             color: "#fff",
             fontSize: 13,
@@ -5531,7 +5531,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 width: "100%",
                 padding: "10px",
                 borderRadius: 8,
-                background: "#2563eb",
+                background: "#dc2626",
                 border: "none",
                 color: "#fff",
                 fontSize: 13,
@@ -5574,7 +5574,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder="e.g. Will visit showroom Saturday" style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-            <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#1d4ed8", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
+            <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
               {callSaving ? "Saving…" : "Log Call"}
             </button>
           </div>
@@ -5613,7 +5613,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Clear</button>
           )}
           <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-          <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#1d4ed8", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
+          <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
             {followUpSaving ? "Saving…" : "Set Reminder"}
           </button>
         </div>
@@ -5872,8 +5872,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               width: tourTarget.width + 6,
               height: tourTarget.height + 6,
               borderRadius: isMobile ? 8 : 10,
-              border: "2px solid #3b82f6",
-              boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
+              border: "2px solid #dc2626",
+              boxShadow: "0 0 0 4px rgba(220,38,38,0.18), 0 0 16px rgba(220,38,38,0.2)",
               pointerEvents: "none",
               zIndex: 1001,
               transition: "all 0.25s ease",
@@ -5886,7 +5886,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           style={{
             ...bubbleStyle,
             background: "#111827",
-            border: "1px solid rgba(59,130,246,0.3)",
+            border: "1px solid rgba(220,38,38,0.22)",
             borderRadius: 14,
             padding: "18px 18px 14px",
             boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
@@ -5917,7 +5917,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {/* Progress bar */}
           <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
             {TOUR_STEPS.map((_, i) => (
-              <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
+              <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#dc2626" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
             ))}
           </div>
 
@@ -5934,7 +5934,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </button>
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
-              style={{ padding: "7px 16px", borderRadius: 7, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
               {isLast ? "Got it 🎉" : "Next →"}
             </button>
@@ -5963,7 +5963,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             height: 28,
             borderRadius: "50%",
             border: "2px solid rgba(255,255,255,0.08)",
-            borderTopColor: "#2563eb",
+            borderTopColor: "#dc2626",
             animation: "spin 0.8s linear infinite",
           }}
         />
@@ -6025,7 +6025,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  color: isActive ? "#93c5fd" : "#4b5563",
+                  color: isActive ? "#f87171" : "#4b5563",
                   position: "relative",
                   padding: "6px 0",
                 }}
@@ -6040,7 +6040,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       width: 3,
                       height: 3,
                       borderRadius: 99,
-                      background: "#3b82f6",
+                      background: "#dc2626",
                     }}
                   />
                 )}
@@ -6062,7 +6062,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 </div>
                 {isActive && (
                   <span
-                    style={{ fontSize: 9, color: "#93c5fd", lineHeight: 1 }}
+                    style={{ fontSize: 9, color: "#f87171", lineHeight: 1 }}
                   >
                     {label}
                   </span>
@@ -6100,7 +6100,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               style={{
                 width: 28,
                 height: 28,
-                background: "#2563eb",
+                background: "#dc2626",
                 borderRadius: 6,
                 display: "flex",
                 alignItems: "center",
@@ -6168,12 +6168,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 borderRadius: 8,
                 cursor: "pointer",
                 background:
-                  activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+                  activeTab === tab ? "rgba(220,38,38,0.12)" : "transparent",
                 border:
                   activeTab === tab
-                    ? "0.5px solid rgba(37,99,235,0.25)"
+                    ? "0.5px solid rgba(220,38,38,0.2)"
                     : "0.5px solid transparent",
-                color: activeTab === tab ? "#93c5fd" : "#6b7280",
+                color: activeTab === tab ? "#f87171" : "#6b7280",
                 fontSize: 13,
                 fontWeight: 500,
                 width: "calc(100% - 16px)",
@@ -6186,9 +6186,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <span
                   style={{
                     fontSize: 10,
-                    background: "rgba(37,99,235,0.2)",
-                    border: "1px solid rgba(37,99,235,0.3)",
-                    color: "#93c5fd",
+                    background: "rgba(220,38,38,0.15)",
+                    border: "1px solid rgba(220,38,38,0.22)",
+                    color: "#f87171",
                     borderRadius: 99,
                     padding: "1px 6px",
                   }}
@@ -6215,14 +6215,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                background: "rgba(37,99,235,0.2)",
-                border: "1px solid rgba(37,99,235,0.3)",
+                background: "rgba(220,38,38,0.15)",
+                border: "1px solid rgba(220,38,38,0.22)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 12,
                 fontWeight: 700,
-                color: "#93c5fd",
+                color: "#f87171",
                 flexShrink: 0,
                 overflow: "hidden",
               }}
@@ -6296,7 +6296,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 style={{
                   width: 28,
                   height: 28,
-                  background: "#2563eb",
+                  background: "#dc2626",
                   borderRadius: 6,
                   display: "flex",
                   alignItems: "center",
@@ -6459,7 +6459,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  background: "#1d4ed8",
+                  background: "#dc2626",
                   border: "none",
                   borderRadius: 8,
                   color: "#fff",
@@ -6505,14 +6505,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             width: 44,
             height: 44,
             borderRadius: "50%",
-            background: "#2563eb",
+            background: "#dc2626",
             border: "none",
             color: "#fff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(37,99,235,0.4)",
+            boxShadow: "0 4px 12px rgba(220,38,38,0.3)",
           }}
         >
           <Plus size={20} />
@@ -7203,7 +7203,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         </div>
                         {isLinked
                           ? <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 600, flexShrink: 0 }}>✓ Linked</span>
-                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>Link →</button>
+                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>Link →</button>
                         }
                       </div>
                     );
