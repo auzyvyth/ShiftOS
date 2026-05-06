@@ -43,6 +43,12 @@ import { trackEvent } from "../utils/analytics";
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
 const fmtPrice = (n) => `RM ${fmt(n)}`;
+const fmtFinancing = (car) => {
+  if (car.financing_type === "cash") return "Cash Only";
+  if (car.financing_type === "sambung_bayar") return "Sambung Bayar";
+  if (car.financing_type === "loan") return "Loan Available";
+  return car.loan_eligible === false ? "Cash Only" : "Loan Available";
+};
 
 /* 90% loan, 3.5% flat p.a., 7-year tenure */
 const calcMonthly = (price) => {
@@ -1278,7 +1284,7 @@ export default function CarDetailPage() {
               { label:'Colour',       value: car.colour || '—' },
               { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
-              { label:'Loan',         value: car.loan_eligible === false ? 'Not Eligible' : 'Eligible' },
+              { label:'Financing',     value: fmtFinancing(car) },
             ].map(({ label, value }) => (
               <div key={label} style={{ padding:'14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
                 <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:5 }}>{label}</p>
@@ -1392,7 +1398,7 @@ export default function CarDetailPage() {
                       { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
                       { key:'Previous Owners',   val: car.previous_owners ?? '—' },
                       { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
-                      { key:'Loan Eligible',     val: car.loan_eligible === false ? 'No' : 'Yes' },
+                      { key:'Financing',         val: fmtFinancing(car) },
                       { key:'Warranty',          val: car.warranty_months > 0 ? car.warranty_months+' months' : 'None' },
                       { key:'Deposit to Reserve',val: car.deposit_amount > 0 ? 'RM '+fmt(car.deposit_amount) : '—' },
                       ...(isRecon ? [
@@ -1745,9 +1751,8 @@ export default function CarDetailPage() {
                     : "—",
                 },
                 {
-                  label: "Loan",
-                  value:
-                    car.loan_eligible === false ? "Not Eligible" : "Eligible",
+                  label: "Financing",
+                  value: fmtFinancing(car),
                 },
               ].map(({ label, value }) => (
                 <div key={label} className="cdp-stat-cell">
@@ -1909,8 +1914,8 @@ export default function CarDetailPage() {
                             : "—",
                         },
                         {
-                          key: "Loan Eligible",
-                          val: car.loan_eligible === false ? "No" : "Yes",
+                          key: "Financing",
+                          val: fmtFinancing(car),
                         },
                         {
                           key: "Warranty",

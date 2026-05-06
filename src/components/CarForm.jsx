@@ -73,6 +73,7 @@ const initialListing = {
   previous_owners: "",
   road_tax_expiry: "",
   loan_eligible: true,
+  financing_type: "loan",
   warranty_months: "",
   deposit_amount: "",
 };
@@ -882,6 +883,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             : "",
         road_tax_expiry: listing.road_tax_expiry || "",
         loan_eligible: listing.loan_eligible !== false,
+        financing_type: listing.financing_type || (listing.loan_eligible === false ? "cash" : "loan"),
         warranty_months:
           listing.warranty_months != null
             ? String(listing.warranty_months)
@@ -1319,7 +1321,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           ? parseInt(form.previous_owners)
           : null,
         road_tax_expiry: form.road_tax_expiry || null,
-        loan_eligible: form.loan_eligible !== false,
+        financing_type: form.financing_type || "loan",
+        loan_eligible: form.financing_type !== "cash",
         warranty_months: form.warranty_months
           ? parseInt(form.warranty_months)
           : null,
@@ -1710,11 +1713,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-          <Field label="Loan Eligible">
+          <Field label="Financing">
             <PillSelect
-              options={["Yes", "No"]}
-              value={form.loan_eligible ? "Yes" : "No"}
-              onChange={(v) => set("loan_eligible", v === "Yes")}
+              options={["Cash", "Loan", "Sambung Bayar"]}
+              value={
+                form.financing_type === "cash" ? "Cash"
+                : form.financing_type === "sambung_bayar" ? "Sambung Bayar"
+                : "Loan"
+              }
+              onChange={(v) => {
+                const ft = v === "Cash" ? "cash" : v === "Sambung Bayar" ? "sambung_bayar" : "loan";
+                set("financing_type", ft);
+                set("loan_eligible", ft !== "cash");
+              }}
             />
           </Field>
         </div>
@@ -2622,15 +2633,15 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     <span className="text-white">{form.road_tax_expiry}</span>
                   </>
                 )}
-                <span className="text-gray-500">Loan Eligible</span>
+                <span className="text-gray-500">Financing</span>
                 <span
                   className={
-                    form.loan_eligible
-                      ? "text-emerald-400 font-semibold"
-                      : "text-gray-400"
+                    form.financing_type === "cash"
+                      ? "text-gray-400"
+                      : "text-emerald-400 font-semibold"
                   }
                 >
-                  {form.loan_eligible ? "Yes" : "No"}
+                  {form.financing_type === "cash" ? "Cash Only" : form.financing_type === "sambung_bayar" ? "Sambung Bayar" : "Loan Available"}
                 </span>
                 {form.deposit_amount && (
                   <>
