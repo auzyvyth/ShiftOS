@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -205,6 +205,8 @@ export default function SalesmanLite() {
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteVal, setEditNoteVal] = useState("");
   const [waModalLead, setWaModalLead] = useState(null);
   const [waModalMsg, setWaModalMessage] = useState("");
 
@@ -276,9 +278,15 @@ export default function SalesmanLite() {
 
   const updateListingStatus = async (car, newStatus) => {
     setStatusMenuCarId(null);
+    const prevStatus = car.status;
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
     const { error: statusErr } = await supabase.from("car_listings").update({ status: newStatus }).eq("id", car.id);
-    if (statusErr) console.error("updateListingStatus:", statusErr);
+    if (statusErr) {
+      console.error("updateListingStatus:", statusErr);
+      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
+      toast.error("Failed to update status");
+      return;
+    }
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
   };
 
@@ -808,7 +816,11 @@ export default function SalesmanLite() {
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
-    if (stageErr) console.error("updateLeadStage:", stageErr);
+    if (stageErr) {
+      console.error("updateLeadStage:", stageErr);
+      toast.error("Failed to update lead stage");
+      return;
+    }
     const { error: actErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
@@ -830,9 +842,20 @@ export default function SalesmanLite() {
     setWaModalMessage(defaultMsg);
   };
 
+  const saveLeadNote = async (leadId) => {
+    const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
+    if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
+    setEditingNoteId(null);
+  };
+
   const handleDeleteLead = async (leadId) => {
     const { error: delErr } = await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
-    if (delErr) console.error("handleDeleteLead:", delErr);
+    if (delErr) {
+      console.error("handleDeleteLead:", delErr);
+      toast.error("Failed to delete lead");
+      return;
+    }
     setLeads((p) => p.filter((l) => l.id !== leadId));
     setDeleteConfirmId(null);
   };
@@ -842,7 +865,11 @@ export default function SalesmanLite() {
       .from("leads")
       .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
       .eq("id", leadId);
-    if (linkErr) console.error("handleLinkCar:", linkErr);
+    if (linkErr) {
+      console.error("handleLinkCar:", linkErr);
+      toast.error("Failed to link car");
+      return;
+    }
     const car = myListings.find((c) => c.id === carId);
     setLeads((p) => p.map((l) =>
       l.id === leadId
@@ -864,7 +891,11 @@ export default function SalesmanLite() {
       .from("leads")
       .update({ stage: "lost", loss_reason: reason, updated_at: now })
       .eq("id", leadId);
-    if (lostErr) console.error("handleLostReason:", lostErr);
+    if (lostErr) {
+      console.error("handleLostReason:", lostErr);
+      toast.error("Failed to mark lead as lost");
+      return;
+    }
     const { error: lostActErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
@@ -947,7 +978,11 @@ export default function SalesmanLite() {
 
   const updateApptStatus = async (apptId, status) => {
     const { error: apptErr } = await supabase.from("appointments").update({ status }).eq("id", apptId);
-    if (apptErr) console.error("updateApptStatus:", apptErr);
+    if (apptErr) {
+      console.error("updateApptStatus:", apptErr);
+      toast.error("Failed to update appointment");
+      return;
+    }
     setAppointments((p) =>
       p.map((a) => (a.id === apptId ? { ...a, status } : a)),
     );
@@ -972,7 +1007,12 @@ export default function SalesmanLite() {
       })
       .select()
       .single();
-    if (addLeadErr) console.error("handleAddLead:", addLeadErr);
+    if (addLeadErr) {
+      console.error("handleAddLead:", addLeadErr);
+      toast.error("Failed to add lead");
+      setAddLeadSaving(false);
+      return;
+    }
     if (data) setLeads((p) => [data, ...p]);
     setAddLeadSaving(false);
     setShowAddLead(false);
@@ -1135,6 +1175,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   };
 
   const runBroadcast = (eligibleLeads) => {
+    const msgSnapshot = broadcastMsg; // capture before async delays
     const capped = eligibleLeads.slice(0, 10);
     setBroadcastProgress({ current: 0, total: capped.length });
     capped.forEach((lead, i) => {
@@ -1142,7 +1183,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         const phone = (lead.phone || "").replace(/\D/g, "");
         if (phone) {
           window.open(
-            `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(broadcastMsg)}`,
+            `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msgSnapshot)}`,
             "_blank",
             "noopener,noreferrer",
           );
@@ -1669,11 +1710,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const filtered = enriched.filter((e) => (e.car.status || "available") === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === "price_desc")
-        return (b.car.selling_price || 0) - (a.car.selling_price || 0);
-      if (sortBy === "price_asc")
-        return (a.car.selling_price || 0) - (b.car.selling_price || 0);
-      return 0;
+      if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
+      if (sortBy === "price_asc")  return (a.car.selling_price || 0) - (b.car.selling_price || 0);
+      if (sortBy === "oldest")     return new Date(a.car.created_at) - new Date(b.car.created_at);
+      return new Date(b.car.created_at) - new Date(a.car.created_at); // newest (default)
     });
 
     const SEL_STYLE = (active) => ({
@@ -3217,19 +3257,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               📞 {lead.phone}
             </p>
           )}
-          {lead.notes && (
+          {editingNoteId === lead.id ? (
+            <div style={{ margin: "0 0 6px" }}>
+              <textarea
+                autoFocus
+                value={editNoteVal}
+                onChange={e => setEditNoteVal(e.target.value)}
+                rows={2}
+                style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 6, color: "#e5e7eb", fontSize: 11, padding: "5px 8px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+              />
+              <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
+                <button onClick={() => saveLeadNote(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", cursor: "pointer", fontWeight: 600 }}>Save</button>
+                <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
             <p
-              style={{
-                margin: "0 0 6px",
-                fontSize: 10,
-                color: "#4b5563",
-                fontStyle: "italic",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              onClick={() => { setEditingNoteId(lead.id); setEditNoteVal(lead.notes || ""); }}
+              style={{ margin: "0 0 6px", fontSize: 10, color: lead.notes ? "#4b5563" : "#374151", fontStyle: lead.notes ? "italic" : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+              title="Click to edit note"
             >
-              "{lead.notes}"
+              {lead.notes ? `"${lead.notes}"` : "+ add note"}
             </p>
           )}
           {isConfirmingDelete ? (
