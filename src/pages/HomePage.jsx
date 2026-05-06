@@ -379,6 +379,7 @@ const HomePage = () => {
   const [bodyType, setBodyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [superadminPhone, setSuperadminPhone] = useState(null);
+  const [buyerState, setBuyerState] = useState("");
 
   // On main domain (no tenant), fetch superadmin WhatsApp so the CTA button works
   useEffect(() => {
@@ -1621,6 +1622,28 @@ const HomePage = () => {
             >
               {ctaSubtitle}
             </p>
+            <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>📍 Where are you from? (optional)</span>
+              <select
+                value={buyerState}
+                onChange={(e) => setBuyerState(e.target.value)}
+                style={{
+                  fontSize: 12,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 6,
+                  color: "#9ca3af",
+                  padding: "7px 12px",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">— select state —</option>
+                {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -1659,6 +1682,7 @@ const HomePage = () => {
                       buyer_message: `General enquiry from homepage CTA`,
                       source: "homepage_cta",
                       status: "new",
+                      buyer_state: buyerState || null,
                     })
                     .then(() => {});
                 }}

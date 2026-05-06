@@ -206,6 +206,7 @@ export default function SalesmanLite() {
     notes: "",
     car_listing_id: "",
     stage: "new",
+    buyer_state: "",
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -1095,6 +1096,7 @@ export default function SalesmanLite() {
         lead_source: "manual",
         is_deleted: false,
         loss_reason: null,
+        buyer_state: addLeadForm.buyer_state || null,
       })
       .select()
       .single();
@@ -1113,6 +1115,7 @@ export default function SalesmanLite() {
       notes: "",
       car_listing_id: "",
       stage: "new",
+      buyer_state: "",
     });
   };
 
@@ -5485,6 +5488,40 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   />
                 </div>
               ))}
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  State (optional)
+                </label>
+                <select
+                  value={addLeadForm.buyer_state}
+                  onChange={(e) =>
+                    setAddLeadForm((p) => ({ ...p, buyer_state: e.target.value }))
+                  }
+                  style={{
+                    width: "100%",
+                    background: "#111827",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    color: "#e5e7eb",
+                    fontSize: 13,
+                    padding: "9px 12px",
+                    outline: "none",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="">— select state —</option>
+                  {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <button
               onClick={handleAddLead}

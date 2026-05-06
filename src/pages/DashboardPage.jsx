@@ -1854,6 +1854,67 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
       }
     });
   }, [profile?.id]);
+
+  // ── Demand Heatmap state ───────────────────────────────────────────────────
+  const [heatmapLeads, setHeatmapLeads] = useState([]);
+  const [heatmapLoading, setHeatmapLoading] = useState(true);
+  const [heatmapModelFilter, setHeatmapModelFilter] = useState("all");
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const dealerId = getDealerIdFromProfile(profile);
+    if (!dealerId) return;
+    supabase
+      .from("leads")
+      .select("id, buyer_state, stage, car_listing_id, car_listings(brand, model, year)")
+      .eq("dealer_id", dealerId)
+      .not("buyer_state", "is", null)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setHeatmapLeads(data || []);
+        setHeatmapLoading(false);
+      });
+  }, [profile?.id]);
+
+  const stateDemand = useMemo(() => {
+    const filtered = heatmapModelFilter === "all"
+      ? heatmapLeads
+      : heatmapLeads.filter(l => {
+          const name = l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : null;
+          return name === heatmapModelFilter;
+        });
+    const map = {};
+    filtered.forEach(lead => {
+      const state = lead.buyer_state;
+      if (!state) return;
+      if (!map[state]) map[state] = { total: 0, models: {} };
+      map[state].total++;
+      const model = lead.car_listings
+        ? `${lead.car_listings.brand} ${lead.car_listings.model}`
+        : "Unknown";
+      map[state].models[model] = (map[state].models[model] || 0) + 1;
+    });
+    return map;
+  }, [heatmapLeads, heatmapModelFilter]);
+
+  const maxStateCount = useMemo(() =>
+    Math.max(1, ...Object.values(stateDemand).map(s => s.total)),
+  [stateDemand]);
+
+  const allModels = useMemo(() => {
+    const set = new Set();
+    heatmapLeads.forEach(l => {
+      if (l.car_listings) set.add(`${l.car_listings.brand} ${l.car_listings.model}`);
+    });
+    return ["all", ...Array.from(set).sort()];
+  }, [heatmapLeads]);
+
+  const sortedStates = useMemo(() =>
+    Object.entries(stateDemand)
+      .sort((a, b) => b[1].total - a[1].total),
+  [stateDemand]);
+  // ── end Demand Heatmap state ───────────────────────────────────────────────
+
   const totalClicks = events.filter(
     (e) => e.event_type === "link_visit" || e.event_type === "car_view" || e.event_type === "card_click",
   ).length;
@@ -2731,6 +2792,185 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
             </div>
           </div>
         )}
+
+        {/* ── Demand Heatmap ─────────────────────────────────────────────── */}
+        {(() => {
+          const PENINSULA_TILES = [
+            { state: "Perlis",          l: "74%", t: "1%",  w: "20%", h: "6%" },
+            { state: "Kedah",           l: "44%", t: "4%",  w: "28%", h: "11%" },
+            { state: "Penang",          l: "28%", t: "12%", w: "16%", h: "7%" },
+            { state: "Kelantan",        l: "66%", t: "7%",  w: "30%", h: "18%" },
+            { state: "Perak",           l: "26%", t: "17%", w: "26%", h: "22%" },
+            { state: "Terengganu",      l: "67%", t: "23%", w: "28%", h: "18%" },
+            { state: "Pahang",          l: "48%", t: "28%", w: "26%", h: "24%" },
+            { state: "Selangor",        l: "24%", t: "52%", w: "24%", h: "14%" },
+            { state: "Kuala Lumpur",    l: "44%", t: "54%", w: "12%", h: "8%" },
+            { state: "Putrajaya",       l: "44%", t: "61%", w: "12%", h: "5%" },
+            { state: "Negeri Sembilan", l: "28%", t: "65%", w: "26%", h: "10%" },
+            { state: "Melaka",          l: "30%", t: "74%", w: "22%", h: "8%" },
+            { state: "Johor",           l: "26%", t: "82%", w: "50%", h: "13%" },
+          ];
+          const EAST_TILES = [
+            { state: "Sarawak", l: "2%",  t: "10%", w: "75%", h: "65%" },
+            { state: "Sabah",   l: "60%", t: "2%",  w: "38%", h: "45%" },
+            { state: "Labuan",  l: "60%", t: "46%", w: "12%", h: "12%" },
+          ];
+          const getTileStyle = (state) => {
+            const d = stateDemand[state];
+            const count = d ? d.total : 0;
+            const intensity = count > 0 ? (count / maxStateCount) * 0.7 + 0.1 : 0;
+            return {
+              background: count > 0 ? `rgba(16,185,129,${intensity})` : "rgba(255,255,255,0.05)",
+              border: count > 0 ? `1px solid rgba(16,185,129,${intensity + 0.2})` : "1px solid rgba(255,255,255,0.07)",
+            };
+          };
+          const abbrev = (s) => s.length > 9 ? s.slice(0, 8) + "…" : s;
+          return (
+            <div style={{
+              marginTop: 32,
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 12,
+              padding: "20px 24px",
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#4b5563", marginBottom: 4 }}>Geographic Demand</p>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#e5e7eb" }}>🗺 Lead Demand by State</p>
+                </div>
+                <select
+                  value={heatmapModelFilter}
+                  onChange={(e) => setHeatmapModelFilter(e.target.value)}
+                  style={{
+                    background: "#111827",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    color: "#e5e7eb",
+                    fontSize: 12,
+                    padding: "7px 12px",
+                    outline: "none",
+                  }}
+                >
+                  {allModels.map(m => (
+                    <option key={m} value={m}>{m === "all" ? "All models" : m}</option>
+                  ))}
+                </select>
+              </div>
+
+              {heatmapLoading ? (
+                <p style={{ color: "#6b7280", fontSize: 13 }}>Loading heatmap…</p>
+              ) : heatmapLeads.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>No location data yet.</p>
+                  <p style={{ color: "#4b5563", fontSize: 12, marginTop: 6 }}>Salesmen will capture buyer state when adding leads.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  {/* Maps column */}
+                  <div style={{ flexShrink: 0 }}>
+                    {/* Peninsula */}
+                    <p style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, marginTop: 0 }}>Peninsular Malaysia</p>
+                    <div style={{ position: "relative", width: 200, height: 260, overflow: "hidden", marginBottom: 12 }}>
+                      {PENINSULA_TILES.map(({ state, l, t, w, h }) => {
+                        const d = stateDemand[state];
+                        const ts = getTileStyle(state);
+                        return (
+                          <div
+                            key={state}
+                            title={state + (d ? `: ${d.total} lead${d.total !== 1 ? 's' : ''}` : ': 0 leads')}
+                            style={{
+                              position: "absolute",
+                              left: l, top: t, width: w, height: h,
+                              ...ts,
+                              borderRadius: 4,
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexDirection: "column",
+                              cursor: "default",
+                            }}
+                          >
+                            <span style={{ fontSize: 7, color: "#fff", textAlign: "center", lineHeight: 1.2, opacity: 0.85 }}>{abbrev(state)}</span>
+                            {d && d.total > 0 && (
+                              <span style={{ fontSize: 8, color: "#6ee7b7", fontWeight: 700, marginTop: 1 }}>{d.total}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* East Malaysia */}
+                    <p style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, marginTop: 0 }}>East Malaysia</p>
+                    <div style={{ position: "relative", width: 200, height: 100, overflow: "hidden" }}>
+                      {EAST_TILES.map(({ state, l, t, w, h }) => {
+                        const d = stateDemand[state];
+                        const ts = getTileStyle(state);
+                        return (
+                          <div
+                            key={state}
+                            title={state + (d ? `: ${d.total} lead${d.total !== 1 ? 's' : ''}` : ': 0 leads')}
+                            style={{
+                              position: "absolute",
+                              left: l, top: t, width: w, height: h,
+                              ...ts,
+                              borderRadius: 4,
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexDirection: "column",
+                              cursor: "default",
+                            }}
+                          >
+                            <span style={{ fontSize: 7, color: "#fff", textAlign: "center", lineHeight: 1.2, opacity: 0.85 }}>{state}</span>
+                            {d && d.total > 0 && (
+                              <span style={{ fontSize: 8, color: "#6ee7b7", fontWeight: 700, marginTop: 1 }}>{d.total}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Ranked list */}
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <p style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 0 }}>Top States by Leads</p>
+                    {sortedStates.length === 0 ? (
+                      <p style={{ color: "#4b5563", fontSize: 12 }}>No data for selected filter.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {sortedStates.slice(0, 10).map(([state, data]) => {
+                          const topModel = Object.entries(data.models).sort((a, b) => b[1] - a[1])[0];
+                          const barW = Math.round((data.total / maxStateCount) * 100);
+                          return (
+                            <div key={state} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ width: 120, flexShrink: 0 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                  <span style={{ fontSize: 12, color: "#e5e7eb", fontWeight: 500 }}>{state}</span>
+                                  <span style={{ fontSize: 12, color: "#34d399", fontWeight: 700 }}>{data.total}</span>
+                                </div>
+                                <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${barW}%`, background: "rgba(16,185,129,0.7)", borderRadius: 2 }} />
+                                </div>
+                              </div>
+                              {topModel && (
+                                <span style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 160 }}>
+                                  {topModel[0]} ×{topModel[1]}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );

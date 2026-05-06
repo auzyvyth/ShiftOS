@@ -181,6 +181,7 @@ export default function SalesmanPanel() {
     notes: "",
     car_listing_id: "",
     stage: "new",
+    buyer_state: "",
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
 
@@ -1147,6 +1148,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         car_listing_id: addLeadForm.car_listing_id || null,
         stage: "new",
         lead_source: "manual",
+        buyer_state: addLeadForm.buyer_state || null,
       })
       .select()
       .single();
@@ -1159,6 +1161,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       notes: "",
       car_listing_id: "",
       stage: "new",
+      buyer_state: "",
     });
   };
 
@@ -6787,6 +6790,42 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       <option key={c.id} value={c.id}>
                         {c.year} {c.brand} {c.model}
                       </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    State (optional)
+                  </label>
+                  <select
+                    value={addLeadForm.buyer_state}
+                    onChange={(e) =>
+                      setAddLeadForm((p) => ({
+                        ...p,
+                        buyer_state: e.target.value,
+                      }))
+                    }
+                    style={{
+                      width: "100%",
+                      background: "#111827",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      padding: "9px 12px",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">— select state —</option>
+                    {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map((s) => (
+                      <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
                 </div>
