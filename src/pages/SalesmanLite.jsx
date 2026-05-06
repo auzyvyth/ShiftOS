@@ -3659,7 +3659,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             </div>
           ) : (
-            {/* Tier 1 — Stage actions */}
+            <>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {nextStage && lead.stage !== "won" && (
                 <button
@@ -3797,6 +3797,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <History size={10} /> History
               </button>
             </div>
+            </>
           )}
 
           {/* Activity timeline */}
