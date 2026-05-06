@@ -41,6 +41,11 @@ import {
   Gauge,
   Sparkles,
   Eye,
+  PhoneCall,
+  History,
+  Search,
+  DollarSign,
+  Clock,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -213,6 +218,23 @@ export default function SalesmanLite() {
   const [notesSavingId, setNotesSavingId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
   const [waModalMsg, setWaModalMessage] = useState("");
+  // Lead search
+  const [leadSearch, setLeadSearch] = useState("");
+  // Activity timeline
+  const [leadActivities, setLeadActivities] = useState({});
+  const [expandedActivityLeadId, setExpandedActivityLeadId] = useState(null);
+  const [activitiesLoadingId, setActivitiesLoadingId] = useState(null);
+  // Call logging
+  const [logCallLeadId, setLogCallLeadId] = useState(null);
+  const [callOutcome, setCallOutcome] = useState("answered");
+  const [callNote, setCallNote] = useState("");
+  const [callSaving, setCallSaving] = useState(false);
+  // Follow-up scheduler
+  const [followUpModalLead, setFollowUpModalLead] = useState(null);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+  // Commission
+  const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
 
   // settings
   const [settingsForm, setSettingsForm] = useState({
@@ -347,19 +369,18 @@ export default function SalesmanLite() {
     }).catch((e) => { console.error("precacheImages open:", e); });
   };
 
-  // stale leads (48h)
+  // stale leads (48h no contact) + overdue follow-ups
   useEffect(() => {
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    const now = Date.now();
     setStaleLeads(
-      leads.filter(
-        (l) =>
-          l.stage !== "won" &&
-          l.stage !== "lost" &&
-          l.stage !== "closed_won" &&
-          l.stage !== "closed_lost" &&
-          l.updated_at &&
-          new Date(l.updated_at).getTime() < cutoff,
-      ),
+      leads.filter((l) => {
+        const closed = ["won","lost","closed_won","closed_lost"].includes(l.stage);
+        if (closed) return false;
+        const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at).getTime() <= now;
+        const stale48h = l.updated_at && new Date(l.updated_at).getTime() < cutoff;
+        return overdueFollowUp || stale48h;
+      }),
     );
   }, [leads]);
 
@@ -476,6 +497,18 @@ export default function SalesmanLite() {
         setMyListings(merged);
         writeCache(`slite_listings_${uid}`, merged);
         precacheImages(merged);
+        // Commission this month from sold listings
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        supabase
+          .from("car_listings")
+          .select("commission_amount, sold_at")
+          .eq("assigned_to", uid)
+          .eq("status", "sold")
+          .gte("sold_at", monthStart)
+          .then(({ data: soldThisMonth }) => {
+            const total = (soldThisMonth || []).reduce((s, l) => s + (Number(l.commission_amount) || 0), 0);
+            setCommissionData({ total, count: (soldThisMonth || []).length });
+          });
       });
 
       // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
@@ -854,6 +887,53 @@ export default function SalesmanLite() {
     if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
     setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
     setEditingNoteId(null);
+  };
+
+  const fetchLeadActivities = async (leadId) => {
+    if (leadActivities[leadId]) { setExpandedActivityLeadId(leadId); return; }
+    setActivitiesLoadingId(leadId);
+    const { data, error } = await supabase
+      .from("lead_activities")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) console.error("fetchLeadActivities:", error);
+    setLeadActivities((p) => ({ ...p, [leadId]: data || [] }));
+    setActivitiesLoadingId(null);
+    setExpandedActivityLeadId(leadId);
+  };
+
+  const logCall = async () => {
+    if (!logCallLeadId) return;
+    setCallSaving(true);
+    const lead = leads.find((l) => l.id === logCallLeadId);
+    const { error } = await supabase.from("lead_activities").insert({
+      lead_id: logCallLeadId,
+      activity_type: "call_logged",
+      note: `${callOutcome}${callNote ? ` — ${callNote}` : ""}`,
+      created_by: userId,
+      dealer_id: lead?.dealer_id ?? null,
+    });
+    if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+    await supabase.from("leads").update({ updated_at: new Date().toISOString() }).eq("id", logCallLeadId);
+    setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString() } : l));
+    setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
+    toast.success("Call logged");
+    setCallSaving(false);
+    setLogCallLeadId(null);
+    setCallNote("");
+    setCallOutcome("answered");
+  };
+
+  const saveFollowUp = async (leadId, date) => {
+    setFollowUpSaving(true);
+    const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
+    if (error) console.error("saveFollowUp:", error); // column may not exist yet — still update local state
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
+    setFollowUpSaving(false);
+    setFollowUpModalLead(null);
+    toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
   };
 
   const handleDeleteLead = async (leadId) => {
@@ -1479,8 +1559,74 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       { label: "Closed", value: wonLeads.length, color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.15)", accent: "#fbbf24", icon: "🏆" },
     ];
 
+    // Today's agenda items
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const agendaAppts = appointments.filter((a) => a.appointment_date?.slice(0, 10) === todayStr);
+    const agendaFollowUps = leads.filter((l) => l.follow_up_at?.slice(0, 10) === todayStr && !["won","lost","closed_won","closed_lost"].includes(l.stage));
+    const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
+    const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+        {/* ── Today's Agenda ── */}
+        {hasAgenda && (
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <Calendar size={13} color="#c084fc" />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f1f5f9" }}>Today's Agenda</p>
+              <span style={{ fontSize: 11, color: "#4b5563", marginLeft: "auto" }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "short" })}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {agendaAppts.map((a) => (
+                <div key={a.id} onClick={() => setActiveTab("bookings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>📅</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Test drive · {a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</p>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", color: "#c084fc", textTransform: "capitalize" }}>{a.status}</span>
+                </div>
+              ))}
+              {agendaFollowUps.map((l) => (
+                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>⏰</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>Follow up</span>
+                </div>
+              ))}
+              {agendaStale.slice(0, 3).map((l) => (
+                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>💬</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>No contact · {timeAgo(l.updated_at)}</p>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>WA</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Commission this month ── */}
+        {commissionData.count > 0 && (
+          <div style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.06), rgba(251,191,36,0.02))", border: "1px solid rgba(251,191,36,0.18)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <DollarSign size={16} color="#fbbf24" />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Commission This Month</p>
+              <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color: "#fbbf24", letterSpacing: "-0.02em" }}>
+                RM {commissionData.total.toLocaleString("en-MY")}
+              </p>
+              <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Start Here onboarding card ── */}
         {isNewUser && !profile?.onboarding_tour_done && (
@@ -3152,10 +3298,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   // (() => { ... })().map() chain closes correctly.
 
   const renderLeads = () => {
+    const searchedLeads = leadSearch.trim()
+      ? leads.filter((l) => {
+          const q = leadSearch.toLowerCase();
+          return (
+            (l.buyer_name || "").toLowerCase().includes(q) ||
+            (l.phone || "").includes(q) ||
+            (l.notes || "").toLowerCase().includes(q)
+          );
+        })
+      : leads;
+
     const activeStages = LEAD_STAGES.filter(
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
     );
-    const lostLeads = leads.filter(
+    const lostLeads = searchedLeads.filter(
       (l) => l.stage === "lost" || l.stage === "closed_lost",
     );
 
@@ -3519,6 +3676,61 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   Receipt
                 </button>
               )}
+              <button
+                onClick={() => { setLogCallLeadId(lead.id); setCallOutcome("answered"); setCallNote(""); }}
+                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                <PhoneCall size={10} /> Call
+              </button>
+              <button
+                onClick={() => { setFollowUpModalLead(lead); setFollowUpDate(lead.follow_up_at ? lead.follow_up_at.slice(0,10) : ""); }}
+                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: lead.follow_up_at ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: lead.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: lead.follow_up_at ? "#fbbf24" : "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                <Clock size={10} /> {lead.follow_up_at ? "Remind" : "Remind"}
+              </button>
+              <button
+                onClick={() => {
+                  if (expandedActivityLeadId === lead.id) { setExpandedActivityLeadId(null); }
+                  else { fetchLeadActivities(lead.id); }
+                }}
+                style={{ fontSize: 10, padding: "6px 10px", borderRadius: 5, background: expandedActivityLeadId === lead.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                <History size={10} /> History
+              </button>
+            </div>
+          )}
+
+          {/* Activity timeline */}
+          {expandedActivityLeadId === lead.id && (
+            <div style={{ marginTop: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "10px 12px" }}>
+              <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+              {activitiesLoadingId === lead.id ? (
+                <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>Loading…</p>
+              ) : (leadActivities[lead.id] || []).length === 0 ? (
+                <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>No activity yet.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {(leadActivities[lead.id] || []).map((act, i) => {
+                    const icon = act.activity_type === "whatsapp_sent" ? "💬"
+                      : act.activity_type === "call_logged" ? "📞"
+                      : act.activity_type === "stage_changed" ? "🔄"
+                      : "📝";
+                    return (
+                      <div key={act.id || i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>
+                            {act.activity_type === "stage_changed"
+                              ? `${act.from_stage || "?"} → ${act.to_stage || "?"}`
+                              : act.note || act.activity_type}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -3634,13 +3846,29 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </button>
         </div>
 
+        {/* Search bar */}
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#4b5563", pointerEvents: "none" }} />
+          <input
+            value={leadSearch}
+            onChange={(e) => setLeadSearch(e.target.value)}
+            placeholder="Search by name or phone…"
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+          />
+          {leadSearch && (
+            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
         {isMobile ? (
           <>
             {/* Mobile: pill filter row */}
             <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
               {activeStages.map((stage) => {
                 const sc = STAGE_COLOR[stage] || {};
-                const count = leads.filter((l) => l.stage === stage).length;
+                const count = searchedLeads.filter((l) => l.stage === stage).length;
                 const isActive = mobileLeadStage === stage;
                 return (
                   <button
@@ -3682,7 +3910,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
             {/* Mobile: vertical card list for selected stage */}
             {(() => {
-              const stageLeads = leads
+              const stageLeads = searchedLeads
                 .filter((l) => l.stage === mobileLeadStage)
                 .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
               if (stageLeads.length === 0) {
@@ -3711,7 +3939,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           >
             {activeStages.map((stage) => {
               const sc = STAGE_COLOR[stage] || {};
-              const stageLeads = leads
+              const stageLeads = searchedLeads
                 .filter((l) => l.stage === stage)
                 .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
               return (
@@ -5190,6 +5418,80 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       </div>
     );
 
+  // ── LOG CALL MODAL ────────────────────────────────────────────────────────
+
+  const renderLogCallModal = () => logCallLeadId && (() => {
+    const lead = leads.find((l) => l.id === logCallLeadId);
+    const OUTCOMES = [
+      { key: "answered", label: "✅ Answered", color: "#4ade80" },
+      { key: "no_answer", label: "📵 No Answer", color: "#f87171" },
+      { key: "callback_requested", label: "🔁 Callback Requested", color: "#fbbf24" },
+      { key: "voicemail", label: "📬 Left Voicemail", color: "#94a3b8" },
+    ];
+    return (
+      <div onClick={() => setLogCallLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Log Call</p>
+          <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{lead?.buyer_name || "—"} · {lead?.phone || "—"}</p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Outcome</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            {OUTCOMES.map((o) => (
+              <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280" }}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Note (optional)</p>
+          <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder="e.g. Will visit showroom Saturday" style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#1d4ed8", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
+              {callSaving ? "Saving…" : "Log Call"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
+  // ── FOLLOW-UP MODAL ────────────────────────────────────────────────────────
+
+  const renderFollowUpModal = () => followUpModalLead && (
+    <div onClick={() => setFollowUpModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Set Follow-up Reminder</p>
+        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{followUpModalLead.buyer_name || "—"}</p>
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Remind me on</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          {[
+            { label: "Tomorrow", days: 1 },
+            { label: "In 2 days", days: 2 },
+            { label: "In 3 days", days: 3 },
+            { label: "Next week", days: 7 },
+          ].map(({ label, days }) => {
+            const d = new Date(); d.setDate(d.getDate() + days);
+            const val = d.toISOString().slice(0, 10);
+            return (
+              <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val ? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val ? 600 : 400 }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+        <div style={{ display: "flex", gap: 8 }}>
+          {followUpModalLead.follow_up_at && (
+            <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Clear</button>
+          )}
+          <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+          <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#1d4ed8", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
+            {followUpSaving ? "Saving…" : "Set Reminder"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── WA MESSAGE MODAL ──────────────────────────────────────────────────────
 
   const renderWAModal = () =>
@@ -6088,6 +6390,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
       {renderAddLeadModal()}
       {renderWAModal()}
+      {renderLogCallModal()}
+      {renderFollowUpModal()}
       {renderNotifPanel()}
       {renderCarDetailPopup()}
       {renderTour()}
