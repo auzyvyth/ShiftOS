@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -23,6 +24,8 @@ import {
   Bell,
   Target,
   TrendingUp,
+  BarChart2,
+  Bot,
   ChevronRight,
   ChevronLeft,
   Plus,
@@ -47,6 +50,23 @@ import {
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
+
+function getListingAge(createdAt) {
+  if (!createdAt) return 0;
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+}
+
+const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
+  const d = getListingAge(createdAt);
+  const color = d >= 30 ? "#fbbf24" : d >= 14 ? "#94a3b8" : "#4b5563";
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, color, background: d >= 30 ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${d >= 30 ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 20, padding: "2px 8px" }}>
+      {d}d
+    </span>
+  );
+});
 
 function formatApptDate(iso) {
   const d = new Date(iso);
@@ -179,6 +199,16 @@ export default function SalesmanPanel() {
   // Commission breakdown
   const [commissionDetails, setCommissionDetails] = useState([]);
 
+  // AI advisor (analytics tab)
+  const [aiMessages, setAiMessages] = useState([{ role: "assistant", content: "Hi! I'm your performance advisor. I can see your listings and help with pricing and conversions. What would you like to know?" }]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const aiEndRef = useRef(null);
+  useEffect(() => {
+    if (aiChatOpen) aiEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages, aiChatOpen]);
+
   // Listings sort/filter
   const [sortBy, setSortBy] = useState("newest");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -275,7 +305,7 @@ export default function SalesmanPanel() {
       if (profileData.slug) {
         const { data: evts } = await supabase
           .from("analytics_events")
-          .select("event_type, created_at")
+          .select("event_type, created_at, car_id")
           .eq("salesman_slug", profileData.slug);
         if (evts) {
           setRawEvents(evts);
@@ -303,11 +333,16 @@ export default function SalesmanPanel() {
             const map = {};
             (evtData || []).forEach((e) => {
               if (!e.car_id) return;
-              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
-              if (["car_view", "link_visit"].includes(e.event_type))
-                map[e.car_id].views++;
-              if (["whatsapp_click", "call_click"].includes(e.event_type))
-                map[e.car_id].enquiries++;
+              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0, whatsapp: 0, calls: 0, bookings: 0 };
+              if (["car_view", "link_visit"].includes(e.event_type)) map[e.car_id].views++;
+              if (["whatsapp_click", "call_click"].includes(e.event_type)) map[e.car_id].enquiries++;
+              if (e.event_type === "whatsapp_click") map[e.car_id].whatsapp++;
+              if (e.event_type === "call_click") map[e.car_id].calls++;
+              if (e.event_type === "booking_click") map[e.car_id].bookings++;
+            });
+            Object.values(map).forEach(s => {
+              const leads = s.whatsapp + s.calls;
+              s.cvr = s.views > 0 ? ((leads / s.views) * 100).toFixed(1) + "%" : null;
             });
             setCarStatsMap(map);
           });
@@ -4928,28 +4963,328 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     </div>
   );
 
-  const renderAnalytics = () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: 300,
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <TrendingUp size={32} color="#374151" style={{ marginBottom: 12 }} />
-        <p
-          style={{ margin: 0, fontSize: 14, color: "#4b5563", fontWeight: 500 }}
-        >
-          Analytics coming soon
-        </p>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>
-          Detailed performance data will appear here.
-        </p>
+  const renderAnalytics = () => {
+    const totalClicks   = rawEvents.filter(e => ["link_visit","car_view","card_click"].includes(e.event_type)).length;
+    const totalWa       = rawEvents.filter(e => e.event_type === "whatsapp_click").length;
+    const totalCalls    = rawEvents.filter(e => e.event_type === "call_click").length;
+    const totalBookings = rawEvents.filter(e => e.event_type === "booking_click").length;
+    const storeVisits   = rawEvents.filter(e => ["store_visit","car_view","page_view"].includes(e.event_type)).length;
+
+    const dailyChart = (() => {
+      const result = [];
+      const now = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const label = d.toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+        const day = rawEvents.filter(e => e.created_at?.slice(0, 10) === dateStr);
+        result.push({
+          date: label,
+          visits:   day.filter(e => ["store_visit","car_view","page_view"].includes(e.event_type)).length,
+          clicks:   day.filter(e => ["link_visit","card_click"].includes(e.event_type)).length,
+          whatsapp: day.filter(e => e.event_type === "whatsapp_click").length,
+          calls:    day.filter(e => e.event_type === "call_click").length,
+          bookings: day.filter(e => e.event_type === "booking_click").length,
+        });
+      }
+      return result;
+    })();
+
+    const total  = myListings.length;
+    const active = myListings.filter(l => (l.status || "available") === "available").length;
+    const sold   = myListings.filter(l => l.status === "sold").length;
+    const avgAge = total ? Math.round(myListings.reduce((s, l) => s + getListingAge(l.created_at), 0) / total) : 0;
+    const stale  = myListings.filter(l => getListingAge(l.created_at) >= 30 && (l.status || "available") === "available");
+    const sorted = [...myListings].sort((a, b) => (carStatsMap[b.id]?.views || 0) - (carStatsMap[a.id]?.views || 0));
+
+    const aiCtx = () => {
+      const s = myListings.slice(0, 20).map(l =>
+        `${l.brand} ${l.model}|RM${l.selling_price?.toLocaleString()}|${getListingAge(l.created_at)}d|${l.status || "available"}`
+      ).join("\n");
+      return `AI performance advisor on ShiftOS (Malaysian car SaaS).\nSalesman: ${profile?.full_name || profile?.slug}. Total:${total} Active:${active} Sold:${sold} AvgAge:${avgAge}d Stale:${stale.length} WA clicks:${totalWa}\nListings:\n${s}\nBe concise, actionable. Under 200 words.`;
+    };
+
+    const sendAiMsg = async () => {
+      if (!aiInput.trim() || aiLoading) return;
+      const msg = aiInput.trim();
+      setAiInput("");
+      setAiMessages(p => [...p, { role: "user", content: msg }]);
+      setAiLoading(true);
+      try {
+        const history = [...aiMessages.map(m => ({ role: m.role, content: m.content })), { role: "user", content: msg }];
+        const res = await fetch(`${SERVER_URL}/ai/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: aiCtx(), messages: history }),
+        });
+        const data = await res.json();
+        let reply = "Could not generate a response.";
+        if (Array.isArray(data?.content)) reply = data.content.find(b => b.type === "text")?.text || reply;
+        else if (data?.completion) reply = data.completion;
+        setAiMessages(p => [...p, { role: "assistant", content: reply }]);
+      } catch {
+        setAiMessages(p => [...p, { role: "assistant", content: "Connection error. Try again." }]);
+      }
+      setAiLoading(false);
+    };
+
+    const card = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
+    const divider = { borderBottom: "1px solid rgba(255,255,255,0.05)" };
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "16px 0" }}>
+
+        {/* ── KPI cards ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          {[
+            { label: "Active",   val: active,    sub: `of ${total} total`,              color: "#67e8f9" },
+            { label: "Sold",     val: sold,       sub: "all time",                       color: "#4ade80" },
+            { label: "Avg. Age", val: `${avgAge}d`, sub: avgAge >= 30 ? "⚠ Aging" : "Healthy", color: avgAge >= 30 ? "#fbbf24" : "#e5e7eb" },
+          ].map(({ label, val, sub, color }) => (
+            <div key={label} style={{ ...card, padding: "14px 16px" }}>
+              <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 8px" }}>{label}</p>
+              <p style={{ fontSize: 26, fontWeight: 800, color, margin: 0, letterSpacing: "-0.02em" }}>{val}</p>
+              <p style={{ fontSize: 11, color: "#374151", margin: "4px 0 0" }}>{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Engagement overview ── */}
+        <div style={card}>
+          <div style={{ ...divider, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "white", margin: 0 }}>Engagement Overview</p>
+              <p style={{ fontSize: 11, color: "#4b5563", margin: "2px 0 0" }}>Last 30 days</p>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {[
+                { label: "Visits",   val: storeVisits,   color: "#94a3b8" },
+                { label: "Clicks",   val: totalClicks,   color: "#67e8f9" },
+                { label: "WhatsApp", val: totalWa,       color: "#4ade80" },
+                { label: "Bookings", val: totalBookings, color: "#fbbf24" },
+                { label: "Calls",    val: totalCalls,    color: "#c084fc" },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: "#6b7280" }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "white" }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: "12px 16px" }}>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#4b5563" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "#0f1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}
+                  itemStyle={{ color: "#e5e7eb" }}
+                  labelStyle={{ color: "#9ca3af", marginBottom: 4 }}
+                  cursor={{ stroke: "rgba(59,130,246,0.2)", strokeWidth: 1 }}
+                />
+                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: "#6b7280", paddingTop: 8 }} />
+                <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
+                <Line type="monotone" dataKey="visits"   stroke="#94a3b8" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="clicks"   stroke="#67e8f9" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="whatsapp" stroke="#4ade80" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="bookings" stroke="#fbbf24" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+                <Line type="monotone" dataKey="calls"    stroke="#c084fc" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* ── Stale listings ── */}
+        {stale.length > 0 && (
+          <div style={{ background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 12, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <AlertCircle size={16} color="#fbbf24" />
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#fcd34d", margin: 0 }}>
+                {stale.length} listing{stale.length > 1 ? "s" : ""} aging 30+ days — needs attention
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {stale.slice(0, 5).map(l => (
+                <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(251,191,36,0.07)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {l.images?.[0]
+                      ? <img src={l.images[0]} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                      : <div style={{ width: 32, height: 32, borderRadius: 6, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
+                    }
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "white", margin: 0 }}>{l.brand} {l.model}</p>
+                      <p style={{ fontSize: 11, color: "#6b7280", margin: 0 }}>RM {l.selling_price?.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <AgeBadge createdAt={l.created_at} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Listing performance table ── */}
+        <div style={card}>
+          <style>{`
+            .lp-th2 { padding:10px 12px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:rgba(107,114,128,0.8); text-align:left; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); }
+            .lp-row2 { border-bottom:1px solid rgba(255,255,255,0.04); }
+            .lp-row2:last-child { border-bottom:none; }
+            .lp-row2:hover { background:rgba(255,255,255,0.02); }
+            .lp-td2 { padding:11px 12px; vertical-align:middle; }
+            .lp-stat2 { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:22px; padding:0 7px; border-radius:5px; font-size:11px; font-weight:700; }
+            .ls2-sky    { background:rgba(56,189,248,0.1);  color:#38bdf8; border:1px solid rgba(56,189,248,0.18); }
+            .ls2-green  { background:rgba(34,197,94,0.1);   color:#4ade80; border:1px solid rgba(34,197,94,0.18); }
+            .ls2-purple { background:rgba(168,85,247,0.1);  color:#c084fc; border:1px solid rgba(168,85,247,0.18); }
+            .ls2-amber  { background:rgba(251,191,36,0.1);  color:#fbbf24; border:1px solid rgba(251,191,36,0.18); }
+            .ls2-dim    { background:rgba(255,255,255,0.03); color:rgba(75,85,99,0.9); border:1px solid rgba(255,255,255,0.06); }
+          `}</style>
+          <div style={{ ...divider, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "white", margin: 0 }}>Listing Performance</p>
+              <p style={{ fontSize: 11, color: "#374151", margin: "2px 0 0" }}>Sorted by views · traffic activates once listings go live</p>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#374151", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, padding: "3px 9px" }}>
+              {myListings.length} listing{myListings.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {myListings.length === 0 ? (
+            <div style={{ padding: "40px 20px", textAlign: "center", color: "#374151", fontSize: 13 }}>No listings to analyse yet</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>{["Vehicle","Price","Age","Views","WhatsApp","Calls","Bookings","CVR","Status"].map(h => <th key={h} className="lp-th2">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {sorted.map(l => {
+                    const s       = carStatsMap[l.id] || {};
+                    const views   = s.views    || 0;
+                    const wa      = s.whatsapp  || 0;
+                    const calls   = s.calls     || 0;
+                    const books   = s.bookings  || 0;
+                    const cvr     = s.cvr;
+                    const cvrNum  = parseFloat(cvr);
+                    const isStale = getListingAge(l.created_at) >= 30;
+                    const stKey   = l.status || "available";
+                    const stColor = stKey === "available" ? "#4ade80" : stKey === "reserved" ? "#fbbf24" : "#60a5fa";
+                    return (
+                      <tr key={l.id} className="lp-row2" style={{ background: isStale ? "rgba(251,191,36,0.02)" : "transparent" }}>
+                        <td className="lp-td2">
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {l.images?.[0]
+                              ? <img src={l.images[0]} alt="" style={{ width: 40, height: 30, borderRadius: 5, objectFit: "cover", flexShrink: 0 }} />
+                              : <div style={{ width: 40, height: 30, borderRadius: 5, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
+                            }
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: "white", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.brand} {l.model}</p>
+                              <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>{l.variant || l.year || "—"}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="lp-td2" style={{ fontSize: 12, fontWeight: 700, color: "#f3f4f6", whiteSpace: "nowrap" }}>RM {l.selling_price?.toLocaleString() || "—"}</td>
+                        <td className="lp-td2"><AgeBadge createdAt={l.created_at} /></td>
+                        <td className="lp-td2"><span className={`lp-stat2 ${views > 0 ? "ls2-sky"    : "ls2-dim"}`}>{views}</span></td>
+                        <td className="lp-td2"><span className={`lp-stat2 ${wa    > 0 ? "ls2-green"  : "ls2-dim"}`}>{wa}</span></td>
+                        <td className="lp-td2"><span className={`lp-stat2 ${calls > 0 ? "ls2-purple" : "ls2-dim"}`}>{calls}</span></td>
+                        <td className="lp-td2"><span className={`lp-stat2 ${books > 0 ? "ls2-amber"  : "ls2-dim"}`}>{books}</span></td>
+                        <td className="lp-td2"><span style={{ fontSize: 12, fontWeight: 700, color: cvrNum > 5 ? "#34d399" : cvrNum > 0 ? "#fbbf24" : "#374151" }}>{cvr || "—"}</span></td>
+                        <td className="lp-td2">
+                          <span style={{ fontSize: 10, fontWeight: 700, color: stColor, background: `${stColor}18`, border: `1px solid ${stColor}30`, borderRadius: 20, padding: "2px 8px", textTransform: "capitalize" }}>
+                            {stKey}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── AI Advisor ── */}
+        <div style={card}>
+          <button
+            onClick={() => setAiChatOpen(v => !v)}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: 16, background: "none", border: "none", cursor: "pointer" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.18)", flexShrink: 0 }}>
+                <Bot size={16} color="#60a5fa" />
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "white", margin: 0 }}>AI Performance Advisor</p>
+                <p style={{ fontSize: 11, color: "#4b5563", margin: "2px 0 0" }}>Ask anything about your listings & performance</p>
+              </div>
+            </div>
+            <ChevronRight size={16} color="#4b5563" style={{ transform: aiChatOpen ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
+          </button>
+          {aiChatOpen && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ height: 280, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {aiMessages.map((m, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
+                    {m.role === "assistant" && (
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <Bot size={12} color="#60a5fa" />
+                      </div>
+                    )}
+                    <div style={{
+                      maxWidth: "80%", padding: "10px 14px", borderRadius: 16, fontSize: 13, lineHeight: 1.5,
+                      ...(m.role === "user"
+                        ? { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "white", borderTopRightRadius: 4, boxShadow: "0 2px 8px rgba(59,130,246,0.22)" }
+                        : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#d1d5db", borderTopLeftRadius: 4 })
+                    }}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {aiLoading && (
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                      <Bot size={12} color="#60a5fa" />
+                    </div>
+                    <div style={{ padding: "10px 14px", borderRadius: 16, borderTopLeftRadius: 4, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 4, alignItems: "center" }}>
+                      {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(59,130,246,0.4)" }} />)}
+                    </div>
+                  </div>
+                )}
+                <div ref={aiEndRef} />
+              </div>
+              {aiMessages.length === 1 && (
+                <div style={{ padding: "0 16px 12px", display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {["Why aren't my listings converting?","Which car should I reprice?","How to write better listings?","What should I focus on?"].map(p => (
+                    <button key={p} onClick={() => setAiInput(p)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>{p}</button>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <textarea
+                  rows={1}
+                  value={aiInput}
+                  onChange={e => setAiInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAiMsg(); } }}
+                  placeholder="Ask about your listings, pricing, leads…"
+                  style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "white", fontSize: 12, padding: "8px 12px", outline: "none", resize: "none", maxHeight: 100, fontFamily: "inherit" }}
+                />
+                <button
+                  onClick={sendAiMsg}
+                  disabled={aiLoading || !aiInput.trim()}
+                  style={{ width: 36, height: 36, borderRadius: 9, background: "#dc2626", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, opacity: (aiLoading || !aiInput.trim()) ? 0.3 : 1 }}
+                >
+                  <Send size={15} color="white" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── Loans ───────────────────────────────────────────────────────────────
   const BANKS = [
@@ -5960,6 +6295,22 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 {profile?.role || "salesman"}
               </p>
             </div>
+            <button
+              onClick={handleLogout}
+              title="Log out"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#4b5563",
+                padding: 4,
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <LogOut style={{ width: 14, height: 14 }} />
+            </button>
           </div>
         </nav>
       )}
