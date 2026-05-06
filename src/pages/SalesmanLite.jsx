@@ -1051,7 +1051,7 @@ export default function SalesmanLite() {
     return templates[key] || "";
   };
 
-  const fireTemplate = (enq, key) => {
+  const fireTemplate = async (enq, key) => {
     const msg = buildTemplate(enq, key);
     navigator.clipboard.writeText(msg).catch((e) => { console.error("clipboard write:", e); });
     const phone = (enq.buyer_phone || "").replace(/\D/g, "");
@@ -1065,6 +1065,10 @@ export default function SalesmanLite() {
     setTemplateToast(enq.id + "_" + key);
     setTimeout(() => setTemplateToast(null), 2000);
     setOpenTemplateId(null);
+    if (enq.status === "new") {
+      await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
+      setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+    }
   };
 
   // ── appointment status ─────────────────────────────────────────────────────
@@ -4034,14 +4038,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   const renderEnquiries = () => (
     <div>
-      <p
-        style={{
-          margin: "0 0 16px",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#f1f5f9",
-        }}
-      >
+      <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
         Enquiries ({enquiries.length})
       </p>
       {enquiries.length === 0 && (
@@ -4057,6 +4054,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {enquiries.map((enq) => {
           const car = enq.car_listings;
+          const isNew = enq.status === "new";
           return (
             <div
               key={enq.id}
@@ -4064,276 +4062,99 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 background: "#0d1117",
                 border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 10,
-                padding: "12px 14px",
+                padding: isNew ? "12px 14px" : "8px 14px",
+                opacity: isNew ? 1 : 0.6,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  marginBottom: 4,
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#e5e7eb",
-                  }}
-                >
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
                   {enq.buyer_name || "—"}
                 </p>
-                <span
-                  style={{
-                    fontSize: 10,
-                    padding: "2px 7px",
-                    borderRadius: 99,
-                    flexShrink: 0,
-                    background:
-                      enq.status === "new"
-                        ? "rgba(96,165,250,0.12)"
-                        : "rgba(34,197,94,0.12)",
-                    border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : "rgba(34,197,94,0.3)"}`,
-                    color: enq.status === "new" ? "#93c5fd" : "#4ade80",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {enq.status}
-                </span>
+                {isNew ? (
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
+                    New
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", textTransform: "capitalize" }}>
+                    {enq.status}
+                  </span>
+                )}
               </div>
+              {/* Car name */}
               {car && (
-                <p
-                  style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}
-                >
+                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>
                   {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                 </p>
               )}
-              {enq.buyer_phone && (
-                <p
-                  style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}
-                >
-                  📞 {enq.buyer_phone}
-                </p>
-              )}
-              {enq.buyer_message && (
-                <p
-                  style={{
-                    margin: "0 0 8px",
-                    fontSize: 11,
-                    color: "#4b5563",
-                    fontStyle: "italic",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+              {/* Message — unreplied only, 1 line truncated */}
+              {isNew && enq.buyer_message && (
+                <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   "{enq.buyer_message}"
                 </p>
               )}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {enq.buyer_phone && (
-                  <button
-                    onClick={() => {
-                      const phone = enq.buyer_phone.replace(/\D/g, "");
-                      const enqCar = enq.car_listings;
-                      const carName = enqCar
-                        ? `${enqCar.brand} ${enqCar.model}`
-                        : "kereta";
-                      const msg = encodeURIComponent(
-                        `Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`,
-                      );
-                      window.open(
-                        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
-                    }}
-                    style={{
-                      fontSize: 10,
-                      padding: "6px 11px",
-                      borderRadius: 6,
-                      background: "rgba(37,211,102,0.1)",
-                      border: "1px solid rgba(37,211,102,0.2)",
-                      color: "#4ade80",
-                      cursor: "pointer",
-                    }}
-                  >
-                    WA Reply
-                  </button>
-                )}
-                {enq.buyer_phone && (
-                  <button
-                    onClick={() =>
-                      setOpenTemplateId(
-                        openTemplateId === enq.id ? null : enq.id,
-                      )
-                    }
-                    style={{
-                      fontSize: 10,
-                      padding: "6px 11px",
-                      borderRadius: 6,
-                      background:
-                        openTemplateId === enq.id
-                          ? "rgba(167,139,250,0.15)"
-                          : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`,
-                      color: openTemplateId === enq.id ? "#c084fc" : "#6b7280",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Templates
-                  </button>
-                )}
-                {enq.status === "new" && (
-                  <button
-                    onClick={async () => {
-                      await supabase
-                        .from("whatsapp_enquiries")
-                        .update({ status: "responded" })
-                        .eq("id", enq.id);
-                      setEnquiries((p) =>
-                        p.map((e) =>
-                          e.id === enq.id ? { ...e, status: "responded" } : e,
-                        ),
-                      );
-                    }}
-                    style={{
-                      fontSize: 10,
-                      padding: "6px 11px",
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      color: "#6b7280",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Mark Responded
-                  </button>
-                )}
-                {enq.status === "converted" ? (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      padding: "6px 11px",
-                      borderRadius: 6,
-                      background: "rgba(34,197,94,0.1)",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      color: "#4ade80",
-                    }}
-                  >
-                    In Pipeline ✓
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      const { data: newLead } = await supabase
-                        .from("leads")
-                        .insert({
-                          salesman_id: userId,
-                          dealer_id: null,
-                          buyer_name: enq.buyer_name || "Unknown",
-                          phone: enq.buyer_phone || "",
-                          notes: enq.buyer_message || null,
-                          car_listing_id: enq.listing_id || null,
-                          stage: "new",
-                          lead_source: "enquiry",
-                          is_deleted: false,
-                        })
-                        .select()
-                        .single();
-                      if (newLead) setLeads((p) => [newLead, ...p]);
-                      await supabase
-                        .from("whatsapp_enquiries")
-                        .update({ status: "converted" })
-                        .eq("id", enq.id);
-                      setEnquiries((p) =>
-                        p.map((e) =>
-                          e.id === enq.id ? { ...e, status: "converted" } : e,
-                        ),
-                      );
-                      toast.success("Added to lead pipeline!");
-                    }}
-                    style={{
-                      fontSize: 10,
-                      padding: "6px 11px",
-                      borderRadius: 6,
-                      background: "rgba(34,197,94,0.1)",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      color: "#4ade80",
-                      cursor: "pointer",
-                    }}
-                  >
-                    → Add to Pipeline
-                  </button>
-                )}
-              </div>
-              {openTemplateId === enq.id && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                  }}
-                >
+              {/* Phone — unreplied only */}
+              {isNew && enq.buyer_phone && (
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
+                  📞 {enq.buyer_phone}
+                </p>
+              )}
+              {/* Timestamp */}
+              <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 10, color: "#374151" }}>
+                {timeAgo(enq.created_at)}
+              </p>
+              {/* Action buttons — unreplied only, max 2 */}
+              {isNew && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {enq.buyer_phone && (
+                    <button
+                      onClick={async () => {
+                        const phone = enq.buyer_phone.replace(/\D/g, "");
+                        const enqCar = enq.car_listings;
+                        const carName = enqCar ? `${enqCar.brand} ${enqCar.model}` : "kereta";
+                        const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${carName}. I'm here to help — when would be a good time to chat? 😊`);
+                        window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
+                        await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
+                        setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+                      }}
+                      style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+                    >
+                      WA Reply
+                    </button>
+                  )}
+                  {enq.buyer_phone && (
+                    <button
+                      onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)}
+                      style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#f87171" : "#6b7280", cursor: "pointer" }}
+                    >
+                      Templates ▾
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Template picker */}
+              {isNew && openTemplateId === enq.id && (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
                     { key: "chat", label: "Let's Chat", color: "#4ade80" },
-                    {
-                      key: "test_drive",
-                      label: "Book Test Drive",
-                      color: "#60a5fa",
-                    },
-                    {
-                      key: "budget",
-                      label: "What's Budget?",
-                      color: "#fbbf24",
-                    },
-                    {
-                      key: "deposit",
-                      label: "Deposit to Hold",
-                      color: "#f87171",
-                    },
+                    { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
+                    { key: "budget", label: "What's Budget?", color: "#fbbf24" },
+                    { key: "deposit", label: "Deposit to Hold", color: "#f87171" },
                   ].map(({ key, label, color }) => {
                     const toastKey = enq.id + "_" + key;
                     return (
                       <button
                         key={key}
                         onClick={() => fireTemplate(enq, key)}
-                        style={{
-                          textAlign: "left",
-                          fontSize: 11,
-                          padding: "7px 10px",
-                          borderRadius: 7,
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.07)",
-                          color: templateToast === toastKey ? color : "#9ca3af",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
+                        style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey ? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                       >
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: color,
-                            flexShrink: 0,
-                          }}
-                        />
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
                         {templateToast === toastKey ? "✓ Sent!" : label}
                       </button>
                     );
                   })}
                 </div>
               )}
-              <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>
-                {timeAgo(enq.created_at)}
-              </p>
             </div>
           );
         })}
