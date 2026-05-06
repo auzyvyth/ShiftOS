@@ -1566,6 +1566,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
     const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
 
+    const pipelineValue = leads
+      .filter(l => !["won","lost","closed_won","closed_lost"].includes(l.stage) && l.car_listings?.selling_price)
+      .reduce((sum, l) => sum + Number(l.car_listings.selling_price || 0), 0);
+    const estimatedCommission = Math.round(pipelineValue * (profile?.commission_rate || 0.02));
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -1624,6 +1629,57 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 RM {commissionData.total.toLocaleString("en-MY")}
               </p>
               <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Marketplace Pulse ── */}
+        {myListings.filter(c => c.status === "available").length > 0 && (
+          <div style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.22)", borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "live-glow 2s ease-in-out infinite" }} />
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#10b981", textTransform: "uppercase", letterSpacing: "0.1em" }}>XDrive Marketplace · Live</p>
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "#374151" }}>30 days</span>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalViews || 0}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Buyer views</p>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#4ade80", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalWATaps || 0}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>WA taps</p>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#93c5fd", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => c.status === "available").length}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Live listings</p>
+              </div>
+            </div>
+            {profile?.slug && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.22)", color: "#10b981", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}
+              >
+                <LinkIcon size={11} />
+                <span style={{ flex: 1, textAlign: "left" }}>xdrive.my/s/{profile.slug}</span>
+                <span style={{ fontSize: 10, opacity: 0.7 }}>Copy link</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Pipeline value ── */}
+        {pipelineValue > 0 && (
+          <div style={{ background: "rgba(147,197,253,0.04)", border: "1px solid rgba(147,197,253,0.14)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <TrendingUp size={16} color="#93c5fd" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>Pipeline Value</p>
+              <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 800, color: "#93c5fd", letterSpacing: "-0.02em" }}>RM {pipelineValue.toLocaleString("en-MY")}</p>
+              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Est. commission: RM {estimatedCommission.toLocaleString("en-MY")} · {activeLeads.filter(l => l.car_listings?.selling_price).length} deal{activeLeads.filter(l => l.car_listings?.selling_price).length !== 1 ? "s" : ""}</p>
             </div>
           </div>
         )}
@@ -1936,6 +1992,22 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </button>
         </div>
 
+        {/* Store exposure bar */}
+        {!showAddForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: 8, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.13)" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 10, color: "#6b7280", flex: 1 }}>
+              Your listings are <strong style={{ color: "#10b981" }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
+            </span>
+            <button
+              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+              style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
+            >
+              Copy Link
+            </button>
+          </div>
+        )}
+
         {showAddForm && (
           <div
             style={{
@@ -2211,6 +2283,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
                   )}
 
+                  {/* Live on XDrive bar — only for available listings */}
+                  {!isSold && !isReserved && (
+                    <div style={{ background: "rgba(16,185,129,0.05)", borderBottom: "1px solid rgba(16,185,129,0.13)", padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
+                      <span style={{ marginLeft: "auto", fontSize: 9, color: "#374151" }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
+                    </div>
+                  )}
+
                   <div style={{ padding: "12px 14px" }}>
                     {/* Title + badge row */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
@@ -2310,6 +2391,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                             </span>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Photo nudge — fewer than 3 photos hurts views */}
+                    {!isSold && (!car.images || car.images.length < 3) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: 6, background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.14)" }}>
+                        <span style={{ fontSize: 11, flexShrink: 0 }}>📷</span>
+                        <span style={{ fontSize: 10, color: "#d97706", flex: 1 }}>
+                          Add {Math.max(0, 3 - (car.images?.length || 0))} more photo{Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""} — listings with 3+ photos get 3× more views
+                        </span>
+                        <button onClick={() => setEditListing(car)} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 5, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap", fontFamily: "inherit" }}>Fix</button>
                       </div>
                     )}
 
@@ -5860,6 +5952,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        @keyframes pulse-green{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.8)} }
+        @keyframes live-glow{ 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0)} }
       `}</style>
 
       {/* ── Nav ── */}
