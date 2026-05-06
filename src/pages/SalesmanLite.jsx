@@ -277,7 +277,8 @@ export default function SalesmanLite() {
   const updateListingStatus = async (car, newStatus) => {
     setStatusMenuCarId(null);
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
-    await supabase.from("car_listings").update({ status: newStatus }).eq("id", car.id);
+    const { error: statusErr } = await supabase.from("car_listings").update({ status: newStatus }).eq("id", car.id);
+    if (statusErr) console.error("updateListingStatus:", statusErr);
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
   };
 
@@ -308,6 +309,7 @@ export default function SalesmanLite() {
 
   const channelRef = useRef(null);
   const [appointments, setAppointments] = useState([]);
+  const [pastOpen, setPastOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
   const [analyticsEvents, setAnalyticsEvents] = useState([]);
 
@@ -319,18 +321,18 @@ export default function SalesmanLite() {
       if (!raw) return null;
       const { ts, data } = JSON.parse(raw);
       return Date.now() - ts < CACHE_TTL ? data : null;
-    } catch { return null; }
+    } catch (e) { console.error("readCache:", e); return null; }
   };
   const writeCache = (key, data) => {
-    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) { console.error("writeCache:", e); }
   };
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
     const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images : [])).filter(Boolean);
     if (!urls.length) return;
     caches.open("slite-images-v1").then((cache) => {
-      urls.forEach((url) => cache.match(url).then((hit) => { if (!hit) cache.add(url).catch(() => {}); }));
-    }).catch(() => {});
+      urls.forEach((url) => cache.match(url).then((hit) => { if (!hit) cache.add(url).catch((e) => { console.error("precacheImages add:", e); }); }));
+    }).catch((e) => { console.error("precacheImages open:", e); });
   };
 
   // stale leads (48h)
@@ -366,6 +368,7 @@ export default function SalesmanLite() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error || !data.session) {
+        if (error) console.error("getSession:", error);
         setLoading(false);
         navigate("/login");
         return;
@@ -374,12 +377,13 @@ export default function SalesmanLite() {
       const uid = data.session.user.id;
       setUserId(uid);
 
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
 
+      if (profileErr) console.error("fetchProfile:", profileErr);
       if (!profileData) {
         setLoading(false);
         navigate("/login");
@@ -447,6 +451,8 @@ export default function SalesmanLite() {
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
+        if (r1.error) console.error("fetchListings(assigned_to):", r1.error);
+        if (r2.error) console.error("fetchListings(dealer_id):", r2.error);
         const seen = new Set();
         const merged = [...(r1.data || []), ...(r2.data || [])]
           .filter((c) => {
@@ -471,14 +477,18 @@ export default function SalesmanLite() {
             "created_at",
             new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           )
-          .then(({ data: evts }) => setAnalyticsEvents(evts || []));
+          .then(({ data: evts, error: evtsErr }) => {
+            if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
+            setAnalyticsEvents(evts || []);
+          });
 
         // build per-listing stats map for CVR heatmap
         supabase
           .from("analytics_events")
           .select("car_id, event_type, session_id")
           .eq("salesman_slug", slug)
-          .then(({ data: evtData }) => {
+          .then(({ data: evtData, error: evtDataErr }) => {
+            if (evtDataErr) console.error("fetchCarStats:", evtDataErr);
             const map = {};
             const viewedKeys = new Set();
             const contactedKeys = new Set();
@@ -504,7 +514,8 @@ export default function SalesmanLite() {
         .eq("salesman_id", uid)
         .or("is_deleted.eq.false,is_deleted.is.null")
         .order("updated_at", { ascending: false })
-        .then(({ data: lds }) => {
+        .then(({ data: lds, error: ldsErr }) => {
+          if (ldsErr) console.error("fetchLeads:", ldsErr);
           const fetchedLeads = lds || [];
           setLeads(fetchedLeads);
           setLeadsLoading(false);
@@ -518,7 +529,8 @@ export default function SalesmanLite() {
             )
             .or(`dealer_id.eq.${uid},salesman_id.eq.${uid}`)
             .order("created_at", { ascending: false })
-            .then(async ({ data: enqs }) => {
+            .then(async ({ data: enqs, error: enqsErr }) => {
+              if (enqsErr) console.error("fetchEnquiries:", enqsErr);
               const all = enqs || [];
               setEnquiries(all);
               writeCache(`slite_enquiries_${uid}`, all);
@@ -528,16 +540,17 @@ export default function SalesmanLite() {
                 pending.map(async (e) => {
                   if (!e.buyer_phone && !e.listing_id) return null;
                   if (e.listing_id && e.buyer_phone) {
-                    const { data: existing } = await supabase
+                    const { data: existing, error: existingErr } = await supabase
                       .from("leads")
                       .select("id")
                       .eq("salesman_id", uid)
                       .eq("car_listing_id", e.listing_id)
                       .eq("phone", e.buyer_phone)
                       .maybeSingle();
+                    if (existingErr) console.error("checkExistingLead:", existingErr);
                     if (existing) return null;
                   }
-                  const { data } = await supabase
+                  const { data, error: insertLeadErr } = await supabase
                     .from("leads")
                     .insert({
                       salesman_id: uid,
@@ -552,16 +565,18 @@ export default function SalesmanLite() {
                     })
                     .select()
                     .single();
+                  if (insertLeadErr) console.error("insertLeadFromEnquiry:", insertLeadErr);
                   return data;
                 }),
               );
               const inserted = newLeads.filter(Boolean);
               if (inserted.length) setLeads((p) => [...inserted, ...p]);
               const ids = pending.map((e) => e.id);
-              await supabase
+              const { error: convertEnqErr } = await supabase
                 .from("whatsapp_enquiries")
                 .update({ status: "converted" })
                 .in("id", ids);
+              if (convertEnqErr) console.error("convertEnquiries:", convertEnqErr);
               setEnquiries((p) =>
                 p.map((e) => (ids.includes(e.id) ? { ...e, status: "converted" } : e)),
               );
@@ -618,7 +633,7 @@ export default function SalesmanLite() {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
                   if (!payload.new.buyer_phone && !payload.new.listing_id) return;
-                  const { data: newLead } = await supabase
+                  const { data: newLead, error: rtInsertErr } = await supabase
                     .from("leads")
                     .insert({
                       salesman_id: uid,
@@ -633,11 +648,13 @@ export default function SalesmanLite() {
                     })
                     .select()
                     .single();
+                  if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
                   if (newLead) setLeads((p) => [newLead, ...p]);
-                  await supabase
+                  const { error: rtConvertErr } = await supabase
                     .from("whatsapp_enquiries")
                     .update({ status: "converted" })
                     .eq("id", payload.new.id);
+                  if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
                   setEnquiries((p) =>
                     p.map((e) =>
                       e.id === payload.new.id ? { ...e, status: "converted" } : e,
@@ -669,7 +686,7 @@ export default function SalesmanLite() {
                     description: payload.new.buyer_name || "Someone enquired",
                   });
                   if (!payload.new.buyer_phone && !payload.new.listing_id) return;
-                  const { data: newLead } = await supabase
+                  const { data: newLead, error: rtInsertErr } = await supabase
                     .from("leads")
                     .insert({
                       salesman_id: uid,
@@ -684,11 +701,13 @@ export default function SalesmanLite() {
                     })
                     .select()
                     .single();
+                  if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
                   if (newLead) setLeads((p) => [newLead, ...p]);
-                  await supabase
+                  const { error: rtConvertErr } = await supabase
                     .from("whatsapp_enquiries")
                     .update({ status: "converted" })
                     .eq("id", payload.new.id);
+                  if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
                   setEnquiries((p) =>
                     p.map((e) =>
                       e.id === payload.new.id ? { ...e, status: "converted" } : e,
@@ -777,18 +796,20 @@ export default function SalesmanLite() {
   }, [tourStep]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error("signOut:", error);
     navigate("/login");
   };
 
   const updateLeadStage = async (leadId, stage) => {
     const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
     const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
-    await supabase
+    const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
-    await supabase.from("lead_activities").insert({
+    if (stageErr) console.error("updateLeadStage:", stageErr);
+    const { error: actErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
       from_stage: oldStage,
@@ -796,6 +817,7 @@ export default function SalesmanLite() {
       created_by: userId,
       dealer_id: dealerId,
     });
+    if (actErr) console.error("updateLeadStage activity:", actErr);
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
   };
 
@@ -809,16 +831,18 @@ export default function SalesmanLite() {
   };
 
   const handleDeleteLead = async (leadId) => {
-    await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    const { error: delErr } = await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    if (delErr) console.error("handleDeleteLead:", delErr);
     setLeads((p) => p.filter((l) => l.id !== leadId));
     setDeleteConfirmId(null);
   };
 
   const handleLinkCar = async (leadId, carId) => {
-    await supabase
+    const { error: linkErr } = await supabase
       .from("leads")
       .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
       .eq("id", leadId);
+    if (linkErr) console.error("handleLinkCar:", linkErr);
     const car = myListings.find((c) => c.id === carId);
     setLeads((p) => p.map((l) =>
       l.id === leadId
@@ -836,11 +860,12 @@ export default function SalesmanLite() {
     const oldStage = lead?.stage ?? null;
     const dealerId = lead?.dealer_id ?? null;
     const now = new Date().toISOString();
-    await supabase
+    const { error: lostErr } = await supabase
       .from("leads")
       .update({ stage: "lost", loss_reason: reason, updated_at: now })
       .eq("id", leadId);
-    await supabase.from("lead_activities").insert({
+    if (lostErr) console.error("handleLostReason:", lostErr);
+    const { error: lostActErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
       from_stage: oldStage,
@@ -849,6 +874,7 @@ export default function SalesmanLite() {
       created_by: userId,
       dealer_id: dealerId,
     });
+    if (lostActErr) console.error("handleLostReason activity:", lostActErr);
     setLeads((p) =>
       p.map((l) =>
         l.id === leadId
@@ -865,10 +891,11 @@ export default function SalesmanLite() {
 
   const markNotifRead = async (notif) => {
     if (notif.is_read) return;
-    await supabase
+    const { error: readErr } = await supabase
       .from("salesman_notifications")
       .update({ is_read: true })
       .eq("id", notif.id);
+    if (readErr) console.error("markNotifRead:", readErr);
     setNotifications((p) =>
       p.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)),
     );
@@ -877,10 +904,11 @@ export default function SalesmanLite() {
   const markAllNotifsRead = async () => {
     const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!ids.length) return;
-    await supabase
+    const { error: readAllErr } = await supabase
       .from("salesman_notifications")
       .update({ is_read: true })
       .in("id", ids);
+    if (readAllErr) console.error("markAllNotifsRead:", readAllErr);
     setNotifications((p) => p.map((n) => ({ ...n, is_read: true })));
   };
 
@@ -901,7 +929,7 @@ export default function SalesmanLite() {
 
   const fireTemplate = (enq, key) => {
     const msg = buildTemplate(enq, key);
-    navigator.clipboard.writeText(msg).catch(() => {});
+    navigator.clipboard.writeText(msg).catch((e) => { console.error("clipboard write:", e); });
     const phone = (enq.buyer_phone || "").replace(/\D/g, "");
     if (phone) {
       window.open(
@@ -918,7 +946,8 @@ export default function SalesmanLite() {
   // ── appointment status ─────────────────────────────────────────────────────
 
   const updateApptStatus = async (apptId, status) => {
-    await supabase.from("appointments").update({ status }).eq("id", apptId);
+    const { error: apptErr } = await supabase.from("appointments").update({ status }).eq("id", apptId);
+    if (apptErr) console.error("updateApptStatus:", apptErr);
     setAppointments((p) =>
       p.map((a) => (a.id === apptId ? { ...a, status } : a)),
     );
@@ -926,7 +955,7 @@ export default function SalesmanLite() {
 
   const handleAddLead = async () => {
     setAddLeadSaving(true);
-    const { data } = await supabase
+    const { data, error: addLeadErr } = await supabase
       .from("leads")
       .insert({
         dealer_id: null,
@@ -943,6 +972,7 @@ export default function SalesmanLite() {
       })
       .select()
       .single();
+    if (addLeadErr) console.error("handleAddLead:", addLeadErr);
     if (data) setLeads((p) => [data, ...p]);
     setAddLeadSaving(false);
     setShowAddLead(false);
@@ -960,37 +990,55 @@ export default function SalesmanLite() {
     setMergeStatus("pending");
     setMergeMsg("");
 
-    const { data } = await supabase
+    const { data, error: inviteErr } = await supabase
       .from("dealer_invites")
       .select("dealer_id, expires_at, used")
       .eq("code", mergeCode.trim().toUpperCase())
       .maybeSingle();
 
+    if (inviteErr) console.error("handleMerge invite lookup:", inviteErr);
     if (!data || data.used || new Date(data.expires_at) < new Date()) {
       setMergeStatus("error");
       setMergeMsg("Invalid or expired invite code.");
       return;
     }
 
-    await supabase
+    const { error: mergeProfileErr } = await supabase
       .from("profiles")
       .update({ dealer_id: data.dealer_id })
       .eq("id", profile.id);
-    await supabase
+    if (mergeProfileErr) console.error("handleMerge profiles:", mergeProfileErr);
+    const { error: mergeLeadsErr } = await supabase
       .from("leads")
       .update({ dealer_id: data.dealer_id })
       .eq("salesman_id", profile.id)
       .is("dealer_id", null);
-    await supabase
+    if (mergeLeadsErr) console.error("handleMerge leads:", mergeLeadsErr);
+    const { error: mergeListingsErr } = await supabase
       .from("car_listings")
       .update({ dealer_id: data.dealer_id })
       .eq("assigned_to", profile.id);
-    await supabase.rpc("use_dealer_invite", {
+    if (mergeListingsErr) console.error("handleMerge listings:", mergeListingsErr);
+    const { error: rpcErr } = await supabase.rpc("use_dealer_invite", {
       invite_code: mergeCode.trim().toUpperCase(),
     });
+    if (rpcErr) console.error("handleMerge rpc:", rpcErr);
 
     setMergeStatus("success");
     setMergeMsg("Merged! Redirecting to full dashboard...");
+    const keysToDelete = [
+      `slite_listings_${profile.id}`,
+      `slite_leads_${profile.id}`,
+      `slite_enquiries_${profile.id}`,
+      `slite_appts_${profile.id}`,
+      `slite_last_seen_enq_${profile.id}`,
+      "salesman_lite_avatar",
+    ];
+    keysToDelete.forEach(k => localStorage.removeItem(k));
+    setMyListings([]);
+    setLeads([]);
+    setEnquiries([]);
+    setAppointments([]);
     setTimeout(() => navigate("/salesman"), 2500);
   };
 
@@ -1049,7 +1097,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
       const parsed = JSON.parse(raw);
       setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
-    } catch {
+    } catch (e) {
+      console.error("generateAiCaption:", e);
       setAiCaptions((p) => ({
         ...p,
         [car.id]: {
@@ -1426,7 +1475,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
             <button
               onClick={async () => {
-                await supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+                const { error: tourErr } = await supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+                if (tourErr) console.error("dismissTour:", tourErr);
                 setProfile((p) => ({ ...p, onboarding_tour_done: true }));
               }}
               style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0 }}
@@ -4124,6 +4174,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !isToday(a.appointment_date) && d > new Date();
     });
+    const pastApts = appointments.filter((a) => {
+      if (!a.appointment_date) return false;
+      const d = new Date(a.appointment_date);
+      return !isNaN(d) && !isToday(a.appointment_date) && d < new Date();
+    });
 
     const statusColors = {
       confirmed: {
@@ -4527,6 +4582,89 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
           </div>
         )}
+        {pastApts.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <button
+              onClick={() => setPastOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "transparent", border: "none",
+                cursor: "pointer", padding: "6px 0", width: "100%",
+              }}
+            >
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: "#4b5563",
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}>
+                Past ({pastApts.length})
+              </span>
+              <span style={{ fontSize: 12, color: "#374151" }}>
+                {pastOpen ? "▲" : "▼"}
+              </span>
+            </button>
+            {pastOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                {pastApts.map((apt) => {
+                  const car = apt.car_listings;
+                  const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+                  const dateStr = aptDate && !isNaN(aptDate)
+                    ? aptDate.toLocaleDateString("en-MY", {
+                        weekday: "short", day: "numeric",
+                        month: "short", year: "numeric",
+                      })
+                    : "—";
+                  const timeStr = aptDate && !isNaN(aptDate)
+                    ? aptDate.toLocaleTimeString("en-MY", {
+                        hour: "2-digit", minute: "2-digit",
+                      })
+                    : "";
+                  const sc = statusColors[apt.status] || statusColors.pending;
+                  return (
+                    <div key={apt.id} style={{
+                      background: "#0d1117",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      borderRadius: 10, padding: "10px 14px", opacity: 0.65,
+                    }}>
+                      <div style={{
+                        display: "flex", alignItems: "center",
+                        justifyContent: "space-between", gap: 8, marginBottom: 4,
+                      }}>
+                        <p style={{
+                          margin: 0, fontSize: 13, fontWeight: 600,
+                          color: "#9ca3af", overflow: "hidden",
+                          textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {apt.buyer_name || "—"}
+                        </p>
+                        <span style={{
+                          fontSize: 10, padding: "2px 7px", borderRadius: 99,
+                          flexShrink: 0, background: sc.bg,
+                          border: `1px solid ${sc.border}`, color: sc.tx,
+                          textTransform: "capitalize",
+                        }}>
+                          {apt.status}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
+                        📅 {dateStr}{timeStr && ` · ${timeStr}`}
+                      </p>
+                      {car && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>
+                          {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                        </p>
+                      )}
+                      {apt.buyer_phone && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>
+                          📞 {apt.buyer_phone}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -4565,7 +4703,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       }
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
       const bustedUrl = `${publicUrl}?t=${Date.now()}`;
-      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
+      const { error: avatarProfileErr } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
+      if (avatarProfileErr) console.error("handleAvatarUpload profile update:", avatarProfileErr);
       setAvatarUrl(bustedUrl);
       localStorage.setItem("salesman_lite_avatar", bustedUrl);
       setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
@@ -4576,7 +4715,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const handleSave = async () => {
       setSettingsSaving(true);
       const phone = "+60" + localPhone.replace(/\D/g, "");
-      await supabase
+      const { error: saveProfileErr } = await supabase
         .from("profiles")
         .update({
           full_name: settingsForm.full_name,
@@ -4584,6 +4723,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           telegram_chat_id: settingsForm.telegram_chat_id || null,
         })
         .eq("id", userId);
+      if (saveProfileErr) console.error("handleSave:", saveProfileErr);
       setProfile((p) => ({
         ...p,
         full_name: settingsForm.full_name,
@@ -5055,17 +5195,19 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 );
               }
               const now = new Date().toISOString();
-              await supabase
+              const { error: waTouchErr } = await supabase
                 .from("leads")
                 .update({ updated_at: now })
                 .eq("id", waModalLead.id);
-              await supabase.from("lead_activities").insert({
+              if (waTouchErr) console.error("waModal leads update:", waTouchErr);
+              const { error: waActErr } = await supabase.from("lead_activities").insert({
                 lead_id: waModalLead.id,
                 activity_type: "whatsapp_sent",
                 note: "WA message sent",
                 created_by: userId,
                 dealer_id: waModalLead.dealer_id ?? null,
               });
+              if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
               setLeads((p) =>
                 p.map((l) =>
