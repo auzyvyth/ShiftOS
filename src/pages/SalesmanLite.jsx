@@ -31,7 +31,6 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  ArrowUpDown,
   ZoomIn,
   ChevronLeft,
   ChevronRight,
@@ -367,11 +366,16 @@ export default function SalesmanLite() {
   };
   const precacheImages = (listings) => {
     if (!("caches" in window)) return;
-    const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images : [])).filter(Boolean);
+    const urls = listings.flatMap((c) => (Array.isArray(c.images) ? c.images.slice(0, 2) : [])).filter(Boolean);
     if (!urls.length) return;
-    caches.open("slite-images-v1").then((cache) => {
-      urls.forEach((url) => cache.match(url).then((hit) => { if (!hit) cache.add(url).catch((e) => { console.error("precacheImages add:", e); }); }));
-    }).catch((e) => { console.error("precacheImages open:", e); });
+    caches.open("slite-images-v1").then(async (cache) => {
+      // batch 4 at a time to avoid saturating bandwidth on first load
+      for (let i = 0; i < urls.length; i += 4) {
+        await Promise.all(urls.slice(i, i + 4).map((url) =>
+          cache.match(url).then((hit) => { if (!hit) return cache.add(url).catch(() => {}); })
+        ));
+      }
+    }).catch(() => {});
   };
 
   // stale leads (48h no contact) + overdue follow-ups
@@ -417,7 +421,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, is_suspended, suspension_reason, dealer_id, full_name, plan, telegram_bot_token")
         .eq("id", uid)
         .maybeSingle();
 
@@ -519,16 +523,16 @@ export default function SalesmanLite() {
       // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
       const slug = profileData.slug;
       if (slug) {
+        const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         supabase
           .from("analytics_events")
           .select("event_type, car_id, car_name, created_at, session_id")
           .eq("salesman_slug", slug)
+          .gte("created_at", cutoff30)
           .then(({ data: allEvts, error: evtsErr }) => {
             if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
             const evts = allEvts || [];
-            // 30-day slice for the chart state
-            const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-            setAnalyticsEvents(evts.filter(e => e.created_at >= cutoff30));
+            setAnalyticsEvents(evts);
             // build per-listing CVR map (all-time, session-deduped)
             const map = {};
             const viewedKeys = new Set();
@@ -630,155 +634,53 @@ export default function SalesmanLite() {
               );
             });
 
+          // shared enquiry INSERT handler — deduplicates across both filter channels
+          const handleEnquiryInsert = async (row) => {
+            setEnquiries((p) => p.find((e) => e.id === row.id) ? p : [row, ...p]);
+            toast("New enquiry!", { description: row.buyer_name || "Someone enquired" });
+            if (!row.buyer_phone && !row.listing_id) return;
+            const phone = (row.buyer_phone || "").replace(/\D/g, "");
+            if (phone) {
+              const { data: dupLead } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
+              if (!dupLead) {
+                const { data: newLead, error: rtInsertErr } = await supabase.from("leads").insert({
+                  salesman_id: uid, dealer_id: null,
+                  buyer_name: row.buyer_name || null, phone: row.buyer_phone || null,
+                  notes: row.buyer_message || null, car_listing_id: row.listing_id || null,
+                  stage: "new", lead_source: "enquiry", is_deleted: false,
+                }).select().single();
+                if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
+                if (newLead) setLeads((p) => [newLead, ...p]);
+              }
+            }
+            const { error: rtConvertErr } = await supabase.from("whatsapp_enquiries").update({ status: "converted" }).eq("id", row.id);
+            if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
+            setEnquiries((p) => p.map((e) => e.id === row.id ? { ...e, status: "converted" } : e));
+          };
+
           if (channelRef.current) supabase.removeChannel(channelRef.current);
           channelRef.current = supabase
             .channel("salesman-lite-rt-" + uid)
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "leads",
-                filter: `salesman_id=eq.${uid}`,
-              },
+            .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${uid}` },
               (payload) => {
-                if (payload.eventType === "INSERT")
-                  setLeads((p) => [payload.new, ...p]);
-                if (payload.eventType === "UPDATE")
-                  setLeads((p) =>
-                    p.map((l) =>
-                      l.id === payload.new.id ? { ...l, ...payload.new } : l,
-                    ),
-                  );
-                if (payload.eventType === "DELETE")
-                  setLeads((p) => p.filter((l) => l.id !== payload.old.id));
+                if (payload.eventType === "INSERT") setLeads((p) => [payload.new, ...p]);
+                if (payload.eventType === "UPDATE") setLeads((p) => p.map((l) => l.id === payload.new.id ? { ...l, ...payload.new } : l));
+                if (payload.eventType === "DELETE") setLeads((p) => p.filter((l) => l.id !== payload.old.id));
               },
             )
-            .on(
-              "postgres_changes",
-              {
-                event: "INSERT",
-                schema: "public",
-                table: "salesman_notifications",
-                filter: `salesman_id=eq.${uid}`,
-              },
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${uid}` },
               (payload) => {
                 toast(payload.new.title, { description: payload.new.body });
                 setNotifications((p) => [payload.new, ...p]);
               },
             )
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "whatsapp_enquiries",
-                filter: `salesman_id=eq.${uid}`,
-              },
+            .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_enquiries", filter: `salesman_id=eq.${uid}` },
               async (payload) => {
-                if (payload.eventType === "INSERT") {
-                  setEnquiries((p) => [payload.new, ...p]);
-                  toast("New enquiry!", {
-                    description: payload.new.buyer_name || "Someone enquired",
-                  });
-                  if (!payload.new.buyer_phone && !payload.new.listing_id) return;
-                  const { data: newLead, error: rtInsertErr } = await supabase
-                    .from("leads")
-                    .insert({
-                      salesman_id: uid,
-                      dealer_id: null,
-                      buyer_name: payload.new.buyer_name || null,
-                      phone: payload.new.buyer_phone || null,
-                      notes: payload.new.buyer_message || null,
-                      car_listing_id: payload.new.listing_id || null,
-                      stage: "new",
-                      lead_source: "enquiry",
-                      is_deleted: false,
-                    })
-                    .select()
-                    .single();
-                  if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
-                  if (newLead) setLeads((p) => [newLead, ...p]);
-                  const { error: rtConvertErr } = await supabase
-                    .from("whatsapp_enquiries")
-                    .update({ status: "converted" })
-                    .eq("id", payload.new.id);
-                  if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
-                  setEnquiries((p) =>
-                    p.map((e) =>
-                      e.id === payload.new.id ? { ...e, status: "converted" } : e,
-                    ),
-                  );
-                }
-                if (payload.eventType === "UPDATE")
-                  setEnquiries((p) =>
-                    p.map((e) =>
-                      e.id === payload.new.id ? { ...e, ...payload.new } : e,
-                    ),
-                  );
+                if (payload.eventType === "INSERT") await handleEnquiryInsert(payload.new);
+                if (payload.eventType === "UPDATE") setEnquiries((p) => p.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e));
               },
             )
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "whatsapp_enquiries",
-                filter: `dealer_id=eq.${uid}`,
-              },
-              async (payload) => {
-                if (payload.eventType === "INSERT") {
-                  setEnquiries((p) =>
-                    p.find((e) => e.id === payload.new.id) ? p : [payload.new, ...p],
-                  );
-                  toast("New enquiry!", {
-                    description: payload.new.buyer_name || "Someone enquired",
-                  });
-                  if (!payload.new.buyer_phone && !payload.new.listing_id) return;
-                  const { data: newLead, error: rtInsertErr } = await supabase
-                    .from("leads")
-                    .insert({
-                      salesman_id: uid,
-                      dealer_id: null,
-                      buyer_name: payload.new.buyer_name || null,
-                      phone: payload.new.buyer_phone || null,
-                      notes: payload.new.buyer_message || null,
-                      car_listing_id: payload.new.listing_id || null,
-                      stage: "new",
-                      lead_source: "enquiry",
-                      is_deleted: false,
-                    })
-                    .select()
-                    .single();
-                  if (rtInsertErr) console.error("realtimeInsertLead:", rtInsertErr);
-                  if (newLead) setLeads((p) => [newLead, ...p]);
-                  const { error: rtConvertErr } = await supabase
-                    .from("whatsapp_enquiries")
-                    .update({ status: "converted" })
-                    .eq("id", payload.new.id);
-                  if (rtConvertErr) console.error("realtimeConvertEnquiry:", rtConvertErr);
-                  setEnquiries((p) =>
-                    p.map((e) =>
-                      e.id === payload.new.id ? { ...e, status: "converted" } : e,
-                    ),
-                  );
-                }
-                if (payload.eventType === "UPDATE")
-                  setEnquiries((p) =>
-                    p.map((e) =>
-                      e.id === payload.new.id ? { ...e, ...payload.new } : e,
-                    ),
-                  );
-              },
-            )
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "appointments",
-                filter: `salesman_id=eq.${uid}`,
-              },
+            .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `salesman_id=eq.${uid}` },
               async (payload) => {
                 if (payload.eventType === "INSERT") {
                   setAppointments((p) => [payload.new, ...p]);
@@ -786,8 +688,7 @@ export default function SalesmanLite() {
                   toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
                   const phone = (payload.new.buyer_phone || "").replace(/\D/g, "");
                   if (phone) {
-                    const { data: existing } = await supabase
-                      .from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
+                    const { data: existing } = await supabase.from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
                     if (!existing) {
                       const { data: newLead } = await supabase.from("leads").insert({
                         salesman_id: uid, dealer_id: null,
@@ -799,8 +700,7 @@ export default function SalesmanLite() {
                     }
                   }
                 }
-                if (payload.eventType === "UPDATE")
-                  setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
+                if (payload.eventType === "UPDATE") setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
               },
             )
             .subscribe();
@@ -809,12 +709,11 @@ export default function SalesmanLite() {
       // fetch appointments
       supabase
         .from("appointments")
-        .select(
-          "id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)",
-        )
+        .select("id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, car_listings(brand, model, year)")
         .eq("salesman_id", uid)
         .order("appointment_date", { ascending: false })
-        .then(({ data: apts }) => {
+        .then(({ data: apts, error: aptsErr }) => {
+          if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
           const appts = apts || [];
           setAppointments(appts);
           writeCache(`slite_appts_${uid}`, appts);
@@ -942,9 +841,9 @@ export default function SalesmanLite() {
   const saveFollowUp = async (leadId, date) => {
     setFollowUpSaving(true);
     const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
-    if (error) console.error("saveFollowUp:", error); // column may not exist yet — still update local state
-    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
     setFollowUpSaving(false);
+    if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
     setFollowUpModalLead(null);
     toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
   };
@@ -1199,26 +1098,15 @@ export default function SalesmanLite() {
       return;
     }
 
-    const { error: mergeProfileErr } = await supabase
-      .from("profiles")
-      .update({ dealer_id: data.dealer_id })
-      .eq("id", profile.id);
-    if (mergeProfileErr) console.error("handleMerge profiles:", mergeProfileErr);
-    const { error: mergeLeadsErr } = await supabase
-      .from("leads")
-      .update({ dealer_id: data.dealer_id })
-      .eq("salesman_id", profile.id)
-      .is("dealer_id", null);
-    if (mergeLeadsErr) console.error("handleMerge leads:", mergeLeadsErr);
-    const { error: mergeListingsErr } = await supabase
-      .from("car_listings")
-      .update({ dealer_id: data.dealer_id })
-      .eq("assigned_to", profile.id);
-    if (mergeListingsErr) console.error("handleMerge listings:", mergeListingsErr);
     const { error: rpcErr } = await supabase.rpc("use_dealer_invite", {
       invite_code: mergeCode.trim().toUpperCase(),
     });
-    if (rpcErr) console.error("handleMerge rpc:", rpcErr);
+    if (rpcErr) {
+      console.error("handleMerge rpc:", rpcErr);
+      setMergeStatus("error");
+      setMergeMsg("Merge failed. Please try again or contact support.");
+      return;
+    }
 
     setMergeStatus("success");
     setMergeMsg("Merged! Redirecting to full dashboard...");
@@ -1268,8 +1156,16 @@ export default function SalesmanLite() {
     setAiCaptionTab("wa");
     setCaptionCopied(false);
     const existing = aiCaptions[car.id];
-    // Skip if we already have a successful caption (not an error state) and not forcing retry
     if (!force && existing && !existing.wa?.startsWith("Couldn't")) return;
+    if (aiCaptionLoading) return; // block re-entry including Regenerate
+    const AI_CAP_KEY = "slite_ai_cap_count";
+    const AI_CAP_DATE = "slite_ai_cap_date";
+    const today = new Date().toDateString();
+    const savedDate = sessionStorage.getItem(AI_CAP_DATE);
+    const count = savedDate === today ? parseInt(sessionStorage.getItem(AI_CAP_KEY) || "0", 10) : 0;
+    if (count >= 10) { toast.error("AI caption limit reached for today (10/10)"); return; }
+    sessionStorage.setItem(AI_CAP_DATE, today);
+    sessionStorage.setItem(AI_CAP_KEY, String(count + 1));
     setAiCaptionLoading(true);
     const name = [car.year, car.brand, car.model, car.variant]
       .filter(Boolean)
@@ -1552,16 +1448,30 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     );
 
   // ── Memoised dashboard analytics (avoids recompute on every render) ─────────
-  const listingStats = useMemo(() => myListings.map((car) => {
-    const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
-    const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-    const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-    const views = viewSessions.size;
-    const waTaps = waSessions.size;
-    const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
-    const cvr = views > 0 ? (waTaps / views) * 100 : null;
-    return { car, views, waTaps, enqCount, cvr };
-  }), [myListings, analyticsEvents, enquiries]);
+  const listingStats = useMemo(() => {
+    // pre-group events by car_id for O(1) lookup — avoids O(n×m) filter per listing
+    const evtsByCarId = new Map();
+    for (const e of analyticsEvents) {
+      if (!e.car_id) continue;
+      if (!evtsByCarId.has(e.car_id)) evtsByCarId.set(e.car_id, []);
+      evtsByCarId.get(e.car_id).push(e);
+    }
+    const enqByListingId = new Map();
+    for (const e of enquiries) {
+      if (!e.listing_id) continue;
+      enqByListingId.set(e.listing_id, (enqByListingId.get(e.listing_id) || 0) + 1);
+    }
+    return myListings.map((car) => {
+      const carEvts = evtsByCarId.get(car.id) || [];
+      const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+      const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
+      const views = viewSessions.size;
+      const waTaps = waSessions.size;
+      const enqCount = enqByListingId.get(car.id) || 0;
+      const cvr = views > 0 ? (waTaps / views) * 100 : null;
+      return { car, views, waTaps, enqCount, cvr };
+    });
+  }, [myListings, analyticsEvents, enquiries]);
 
   const dashboardCVR = useMemo(() => {
     const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
@@ -1749,7 +1659,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   done: myListings.length > 0,
                   title: "Add your first listing",
                   sub: "Upload photos, set price, publish to XDrive marketplace in 2 minutes.",
-                  cta: myListings.length === 0 ? null : null,
+                  cta: null,
                   ctaLabel: "Add Listing →",
                   ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); },
                   locked: false,
@@ -4525,6 +4435,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const handleAvatarUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
+      if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
       setAvatarUploading(true);
       const ext = file.name.split(".").pop();
       const path = `${userId}/avatar.${ext}`;
