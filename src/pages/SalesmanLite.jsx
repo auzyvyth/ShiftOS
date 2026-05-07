@@ -345,6 +345,10 @@ export default function SalesmanLite() {
 
   // objection playbook
   const [playbookLeadId, setPlaybookLeadId] = useState(null);
+  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
+
+  // enquiry expand
+  const [expandedEnqId, setExpandedEnqId] = useState(null);
 
   // mobile lead stage filter
   const [mobileLeadStage, setMobileLeadStage] = useState("new");
@@ -2368,6 +2372,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
                       {[
                         car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
+                        car.engine_cc ? `${Number(car.engine_cc).toLocaleString()}cc` : null,
                         car.transmission,
                         car.colour,
                       ].filter(Boolean).join(" · ")}
@@ -2443,9 +2448,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         </button>
                         <button
                           onClick={() => handleListingCopy(car, "wa")}
-                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", textAlign: "center" }}
+                          style={{
+                            fontSize: 10, padding: "4px 8px", borderRadius: 6, textAlign: "center", cursor: "pointer",
+                            background: listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: listingCopied[car.id] === "wa" ? "#4ade80" : "#9ca3af",
+                          }}
                         >
-                          WA Caption
+                          {listingCopied[car.id] === "wa" ? "✓ Copied!" : "WA Caption"}
                         </button>
                         <button
                           onClick={() => { setQuickBriefCar(car); setBriefCopied(false); }}
@@ -3140,12 +3150,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 )}
                 {actionBtn(
                   <>
-                    <MessageSquare size={13} style={{ flexShrink: 0 }} /> WA
-                    Caption
+                    <MessageSquare size={13} style={{ flexShrink: 0 }} /> {listingCopied[car.id] === "wa" ? "✓ Copied!" : "WA Caption"}
                   </>,
-                  "#4ade80",
-                  "rgba(37,211,102,0.06)",
-                  "rgba(37,211,102,0.2)",
+                  listingCopied[car.id] === "wa" ? "#4ade80" : "#9ca3af",
+                  listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.08)" : "rgba(37,211,102,0.06)",
+                  listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.3)" : "rgba(37,211,102,0.2)",
                   () => handleListingCopy(car, "wa"),
                 )}
                 {actionBtn(
@@ -3479,6 +3488,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
                   </div>
                 )}
+                {lead.updated_at && (
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#374151" }}>
+                    Last contact: {timeAgo(lead.updated_at)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -3506,6 +3520,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               >
                 → {(nextStage || "won").replace(/_/g, " ")}
               </button>
+            )}
+            {lead.phone && (
+              <a
+                href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                📞
+              </a>
             )}
             {lead.phone ? (
               <button
@@ -3582,10 +3604,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
               {/* Tool row 2 */}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button onClick={() => setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id)} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id); }}
+                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === lead.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === lead.id ? "#c084fc" : "#9ca3af" }}
+                >
                   Scripts
                 </button>
-                <button onClick={() => { if (expandedActivityLeadId === lead.id) setExpandedActivityLeadId(null); else fetchLeadActivities(lead.id); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === lead.id) setExpandedActivityLeadId(null); else fetchLeadActivities(lead.id); }}
+                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: expandedActivityLeadId === lead.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === lead.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === lead.id ? "#93c5fd" : "#9ca3af" }}
+                >
                   <History size={11} /> History
                 </button>
                 {lead.stage === "deposit_taken" && (
@@ -3643,14 +3671,25 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       {Object.entries(scripts).map(([key, s]) => (
                         <div key={key} style={{ marginBottom: 8 }}>
                           <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 600, color: s.color }}>{s.label}</p>
-                          {s.lines.map((line, i) => (
-                            <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 3 }}>
-                              <p style={{ margin: 0, fontSize: 10, color: "#6b7280", lineHeight: 1.5, flex: 1 }}>{line}</p>
-                              <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g, "")); toast.success("Copied!"); }} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
-                                <Copy size={10} />
-                              </button>
-                            </div>
-                          ))}
+                          {s.lines.map((line, lineIdx) => {
+                            const lineKey = `${lead.id}-${key}-${lineIdx}`;
+                            const isCopied = copiedScriptLine === lineKey;
+                            return (
+                              <div key={lineIdx} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 3, overflowX: "hidden" }}>
+                                <p style={{ margin: 0, fontSize: 10, color: "#6b7280", lineHeight: 1.5, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap", overflow: "hidden" }}>{line}</p>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(line.replace(/^"|"$/g, ""));
+                                    setCopiedScriptLine(lineKey);
+                                    setTimeout(() => setCopiedScriptLine(null), 1500);
+                                  }}
+                                  style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}
+                                >
+                                  {isCopied ? <Check size={10} /> : <Copy size={10} />}
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
@@ -3837,7 +3876,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               return (
                 <div
                   key={stage}
-                  style={{ minWidth: 200, flexShrink: 0 }}
+                  style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
@@ -4063,15 +4102,18 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         {[...enquiries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
           const car = enq.car_listings;
           const isNew = enq.status === "new";
+          const isExpanded = expandedEnqId === enq.id;
           return (
             <div
               key={enq.id}
+              onClick={() => setExpandedEnqId(isExpanded ? null : enq.id)}
               style={{
                 background: "#0d1117",
                 border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 10,
                 padding: isNew ? "12px 14px" : "8px 14px",
-                opacity: isNew ? 1 : 0.6,
+                opacity: isNew ? 1 : 0.85,
+                cursor: "pointer",
               }}
             >
               {/* Header */}
@@ -4084,8 +4126,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     New
                   </span>
                 ) : (
-                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", textTransform: "capitalize" }}>
-                    {enq.status}
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
+                    Converted → Lead
                   </span>
                 )}
               </div>
@@ -4095,19 +4137,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                 </p>
               )}
-              {/* Message — highlighted block */}
-              {isNew && enq.buyer_message && (
+              {/* Message — always show when expanded or new */}
+              {(isNew || isExpanded) && enq.buyer_message && (
                 <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderLeft: "3px solid rgba(96,165,250,0.5)", borderRadius: "0 6px 6px 0" }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {enq.buyer_message}
                   </p>
                 </div>
               )}
-              {/* Phone — unreplied only */}
-              {isNew && enq.buyer_phone && (
-                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#6b7280" }}>
-                  📞 {enq.buyer_phone}
-                </p>
+              {/* Phone — show when new or expanded */}
+              {(isNew || isExpanded) && enq.buyer_phone && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>📞 {enq.buyer_phone}</p>
+                  {isExpanded && (
+                    <a
+                      href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}! 😊`)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", textDecoration: "none" }}
+                    >WA</a>
+                  )}
+                </div>
               )}
               {/* Timestamp */}
               <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
@@ -5054,6 +5104,23 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 </div>
               ))}
               <div>
+                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>
+                  Car (optional)
+                </label>
+                <select
+                  value={addLeadForm.car_listing_id}
+                  onChange={(e) => setAddLeadForm((p) => ({ ...p, car_listing_id: e.target.value }))}
+                  style={{ width: "100%", background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  <option value="">— no car selected —</option>
+                  {myListings.filter((c) => c.status !== "sold").map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ")} — RM {Number(c.selling_price || 0).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label
                   style={{
                     fontSize: 11,
@@ -5277,7 +5344,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
               setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
+              const savedLeadId = waModalLead.id;
               setWaModalLead(null);
+              toast("WA sent!", {
+                description: "Did you also call them?",
+                action: { label: "Log Call", onClick: () => { setLogCallLeadId(savedLeadId); setCallOutcome("answered"); setCallNote(""); } },
+                duration: 5000,
+              });
               const phone = (waModalLead.phone || "").replace(/\D/g, "");
               if (phone) {
                 window.open(
@@ -6220,6 +6293,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </span>
                 </div>
 
+                <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 4px" }}>Edit message before sending — personalise it 👇</p>
                 <textarea
                   value={broadcastMsg}
                   onChange={(e) => setBroadcastMsg(e.target.value)}
@@ -6236,10 +6310,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     padding: "10px 12px",
                     resize: "vertical",
                     outline: "none",
-                    marginBottom: 12,
+                    marginBottom: 4,
                     fontFamily: "inherit",
                   }}
                 />
+                <p style={{ fontSize: 10, color: "#374151", textAlign: "right", margin: "0 0 8px" }}>{broadcastMsg.length} chars</p>
 
                 {broadcastDone ? (
                   <div className="flex items-center gap-2 justify-center py-2">
@@ -6389,31 +6464,38 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 ))}
               </div>
             ) : (
-              <textarea
-                value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? ""}
-                onChange={(e) =>
-                  setAiCaptions((p) => ({
-                    ...p,
-                    [aiCaptionCar.id]: {
-                      ...p[aiCaptionCar.id],
-                      [aiCaptionTab]: e.target.value,
-                    },
-                  }))
-                }
-                rows={6}
-                style={{
-                  width: "100%",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 10,
-                  color: "#e5e7eb",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  padding: "10px 12px",
-                  resize: "vertical",
-                  outline: "none",
-                }}
-              />
+              <>
+                {aiCaptions[aiCaptionCar.id]?.[aiCaptionTab]?.startsWith("Couldn't") && (
+                  <div style={{ padding: "8px 12px", marginBottom: 8, borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12 }}>
+                    ⚠️ Caption generation failed. Check that AI tokens are configured, then tap Regenerate.
+                  </div>
+                )}
+                <textarea
+                  value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab]?.startsWith("Couldn't") ? "" : (aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "")}
+                  onChange={(e) =>
+                    setAiCaptions((p) => ({
+                      ...p,
+                      [aiCaptionCar.id]: {
+                        ...p[aiCaptionCar.id],
+                        [aiCaptionTab]: e.target.value,
+                      },
+                    }))
+                  }
+                  rows={6}
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 10,
+                    color: "#e5e7eb",
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    padding: "10px 12px",
+                    resize: "vertical",
+                    outline: "none",
+                  }}
+                />
+              </>
             )}
 
             <div className="flex gap-2 mt-3">
@@ -6472,7 +6554,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.12)",
                   color: "#9ca3af",
-                  cursor: "pointer",
+                  cursor: aiCaptionLoading ? "not-allowed" : "pointer",
+                  opacity: aiCaptionLoading ? 0.4 : 1,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -6594,6 +6677,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           `🚗 *${name}*`,
           `💰 ${price}${monthly ? ` (est. RM ${monthly.toLocaleString()}/mo)` : ""}`,
           car.mileage ? `📍 ${Number(car.mileage).toLocaleString()} km` : null,
+          car.engine_cc ? `🔧 ${Number(car.engine_cc).toLocaleString()}cc` : null,
           car.transmission ? `⚙️ ${car.transmission}` : null,
           car.colour ? `🎨 ${car.colour}` : null,
           car.condition ? `✅ Condition: ${car.condition}` : null,
