@@ -413,14 +413,17 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
+    const booted = { current: false };
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") return;
+        if (event === "SIGNED_OUT") { navigate("/login"); return; }
+        if (booted.current) return;
         if (!session) {
           setLoading(false);
           navigate("/login");
           return;
         }
+        booted.current = true;
 
       const uid = session.user.id;
       setUserId(uid);
