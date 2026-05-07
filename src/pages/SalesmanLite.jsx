@@ -416,6 +416,7 @@ export default function SalesmanLite() {
     // getSession() properly awaits any in-progress token refresh before returning,
     // so it always reflects the true final auth state — no login flash.
     supabase.auth.getSession().then(async ({ data, error }) => {
+      try {
       if (error || !data.session) {
         if (error) console.error("getSession:", error);
         setLoading(false);
@@ -735,6 +736,11 @@ export default function SalesmanLite() {
         .limit(30)
         .then(({ data: notifs }) => setNotifications(notifs || []));
 
+      } catch (err) {
+        console.error("SalesmanLite boot error:", err);
+        setLoading(false);
+        navigate("/login");
+      }
     });
 
     // Watch for sign-out events only (token refresh is handled by getSession above)
