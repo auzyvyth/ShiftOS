@@ -1095,6 +1095,13 @@ export default function SalesmanLite() {
     setAppointments((p) => p.map((a) => (a.id === apptId ? { ...a, status } : a)));
   };
 
+  const scheduleAptReminder = async (apt) => {
+    if (!apt.appointment_date) return;
+    const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
+    await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+    setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt, remind_sent: false } : a));
+  };
+
   const autoUpsertLeadFromAppt = async (apt) => {
     const phone = (apt.buyer_phone || "").replace(/\D/g, "");
     if (!phone) return;
@@ -4320,7 +4327,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     const phone = apt.buyer_phone.replace(/\D/g, "");
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer");
                     setEditingReminder(null);
-                    if (apt.status === "pending") { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }
+                    if (apt.status === "pending") { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }
                   }}
                   style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
                 >
@@ -4347,8 +4354,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <button
                   onClick={async () => {
                     if (!rescheduleDate) return;
-                    await supabase.from("appointments").update({ appointment_date: new Date(rescheduleDate).toISOString(), status: "rescheduled" }).eq("id", apt.id);
-                    setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: new Date(rescheduleDate).toISOString(), status: "rescheduled" } : a));
+                    const newDate = new Date(rescheduleDate);
+                    const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
+                    await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+                    setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
                     setReschedulingAptId(null);
                     setRescheduleDate("");
                     toast.success("Appointment rescheduled!");
@@ -4379,7 +4388,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* Secondary: status actions */}
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {apt.status !== "confirmed" && (
-                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
                     Confirm
                   </button>
                 )}
