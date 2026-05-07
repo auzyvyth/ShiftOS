@@ -260,6 +260,7 @@ export default function SalesmanLite() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
   const broadcastCancelRef = useRef(false);
+  const pendingStageRef = useRef({});
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
@@ -825,6 +826,35 @@ export default function SalesmanLite() {
     });
     if (actErr) console.error("updateLeadStage activity:", actErr);
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
+  };
+
+  const advanceLeadStage = (lead, newStage) => {
+    if (!newStage) return;
+    const oldStage = lead.stage;
+    const leadId = lead.id;
+    const buyerName = lead.buyer_name || "Lead";
+    // cancel any in-flight pending change for this lead
+    if (pendingStageRef.current[leadId]) {
+      clearTimeout(pendingStageRef.current[leadId].timer);
+    }
+    // optimistic local update
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)));
+    const timer = setTimeout(() => {
+      delete pendingStageRef.current[leadId];
+      updateLeadStage(leadId, newStage);
+    }, 4500);
+    pendingStageRef.current[leadId] = { timer, oldStage };
+    toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(pendingStageRef.current[leadId]?.timer);
+          delete pendingStageRef.current[leadId];
+          setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: oldStage } : l)));
+        },
+      },
+      duration: 4500,
+    });
   };
 
   const pingWA = (lead) => {
@@ -3514,7 +3544,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
             {lead.stage !== "won" && lead.stage !== "closed_won" && (
               <button
-                onClick={() => nextStage && updateLeadStage(lead.id, nextStage)}
+                onClick={() => advanceLeadStage(lead, nextStage)}
                 style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
               >
                 → {(nextStage || "won").replace(/_/g, " ")}
