@@ -3445,7 +3445,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         (s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost",
       ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
       const heat = getHeatScore(lead);
-      const isDrawerOpen = drawerLeadId === lead.id;
       const isConfirmingDelete = deleteConfirmId === lead.id;
       const isPromptingLost = lostPromptId === lead.id;
       const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
@@ -3553,186 +3552,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             ) : null}
             <button
-              onClick={() => setDrawerLeadId(isDrawerOpen ? null : lead.id)}
-              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: isDrawerOpen ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
+              onClick={() => setDrawerLeadId(lead.id)}
+              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
             >
               ···
             </button>
           </div>
-
-          {/* ── DRAWER ── */}
-          {isDrawerOpen && (
-            <div style={{ background: "#080a12", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-
-              {/* Note inline edit */}
-              {editingNoteId === lead.id ? (
-                <div>
-                  <textarea
-                    autoFocus
-                    value={editNoteVal}
-                    onChange={e => setEditNoteVal(e.target.value)}
-                    rows={2}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 11, padding: "5px 8px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
-                  />
-                  <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
-                    <button onClick={() => saveLeadNote(lead.id)} disabled={notesSavingId === lead.id} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === lead.id ? 0.5 : 1 }}>{notesSavingId === lead.id ? "…" : "Save"}</button>
-                    <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-                  </div>
-                </div>
-              ) : lead.notes ? (
-                <p onClick={() => { setEditingNoteId(lead.id); setEditNoteVal(lead.notes || ""); }} style={{ margin: 0, fontSize: 11, color: "#4b5563", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                  <Pencil size={10} /> "{lead.notes}"
-                </p>
-              ) : (
-                <button onClick={() => { setEditingNoteId(lead.id); setEditNoteVal(""); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                  <Pencil size={10} /> Add note
-                </button>
-              )}
-
-              {/* Tool row 1 */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button onClick={() => { const price = lead.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(lead); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  <DollarSign size={11} /> Loan calc
-                </button>
-                <button onClick={() => { setLogCallLeadId(lead.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  <PhoneCall size={11} /> Log call
-                </button>
-                <button onClick={() => { setFollowUpModalLead(lead); setFollowUpDate(lead.follow_up_at ? lead.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: lead.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: lead.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: lead.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  <Clock size={11} /> Set reminder
-                </button>
-              </div>
-
-              {/* Tool row 2 */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === lead.id ? null : lead.id); }}
-                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: playbookLeadId === lead.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === lead.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === lead.id ? "#c084fc" : "#9ca3af" }}
-                >
-                  Scripts
-                </button>
-                <button
-                  onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === lead.id) setExpandedActivityLeadId(null); else fetchLeadActivities(lead.id); }}
-                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: expandedActivityLeadId === lead.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === lead.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === lead.id ? "#93c5fd" : "#9ca3af" }}
-                >
-                  <History size={11} /> History
-                </button>
-                {lead.stage === "deposit_taken" && (
-                  <button onClick={() => { setDepositModal(lead); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer" }}>
-                    Receipt
-                  </button>
-                )}
-                <button onClick={() => setLinkCarLeadId(lead.id)} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  🚗 {lead.car_listing_id ? "Change Car" : "Link Car"}
-                </button>
-              </div>
-
-              {/* Activity timeline */}
-              {expandedActivityLeadId === lead.id && (
-                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "10px 12px" }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
-                  {activitiesLoadingId === lead.id ? (
-                    <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>Loading…</p>
-                  ) : (leadActivities[lead.id] || []).length === 0 ? (
-                    <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>No activity yet.</p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {(leadActivities[lead.id] || []).map((act, i) => {
-                        const icon = act.activity_type === "whatsapp_sent" ? "💬" : act.activity_type === "call_logged" ? "📞" : act.activity_type === "stage_changed" ? "🔄" : "📝";
-                        return (
-                          <div key={act.id || i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                            <span style={{ fontSize: 11, flexShrink: 0 }}>{icon}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
-                              <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{timeAgo(act.created_at)}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Objection Playbook */}
-              {playbookLeadId === lead.id && (() => {
-                const pbStage = lead.stage;
-                const pbCar = lead.car_listings;
-                const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
-                const scripts = {
-                  price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price ? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
-                  mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage ? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
-                  timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`] },
-                  trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
-                };
-                if (["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage)) {
-                  return (
-                    <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "10px 12px" }}>
-                      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
-                      {Object.entries(scripts).map(([key, s]) => (
-                        <div key={key} style={{ marginBottom: 8 }}>
-                          <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 600, color: s.color }}>{s.label}</p>
-                          {s.lines.map((line, lineIdx) => {
-                            const lineKey = `${lead.id}-${key}-${lineIdx}`;
-                            const isCopied = copiedScriptLine === lineKey;
-                            return (
-                              <div key={lineIdx} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 3, overflowX: "hidden" }}>
-                                <p style={{ margin: 0, fontSize: 10, color: "#6b7280", lineHeight: 1.5, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap", overflow: "hidden" }}>{line}</p>
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(line.replace(/^"|"$/g, ""));
-                                    setCopiedScriptLine(lineKey);
-                                    setTimeout(() => setCopiedScriptLine(null), 1500);
-                                  }}
-                                  style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}
-                                >
-                                  {isCopied ? <Check size={10} /> : <Copy size={10} />}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-
-              {/* Divider */}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
-
-              {/* Lost / Delete zone */}
-              {isPromptingLost ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
-                  {LOST_REASONS.map(r => (
-                    <button key={r} onClick={() => handleLostReason(lead.id, r)} disabled={lostSavingId === lead.id} style={{ fontSize: 10, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === lead.id ? 0.5 : 1 }}>
-                      {lostSavingId === lead.id ? "…" : r}
-                    </button>
-                  ))}
-                  <button onClick={() => setLostPromptId(null)} style={{ fontSize: 10, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
-                </div>
-              ) : isConfirmingDelete ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
-                  <button onClick={() => handleDeleteLead(lead.id)} disabled={deletingLeadId === lead.id} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === lead.id ? 0.5 : 1 }}>{deletingLeadId === lead.id ? "…" : "Yes"}</button>
-                  <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
-                </div>
-              ) : (
-                <div style={{ display: "flex", gap: 6 }}>
-                  {lead.stage !== "won" && lead.stage !== "closed_won" && (
-                    <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(lead.id); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                      Mark as lost
-                    </button>
-                  )}
-                  <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(lead.id); }} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Trash2 size={11} /> Delete
-                  </button>
-                </div>
-              )}
-
-            </div>
-          )}
         </div>
       );
     };
@@ -4077,6 +3902,207 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             )}
           </div>
         )}
+
+        {/* ── LEAD DETAIL SIDEBAR ── */}
+        {drawerLeadId && (() => {
+          const pl = leads.find(l => l.id === drawerLeadId);
+          if (!pl) return null;
+          const plCar = pl.car_listings;
+          const plCarName = plCar ? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
+          const plCarPrice = plCar?.selling_price ? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
+          const plHeat = getHeatScore(pl);
+          const plHeatStyle = plHeat.label === "hot" ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm" ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+          const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+          const plIsPromptingLost = lostPromptId === pl.id;
+          const plIsConfirmingDelete = deleteConfirmId === pl.id;
+          const pbCar = pl.car_listings;
+          const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
+          const pbStage = pl.stage;
+          const scripts = {
+            price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price ? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
+            mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage ? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
+            timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`] },
+            trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+          };
+          const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+          return (
+            <>
+              {/* backdrop */}
+              <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+              {/* panel */}
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+
+                {/* header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || "No car linked"}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+                    <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* price strip */}
+                {plCarPrice && (
+                  <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
+                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+                  </div>
+                )}
+
+                {/* scrollable body */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+                  {/* Notes */}
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Notes</p>
+                    {editingNoteId === pl.id ? (
+                      <div>
+                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : "Save"}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : pl.notes ? (
+                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: "#9ca3af", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Pencil size={12} /> "{pl.notes}"
+                      </p>
+                    ) : (
+                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+                        <Pencil size={12} /> Add note…
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tool row 1 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { const price = pl.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(pl); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <DollarSign size={12} /> Loan calc
+                    </button>
+                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <PhoneCall size={12} /> Log call
+                    </button>
+                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <Clock size={12} /> Set reminder
+                    </button>
+                  </div>
+
+                  {/* Tool row 2 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
+                      Scripts
+                    </button>
+                    <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
+                      <History size={12} /> History
+                    </button>
+                    {pl.stage === "deposit_taken" && (
+                      <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
+                        Receipt
+                      </button>
+                    )}
+                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      🚗 {pl.car_listing_id ? "Change Car" : "Link Car"}
+                    </button>
+                  </div>
+
+                  {/* Activity timeline */}
+                  {expandedActivityLeadId === pl.id && (
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+                      {activitiesLoadingId === pl.id ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>Loading…</p>
+                      ) : (leadActivities[pl.id] || []).length === 0 ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No activity yet.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {(leadActivities[pl.id] || []).map((act, i) => {
+                            const icon = act.activity_type === "whatsapp_sent" ? "💬" : act.activity_type === "call_logged" ? "📞" : act.activity_type === "stage_changed" ? "🔄" : "📝";
+                            return (
+                              <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Objection Scripts */}
+                  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
+                    <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+                      {Object.entries(scripts).map(([key, s]) => (
+                        <div key={key} style={{ marginBottom: 10 }}>
+                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
+                          {s.lines.map((line, lineIdx) => {
+                            const lineKey = `${pl.id}-${key}-${lineIdx}`;
+                            const isCopied = copiedScriptLine === lineKey;
+                            return (
+                              <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
+                                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
+                                <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                                  {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
+                  {/* Lost / Delete zone */}
+                  {plIsPromptingLost ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+                      {LOST_REASONS.map(r => (
+                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
+                          {lostSavingId === pl.id ? "…" : r}
+                        </button>
+                      ))}
+                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
+                    </div>
+                  ) : plIsConfirmingDelete ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>Delete this lead?</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : "Yes, delete"}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>No</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {pl.stage !== "won" && pl.stage !== "closed_won" && (
+                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                          Mark as lost
+                        </button>
+                      )}
+                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
       </div>
     );
   };
