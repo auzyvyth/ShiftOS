@@ -884,8 +884,8 @@ export default function CarDetailPage() {
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 8px;
           }
-          .cdp-mobile-bar-wa { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border: none; cursor: pointer; background: #22c55e; color: white; padding: 12px 0; border-top: 2px solid #16a34a; }
-          .cdp-mobile-bar-book { flex: 0 0 auto; border-radius: 10px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; background: transparent; color: #e2e8f0; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.12); }
+          .cdp-mobile-bar-wa { flex: 0 0 auto; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; border: 1px solid rgba(34,197,94,0.3); cursor: pointer; background: rgba(34,197,94,0.08); color: #4ade80; padding: 12px 14px; }
+          .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; background: #dc2626; color: white; padding: 12px 0; border: none; border-top: 2px solid #b91c1c; box-shadow: 0 2px 12px rgba(220,38,38,0.3); }
         }
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
       `}</style>
@@ -1297,25 +1297,25 @@ export default function CarDetailPage() {
         {/* M4 — CTA card */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
           <div style={{ background:'#0a1625', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
-            <button className="cdp-wa-btn" onClick={handleWhatsApp}
-              style={{ width:'100%', background:'#22c55e', color:'white', border:'none', borderTop:'2px solid #16a34a', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(34,197,94,0.2)', marginBottom:8, letterSpacing:'0.02em' }}>
-              WhatsApp Dealer
+            <button
+              onClick={() => {
+                trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
+                document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+              }}
+              style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
+              Book a Viewing
             </button>
             <div style={{ display:'flex', gap:8 }}>
+              <button onClick={handleWhatsApp}
+                style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color:'#4ade80', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
+                WhatsApp
+              </button>
               {contactPhone && (
                 <button onClick={handleCall}
                   style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
                   <Phone size={13} /> Call
                 </button>
               )}
-              <button
-                onClick={() => {
-                  trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                  document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
-                }}
-                style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
-                Book Visit
-              </button>
             </div>
             {car.warranty_months > 0 && (
               <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, padding:'8px 12px', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:9 }}>
@@ -2329,26 +2329,26 @@ export default function CarDetailPage() {
             )}
 
             {/* CTA BUTTONS */}
-            <button className="cdp-wa-btn" onClick={handleWhatsApp}
-              style={{ width: '100%', background: '#22c55e', color: 'white', border: 'none', borderTop: '2px solid #16a34a', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(34,197,94,0.2)', transition: 'transform .15s, box-shadow .2s' }}>
-              WhatsApp Dealer
+            <button
+              onClick={() => {
+                trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
+                bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
+              Book a Viewing
             </button>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button onClick={handleWhatsApp}
+                style={{ flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, fontWeight: 600, transition: 'all .2s' }}>
+                WhatsApp
+              </button>
               {contactPhone && (
                 <button onClick={handleCall}
                   style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
                   <Phone size={13} /> Call
                 </button>
               )}
-              <button
-                onClick={() => {
-                  trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                  bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
-                Book Visit
-              </button>
             </div>
 
             <button onClick={() => setCalcOpen(true)}
@@ -2471,11 +2471,10 @@ export default function CarDetailPage() {
           </span>
         </button>
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
-        {contactPhone && (
-          <button className="cdp-mobile-bar-book" onClick={handleCall} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-            <Phone size={14} /> Call
-          </button>
-        )}
+        <button className="cdp-mobile-bar-book" onClick={() => {
+          trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
+          document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+        }}>Book a Viewing</button>
       </div>
 
       {/* ── enquiry modal ── */}
