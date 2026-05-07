@@ -51,7 +51,7 @@ export default function AdminPage() {
     // Load salesman lite only (standalone, no dealer_id)
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, slug, plan, created_at, is_active, avatar_url, telegram_chat_id, subscription_status, car_listings(count), leads(count)")
+      .select("id, full_name, email, slug, plan, created_at, is_active, avatar_url, telegram_chat_id, subscription_status, ic_number, account_status, city, state, car_listings(count), leads(count)")
       .eq("role", "salesman")
       .eq("plan", "salesman_lite")
       .is("dealer_id", null)
@@ -149,6 +149,11 @@ export default function AdminPage() {
         return updated;
       });
     }
+  }
+
+  async function approveAgent(sm) {
+    const { error } = await supabase.from("profiles").update({ account_status: "active", is_active: true }).eq("id", sm.id);
+    if (!error) setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, account_status: "active", is_active: true } : s));
   }
 
   async function deleteSalesman(id) {
@@ -531,7 +536,7 @@ export default function AdminPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                          {["", "Name", "Slug", "Listings", "Leads", "Telegram", "Joined", "Actions"].map(h => (
+                          {["", "Name", "Slug", "Location", "IC", "Listings", "Leads", "Joined", "Actions"].map(h => (
                             <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -553,26 +558,38 @@ export default function AdminPage() {
                               <td style={{ padding: "10px 14px" }}>
                                 <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2, display: "flex", alignItems: "center", gap: 6 }}>
                                   {sm.full_name || "—"}
-                                  <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", flexShrink: 0 }}>Lite</span>
+                                  {sm.account_status === "pending" ? (
+                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24", flexShrink: 0 }}>Pending</span>
+                                  ) : (
+                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", flexShrink: 0 }}>Lite</span>
+                                  )}
                                 </div>
                                 <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
                               </td>
                               <td style={{ padding: "10px 14px", color: "#9ca3af" }}>{sm.slug || "—"}</td>
-                              <td style={{ padding: "10px 14px", color: "#e5e7eb", fontWeight: 600 }}>{smCount("car_listings", sm)}</td>
-                              <td style={{ padding: "10px 14px", color: "#e5e7eb", fontWeight: 600 }}>{smCount("leads", sm)}</td>
+                              <td style={{ padding: "10px 14px", color: "#6b7280", fontSize: 11 }}>{[sm.city, sm.state].filter(Boolean).join(", ") || "—"}</td>
                               <td style={{ padding: "10px 14px" }}>
-                                {sm.telegram_chat_id
-                                  ? <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>✓</span>
-                                  : <span style={{ fontSize: 12, color: "#374151" }}>—</span>
+                                {sm.ic_number
+                                  ? <span style={{ fontSize: 11, color: "#e5e7eb", fontFamily: "monospace" }}>{sm.ic_number}</span>
+                                  : <span style={{ color: "#4b5563" }}>—</span>
                                 }
                               </td>
+                              <td style={{ padding: "10px 14px", color: "#e5e7eb", fontWeight: 600 }}>{smCount("car_listings", sm)}</td>
+                              <td style={{ padding: "10px 14px", color: "#e5e7eb", fontWeight: 600 }}>{smCount("leads", sm)}</td>
                               <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
                               <td style={{ padding: "10px 14px" }}>
                                 <div style={{ display: "flex", gap: 5 }}>
-                                  <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                    style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                    {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                                  </button>
+                                  {sm.account_status === "pending" ? (
+                                    <button className="adm-btn" onClick={() => approveAgent(sm)}
+                                      style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", fontWeight: 700 }}>
+                                      ✓ Approve
+                                    </button>
+                                  ) : (
+                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                    </button>
+                                  )}
                                   <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
                                     style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
                                     Delete

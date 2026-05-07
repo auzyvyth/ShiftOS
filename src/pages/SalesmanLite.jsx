@@ -245,6 +245,9 @@ export default function SalesmanLite() {
     full_name: "",
     whatsapp_number: "",
     telegram_chat_id: "",
+    city: "",
+    state: "",
+    ic_number: "",
     instagram: "",
     tiktok: "",
     facebook: "",
@@ -408,6 +411,9 @@ export default function SalesmanLite() {
         full_name: profile.full_name || "",
         whatsapp_number: profile.whatsapp_number || "",
         telegram_chat_id: profile.telegram_chat_id || "",
+        city: profile.city || "",
+        state: profile.state || "",
+        ic_number: profile.ic_number || "",
         instagram: profile.instagram || "",
         tiktok: profile.tiktok || "",
         facebook: profile.facebook || "",
@@ -438,7 +444,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website")
         .eq("id", uid)
         .maybeSingle();
 
@@ -446,6 +452,12 @@ export default function SalesmanLite() {
       if (!profileData) {
         setLoading(false);
         navigate("/login");
+        return;
+      }
+
+      if (profileData.account_status === "pending") {
+        setProfile(profileData);
+        setLoading(false);
         return;
       }
 
@@ -4611,6 +4623,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           full_name: settingsForm.full_name,
           whatsapp_number: phone,
           telegram_chat_id: settingsForm.telegram_chat_id || null,
+          city: settingsForm.city || null,
+          state: settingsForm.state || null,
+          ic_number: settingsForm.ic_number || null,
           instagram: settingsForm.instagram || null,
           tiktok: settingsForm.tiktok || null,
           facebook: settingsForm.facebook || null,
@@ -4623,6 +4638,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         full_name: settingsForm.full_name,
         whatsapp_number: phone,
         telegram_chat_id: settingsForm.telegram_chat_id || null,
+        city: settingsForm.city || null,
+        state: settingsForm.state || null,
+        ic_number: settingsForm.ic_number || null,
         instagram: settingsForm.instagram || null,
         tiktok: settingsForm.tiktok || null,
         facebook: settingsForm.facebook || null,
@@ -4730,6 +4748,32 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }}
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
+          </div>
+
+          {/* Location + IC */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Location & Identity</p>
+            <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>City</label>
+                <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="Kuala Lumpur" style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>State</label>
+                <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))}
+                  style={{ ...inputStyle, appearance: "none" }}>
+                  <option value="">Select state</option>
+                  {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>IC Number <span style={{ color: "#4b5563" }}>(private — admin only)</span></label>
+              <input value={settingsForm.ic_number} onChange={(e) => setSettingsForm((p) => ({ ...p, ic_number: e.target.value }))} placeholder="e.g. 901231-14-1234" style={inputStyle} />
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Required for verification. Never shown publicly.</p>
+            </div>
           </div>
 
           {/* Social links */}
@@ -5478,6 +5522,24 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             animation: "spin 0.8s linear infinite",
           }}
         />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
+  // ── PENDING APPROVAL GATE ─────────────────────────────────────────────────
+  if (profile?.account_status === "pending") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ maxWidth: 400, textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>⏳</div>
+          <h2 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: 2, color: "#fff", marginBottom: 8 }}>Pending Approval</h2>
+          <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7, marginBottom: 24 }}>
+            Your account is under review. We verify every agent before they can list cars — usually within 24 hours. You'll get a WhatsApp message once you're approved.
+          </p>
+          <p style={{ fontSize: 12, color: "#4b5563" }}>Questions? WhatsApp us at <a href="https://wa.me/60123456789" style={{ color: "#93c5fd", textDecoration: "none" }}>+60 12-345 6789</a></p>
+          <button onClick={handleLogout} style={{ marginTop: 24, fontSize: 12, color: "#4b5563", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Sign out</button>
+        </div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
