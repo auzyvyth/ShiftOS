@@ -71,18 +71,18 @@
 - [x] Batched 4 at a time; limited to first 2 images per listing
 
 ## 14. [HIGH] Broadcast cannot be cancelled mid-sequence
-**Status:** TODO  
-- [ ] Add cancel flag ref (`broadcastCancelled`) checked inside the setTimeout chain
-- [ ] Show "Cancel" button while broadcast is running
+**Status:** DONE  
+- [x] Add cancel flag ref (`broadcastCancelRef`) checked inside the setTimeout chain
+- [x] Show "Cancel" button while broadcast is running
 
 ## 15. [HIGH] WA modal opens WhatsApp before DB write completes
-**Status:** TODO  
-- [ ] Await DB write before calling `window.open()`
-- [ ] If DB write fails, show error toast and do not open WA
+**Status:** DONE  
+- [x] Await DB write before calling `window.open()`
+- [x] If DB write fails, show error toast and do not open WA
 
 ## 16. [HIGH] Appointment cancel: no confirmation
-**Status:** TODO  
-- [ ] Replace inline `onClick` with two-tap pattern (first tap → "Tap again to confirm")
+**Status:** DONE  
+- [x] Replace inline `onClick` with two-tap pattern (first tap → "Tap again to confirm")
 
 ## 17. [HIGH] select("*") on profiles
 **Status:** DONE  
@@ -93,16 +93,16 @@
 - [x] Shared `handleEnquiryInsert` checks for existing lead by phone before inserting
 
 ## 19. [MEDIUM] listingStats.sort() mutates memoised array inside JSX render
-**Status:** TODO  
-- [ ] Move sort into the useMemo that produces listingStats
+**Status:** DONE  
+- [x] Changed to `[...listingStats].sort(...)` — no longer mutates memoised array
 
 ## 20. [MEDIUM] getHeatScore called O(n log n) times during sort + once per card
-**Status:** TODO  
-- [ ] Pre-compute heat scores into a Map before sort and renderLeadCard
+**Status:** DONE  
+- [x] Pre-computed `heatMap = new Map(...)` once at top of renderLeads; sort comparators use Map lookup
 
 ## 21. [MEDIUM] dismissTour DB error not caught
-**Status:** TODO  
-- [ ] Add error check; if fails, do not hide tour UI (retry on next load)
+**Status:** DONE  
+- [x] Awaits DB write first; returns on error; UI update only after confirmed success
 
 ## 22. [MEDIUM] Dead code cleanup
 **Status:** DONE  
@@ -110,13 +110,13 @@
 - [x] Simplified `cta: null` in onboarding step 1
 
 ## 23. [MEDIUM] Mobile: 7 listing action buttons in 2-col grid, last misaligned
-**Status:** TODO  
-- [ ] Change to flex-wrap row; all buttons same width; no orphaned last item
+**Status:** DONE  
+- [x] Changed to flex-wrap row; all buttons same width; no orphaned last item
 
 ## 24. [MEDIUM] Notification panel tap-trap on mobile (320px wide, 55px backdrop)
-**Status:** TODO  
-- [ ] On mobile, render panel as full-width bottom sheet with clear close handle
+**Status:** DONE  
+- [x] On mobile, renders as full-width bottom sheet with rounded top corners and close handle
 
 ## 25. [MEDIUM] Car detail modal clips on iOS Safari (100dvh)
-**Status:** TODO  
-- [ ] Replace `100dvh` with `100svh` or `calc(100vh - env(safe-area-inset-bottom))`
+**Status:** DONE  
+- [x] Replaced `100dvh` with `100svh` for iOS Safari safe viewport height
