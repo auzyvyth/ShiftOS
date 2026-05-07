@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { captureRef } from '../utils/refTracking';
-import { Phone, MessageCircle, Instagram, Globe, Facebook } from 'lucide-react';
+import { Phone, MessageCircle, Instagram, Globe, Facebook, MapPin, Car } from 'lucide-react';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
