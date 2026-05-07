@@ -413,19 +413,17 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
-    const booted = { current: false };
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_OUT") { navigate("/login"); return; }
-        if (booted.current) return;
-        if (!session) {
-          setLoading(false);
-          navigate("/login");
-          return;
-        }
-        booted.current = true;
+    // getSession() properly awaits any in-progress token refresh before returning,
+    // so it always reflects the true final auth state — no login flash.
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (error || !data.session) {
+        if (error) console.error("getSession:", error);
+        setLoading(false);
+        navigate("/login");
+        return;
+      }
 
-      const uid = session.user.id;
+      const uid = data.session.user.id;
       setUserId(uid);
 
       const { data: profileData, error: profileErr } = await supabase
@@ -737,8 +735,12 @@ export default function SalesmanLite() {
         .limit(30)
         .then(({ data: notifs }) => setNotifications(notifs || []));
 
-      }
-    );
+    });
+
+    // Watch for sign-out events only (token refresh is handled by getSession above)
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") navigate("/login");
+    });
     return () => authSub.unsubscribe();
   }, [navigate]);
 
