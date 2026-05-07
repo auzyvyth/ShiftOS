@@ -245,6 +245,10 @@ export default function SalesmanLite() {
     full_name: "",
     whatsapp_number: "",
     telegram_chat_id: "",
+    instagram: "",
+    tiktok: "",
+    facebook: "",
+    website: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(
@@ -403,6 +407,11 @@ export default function SalesmanLite() {
       setSettingsForm({
         full_name: profile.full_name || "",
         whatsapp_number: profile.whatsapp_number || "",
+        telegram_chat_id: profile.telegram_chat_id || "",
+        instagram: profile.instagram || "",
+        tiktok: profile.tiktok || "",
+        facebook: profile.facebook || "",
+        website: profile.website || "",
       });
       const av = profile.avatar_url || "";
       setAvatarUrl(av);
@@ -4602,6 +4611,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           full_name: settingsForm.full_name,
           whatsapp_number: phone,
           telegram_chat_id: settingsForm.telegram_chat_id || null,
+          instagram: settingsForm.instagram || null,
+          tiktok: settingsForm.tiktok || null,
+          facebook: settingsForm.facebook || null,
+          website: settingsForm.website || null,
         })
         .eq("id", userId);
       if (saveProfileErr) console.error("handleSave:", saveProfileErr);
@@ -4610,6 +4623,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         full_name: settingsForm.full_name,
         whatsapp_number: phone,
         telegram_chat_id: settingsForm.telegram_chat_id || null,
+        instagram: settingsForm.instagram || null,
+        tiktok: settingsForm.tiktok || null,
+        facebook: settingsForm.facebook || null,
+        website: settingsForm.website || null,
       }));
       setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
       setSettingsSaving(false);
@@ -4714,6 +4731,35 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
           </div>
+
+          {/* Social links */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Social Links</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
+                { key: "tiktok",    label: "TikTok",    placeholder: "@yourusername", prefix: "tiktok.com/@" },
+                { key: "facebook",  label: "Facebook",  placeholder: "username or page name", prefix: "facebook.com/" },
+                { key: "website",   label: "Website",   placeholder: "https://yoursite.com", prefix: null },
+              ].map(({ key, label, placeholder, prefix }) => (
+                <div key={key}>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{label}</label>
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+                    {prefix && (
+                      <span style={{ padding: "10px 10px", fontSize: 11, color: "#4b5563", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>{prefix}</span>
+                    )}
+                    <input
+                      value={settingsForm[key]}
+                      onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
           <button
             onClick={handleSave}

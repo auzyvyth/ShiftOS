@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { captureRef } from '../utils/refTracking';
-import { Phone, MessageCircle, Instagram, MapPin, Car } from 'lucide-react';
+import { Phone, MessageCircle, Instagram, Globe, Facebook } from 'lucide-react';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -170,6 +170,28 @@ export default function SalesmanProfilePage() {
                   target="_blank" rel="noopener noreferrer"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7 }}>
                   <Instagram size={15} /> Instagram
+                </a>
+              )}
+              {profile.tiktok && (
+                <a href={`https://tiktok.com/@${profile.tiktok.replace(/^@/, '')}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.17 8.17 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/></svg>
+                  TikTok
+                </a>
+              )}
+              {profile.facebook && (
+                <a href={`https://facebook.com/${profile.facebook.replace(/^@/, '')}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Facebook size={15} /> Facebook
+                </a>
+              )}
+              {profile.website && (
+                <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Globe size={15} /> Website
                 </a>
               )}
             </div>
