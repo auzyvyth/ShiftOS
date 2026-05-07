@@ -212,6 +212,7 @@ export default function SalesmanLite() {
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [testDriveConfirm, setTestDriveConfirm] = useState(null); // { lead, nextStage }
   const [deletingLeadId, setDeletingLeadId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
   const [lostSavingId, setLostSavingId] = useState(null);
@@ -828,8 +829,9 @@ export default function SalesmanLite() {
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
   };
 
-  const advanceLeadStage = (lead, newStage) => {
+  const advanceLeadStage = (lead, newStage, force = false) => {
     if (!newStage) return;
+    if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
     const oldStage = lead.stage;
     const leadId = lead.id;
     const buyerName = lead.buyer_name || "Lead";
@@ -6253,6 +6255,58 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {renderAddLeadModal()}
       {renderWAModal()}
       {renderLogCallModal()}
+
+      {/* ── Test Drive outcome confirmation ── */}
+      {testDriveConfirm && (() => {
+        const { lead: tdLead, nextStage: tdNext } = testDriveConfirm;
+        const car = tdLead.car_listings;
+        const carName = car ? `${car.brand} ${car.model}` : "the car";
+        const dismiss = () => setTestDriveConfirm(null);
+        const proceed = () => {
+          dismiss();
+          advanceLeadStage(tdLead, tdNext, true);
+        };
+        const markLost = () => {
+          dismiss();
+          setLostPromptId(tdLead.id);
+        };
+        return (
+          <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+              {/* icon */}
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🚗</div>
+              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
+              <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280" }}>{tdLead.buyer_name || "Buyer"} · {carName}</p>
+              {/* options */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  onClick={proceed}
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+                >
+                  <span style={{ fontSize: 20 }}>👍</span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {tdNext.replace(/_/g, " ")}</p>
+                  </div>
+                </button>
+                <button
+                  onClick={markLost}
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, fontFamily: "inherit" }}
+                >
+                  <span style={{ fontSize: 20 }}>👎</span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
+                  </div>
+                </button>
+                <button onClick={dismiss} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {renderFollowUpModal()}
       {renderNotifPanel()}
       {renderCarDetailPopup()}
