@@ -413,15 +413,16 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      if (error || !data.session) {
-        if (error) console.error("getSession:", error);
-        setLoading(false);
-        navigate("/login");
-        return;
-      }
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") return;
+        if (!session) {
+          setLoading(false);
+          navigate("/login");
+          return;
+        }
 
-      const uid = data.session.user.id;
+      const uid = session.user.id;
       setUserId(uid);
 
       const { data: profileData, error: profileErr } = await supabase
@@ -733,7 +734,9 @@ export default function SalesmanLite() {
         .limit(30)
         .then(({ data: notifs }) => setNotifications(notifs || []));
 
-    });
+      }
+    );
+    return () => authSub.unsubscribe();
   }, [navigate]);
 
   useEffect(() => {
