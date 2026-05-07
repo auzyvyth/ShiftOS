@@ -429,7 +429,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, is_suspended, suspension_reason, dealer_id, full_name, plan, telegram_bot_token")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token")
         .eq("id", uid)
         .maybeSingle();
 
