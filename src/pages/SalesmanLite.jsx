@@ -1068,6 +1068,7 @@ export default function SalesmanLite() {
     if (enq.status === "new") {
       await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
       setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+      await autoCreateLeadFromEnq(enq);
     }
   };
 
@@ -1080,9 +1081,47 @@ export default function SalesmanLite() {
       toast.error("Failed to update appointment");
       return;
     }
-    setAppointments((p) =>
-      p.map((a) => (a.id === apptId ? { ...a, status } : a)),
-    );
+    setAppointments((p) => p.map((a) => (a.id === apptId ? { ...a, status } : a)));
+  };
+
+  const autoUpsertLeadFromAppt = async (apt) => {
+    const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+    if (!phone) return;
+    const { data: existing } = await supabase
+      .from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+    if (existing) {
+      const curIdx = LEAD_STAGES.indexOf(existing.stage);
+      const viewIdx = LEAD_STAGES.indexOf("viewing_booked");
+      if (curIdx < viewIdx) {
+        await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
+        setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
+        toast.success("Lead moved to Viewing Booked!");
+      }
+    } else {
+      const { data: newLead } = await supabase.from("leads").insert({
+        salesman_id: userId, dealer_id: null,
+        buyer_name: apt.buyer_name || "Unknown", phone: apt.buyer_phone || "",
+        car_listing_id: apt.car_listing_id || null,
+        stage: "viewing_booked", lead_source: "manual", is_deleted: false,
+      }).select().single();
+      if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
+    }
+  };
+
+  const autoCreateLeadFromEnq = async (enq) => {
+    const phone = (enq.buyer_phone || "").replace(/\D/g, "");
+    if (!phone) return;
+    const { data: existing } = await supabase
+      .from("leads").select("id").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+    if (!existing) {
+      const { data: newLead } = await supabase.from("leads").insert({
+        salesman_id: userId, dealer_id: null,
+        buyer_name: enq.buyer_name || "Unknown", phone: enq.buyer_phone || "",
+        notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
+        stage: "new", lead_source: "enquiry", is_deleted: false,
+      }).select().single();
+      if (newLead) setLeads((p) => [newLead, ...p]);
+    }
   };
 
   const handleAddLead = async () => {
@@ -4087,11 +4126,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                 </p>
               )}
-              {/* Message — unreplied only, 1 line truncated */}
+              {/* Message — highlighted block */}
               {isNew && enq.buyer_message && (
-                <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  "{enq.buyer_message}"
-                </p>
+                <div style={{ margin: "4px 0 6px", padding: "7px 10px", background: "rgba(255,255,255,0.05)", borderLeft: "3px solid rgba(96,165,250,0.5)", borderRadius: "0 6px 6px 0" }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {enq.buyer_message}
+                  </p>
+                </div>
               )}
               {/* Phone — unreplied only */}
               {isNew && enq.buyer_phone && (
@@ -4116,6 +4157,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`, "_blank", "noopener,noreferrer");
                         await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id);
                         setEnquiries((p) => p.map((e) => e.id === enq.id ? { ...e, status: "responded" } : e));
+                        await autoCreateLeadFromEnq(enq);
                       }}
                       style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
                     >
@@ -4279,7 +4321,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     const phone = apt.buyer_phone.replace(/\D/g, "");
                     window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer");
                     setEditingReminder(null);
-                    if (apt.status === "pending") await updateApptStatus(apt.id, "confirmed");
+                    if (apt.status === "pending") { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }
                   }}
                   style={{ fontSize: 10, padding: "6px 14px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
                 >
@@ -4307,7 +4349,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* Secondary: status actions */}
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {apt.status !== "confirmed" && (
-                  <button onClick={() => updateApptStatus(apt.id, "confirmed")} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
                     Confirm
                   </button>
                 )}
