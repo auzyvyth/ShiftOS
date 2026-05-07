@@ -256,6 +256,9 @@ export default function SalesmanLite() {
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
+  const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+  const [selectedRemindAt, setSelectedRemindAt] = useState(null);
+  const [reminderSaving, setReminderSaving] = useState(false);
 
   // notifications
   const [notifications, setNotifications] = useState([]);
@@ -4185,6 +4188,34 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d < new Date();
     }).sort(desc);
 
+    const calcRemindAt = (apt, offsetKey) => {
+      const aptDate = new Date(apt.appointment_date);
+      if (offsetKey === "day_before") {
+        const d = new Date(aptDate); d.setDate(d.getDate() - 1); d.setHours(9, 0, 0, 0); return d;
+      }
+      if (offsetKey === "two_days") {
+        const d = new Date(aptDate); d.setDate(d.getDate() - 2); d.setHours(9, 0, 0, 0); return d;
+      }
+      const mins = { "1h": -60, "2h": -120 };
+      return new Date(aptDate.getTime() + (mins[offsetKey] ?? -60) * 60000);
+    };
+
+    const saveReminder = async (apt, remindAt) => {
+      setReminderSaving(true);
+      const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
+      setReminderSaving(false);
+      if (error) { toast.error("Failed to set reminder"); return; }
+      setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+      setReminderPickerAptId(null);
+      setSelectedRemindAt(null);
+      toast.success("Reminder set — Telegram fires " + remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }));
+    };
+
+    const clearReminder = async (apt) => {
+      await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
+      setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: null } : a));
+    };
+
     const renderApptCard = (apt) => {
       const car = apt.car_listings;
       const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
@@ -4237,6 +4268,18 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               "{apt.notes}"
             </p>
           )}
+          {/* Reminder status */}
+          {apt.remind_at && !apt.remind_sent ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", marginBottom: 8 }}>
+              <Bell size={12} color="#4ade80" />
+              <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+                Telegram · {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} at {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#f87171", fontSize: 10, cursor: "pointer", padding: 0 }}>Clear</button>
+            </div>
+          ) : apt.remind_sent ? (
+            <div style={{ fontSize: 11, color: "#4b5563", marginBottom: 8 }}>✓ Reminder sent</div>
+          ) : null}
           {/* Actions */}
           {isEditing ? (
             <div style={{ marginTop: 8 }}>
@@ -4301,6 +4344,58 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
           ) : (
             <div style={{ marginTop: 8 }}>
+              {/* Telegram reminder chip picker */}
+              {reminderPickerAptId === apt.id ? (
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                  <p style={{ fontSize: 10, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 8px" }}>Send Telegram reminder</p>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                    {[
+                      { key: "1h",        label: "1 hour before" },
+                      { key: "2h",        label: "2 hours before" },
+                      { key: "day_before", label: "Day before (9am)" },
+                      { key: "two_days",  label: "2 days before" },
+                    ].map(({ key, label }) => {
+                      const t = calcRemindAt(apt, key);
+                      const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
+                      return (
+                        <button key={key} onClick={() => setSelectedRemindAt(t)}
+                          style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+                            background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+                            border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                            color: active ? "#93c5fd" : "#6b7280" }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input type="datetime-local"
+                    value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0, 16) : ""}
+                    onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+                      style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+                      disabled={!selectedRemindAt || reminderSaving}
+                      style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                        background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+                        border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                        color: selectedRemindAt ? "#4ade80" : "#374151",
+                        cursor: selectedRemindAt ? "pointer" : "not-allowed",
+                        opacity: reminderSaving ? 0.6 : 1 }}>
+                      {reminderSaving ? "Saving…" : "Set reminder"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setEditingReminder(null); }}
+                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, cursor: "pointer", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  <Bell size={11} /> Set reminder
+                </button>
+              )}
               {/* Primary: WA Reminder */}
               {apt.buyer_phone && (
                 <button
@@ -4384,11 +4479,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         {/* Upcoming */}
         {upcomingApts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            {todayApts.length > 0 && (
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
-                Upcoming
-              </p>
-            )}
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+              <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingApts.map(renderApptCard)}
             </div>
