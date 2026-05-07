@@ -183,9 +183,12 @@ export default function SalesmanLite() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
+  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+  const [reschedulingAptId, setReschedulingAptId] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
 
   function switchTab(tab) {
-    if (tab === "bookings") setNewBookingsCount(0);
+    if (tab === "enquiries") setNewBookingsCount(0);
     setActiveTab(tab);
   }
 
@@ -776,20 +779,28 @@ export default function SalesmanLite() {
                 table: "appointments",
                 filter: `salesman_id=eq.${uid}`,
               },
-              (payload) => {
+              async (payload) => {
                 if (payload.eventType === "INSERT") {
                   setAppointments((p) => [payload.new, ...p]);
                   setNewBookingsCount((c) => c + 1);
-                  toast("New booking!", {
-                    description: payload.new.buyer_name || "New appointment",
-                  });
+                  toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
+                  const phone = (payload.new.buyer_phone || "").replace(/\D/g, "");
+                  if (phone) {
+                    const { data: existing } = await supabase
+                      .from("leads").select("id").eq("salesman_id", uid).is("dealer_id", null).eq("phone", phone).maybeSingle();
+                    if (!existing) {
+                      const { data: newLead } = await supabase.from("leads").insert({
+                        salesman_id: uid, dealer_id: null,
+                        buyer_name: payload.new.buyer_name || null, phone: payload.new.buyer_phone || null,
+                        car_listing_id: payload.new.car_listing_id || null,
+                        stage: "new", lead_source: "manual", is_deleted: false,
+                      }).select().single();
+                      if (newLead) setLeads((p) => [newLead, ...p]);
+                    }
+                  }
                 }
                 if (payload.eventType === "UPDATE")
-                  setAppointments((p) =>
-                    p.map((a) =>
-                      a.id === payload.new.id ? { ...a, ...payload.new } : a,
-                    ),
-                  );
+                  setAppointments((p) => p.map((a) => a.id === payload.new.id ? { ...a, ...payload.new } : a));
               },
             )
             .subscribe();
@@ -1356,15 +1367,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     },
     {
       tab: "enquiries",
-      label: "Enquiries",
+      label: "Inbox",
       icon: <MessageSquare style={{ width: 14, height: 14 }} />,
-      badge: enquiries.filter((e) => e.status === "new").length || null,
-    },
-    {
-      tab: "bookings",
-      label: "Bookings",
-      icon: <Phone style={{ width: 14, height: 14 }} />,
-      badge: newBookingsCount || null,
+      badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     {
       tab: "merge",
@@ -1394,15 +1399,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     },
     {
       tab: "enquiries",
-      label: "Enquiries",
+      label: "Inbox",
       icon: <MessageSquare size={18} />,
-      badge: enquiries.filter((e) => e.status === "new").length || null,
-    },
-    {
-      tab: "bookings",
-      label: "Bookings",
-      icon: <Phone size={18} />,
-      badge: newBookingsCount || null,
+      badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
     { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
@@ -4106,42 +4105,42 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               }}
             >
               {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>
                   {enq.buyer_name || "—"}
                 </p>
                 {isNew ? (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
                     New
                   </span>
                 ) : (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", textTransform: "capitalize" }}>
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", textTransform: "capitalize" }}>
                     {enq.status}
                   </span>
                 )}
               </div>
               {/* Car name */}
               {car && (
-                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af" }}>
                   {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                 </p>
               )}
               {/* Message — highlighted block */}
               {isNew && enq.buyer_message && (
-                <div style={{ margin: "4px 0 6px", padding: "7px 10px", background: "rgba(255,255,255,0.05)", borderLeft: "3px solid rgba(96,165,250,0.5)", borderRadius: "0 6px 6px 0" }}>
-                  <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderLeft: "3px solid rgba(96,165,250,0.5)", borderRadius: "0 6px 6px 0" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {enq.buyer_message}
                   </p>
                 </div>
               )}
               {/* Phone — unreplied only */}
               {isNew && enq.buyer_phone && (
-                <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#6b7280" }}>
                   📞 {enq.buyer_phone}
                 </p>
               )}
               {/* Timestamp */}
-              <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 10, color: "#374151" }}>
+              <p style={{ margin: isNew ? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
                 {timeAgo(enq.created_at)}
               </p>
               {/* Action buttons — unreplied only, max 2 */}
@@ -4313,7 +4312,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 value={reminderMsg}
                 onChange={(e) => setReminderMsg(e.target.value)}
                 rows={3}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, padding: "9px 10px", resize: "vertical", lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 6 }}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 10px", resize: "vertical", lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 6 }}
               />
               <div style={{ display: "flex", gap: 6 }}>
                 <button
@@ -4323,13 +4322,44 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     setEditingReminder(null);
                     if (apt.status === "pending") { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }
                   }}
-                  style={{ fontSize: 10, padding: "6px 14px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
+                  style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
                 >
                   Send
                 </button>
                 <button
                   onClick={() => setEditingReminder(null)}
-                  style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+                  style={{ fontSize: 12, padding: "6px 11px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : reschedulingAptId === apt.id ? (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af" }}>Pick a new date &amp; time:</p>
+              <input
+                type="datetime-local"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 6 }}
+              />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={async () => {
+                    if (!rescheduleDate) return;
+                    await supabase.from("appointments").update({ appointment_date: new Date(rescheduleDate).toISOString(), status: "rescheduled" }).eq("id", apt.id);
+                    setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, appointment_date: new Date(rescheduleDate).toISOString(), status: "rescheduled" } : a));
+                    setReschedulingAptId(null);
+                    setRescheduleDate("");
+                    toast.success("Appointment rescheduled!");
+                  }}
+                  style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)", color: "#c084fc", cursor: "pointer", fontWeight: 600 }}
+                >
+                  Confirm Reschedule
+                </button>
+                <button
+                  onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+                  style={{ fontSize: 12, padding: "6px 11px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
                 >
                   Cancel
                 </button>
@@ -4341,7 +4371,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {apt.buyer_phone && (
                 <button
                   onClick={() => { setEditingReminder(apt.id); setReminderMsg(buildReminderMessage(apt)); }}
-                  style={{ width: "100%", fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", marginBottom: 6 }}
+                  style={{ width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", marginBottom: 6 }}
                 >
                   Send WA Reminder
                 </button>
@@ -4349,17 +4379,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* Secondary: status actions */}
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {apt.status !== "confirmed" && (
-                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
+                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
                     Confirm
                   </button>
                 )}
                 {apt.status !== "rescheduled" && (
-                  <button onClick={() => updateApptStatus(apt.id, "rescheduled")} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>
+                  <button
+                    onClick={() => {
+                      const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
+                      const pad = (n) => String(n).padStart(2, "0");
+                      const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`;
+                      setRescheduleDate(local);
+                      setReschedulingAptId(apt.id);
+                      setEditingReminder(null);
+                    }}
+                    style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
+                  >
                     Reschedule
                   </button>
                 )}
                 {apt.status !== "cancelled" && (
-                  <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
+                  <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
                     Cancel
                   </button>
                 )}
@@ -5866,8 +5906,37 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "leads" && renderLeads()}
-          {activeTab === "enquiries" && renderEnquiries()}
-          {activeTab === "bookings" && renderBookings()}
+          {activeTab === "enquiries" && (
+            <div>
+              {/* Sub-tab switcher */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                {[
+                  { key: "enquiries", label: "Enquiries", badge: enquiries.filter((e) => e.status === "new").length },
+                  { key: "bookings", label: "Bookings", badge: newBookingsCount },
+                ].map(({ key, label, badge }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setInboxSubTab(key); if (key === "bookings") setNewBookingsCount(0); }}
+                    style={{
+                      fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+                      background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${inboxSubTab === key ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`,
+                      color: inboxSubTab === key ? "#f87171" : "#6b7280",
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}
+                  >
+                    {label}
+                    {badge > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, background: "#dc2626", color: "#fff", borderRadius: 99, padding: "0px 5px", minWidth: 16, textAlign: "center" }}>
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
+            </div>
+          )}
           {activeTab === "merge" && renderMerge()}
           {activeTab === "settings" && renderSettings()}
         </div>
