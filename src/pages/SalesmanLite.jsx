@@ -252,6 +252,8 @@ export default function SalesmanLite() {
   );
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const broadcastCancelRef = useRef(false);
+  const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [editingReminder, setEditingReminder] = useState(null);
   const [reminderMsg, setReminderMsg] = useState("");
 
@@ -1229,11 +1231,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   };
 
   const runBroadcast = (eligibleLeads) => {
-    const msgSnapshot = broadcastMsg; // capture before async delays
+    const msgSnapshot = broadcastMsg;
     const capped = eligibleLeads.slice(0, 10);
+    broadcastCancelRef.current = false;
     setBroadcastProgress({ current: 0, total: capped.length });
     capped.forEach((lead, i) => {
       setTimeout(() => {
+        if (broadcastCancelRef.current) return;
         const phone = (lead.phone || "").replace(/\D/g, "");
         if (phone) {
           window.open(
@@ -1324,10 +1328,22 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{
+          style={isMobile ? {
             position: "fixed",
-            top: isMobile ? 60 : 58,
-            right: isMobile ? 8 : 24,
+            bottom: 0, left: 0, right: 0,
+            maxHeight: "70dvh",
+            background: "#111827",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "16px 16px 0 0",
+            zIndex: 999,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            boxShadow: "0 -8px 32px rgba(0,0,0,0.5)",
+          } : {
+            position: "fixed",
+            top: 58,
+            right: 24,
             width: 320,
             maxHeight: 420,
             background: "#111827",
@@ -1700,11 +1716,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               ))}
             </div>
             <button
-              onClick={async () => {
-                const { error: tourErr } = await supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
-                if (tourErr) console.error("dismissTour:", tourErr);
-                setProfile((p) => ({ ...p, onboarding_tour_done: true }));
-              }}
+              onClick={dismissTour}
               style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0 }}
             >
               Dismiss
@@ -1809,7 +1821,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   <p key={h} style={{ margin: 0, fontSize: 9, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
                 ))}
               </div>
-              {listingStats.sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx) => (
+              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx) => (
                 <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "9px 14px", alignItems: "center", borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                   <p style={{ margin: 0, fontSize: 11, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{perfCarName(car)}</p>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f87171", textAlign: "center" }}>{views}</p>
@@ -2379,7 +2391,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 6, flexWrap: isMobile ? undefined : "wrap" }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button
                           onClick={() => handleListingCopy(car, "link")}
                           style={{
@@ -2551,8 +2563,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               margin: isMobile ? 0 : "24px auto",
               maxWidth: isMobile ? "100vw" : 1000,
               width: isMobile ? "100vw" : "calc(100vw - 48px)",
-              height: isMobile ? "100dvh" : undefined,
-              maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)",
+              height: isMobile ? "100svh" : undefined,
+              maxHeight: isMobile ? "100svh" : "calc(100vh - 48px)",
               background: "rgba(11,11,15,0.99)",
               border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: isMobile ? 0 : 8,
@@ -3364,6 +3376,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         })
       : leads;
 
+    // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
+    const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
+
     const activeStages = LEAD_STAGES.filter(
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
     );
@@ -3751,7 +3766,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             {(() => {
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === mobileLeadStage)
-                .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
               if (stageLeads.length === 0) {
                 return (
                   <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -3780,7 +3795,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               const sc = STAGE_COLOR[stage] || {};
               const stageLeads = searchedLeads
                 .filter((l) => l.stage === stage)
-                .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
               return (
                 <div
                   key={stage}
@@ -4318,9 +4333,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </button>
                 )}
                 {apt.status !== "cancelled" && (
-                  <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
-                    Cancel
-                  </button>
+                  cancelConfirmId === apt.id ? (
+                    <>
+                      <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.5)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>
+                        Confirm Cancel
+                      </button>
+                      <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => setCancelConfirmId(apt.id)} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -5041,35 +5067,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           />
           <button
             onClick={async () => {
-              const phone = (waModalLead.phone || "").replace(/\D/g, "");
-              if (phone) {
-                window.open(
-                  `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                );
-              }
               const now = new Date().toISOString();
               const { error: waTouchErr } = await supabase
-                .from("leads")
-                .update({ updated_at: now })
-                .eq("id", waModalLead.id);
-              if (waTouchErr) console.error("waModal leads update:", waTouchErr);
+                .from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
+              if (waTouchErr) { console.error("waModal leads update:", waTouchErr); toast.error("Failed to log message"); return; }
               const { error: waActErr } = await supabase.from("lead_activities").insert({
-                lead_id: waModalLead.id,
-                activity_type: "whatsapp_sent",
-                note: "WA message sent",
-                created_by: userId,
+                lead_id: waModalLead.id, activity_type: "whatsapp_sent",
+                note: "WA message sent", created_by: userId,
                 dealer_id: waModalLead.dealer_id ?? null,
               });
               if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
-              setLeads((p) =>
-                p.map((l) =>
-                  l.id === waModalLead.id ? { ...l, updated_at: now } : l,
-                ),
-              );
+              setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
               setWaModalLead(null);
+              const phone = (waModalLead.phone || "").replace(/\D/g, "");
+              if (phone) {
+                window.open(
+                  `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`,
+                  "_blank", "noopener,noreferrer",
+                );
+              }
             }}
             disabled={!waModalMsg.trim() || !waModalLead.phone}
             style={{
@@ -5120,13 +5137,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   ];
 
   const dismissTour = async () => {
+    const { error: tourErr } = await supabase
+      .from("profiles").update({ onboarding_tour_done: true }).eq("id", userId);
+    if (tourErr) { console.error("dismissTour:", tourErr); return; }
     setTourStep(null);
     setTourTarget(null);
     setProfile((p) => ({ ...p, onboarding_tour_done: true }));
-    await supabase
-      .from("profiles")
-      .update({ onboarding_tour_done: true })
-      .eq("id", userId);
   };
 
   const renderTour = () => {
@@ -6017,28 +6033,19 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </p>
                   </div>
                 ) : broadcastProgress ? (
-                  <div className="text-center py-2">
-                    <p className="text-orange-300 text-sm font-medium">
-                      Opening {broadcastProgress.current} of{" "}
-                      {broadcastProgress.total}…
+                  <div style={{ textAlign: "center", paddingTop: 8, paddingBottom: 8 }}>
+                    <p style={{ margin: "0 0 8px", color: "#fdba74", fontSize: 13, fontWeight: 500 }}>
+                      Opening {broadcastProgress.current} of {broadcastProgress.total}…
                     </p>
-                    <div
-                      className="mt-2 rounded-full overflow-hidden"
-                      style={{
-                        height: 4,
-                        background: "rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%`,
-                          background: "#f97316",
-                          transition: "width 0.3s ease",
-                          borderRadius: 9999,
-                        }}
-                      />
+                    <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 99, overflow: "hidden", marginBottom: 10 }}>
+                      <div style={{ height: "100%", width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%`, background: "#f97316", transition: "width 0.3s ease", borderRadius: 99 }} />
                     </div>
+                    <button
+                      onClick={() => { broadcastCancelRef.current = true; setBroadcastProgress(null); setBroadcastDone(false); }}
+                      style={{ fontSize: 11, padding: "4px 14px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 ) : (
                   <button
