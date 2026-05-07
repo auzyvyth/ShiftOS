@@ -4039,7 +4039,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {enquiries.map((enq) => {
+        {[...enquiries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
           const car = enq.car_listings;
           const isNew = enq.status === "new";
           return (
@@ -4188,19 +4188,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     };
 
     const asc = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
-    const desc = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
+    const newestBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+    const newestApt = (a, b) => new Date(b.appointment_date) - new Date(a.appointment_date);
 
     const todayApts = appointments.filter((a) => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(asc);
     const upcomingApts = appointments.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date();
-    }).sort(asc);
+    }).sort(newestBooked);
     const pastApts = appointments.filter((a) => {
       if (!a.appointment_date) return false;
       const d = new Date(a.appointment_date);
       return !isNaN(d) && !aptIsToday(a.appointment_date) && d < new Date();
-    }).sort(desc);
+    }).sort(newestApt);
 
     const calcRemindAt = (apt, offsetKey) => {
       const aptDate = new Date(apt.appointment_date);
