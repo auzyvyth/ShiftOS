@@ -264,9 +264,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           <div className="cc-divider" style={{ borderTop: '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))', marginBottom: 10 }} />
 
           {/* Bottom row: condition + grade (left) | WA icon (right) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto' }}>
-            {/* Left: condition pill + grade */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto' }}>
+            {/* Left: condition pill + grade — shrinks to content */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5, minWidth: 0 }}>
               {car.condition && (
                 <span style={{
                   display: 'inline-block',

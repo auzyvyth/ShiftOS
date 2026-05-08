@@ -35,6 +35,7 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
       title={cfg.tip || ''}
       style={{
         display: 'inline-flex',
+        alignSelf: 'flex-start',
         alignItems: 'center',
         gap: isLg ? '7px' : '4px',
         background: cfg.bg,
