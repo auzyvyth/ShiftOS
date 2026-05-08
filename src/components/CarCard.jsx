@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gauge, Settings2, MessageCircle, Flame, ArrowLeftRight, Fuel, Calendar } from 'lucide-react';
+import { Gauge, Settings2, MessageCircle, Fuel, Calendar } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent, getSlugFromURL } from '../utils/analytics';
-import HeartButton from './HeartButton';
-import { useCompare } from '../hooks/useCompare';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -22,10 +20,8 @@ const XDRIVE_PHONE = '60174155191';
 
 const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const navigate = useNavigate();
-  const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const inCompare = isInCompare(car.id);
 
   const brand         = car.brand || car.make || 'Unknown';
   const model         = car.model || '';
@@ -105,8 +101,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           background: rgba(37,211,102,0.18) !important;
           border-color: rgba(37,211,102,0.5) !important;
         }
-        .cc-cmp:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
-        .cc-cmp.on:hover { background: rgba(220,38,38,0.2) !important; }
 
         @media (max-width: 520px) {
           .cc-img         { height: 150px !important; }
@@ -124,9 +118,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           .cc-cell-val    { font-size: 11px !important; }
           .cc-divider     { margin-bottom: 8px !important; }
           .cc-wa          { width: 34px !important; height: 34px !important; }
-          .cc-badge       { font-size: 9px !important; padding: 2px 6px !important; }
-          .cc-yrchip      { font-size: 9px !important; padding: 2px 6px !important; }
-          .cc-cmp         { display: none !important; }
         }
       `}</style>
 
@@ -195,71 +186,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             </div>
           )}
 
-          {/* Top-left badges */}
-          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 'calc(100% - 68px)' }}>
-            {isSold && (
-              <span className="cc-badge" style={{ background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', color: '#9ca3af', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>SOLD</span>
-            )}
-            {isReserved && !isSold && (
-              <span className="cc-badge" style={{ background: 'rgba(245,158,11,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>RESERVED</span>
-            )}
-            {isHot && showDiscountBadge && !isSold && (
-              <span className="cc-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20, boxShadow: '0 2px 8px rgba(220,38,38,0.4)' }}>
-                <Flame size={9} /> −{discountPct}%
-              </span>
-            )}
-            {isRecon && !isSold && (
-              <span className="cc-badge" style={{ background: 'rgba(139,92,246,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>RECON</span>
-            )}
-            {isNew && !isHot && !isRecon && !isSold && (
-              <span className="cc-badge" style={{ background: 'rgba(16,185,129,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>NEW</span>
-            )}
-          </div>
-
-          {/* Top-right: year + heart */}
-          <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-            {year && (
-              <span className="cc-yrchip" style={{ background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', color: '#e5e7eb', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6 }}>
-                {year}
-              </span>
-            )}
-            <div onClick={e => e.stopPropagation()} style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '4px 6px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <HeartButton listingId={car.id} size={14} />
-            </div>
-          </div>
-
-          {/* Bottom-left: grade badge */}
-          {hasGrade && (
-            <div style={{ position: 'absolute', bottom: 8, left: 8 }}>
-              <GradeBadge auctionGrade={auctionGrade} interiorGrade={interiorGrade} size="sm" />
-            </div>
-          )}
-
-          {/* Bottom-right: compare toggle */}
-          <button
-            className={`cc-cmp${inCompare ? ' on' : ''}`}
-            onClick={e => {
-              e.stopPropagation();
-              inCompare ? removeFromCompare(car.id) : addToCompare(car.id);
-            }}
-            title={inCompare ? 'Remove from compare' : 'Compare'}
-            style={{
-              position: 'absolute', bottom: 8, right: 8,
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: inCompare ? 'rgba(220,38,38,0.75)' : 'rgba(0,0,0,0.55)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: 20,
-              color: inCompare ? '#fff' : '#9ca3af',
-              fontSize: 10, fontWeight: 700,
-              padding: '3px 8px',
-              cursor: 'pointer', transition: 'all 0.15s',
-              fontFamily: 'var(--font-sans, "Outfit", sans-serif)',
-            }}
-          >
-            <ArrowLeftRight size={10} />
-            {inCompare ? 'Comparing' : 'Compare'}
-          </button>
         </div>
 
         {/* ── Body ── */}
