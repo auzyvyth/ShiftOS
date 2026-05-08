@@ -513,7 +513,8 @@ const HomePage = () => {
         .select("subdomain, role")
         .eq("id", user.id)
         .maybeSingle();
-      if (profile?.role === "dealer" && profile?.subdomain && !isSubdomain()) {
+      // Only auto-redirect on subdomains (not the main marketplace)
+      if (profile?.role === "dealer" && profile?.subdomain && isSubdomain() && !window.location.hostname.includes(profile.subdomain)) {
         window.location.href = `https://${profile.subdomain}.xdrive.my`;
       }
     }
