@@ -1580,6 +1580,11 @@ export default function CarDetailPage() {
                     View all listings →
                   </Link>
                 )}
+                {dealer?.subdomain && (
+                  <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color:'#94a3b8', textDecoration:'none' }}>
+                    Go to dealer's page →
+                  </a>
+                )}
               </div>
             </div>
           );
@@ -2386,6 +2391,11 @@ export default function CarDetailPage() {
                     <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 12, color: '#60a5fa', textDecoration: 'none' }}>
                       View all listings →
                     </Link>
+                  )}
+                  {dealer?.subdomain && (
+                    <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: '#94a3b8', textDecoration: 'none' }}>
+                      Go to dealer's page →
+                    </a>
                   )}
                 </div>
               );
