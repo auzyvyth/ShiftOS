@@ -1550,6 +1550,28 @@ export default function CarDetailPage() {
                   {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
                 </span>
               </div>
+              {Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0 && (() => {
+                const PC = [
+                  { key:'part_exchange',    label:'Part Exchange',      color:'#60a5fa' },
+                  { key:'whatsapp_chat',    label:'WhatsApp Chat',      color:'#4ade80' },
+                  { key:'video_walkthrough',label:'Video Walkthrough',  color:'#f87171' },
+                  { key:'warranty_incl',    label:'Warranty Included',  color:'#34d399' },
+                  { key:'verified_docs',    label:'Verified Docs',      color:'#4ade80' },
+                  { key:'book_viewing',     label:'Book a Viewing',     color:'#60a5fa' },
+                ].filter(p => car.dealer_perks.includes(p.key));
+                if (!PC.length) return null;
+                return (
+                  <>
+                    <div style={{ height:1, background:'rgba(255,255,255,0.04)', margin:'2px 0' }} />
+                    {PC.map(({ key, label, color }) => (
+                      <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+                        <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color }}>✓ Available</span>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -1642,31 +1664,6 @@ export default function CarDetailPage() {
             </div>
           )}
 
-          {/* Perks */}
-          {(() => {
-            const perks = [
-              { label:'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
-              { label:'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
-              { label:'Cash Purchase', show: car.financing_type === 'cash' },
-              { label:'Part Exchange', show: true },
-              { label:'WhatsApp Chat', show: !!contactPhone },
-              { label:'Warranty Incl.', show: car.warranty_months > 0 },
-              { label:'Verified Docs', show: hasDocuments },
-              { label:'Book a Viewing', show: true },
-            ].filter(p => p.show);
-            return (
-              <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>What's Available</p>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-                  {perks.map(({ label }) => (
-                    <span key={label} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:6, padding:'5px 11px', fontSize:11, color:'#64748b' }}>
-                      <span style={{ color:'#22c55e', fontWeight:700 }}>✓</span> {label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
         </div>
 
         {/* M6 — Booking form */}
@@ -2425,6 +2422,28 @@ export default function CarDetailPage() {
                     {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
                   </span>
                 </div>
+                {Array.isArray(car.dealer_perks) && car.dealer_perks.length > 0 && (() => {
+                  const PERK_CFG = [
+                    { key: 'part_exchange',    label: 'Part Exchange',      color: '#60a5fa' },
+                    { key: 'whatsapp_chat',    label: 'WhatsApp Chat',      color: '#4ade80' },
+                    { key: 'video_walkthrough',label: 'Video Walkthrough',  color: '#f87171' },
+                    { key: 'warranty_incl',    label: 'Warranty Included',  color: '#34d399' },
+                    { key: 'verified_docs',    label: 'Verified Docs',      color: '#4ade80' },
+                    { key: 'book_viewing',     label: 'Book a Viewing',     color: '#60a5fa' },
+                  ].filter(p => car.dealer_perks.includes(p.key));
+                  if (!PERK_CFG.length) return null;
+                  return (
+                    <>
+                      <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '2px 0' }} />
+                      {PERK_CFG.map(({ key, label, color }) => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color }}>✓ Available</span>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2556,34 +2575,6 @@ export default function CarDetailPage() {
                 <p style={{ fontSize: 11, color: '#334155', marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
               </div>
             )}
-
-            {/* ── PERKS & SERVICES ── */}
-            {(() => {
-              const perks = [
-                { label: 'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
-                { label: 'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
-                { label: 'Cash Purchase', show: car.financing_type === 'cash' },
-                { label: 'Part Exchange', show: true },
-                { label: 'WhatsApp Chat', show: !!contactPhone },
-                { label: 'Video Walkthrough', show: !!(car.video_url && getEmbedUrl(car.video_url)) },
-                { label: 'Agent Assigned', show: !!salesmanProfile },
-                { label: 'Warranty Incl.', show: car.warranty_months > 0 },
-                { label: 'Verified Docs', show: hasDocuments },
-                { label: 'Book a Viewing', show: true },
-              ].filter(p => p.show);
-              return (
-                <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>What's Available</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {perks.map(({ label }) => (
-                      <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '6px 12px', fontSize: 12, color: '#64748b' }}>
-                        <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* BOOKING FORM */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }}>
@@ -2747,34 +2738,6 @@ export default function CarDetailPage() {
               style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
               <Calculator size={13} /> Financing Calculator
             </button>
-
-            {/* PERKS STRIP */}
-            {(() => {
-              const perks = [
-                { label: 'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
-                { label: 'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
-                { label: 'Cash Purchase', show: car.financing_type === 'cash' },
-                { label: 'Part Exchange', show: true },
-                { label: 'WhatsApp Chat', show: !!contactPhone },
-                { label: 'Video Walkthrough', show: !!(car.video_url && getEmbedUrl(car.video_url)) },
-                { label: 'Agent Assigned', show: !!salesmanProfile },
-                { label: 'Warranty Incl.', show: car.warranty_months > 0 },
-                { label: 'Verified Docs', show: hasDocuments },
-                { label: 'Book a Viewing', show: true },
-              ].filter(p => p.show);
-              return (
-                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#334155', fontWeight: 700, marginBottom: 10 }}>What's Available</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {perks.map(({ label }) => (
-                      <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 9px', fontSize: 11, color: '#475569', fontFamily: "'DM Sans',sans-serif" }}>
-                        <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {

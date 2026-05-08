@@ -76,6 +76,7 @@ const initialListing = {
   financing_type: "loan",
   warranty_months: "",
   deposit_amount: "",
+  dealer_perks: [],
 };
 
 const CAR_DATA = {
@@ -505,6 +506,15 @@ const DOC_TYPES = [
   { key: "other", label: "Other Document", color: "#6b7280" },
 ];
 
+const PERKS = [
+  { key: "part_exchange",     label: "Part Exchange" },
+  { key: "whatsapp_chat",     label: "WhatsApp Chat" },
+  { key: "video_walkthrough", label: "Video Walkthrough" },
+  { key: "warranty_incl",     label: "Warranty Incl." },
+  { key: "verified_docs",     label: "Verified Docs" },
+  { key: "book_viewing",      label: "Book a Viewing" },
+];
+
 // ─── Copy formatter (also exported for DashboardPage use) ────────────────────
 export function buildCopyText(l) {
   const condLabel =
@@ -890,6 +900,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             : "",
         deposit_amount:
           listing.deposit_amount != null ? String(listing.deposit_amount) : "",
+        dealer_perks: listing.dealer_perks || [],
       });
       setPreviews(listing.images || []);
       setStep(1);
@@ -1329,6 +1340,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         deposit_amount: form.deposit_amount
           ? parseFloat(form.deposit_amount)
           : null,
+        dealer_perks: form.dealer_perks || [],
       };
 
       if (listing) {
@@ -1753,6 +1765,36 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
               />
             </button>
+          </div>
+
+          {/* Perks & availability */}
+          <div className="p-4 bg-gray-800 border border-gray-700 rounded-2xl space-y-3">
+            <div>
+              <p className="text-white font-semibold text-sm">What's Available</p>
+              <p className="text-gray-500 text-xs mt-0.5">Tick the options you offer for this listing</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {PERKS.map(({ key, label }) => {
+                const active = (form.dealer_perks || []).includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      const curr = form.dealer_perks || [];
+                      set("dealer_perks", active ? curr.filter(k => k !== key) : [...curr, key]);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                      active
+                        ? "bg-green-500/15 border-green-500/40 text-green-400"
+                        : "bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400"
+                    }`}
+                  >
+                    {active ? "✓ " : ""}{label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {form.isRecon && (
