@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal } from 'lucide-react';
-import Header from '@/components/Header';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone } from 'lucide-react';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
 import { useCTAContext } from '../hooks/useCTAContext';
@@ -71,6 +70,219 @@ function sanitizePage(val) {
   const n = parseInt(val, 10);
   return Number.isFinite(n) && n >= 1 ? n : 1;
 }
+
+/* ── Marketplace Header ─────────────────────────────────────────────────────── */
+const NAV_LINKS = [
+  { label: 'Browse Cars',  href: '/' },
+  { label: 'Hot Deals',    href: '/?sort=newest' },
+  { label: 'Recon Cars',   href: '/?financing=loan' },
+  { label: 'Sell Your Car', href: '/login' },
+];
+
+const MarketplaceHeader = () => {
+  const [scrolled, setScrolled]   = useState(false);
+  const [menuOpen, setMenuOpen]   = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [menuOpen]);
+
+  return (
+    <>
+      <style>{`
+        .mh-root {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .mh-root.scrolled {
+          background: rgba(12,12,14,0.88) !important;
+          backdrop-filter: blur(16px) saturate(1.4);
+          -webkit-backdrop-filter: blur(16px) saturate(1.4);
+          box-shadow: 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .mh-nav-link {
+          color: #9ca3af;
+          font-size: 14px;
+          font-weight: 500;
+          text-decoration: none;
+          padding: 6px 2px;
+          position: relative;
+          transition: color 0.15s;
+          font-family: 'Outfit', sans-serif;
+          white-space: nowrap;
+        }
+        .mh-nav-link::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 1.5px;
+          background: #dc2626;
+          transform: scaleX(0);
+          transition: transform 0.2s ease;
+          transform-origin: left;
+          border-radius: 2px;
+        }
+        .mh-nav-link:hover { color: #fff; }
+        .mh-nav-link:hover::after { transform: scaleX(1); }
+        .mh-cta {
+          display: flex; align-items: center; gap: 7px;
+          background: #dc2626;
+          color: #fff;
+          font-size: 14px; font-weight: 700;
+          padding: 9px 18px;
+          border-radius: 9px;
+          text-decoration: none;
+          font-family: 'Outfit', sans-serif;
+          transition: background 0.15s, transform 0.15s;
+          white-space: nowrap;
+        }
+        .mh-cta:hover { background: #b91c1c; transform: translateY(-1px); }
+        .mh-hamburger {
+          display: none;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: #fff;
+          border-radius: 8px;
+          padding: 8px;
+          cursor: pointer;
+          align-items: center; justify-content: center;
+          transition: background 0.15s;
+        }
+        .mh-hamburger:hover { background: rgba(255,255,255,0.1); }
+        .mh-mobile-nav {
+          display: none;
+          flex-direction: column;
+          gap: 2px;
+          padding: 12px 20px 16px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+          background: rgba(12,12,14,0.97);
+          backdrop-filter: blur(16px);
+        }
+        .mh-mobile-link {
+          color: #9ca3af;
+          font-size: 15px; font-weight: 500;
+          text-decoration: none;
+          padding: 11px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          font-family: 'Outfit', sans-serif;
+          transition: color 0.15s;
+        }
+        .mh-mobile-link:last-child { border-bottom: none; }
+        .mh-mobile-link:hover { color: #fff; }
+        .mh-mobile-cta {
+          margin-top: 10px;
+          display: flex; align-items: center; justify-content: center; gap: 7px;
+          background: #dc2626; color: #fff;
+          font-size: 15px; font-weight: 700;
+          padding: 13px;
+          border-radius: 10px;
+          text-decoration: none;
+          font-family: 'Outfit', sans-serif;
+        }
+        @media (max-width: 720px) {
+          .mh-desktop-nav { display: none !important; }
+          .mh-hamburger    { display: flex !important; }
+          .mh-mobile-nav.open { display: flex !important; }
+        }
+      `}</style>
+
+      <header
+        className={`mh-root${scrolled ? ' scrolled' : ''}`}
+        style={{ background: 'transparent', borderBottom: '1px solid transparent' }}
+        ref={menuRef}
+      >
+        {/* ── Top bar ── */}
+        <div style={{
+          maxWidth: '1360px',
+          margin: '0 auto',
+          padding: '0 20px',
+          height: '64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '24px',
+        }}>
+          {/* Logo */}
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+            <span style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: '26px',
+              letterSpacing: '0.04em',
+              lineHeight: 1,
+            }}>
+              <span style={{ color: '#dc2626' }}>X</span>
+              <span style={{ color: '#ffffff' }}>DRIVE</span>
+            </span>
+            <span style={{
+              fontSize: '9px',
+              fontWeight: '700',
+              color: '#6b7280',
+              letterSpacing: '0.1em',
+              marginLeft: '4px',
+              marginTop: '2px',
+              fontFamily: "'Outfit', sans-serif",
+            }}>.MY</span>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="mh-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '28px', flex: 1, justifyContent: 'center' }}>
+            {NAV_LINKS.map(l => (
+              <a key={l.label} href={l.href} className="mh-nav-link">{l.label}</a>
+            ))}
+          </nav>
+
+          {/* Right side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+            <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', fontWeight: '500', textDecoration: 'none', fontFamily: "'Outfit', sans-serif" }}>
+              <Phone size={13} />
+              +60 17-415 5191
+            </a>
+            <a href="/login" className="mh-cta">
+              List Your Car
+            </a>
+            <button
+              className="mh-hamburger"
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Mobile nav drawer ── */}
+        <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
+          {NAV_LINKS.map(l => (
+            <a key={l.label} href={l.href} className="mh-mobile-link" onClick={() => setMenuOpen(false)}>
+              {l.label}
+            </a>
+          ))}
+          <a href="tel:+60174155191" className="mh-mobile-link" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Phone size={14} /> +60 17-415 5191
+          </a>
+          <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>
+            List Your Car
+          </a>
+        </div>
+      </header>
+    </>
+  );
+};
 
 /* ── Skeleton Card ──────────────────────────────────────────────────────────── */
 const SkeletonCard = () => (
@@ -611,7 +823,7 @@ export default function MarketplacePage() {
         }
       `}</style>
 
-      <Header />
+      <MarketplaceHeader />
 
       <div style={S.page}>
         {/* ── Hero ── */}
