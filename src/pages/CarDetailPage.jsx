@@ -9,6 +9,7 @@ import {
   Palette,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   ArrowLeftRight,
   ZoomIn,
@@ -27,6 +28,7 @@ import {
   Phone,
   ExternalLink,
   Camera,
+  Download,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
@@ -55,6 +57,9 @@ const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
   return Math.round((price * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12));
 };
+
+const isImageUrl = (url) =>
+  /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");
 
 function daysAgo(dateStr) {
   if (!dateStr) return null;
@@ -269,6 +274,10 @@ export default function CarDetailPage() {
 
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
+
+  /* document accordion */
+  const [openDocKey, setOpenDocKey] = useState(null);
+  const toggleDoc = (key) => setOpenDocKey(prev => prev === key ? null : key);
 
   /* fuel range calculator */
   const [fuelDist, setFuelDist] = useState(250);
@@ -1467,33 +1476,6 @@ export default function CarDetailPage() {
               )}
             </div>
           )}
-          {/* Verified documents */}
-          {hasDocuments && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-                <BadgeCheck size={13} style={{ color:'#4ade80' }} />
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700 }}>Verified Documents</p>
-              </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-                {car.car_documents.map((doc, i) => {
-                  const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
-                  return (
-                    <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display:'inline-flex', alignItems:'center', gap:8, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30`, borderRadius:10, padding:'9px 14px', textDecoration:'none', transition:'background 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = `${cfg.color}1a`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = `${cfg.color}0d`; }}>
-                      <BadgeCheck size={13} style={{ color:cfg.color, flexShrink:0 }} />
-                      <div>
-                        <p style={{ fontSize:12, fontWeight:600, color:cfg.color, margin:0 }}>{cfg.label}</p>
-                        <p style={{ fontSize:10, color:'#334155', margin:'1px 0 0', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</p>
-                      </div>
-                      <ExternalLink size={11} style={{ color:cfg.color, opacity:0.6, flexShrink:0, marginLeft:2 }} />
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {/* Video */}
           {car.video_url && getEmbedUrl(car.video_url) && (
             <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
@@ -1514,21 +1496,84 @@ export default function CarDetailPage() {
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
-                { key:'puspakom', icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)', okBorder:'rgba(34,197,94,0.3)' },
-                { key:'service_history', icon:<FileText size={13} />, label:'Service History', okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)', okBorder:'rgba(96,165,250,0.3)' },
-                { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance', okColor:'#34d399', okBg:'rgba(52,211,153,0.1)', okBorder:'rgba(52,211,153,0.3)' },
-                { key:'ownership', icon:<Eye size={13} />, label:'Ownership Docs', okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)', okBorder:'rgba(251,191,36,0.3)' },
+                { key:'puspakom',      icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)',   okBorder:'rgba(34,197,94,0.3)'   },
+                { key:'service_history',icon:<FileText size={13} />,   label:'Service History',      okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)',  okBorder:'rgba(96,165,250,0.3)'  },
+                { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance',       okColor:'#34d399', okBg:'rgba(52,211,153,0.1)',  okBorder:'rgba(52,211,153,0.3)'  },
+                { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)',  okBorder:'rgba(251,191,36,0.3)'  },
               ].map(({ key, icon, label, okColor, okBg, okBorder }) => {
                 const doc = car.car_documents?.find(d => d.type === key);
+                const rk = `m-${key}`;
+                const isOpen = openDocKey === rk;
+                const asImage = isImageUrl(doc?.url);
                 return (
-                  <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
-                      <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                  <div key={key} style={{ background:'#0a1220', border:`1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
+                    <div onClick={() => doc && toggleDoc(rk)}
+                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: doc ? 'pointer' : 'default' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                        <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace:'nowrap' }}>
+                          {doc ? '✓ Available' : 'Not Provided'}
+                        </span>
+                        {doc && <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
+                      </div>
                     </div>
-                    <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace:'nowrap' }}>
-                      {doc ? '✓ Available' : 'Not Provided'}
-                    </span>
+                    {isOpen && doc && (
+                      <div style={{ borderTop:`1px solid ${okBorder}40`, padding:'12px 14px', background:`${okColor}08` }}>
+                        {asImage ? (
+                          <>
+                            <img src={doc.url} alt={doc.name || label} style={{ width:'100%', maxHeight:220, objectFit:'contain', borderRadius:7, marginBottom:10, display:'block' }} />
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                              style={{ display:'inline-flex', alignItems:'center', gap:5, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'6px 12px', fontSize:11, color:okColor, textDecoration:'none', fontWeight:600 }}>
+                              <Download size={11} /> Download
+                            </a>
+                          </>
+                        ) : (
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                            style={{ display:'inline-flex', alignItems:'center', gap:6, background:okBg, border:`1px solid ${okBorder}`, borderRadius:7, padding:'8px 14px', fontSize:12, color:okColor, textDecoration:'none', fontWeight:600 }}>
+                            <Download size={13} /> {doc.name || label}
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Any other document types not in the 4 main rows */}
+              {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+                const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
+                const rk = `m-extra-${i}`;
+                const isOpen = openDocKey === rk;
+                const asImage = isImageUrl(doc.url);
+                return (
+                  <div key={rk} style={{ background:'#0a1220', border:`1px solid ${isOpen ? cfg.color+'40' : 'rgba(255,255,255,0.05)'}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
+                    <div onClick={() => toggleDoc(rk)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
+                      <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{cfg.label}</p>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, color:cfg.color }}>✓ Available</span>
+                        <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <div style={{ borderTop:`1px solid ${cfg.color}30`, padding:'12px 14px', background:`${cfg.color}08` }}>
+                        {asImage ? (
+                          <>
+                            <img src={doc.url} alt={doc.name || cfg.label} style={{ width:'100%', maxHeight:220, objectFit:'contain', borderRadius:7, marginBottom:10, display:'block' }} />
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                              style={{ display:'inline-flex', alignItems:'center', gap:5, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, borderRadius:7, padding:'6px 12px', fontSize:11, color:cfg.color, textDecoration:'none', fontWeight:600 }}>
+                              <Download size={11} /> Download
+                            </a>
+                          </>
+                        ) : (
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                            style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, borderRadius:7, padding:'8px 14px', fontSize:12, color:cfg.color, textDecoration:'none', fontWeight:600 }}>
+                            <Download size={13} /> {doc.name || cfg.label}
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -2291,72 +2336,6 @@ export default function CarDetailPage() {
                 </div>
               )}
 
-            {/* Verified documents */}
-            {hasDocuments && (
-              <div
-                style={{
-                  marginTop: 40,
-                  paddingTop: 32,
-                  borderTop: "1px solid rgba(255,255,255,0.05)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 16,
-                  }}
-                >
-                  <BadgeCheck size={13} style={{ color: "#4ade80" }} />
-                  <p
-                    style={{
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.18em",
-                      color: "#334155",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Verified Documents
-                  </p>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  {car.car_documents.map((doc, i) => {
-                    const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
-                    return (
-                      <a
-                        key={i}
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                          background: `${cfg.color}0d`,
-                          border: `1px solid ${cfg.color}30`,
-                          borderRadius: 10,
-                          padding: "9px 14px",
-                          textDecoration: "none",
-                          transition: "background 0.15s",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = `${cfg.color}1a`; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = `${cfg.color}0d`; }}
-                      >
-                        <BadgeCheck size={13} style={{ color: cfg.color, flexShrink: 0 }} />
-                        <div>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: cfg.color, margin: 0 }}>{cfg.label}</p>
-                          <p style={{ fontSize: 10, color: '#334155', margin: '1px 0 0', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</p>
-                        </div>
-                        <ExternalLink size={11} style={{ color: cfg.color, opacity: 0.6, flexShrink: 0, marginLeft: 2 }} />
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* VIDEO WALKTHROUGH */}
             {car.video_url && getEmbedUrl(car.video_url) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -2377,24 +2356,84 @@ export default function CarDetailPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { key: 'puspakom', icon: <ShieldCheck size={15} />, label: 'Puspakom Inspection', sub: 'Structural & mechanical check', okColor: '#4ade80', okBg: 'rgba(34,197,94,0.1)', okBorder: 'rgba(34,197,94,0.3)' },
-                  { key: 'service_history', icon: <FileText size={15} />, label: 'Service History', sub: 'Maintenance records', okColor: '#60a5fa', okBg: 'rgba(96,165,250,0.1)', okBorder: 'rgba(96,165,250,0.3)' },
-                  { key: 'loan_clearance', icon: <BadgeCheck size={15} />, label: 'Loan Clearance', sub: 'No outstanding finance', okColor: '#34d399', okBg: 'rgba(52,211,153,0.1)', okBorder: 'rgba(52,211,153,0.3)' },
-                  { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBg: 'rgba(251,191,36,0.1)', okBorder: 'rgba(251,191,36,0.3)' },
-                ].map(({ key, icon, label, sub, okColor, okBg, okBorder }) => {
+                  { key: 'puspakom', icon: <ShieldCheck size={15} />, label: 'Puspakom Inspection', sub: 'Structural & mechanical check', okColor: '#4ade80', okBorder: 'rgba(34,197,94,0.3)' },
+                  { key: 'service_history', icon: <FileText size={15} />, label: 'Service History', sub: 'Maintenance records', okColor: '#60a5fa', okBorder: 'rgba(96,165,250,0.3)' },
+                  { key: 'loan_clearance', icon: <BadgeCheck size={15} />, label: 'Loan Clearance', sub: 'No outstanding finance', okColor: '#34d399', okBorder: 'rgba(52,211,153,0.3)' },
+                  { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBorder: 'rgba(251,191,36,0.3)' },
+                ].map(({ key, icon, label, sub, okColor, okBorder }) => {
                   const doc = car.car_documents?.find(d => d.type === key);
+                  const rk = `d-${key}`;
+                  const isOpen = openDocKey === rk;
+                  const asImage = doc && isImageUrl(doc.url);
                   return (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
-                        <div>
-                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
-                          <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
+                    <div key={key} style={{ background: '#0a1220', border: `1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                      <div onClick={() => doc && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: doc ? 'pointer' : 'default' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                          <div>
+                            <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
+                            <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: doc ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace: 'nowrap' }}>
+                            {doc ? '✓ Available' : 'Not Provided'}
+                          </span>
+                          {doc && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border: `1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace: 'nowrap' }}>
-                        {doc ? '✓ Available' : 'Not Provided'}
-                      </span>
+                      {isOpen && doc && (
+                        <div style={{ borderTop: `1px solid ${okBorder}40`, padding: '14px 16px', background: `${okColor}08` }}>
+                          {asImage ? (
+                            <>
+                              <img src={doc.url} alt={doc.name || label} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
+                                <Download size={12} /> Download
+                              </a>
+                            </>
+                          ) : (
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: okColor, textDecoration: 'none', background: `${okColor}15`, border: `1px solid ${okBorder}`, borderRadius: 6, padding: '5px 12px' }}>
+                              <Download size={14} /> {doc.name || label}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {car.car_documents?.filter(d => !['puspakom','service_history','loan_clearance','ownership'].includes(d.type)).map((doc, i) => {
+                  const cfg = CDP_DOC_TYPES[doc.type] || CDP_DOC_TYPES.other;
+                  const rk = `d-extra-${i}`;
+                  const isOpen = openDocKey === rk;
+                  const asImage = isImageUrl(doc.url);
+                  return (
+                    <div key={rk} style={{ background: '#0a1220', border: `1px solid ${isOpen ? `${cfg.color}50` : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                      <div onClick={() => toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <BadgeCheck size={15} style={{ color: cfg.color }} />
+                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{cfg.label}</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, color: cfg.color }}>✓ Available</span>
+                          <ChevronDown size={15} style={{ color: cfg.color, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                        </div>
+                      </div>
+                      {isOpen && (
+                        <div style={{ borderTop: `1px solid ${cfg.color}30`, padding: '14px 16px', background: `${cfg.color}08` }}>
+                          {asImage ? (
+                            <>
+                              <img src={doc.url} alt={doc.name || cfg.label} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: cfg.color, textDecoration: 'none', background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, borderRadius: 6, padding: '5px 12px' }}>
+                                <Download size={12} /> Download
+                              </a>
+                            </>
+                          ) : (
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: cfg.color, textDecoration: 'none', background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, borderRadius: 6, padding: '5px 12px' }}>
+                              <Download size={14} /> {doc.name || cfg.label}
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
