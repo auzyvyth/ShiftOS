@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
+import MarketplacePage from "./MarketplacePage";
 import { Link } from "react-router-dom";
 import {
   MessageCircle,
@@ -669,6 +670,11 @@ const HomePage = () => {
     borderTop: "1px solid rgba(255,255,255,0.05)",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
+
+  // Main domain with no dealer tenant → show the full marketplace
+  if (!tenantLoading && tenant === null && !isSubdomain()) {
+    return <MarketplacePage />;
+  }
 
   if (loading || tenantLoading) return <SciFiLoader />;
 

@@ -1,0 +1,872 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import CarCard from '@/components/CarCard';
+import { useCTAContext } from '../hooks/useCTAContext';
+import { supabase } from '../supabaseClient';
+import { trackEvent } from '../utils/analytics';
+
+/* ── Constants ─────────────────────────────────────────────────────────────── */
+const PER_PAGE = 12;
+
+const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
+const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
+const TRANSMISSIONS = ['Auto','Manual'];
+const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
+const PRICE_OPTIONS = [
+  { label: 'Under RM 30,000', value: '30000' },
+  { label: 'Under RM 50,000', value: '50000' },
+  { label: 'Under RM 80,000', value: '80000' },
+  { label: 'Under RM 120,000', value: '120000' },
+  { label: 'Under RM 200,000', value: '200000' },
+];
+const SORT_OPTIONS = [
+  { label: 'Newest First', value: 'newest' },
+  { label: 'Price: Low to High', value: 'price_asc' },
+  { label: 'Price: High to Low', value: 'price_desc' },
+];
+
+const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
+const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
+
+/* ── Helpers ────────────────────────────────────────────────────────────────── */
+function dedupe(arr) {
+  const seen = new Set();
+  return arr.filter(c => {
+    if (seen.has(c.id)) return false;
+    seen.add(c.id);
+    return true;
+  });
+}
+
+function sanitizeBrand(val) {
+  return BRANDS.includes(val) ? val : null;
+}
+function sanitizeBodyType(val) {
+  return BODY_TYPES.includes(val) ? val : null;
+}
+function sanitizeTransmission(val) {
+  return TRANSMISSIONS.includes(val) ? val : null;
+}
+function sanitizeState(val) {
+  return MY_STATES.includes(val) ? val : null;
+}
+function sanitizePrice(val) {
+  const n = parseInt(val, 10);
+  const allowed = [30000, 50000, 80000, 120000, 200000];
+  return allowed.includes(n) ? n : null;
+}
+function sanitizePage(val) {
+  const n = parseInt(val, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+/* ── Skeleton Card ──────────────────────────────────────────────────────────── */
+const SkeletonCard = () => (
+  <div style={{
+    background: '#0d1117',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '16px',
+    overflow: 'hidden',
+  }}>
+    <div style={{
+      height: '200px',
+      background: 'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'mp-shimmer 1.5s infinite',
+    }} />
+    <div style={{ padding: '16px' }}>
+      {[80,55,95,70].map((w, i) => (
+        <div key={i} style={{
+          height: '12px',
+          width: `${w}%`,
+          background: '#1a2332',
+          borderRadius: '6px',
+          marginBottom: '10px',
+          animation: 'mp-shimmer 1.5s infinite',
+          animationDelay: `${i * 0.1}s`,
+        }} />
+      ))}
+    </div>
+  </div>
+);
+
+/* ── Stat Item ──────────────────────────────────────────────────────────────── */
+const StatItem = ({ icon: Icon, value, label, color }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    padding: '20px 28px',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '14px',
+    flex: '1',
+    minWidth: '160px',
+  }}>
+    <div style={{
+      width: '44px',
+      height: '44px',
+      borderRadius: '12px',
+      background: color || 'rgba(220,38,38,0.12)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      <Icon size={20} color={color ? '#fff' : '#dc2626'} />
+    </div>
+    <div>
+      <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>{label}</div>
+    </div>
+  </div>
+);
+
+/* ── Pagination ─────────────────────────────────────────────────────────────── */
+const Pagination = ({ page, totalPages, onPage }) => {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else if (page <= 4) {
+    pages.push(1,2,3,4,5,'…',totalPages);
+  } else if (page >= totalPages - 3) {
+    pages.push(1,'…',totalPages-4,totalPages-3,totalPages-2,totalPages-1,totalPages);
+  } else {
+    pages.push(1,'…',page-1,page,page+1,'…',totalPages);
+  }
+
+  const btnBase = {
+    minWidth: '44px',
+    height: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'transparent',
+    color: '#9ca3af',
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontFamily: "'Outfit', sans-serif",
+    padding: '0 10px',
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+      <button
+        onClick={() => onPage(page - 1)}
+        disabled={page === 1}
+        style={{
+          ...btnBase,
+          opacity: page === 1 ? 0.35 : 1,
+          cursor: page === 1 ? 'not-allowed' : 'pointer',
+          gap: '6px',
+          padding: '0 16px',
+          fontSize: '14px',
+        }}
+        aria-label="Previous page"
+      >
+        <ChevronLeft size={16} /> Previous
+      </button>
+
+      {pages.map((p, i) =>
+        p === '…' ? (
+          <span key={`ellipsis-${i}`} style={{ color: '#4b5563', padding: '0 4px', fontSize: '15px' }}>…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPage(p)}
+            aria-label={`Page ${p}`}
+            aria-current={p === page ? 'page' : undefined}
+            style={{
+              ...btnBase,
+              background: p === page ? '#dc2626' : 'transparent',
+              borderColor: p === page ? '#dc2626' : 'rgba(255,255,255,0.1)',
+              color: p === page ? '#fff' : '#9ca3af',
+            }}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onPage(page + 1)}
+        disabled={page === totalPages}
+        style={{
+          ...btnBase,
+          opacity: page === totalPages ? 0.35 : 1,
+          cursor: page === totalPages ? 'not-allowed' : 'pointer',
+          gap: '6px',
+          padding: '0 16px',
+          fontSize: '14px',
+        }}
+        aria-label="Next page"
+      >
+        Next <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+};
+
+/* ── Main Component ─────────────────────────────────────────────────────────── */
+export default function MarketplacePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ctaCtx = useCTAContext();
+
+  /* Filters from URL */
+  const brand        = sanitizeBrand(searchParams.get('brand') || '');
+  const bodyType     = sanitizeBodyType(searchParams.get('body_type') || '');
+  const transmission = sanitizeTransmission(searchParams.get('transmission') || '');
+  const state        = sanitizeState(searchParams.get('state') || '');
+  const maxPrice     = sanitizePrice(searchParams.get('max_price') || '');
+  const sort         = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
+  const page         = sanitizePage(searchParams.get('page') || '1');
+
+  /* Data state */
+  const [cars, setCars]           = useState([]);
+  const [totalCount, setTotal]    = useState(0);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  /* Stats (fetched once) */
+  const [stats, setStats] = useState({ listings: null, dealers: null, hotDeals: null });
+
+  /* ── Analytics: fire store_visit once per session ── */
+  useEffect(() => {
+    const key = 'sv_fired_main';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    trackEvent(supabase, 'store_visit', { dealer_id: null, metadata: { source: 'organic' } });
+  }, []);
+
+  /* ── Fetch marketplace stats ── */
+  useEffect(() => {
+    async function fetchStats() {
+      const [listingsRes, hotRes] = await Promise.all([
+        supabase.from('car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available'),
+        supabase.from('car_listings').select('id', { count: 'exact', head: true })
+          .eq('status', 'available')
+          .not('original_price', 'is', null)
+          .gt('original_price', 0),
+      ]);
+      const allListings = listingsRes.data || [];
+      const uniqueDealers = new Set(allListings.map(r => r.dealer_id)).size;
+      setStats({
+        listings: listingsRes.count ?? allListings.length,
+        dealers: uniqueDealers,
+        hotDeals: hotRes.count ?? 0,
+      });
+    }
+    fetchStats();
+  }, []);
+
+  /* ── Fetch cars (server-side, paginated) ── */
+  const fetchCars = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const from = (page - 1) * PER_PAGE;
+      const to   = from + PER_PAGE - 1;
+
+      let query = supabase
+        .from('car_listings')
+        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
+        .eq('status', 'available');
+
+      if (brand)        query = query.eq('brand', brand);
+      if (bodyType)     query = query.eq('body_type', bodyType);
+      if (state)        query = query.eq('state', state);
+      if (maxPrice)     query = query.lte('selling_price', maxPrice);
+      if (transmission) {
+        const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
+        query = query.in('transmission', txVal);
+      }
+
+      if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
+      else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
+      else                        query = query.order('created_at',    { ascending: false });
+
+      query = query.range(from, to);
+
+      const { data, error: err, count } = await query;
+      if (err) throw err;
+
+      setCars(dedupe(data || []));
+      setTotal(count || 0);
+    } catch (e) {
+      setError('Failed to load listings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, brand, bodyType, state, maxPrice, transmission, sort]);
+
+  useEffect(() => {
+    fetchCars();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [fetchCars]);
+
+  /* ── Filter helpers ── */
+  const setParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    next.delete('page'); // reset to page 1 on filter change
+    setSearchParams(next, { replace: true });
+  };
+
+  const setPage = (p) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', String(p));
+    setSearchParams(next, { replace: true });
+  };
+
+  const resetAll = () => setSearchParams({}, { replace: true });
+
+  const hasFilters = brand || bodyType || transmission || state || maxPrice;
+  const totalPages = Math.ceil(totalCount / PER_PAGE);
+
+  /* ── Active filter chips ── */
+  const activeChips = [
+    brand        && { key: 'brand',        label: brand },
+    bodyType     && { key: 'body_type',    label: bodyType },
+    transmission && { key: 'transmission', label: transmission },
+    state        && { key: 'state',        label: state },
+    maxPrice     && { key: 'max_price',    label: PRICE_OPTIONS.find(p => p.value === String(maxPrice))?.label || '' },
+  ].filter(Boolean);
+
+  /* ── Styles ── */
+  const S = {
+    page: {
+      minHeight: '100vh',
+      background: '#0C0C0E',
+      fontFamily: "'Outfit', sans-serif",
+    },
+    hero: {
+      background: 'linear-gradient(160deg, #0c0c0e 0%, #110810 40%, #0c0c0e 100%)',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      padding: '72px 20px 48px',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    heroInner: {
+      maxWidth: '860px',
+      margin: '0 auto',
+      textAlign: 'center',
+      position: 'relative',
+      zIndex: 1,
+    },
+    eyebrow: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      background: 'rgba(220,38,38,0.1)',
+      border: '1px solid rgba(220,38,38,0.25)',
+      color: '#f87171',
+      fontSize: '13px',
+      fontWeight: '600',
+      padding: '6px 14px',
+      borderRadius: '20px',
+      marginBottom: '20px',
+      letterSpacing: '0.04em',
+    },
+    headline: {
+      fontFamily: "'Bebas Neue', sans-serif",
+      fontSize: 'clamp(48px, 8vw, 80px)',
+      color: '#ffffff',
+      lineHeight: '0.95',
+      letterSpacing: '0.02em',
+      margin: '0 0 18px',
+    },
+    headlineAccent: {
+      color: '#dc2626',
+    },
+    subtitle: {
+      fontSize: '17px',
+      color: '#9ca3af',
+      maxWidth: '560px',
+      margin: '0 auto 40px',
+      lineHeight: '1.6',
+    },
+    statsRow: {
+      display: 'flex',
+      gap: '12px',
+      maxWidth: '680px',
+      margin: '0 auto',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+    },
+    wrap: {
+      maxWidth: '1360px',
+      margin: '0 auto',
+      padding: '0 20px',
+    },
+    brandRow: {
+      padding: '24px 0',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+    },
+    brandScroll: {
+      display: 'flex',
+      gap: '8px',
+      overflowX: 'auto',
+      paddingBottom: '4px',
+      scrollbarWidth: 'none',
+    },
+    brandPill: (active) => ({
+      flexShrink: 0,
+      padding: '10px 18px',
+      borderRadius: '50px',
+      border: `1px solid ${active ? '#dc2626' : 'rgba(255,255,255,0.1)'}`,
+      background: active ? '#dc2626' : 'transparent',
+      color: active ? '#fff' : '#9ca3af',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.15s',
+      whiteSpace: 'nowrap',
+      fontFamily: "'Outfit', sans-serif",
+    }),
+    filtersSection: {
+      padding: '20px 0',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+    },
+    filterToggleBtn: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      color: '#fff',
+      fontSize: '15px',
+      fontWeight: '600',
+      padding: '11px 20px',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontFamily: "'Outfit', sans-serif",
+    },
+    filterGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gap: '16px',
+      marginTop: '16px',
+    },
+    label: {
+      display: 'block',
+      fontSize: '13px',
+      fontWeight: '600',
+      color: '#9ca3af',
+      marginBottom: '8px',
+      letterSpacing: '0.04em',
+      textTransform: 'uppercase',
+    },
+    select: {
+      width: '100%',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '10px',
+      padding: '12px 16px',
+      color: '#fff',
+      fontSize: '15px',
+      appearance: 'none',
+      cursor: 'pointer',
+      outline: 'none',
+      fontFamily: "'Outfit', sans-serif",
+    },
+    pillGroup: {
+      display: 'flex',
+      gap: '6px',
+      flexWrap: 'wrap',
+    },
+    pill: (active) => ({
+      padding: '10px 16px',
+      borderRadius: '50px',
+      border: `1px solid ${active ? '#dc2626' : 'rgba(255,255,255,0.1)'}`,
+      background: active ? 'rgba(220,38,38,0.15)' : 'transparent',
+      color: active ? '#f87171' : '#9ca3af',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.15s',
+      fontFamily: "'Outfit', sans-serif",
+    }),
+    chipsRow: {
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      padding: '14px 0 0',
+    },
+    chip: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      background: 'rgba(220,38,38,0.1)',
+      border: '1px solid rgba(220,38,38,0.25)',
+      color: '#f87171',
+      fontSize: '13px',
+      fontWeight: '600',
+      padding: '6px 12px',
+      borderRadius: '20px',
+    },
+    chipX: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      color: '#f87171',
+      padding: 0,
+      display: 'flex',
+      alignItems: 'center',
+    },
+    resultsHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '12px',
+      padding: '24px 0 20px',
+    },
+    resultsCount: {
+      fontSize: '18px',
+      fontWeight: '700',
+      color: '#fff',
+    },
+    carsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      gap: '20px',
+      paddingBottom: '40px',
+    },
+    emptyState: {
+      textAlign: 'center',
+      padding: '80px 20px',
+      gridColumn: '1 / -1',
+    },
+    paginationWrap: {
+      padding: '12px 0 60px',
+    },
+    resetBtn: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      background: 'transparent',
+      border: '1px solid rgba(255,255,255,0.1)',
+      color: '#9ca3af',
+      fontSize: '14px',
+      fontWeight: '600',
+      padding: '10px 16px',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontFamily: "'Outfit', sans-serif",
+    },
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>XDrive — Malaysia's Used Car Marketplace</title>
+        <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </Helmet>
+
+      <style>{`
+        @keyframes mp-shimmer {
+          0%   { background-position: -200% 0 }
+          100% { background-position:  200% 0 }
+        }
+        .mp-brand-scroll::-webkit-scrollbar { display: none }
+        .mp-brand-pill:hover { opacity: 0.85; transform: translateY(-1px) }
+        .mp-reset-btn:hover  { color: #fff !important; border-color: rgba(255,255,255,0.25) !important }
+        .mp-chip-x:hover     { opacity: 0.7 }
+        .mp-select:focus     { border-color: rgba(220,38,38,0.5) !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.12) }
+        .mp-filter-toggle:hover { background: rgba(255,255,255,0.07) !important }
+        .mp-next-prev:hover:not(:disabled) { background: rgba(255,255,255,0.06) !important; color: #fff !important }
+        .mp-page-btn:hover { background: rgba(255,255,255,0.05) !important }
+        .mp-hero-glow {
+          position: absolute;
+          width: 600px; height: 600px;
+          background: radial-gradient(circle, rgba(220,38,38,0.08) 0%, transparent 70%);
+          top: -200px; left: 50%; transform: translateX(-50%);
+          pointer-events: none;
+        }
+      `}</style>
+
+      <Header />
+
+      <div style={S.page}>
+        {/* ── Hero ── */}
+        <section style={S.hero}>
+          <div className="mp-hero-glow" />
+          <div style={S.heroInner}>
+            <div style={S.eyebrow}>
+              <Flame size={13} /> Malaysia's #1 Used Car Marketplace
+            </div>
+            <h1 style={S.headline}>
+              Find Your<br />
+              <span style={S.headlineAccent}>Perfect Car</span>
+            </h1>
+            <p style={S.subtitle}>
+              Browse thousands of verified used cars from trusted dealers across Malaysia.
+            </p>
+            <div style={S.statsRow}>
+              <StatItem
+                icon={Car}
+                value={stats.listings !== null ? `${stats.listings.toLocaleString()}+` : '—'}
+                label="Cars Listed"
+              />
+              <StatItem
+                icon={Users}
+                value={stats.dealers !== null ? `${stats.dealers}` : '—'}
+                label="Trusted Dealers"
+              />
+              <StatItem
+                icon={Flame}
+                value={stats.hotDeals !== null ? `${stats.hotDeals}+` : '—'}
+                label="Hot Deals"
+                color="rgba(251,146,60,0.15)"
+              />
+            </div>
+          </div>
+        </section>
+
+        <div style={S.wrap}>
+          {/* ── Brand Quick-Filter Pills ── */}
+          <div style={S.brandRow}>
+            <div className="mp-brand-scroll" style={S.brandScroll}>
+              {BRANDS.map(b => (
+                <button
+                  key={b}
+                  className="mp-brand-pill"
+                  style={S.brandPill(brand === b)}
+                  onClick={() => setParam('brand', brand === b ? '' : b)}
+                  aria-pressed={brand === b}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Filters ── */}
+          <div style={S.filtersSection}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                className="mp-filter-toggle"
+                style={S.filterToggleBtn}
+                onClick={() => setFiltersOpen(o => !o)}
+                aria-expanded={filtersOpen}
+              >
+                <SlidersHorizontal size={16} />
+                {filtersOpen ? 'Hide Filters' : 'Show Filters'}
+              </button>
+
+              {hasFilters && (
+                <button className="mp-reset-btn" style={S.resetBtn} onClick={resetAll}>
+                  <RotateCcw size={14} /> Reset All Filters
+                </button>
+              )}
+            </div>
+
+            {filtersOpen && (
+              <div style={S.filterGrid}>
+                {/* Brand */}
+                <div>
+                  <label style={S.label} htmlFor="filter-brand">Brand</label>
+                  <select
+                    id="filter-brand"
+                    className="mp-select"
+                    style={S.select}
+                    value={brand || ''}
+                    onChange={e => setParam('brand', e.target.value)}
+                  >
+                    <option value="">All Brands</option>
+                    {BRANDS.map(b => <option key={b} value={b} style={{ background: '#0d1117' }}>{b}</option>)}
+                  </select>
+                </div>
+
+                {/* Max Price */}
+                <div>
+                  <label style={S.label} htmlFor="filter-price">Budget</label>
+                  <select
+                    id="filter-price"
+                    className="mp-select"
+                    style={S.select}
+                    value={maxPrice || ''}
+                    onChange={e => setParam('max_price', e.target.value)}
+                  >
+                    <option value="">Any Budget</option>
+                    {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
+                  </select>
+                </div>
+
+                {/* State */}
+                <div>
+                  <label style={S.label} htmlFor="filter-state">Location</label>
+                  <select
+                    id="filter-state"
+                    className="mp-select"
+                    style={S.select}
+                    value={state || ''}
+                    onChange={e => setParam('state', e.target.value)}
+                  >
+                    <option value="">All States</option>
+                    {MY_STATES.map(s => <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>)}
+                  </select>
+                </div>
+
+                {/* Body Type */}
+                <div>
+                  <span style={S.label}>Body Type</span>
+                  <div style={S.pillGroup}>
+                    {BODY_TYPES.map(bt => (
+                      <button
+                        key={bt}
+                        style={S.pill(bodyType === bt)}
+                        onClick={() => setParam('body_type', bodyType === bt ? '' : bt)}
+                        aria-pressed={bodyType === bt}
+                      >
+                        {bt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transmission */}
+                <div>
+                  <span style={S.label}>Transmission</span>
+                  <div style={S.pillGroup}>
+                    {TRANSMISSIONS.map(tx => (
+                      <button
+                        key={tx}
+                        style={S.pill(transmission === tx)}
+                        onClick={() => setParam('transmission', transmission === tx ? '' : tx)}
+                        aria-pressed={transmission === tx}
+                      >
+                        {tx}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active filter chips */}
+            {activeChips.length > 0 && (
+              <div style={S.chipsRow}>
+                <span style={{ fontSize: '13px', color: '#6b7280', marginRight: '4px' }}>Active:</span>
+                {activeChips.map(chip => (
+                  <span key={chip.key} style={S.chip}>
+                    {chip.label}
+                    <button
+                      className="mp-chip-x"
+                      style={S.chipX}
+                      onClick={() => setParam(chip.key, '')}
+                      aria-label={`Remove ${chip.label} filter`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Results Header ── */}
+          <div style={S.resultsHeader}>
+            <div style={S.resultsCount}>
+              {loading
+                ? 'Loading...'
+                : `${totalCount.toLocaleString()} car${totalCount !== 1 ? 's' : ''} found`}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label htmlFor="sort-select" style={{ fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>Sort by</label>
+              <select
+                id="sort-select"
+                className="mp-select"
+                style={{ ...S.select, width: 'auto', fontSize: '14px', padding: '9px 14px' }}
+                value={sort}
+                onChange={e => setParam('sort', e.target.value)}
+              >
+                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* ── Error ── */}
+          {error && (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <p style={{ color: '#f87171', fontSize: '17px', marginBottom: '20px' }}>{error}</p>
+              <button
+                onClick={fetchCars}
+                style={{
+                  background: '#dc2626', color: '#fff', border: 'none',
+                  padding: '14px 28px', borderRadius: '10px',
+                  fontSize: '16px', fontWeight: '700', cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* ── Cars Grid ── */}
+          {!error && (
+            <div style={S.carsGrid}>
+              {loading
+                ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)
+                : cars.length === 0
+                  ? (
+                    <div style={S.emptyState}>
+                      <Car size={56} color="#374151" style={{ marginBottom: '20px' }} />
+                      <p style={{ color: '#6b7280', fontSize: '19px', fontWeight: '600', marginBottom: '12px' }}>
+                        No cars match your filters
+                      </p>
+                      <p style={{ color: '#4b5563', fontSize: '16px', marginBottom: '28px' }}>
+                        Try adjusting your search or browse all available cars.
+                      </p>
+                      <button
+                        onClick={resetAll}
+                        style={{
+                          background: '#dc2626', color: '#fff', border: 'none',
+                          padding: '14px 32px', borderRadius: '10px',
+                          fontSize: '16px', fontWeight: '700', cursor: 'pointer',
+                          fontFamily: "'Outfit', sans-serif",
+                        }}
+                      >
+                        Browse All Cars
+                      </button>
+                    </div>
+                  )
+                  : cars.map(car => (
+                    <CarCard key={car.id} car={car} ctaContext={ctaCtx} />
+                  ))
+              }
+            </div>
+          )}
+
+          {/* ── Pagination ── */}
+          {!loading && !error && totalPages > 1 && (
+            <div style={S.paginationWrap}>
+              <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+              <p style={{ textAlign: 'center', color: '#4b5563', fontSize: '14px', marginTop: '16px' }}>
+                Showing {((page - 1) * PER_PAGE) + 1}–{Math.min(page * PER_PAGE, totalCount)} of {totalCount.toLocaleString()} cars
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Footer />
+    </>
+  );
+}
