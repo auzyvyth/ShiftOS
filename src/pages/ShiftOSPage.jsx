@@ -268,12 +268,18 @@ const STATS = [
 const SPOTS_LEFT = 3;
 
 const SALESMAN_FREE_FEATURES = [
-  "Active leads tracker",
-  "My listings view",
-  "Stale leads alerts",
-  "Appointments today",
-  "New enquiries inbox",
+  "Dashboard — KPIs, activity & listing performance",
+  "Add & manage your own car listings",
+  "Views + WhatsApp tap tracking per listing",
+  "Lead pipeline (New → Contacted → Test Drive → Won)",
+  "Lead heat scores & stale follow-up nudges",
+  "WhatsApp enquiries inbox",
+  "Appointments & booking management",
+  "WA reminder for bookings in one tap",
+  "AI caption generator (WhatsApp & TikTok)",
+  "Real-time push notifications",
   "Personal storefront link",
+  "Join a dealership with invite code",
 ];
 
 const SALESMAN_FEATURES = [
