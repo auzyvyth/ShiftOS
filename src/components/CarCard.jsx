@@ -27,17 +27,17 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
   const inCompare = isInCompare(car.id);
 
-  const brand        = car.brand || car.make || 'Unknown';
-  const model        = car.model || '';
-  const variant      = car.variant || '';
-  const year         = car.year || '';
-  const price        = car.selling_price || car.price || 0;
+  const brand         = car.brand || car.make || 'Unknown';
+  const model         = car.model || '';
+  const variant       = car.variant || '';
+  const year          = car.year || '';
+  const price         = car.selling_price || car.price || 0;
   const originalPrice = car.original_price || null;
-  const mileage      = car.mileage || car.odometer || null;
-  const transmission = car.transmission || null;
-  const location     = car.state || car.location || null;
-  const status       = car.status || 'active';
-  const ageDays      = getAgeDays(car.created_at);
+  const mileage       = car.mileage || car.odometer || null;
+  const transmission  = car.transmission || null;
+  const location      = car.state || car.location || null;
+  const status        = car.status || 'active';
+  const ageDays       = getAgeDays(car.created_at);
 
   const hasDiscount = originalPrice && originalPrice > 0 && price > 0 && originalPrice > price;
   const discountPct = hasDiscount ? Math.round(((originalPrice - price) / originalPrice) * 100) : null;
@@ -71,24 +71,24 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
     waText
   );
 
-  // Max 3 spec items: mileage · transmission · location
   const specDots = [
-    formattedMileage && { icon: Gauge,    label: formattedMileage },
-    normalTx         && { icon: Settings2, label: normalTx        },
-    location         && { icon: MapPin,   label: location         },
+    formattedMileage && { icon: Gauge,     label: formattedMileage },
+    normalTx         && { icon: Settings2, label: normalTx         },
+    location         && { icon: MapPin,    label: location         },
   ].filter(Boolean);
 
   return (
     <>
       <style>{`
         @keyframes cc-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
         .cc-root {
           transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
         .cc-root:hover {
           transform: translateY(-3px);
           box-shadow: 0 16px 40px rgba(0,0,0,0.55);
-          border-color: rgba(255,255,255,0.13) !important;
+          border-color: rgba(255,255,255,0.15) !important;
         }
         .cc-root.hot:hover {
           box-shadow: 0 16px 40px rgba(220,38,38,0.18);
@@ -105,6 +105,19 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
         .cc-compare.active:hover {
           background: rgba(220,38,38,0.2) !important;
         }
+
+        @media (max-width: 480px) {
+          .cc-img  { height: 150px !important; }
+          .cc-body { padding: 10px 11px 12px !important; }
+          .cc-name { font-size: 13px !important; margin-bottom: 8px !important; }
+          .cc-price-main { font-size: 17px !important; }
+          .cc-monthly { display: none !important; }
+          .cc-spec-label { font-size: 11px !important; }
+          .cc-wa { font-size: 12px !important; padding: 8px 10px !important; }
+          .cc-badge { font-size: 9px !important; padding: 2px 7px !important; }
+          .cc-year  { font-size: 10px !important; padding: 2px 7px !important; }
+          .cc-compare-btn { font-size: 9px !important; padding: 3px 7px !important; }
+        }
       `}</style>
 
       <div
@@ -120,18 +133,23 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           navigate('/cars/' + (car.slug || car.id));
         }}
         style={{
-          background: '#0d1117',
-          border: isHot ? '1px solid rgba(220,38,38,0.25)' : '1px solid rgba(255,255,255,0.07)',
-          borderRadius: '14px',
+          background: 'var(--color-background-primary, #0d1117)',
+          border: isHot
+            ? '0.5px solid rgba(220,38,38,0.25)'
+            : '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))',
+          borderRadius: 'var(--border-radius-lg, 12px)',
           overflow: 'hidden',
           cursor: isSold ? 'default' : 'pointer',
-          fontFamily: "'Outfit', sans-serif",
+          fontFamily: 'var(--font-sans, "Outfit", sans-serif)',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
         {/* ── Image ── */}
-        <div style={{ position: 'relative', height: '195px', background: '#080c12', flexShrink: 0, overflow: 'hidden' }}>
+        <div
+          className="cc-img"
+          style={{ position: 'relative', height: 220, background: '#080c12', flexShrink: 0, overflow: 'hidden' }}
+        >
           {image ? (
             <>
               {!imgLoaded && (
@@ -154,16 +172,15 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                   filter: isSold ? 'grayscale(60%)' : 'none',
                 }}
               />
-              {/* Bottom fade for text legibility */}
               <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px',
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
                 background: 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
                 pointerEvents: 'none',
               }} />
             </>
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#2d3748' }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2d3748" strokeWidth="1.2">
                 <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
                 <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
               </svg>
@@ -171,31 +188,31 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             </div>
           )}
 
-          {/* Top-left: status badges */}
-          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 5 }}>
+          {/* Top-left badges */}
+          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 5, flexWrap: 'wrap', maxWidth: 'calc(100% - 70px)' }}>
             {isSold && (
-              <span style={{ background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20, backdropFilter: 'blur(6px)' }}>SOLD</span>
+              <span className="cc-badge" style={{ background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', color: '#9ca3af', fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>SOLD</span>
             )}
             {isReserved && !isSold && (
-              <span style={{ background: 'rgba(245,158,11,0.85)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>RESERVED</span>
+              <span className="cc-badge" style={{ background: 'rgba(245,158,11,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>RESERVED</span>
             )}
             {isHot && showDiscountBadge && !isSold && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20, boxShadow: '0 2px 8px rgba(220,38,38,0.45)' }}>
+              <span className="cc-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20, boxShadow: '0 2px 8px rgba(220,38,38,0.45)' }}>
                 <Flame size={9} /> −{discountPct}%
               </span>
             )}
             {isRecon && !isSold && (
-              <span style={{ background: 'rgba(139,92,246,0.85)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>RECON</span>
+              <span className="cc-badge" style={{ background: 'rgba(139,92,246,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>RECON</span>
             )}
             {isNew && !isHot && !isRecon && !isSold && (
-              <span style={{ background: 'rgba(16,185,129,0.85)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>NEW</span>
+              <span className="cc-badge" style={{ background: 'rgba(16,185,129,0.85)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 20 }}>NEW</span>
             )}
           </div>
 
           {/* Top-right: year + heart */}
           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             {year && (
-              <span style={{ background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', color: '#e5e7eb', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 7 }}>
+              <span className="cc-year" style={{ background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', color: '#e5e7eb', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 7 }}>
                 {year}
               </span>
             )}
@@ -214,7 +231,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           {/* Bottom-right: compare toggle */}
           {!isSold && (
             <button
-              className={`cc-compare${inCompare ? ' active' : ''}`}
+              className={`cc-compare cc-compare-btn${inCompare ? ' active' : ''}`}
               onClick={e => {
                 e.stopPropagation();
                 inCompare ? removeFromCompare(car.id) : addToCompare(car.id);
@@ -226,11 +243,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                 background: inCompare ? 'rgba(220,38,38,0.75)' : 'rgba(0,0,0,0.55)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 backdropFilter: 'blur(8px)',
+                borderRadius: 20,
                 color: inCompare ? '#fff' : '#9ca3af',
                 fontSize: 10, fontWeight: 700,
-                padding: '4px 9px', borderRadius: 7,
+                padding: '4px 9px',
                 cursor: 'pointer', transition: 'all 0.15s',
-                fontFamily: "'Outfit', sans-serif",
+                fontFamily: 'var(--font-sans, "Outfit", sans-serif)',
               }}
             >
               <ArrowLeftRight size={10} />
@@ -240,29 +258,54 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding: '14px 15px 15px', display: 'flex', flexDirection: 'column', flex: 1, gap: 0 }}>
-
-          {/* Brand + Name */}
-          <p style={{ color: '#4b5563', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 3px' }}>
+        <div
+          className="cc-body"
+          style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}
+        >
+          {/* Row 1 — Brand label */}
+          <p style={{
+            color: 'var(--color-text-secondary, #6b7280)',
+            fontSize: 10, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            margin: '0 0 3px',
+          }}>
             {brand}
           </p>
-          <h3 style={{ color: '#f3f4f6', fontSize: 15, fontWeight: 700, margin: '0 0 12px', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {model}{variant ? ` ${variant}` : ''}
+
+          {/* Row 2 — Car name */}
+          <h3 style={{
+            color: 'var(--color-text-primary, #f3f4f6)',
+            fontSize: 15, fontWeight: 700, lineHeight: 1.3,
+            margin: '0 0 12px',
+            whiteSpace: 'normal', wordBreak: 'break-word',
+          }}>
+            {[year, brand, model, variant].filter(Boolean).join(' ')}
           </h3>
 
-          {/* Price */}
+          {/* Row 3 — Price */}
           <div style={{ marginBottom: 12 }}>
             {hasDiscount && (
-              <span style={{ color: '#4b5563', fontSize: 11, textDecoration: 'line-through', marginRight: 6 }}>
-                RM {originalPrice.toLocaleString('en-MY')}
-              </span>
+              <div>
+                <span style={{ color: 'var(--color-text-secondary, #6b7280)', fontSize: 11, textDecoration: 'line-through' }}>
+                  RM {originalPrice.toLocaleString('en-MY')}
+                </span>
+              </div>
             )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ color: isHot ? '#f87171' : '#ffffff', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
+              <span
+                className="cc-price-main"
+                style={{
+                  color: isHot ? '#f87171' : 'var(--color-text-primary, #ffffff)',
+                  fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1,
+                }}
+              >
                 {formattedPrice}
               </span>
               {monthly && (
-                <span style={{ color: '#4b5563', fontSize: 11, fontWeight: 500 }}>
+                <span
+                  className="cc-monthly"
+                  style={{ color: 'var(--color-text-secondary, #6b7280)', fontSize: 11, fontWeight: 500 }}
+                >
                   ≈ RM {monthly.toLocaleString('en-MY')}/mo
                 </span>
               )}
@@ -274,24 +317,27 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             )}
           </div>
 
-          {/* Specs row — mileage · transmission · location */}
+          {/* Row 4 — Specs */}
           {specDots.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 0', marginBottom: 14 }}>
               {specDots.map((s, i) => (
                 <React.Fragment key={i}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6b7280', fontSize: 12, fontWeight: 500 }}>
-                    <s.icon size={11} style={{ color: '#374151', flexShrink: 0 }} />
+                  <span
+                    className="cc-spec-label"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-text-secondary, #6b7280)', fontSize: 12, fontWeight: 500 }}
+                  >
+                    <s.icon size={11} style={{ color: 'var(--color-text-tertiary, #374151)', flexShrink: 0 }} />
                     {s.label}
                   </span>
                   {i < specDots.length - 1 && (
-                    <span style={{ color: '#1f2937', margin: '0 7px', fontSize: 13 }}>·</span>
+                    <span style={{ color: 'var(--color-border-secondary, #1f2937)', margin: '0 7px', fontSize: 13 }}>·</span>
                   )}
                 </React.Fragment>
               ))}
             </div>
           )}
 
-          {/* WhatsApp CTA */}
+          {/* Row 5 — WhatsApp CTA */}
           <a
             href={whatsappUrl}
             target="_blank"
@@ -320,10 +366,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
               marginTop: 'auto',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               background: isSold ? 'rgba(255,255,255,0.03)' : 'rgba(37,211,102,0.08)',
-              border: isSold ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(37,211,102,0.2)',
-              color: isSold ? '#374151' : '#25D366',
-              borderRadius: 10, padding: '10px 14px',
-              fontSize: 13, fontWeight: 700,
+              border: isSold
+                ? '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.06))'
+                : '1px solid rgba(37,211,102,0.2)',
+              color: isSold ? 'var(--color-text-secondary, #6b7280)' : '#25D366',
+              borderRadius: 'var(--border-radius-md, 10px)',
+              padding: '10px 14px', fontSize: 13, fontWeight: 700,
               textDecoration: 'none', transition: 'all 0.18s',
               pointerEvents: isSold ? 'none' : 'auto',
             }}
