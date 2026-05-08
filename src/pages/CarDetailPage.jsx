@@ -270,6 +270,9 @@ export default function CarDetailPage() {
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
 
+  /* fuel range calculator */
+  const [fuelDist, setFuelDist] = useState(250);
+
   /* detail tabs */
   const [detailTab, setDetailTab] = useState("specs");
 
@@ -1284,7 +1287,10 @@ export default function CarDetailPage() {
               { label:'Colour',       value: car.colour || '—' },
               { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
-              { label:'Financing',     value: fmtFinancing(car) },
+              { label:'Financing',    value: fmtFinancing(car) },
+              ...(car.horsepower ? [{ label:'Power', value:`${car.horsepower} bhp` }] : []),
+              ...(car.doors ? [{ label:'Doors', value:`${car.doors} doors` }] : []),
+              ...(car.seats ? [{ label:'Seats', value:`${car.seats} seats` }] : []),
             ].map(({ label, value }) => (
               <div key={label} style={{ padding:'14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
                 <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:5 }}>{label}</p>
@@ -1499,6 +1505,168 @@ export default function CarDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Car History */}
+          <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+              <Shield size={13} style={{ color:'#60a5fa' }} />
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700 }}>Car History</p>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+              {[
+                { key:'puspakom', icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)', okBorder:'rgba(34,197,94,0.3)' },
+                { key:'service_history', icon:<FileText size={13} />, label:'Service History', okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)', okBorder:'rgba(96,165,250,0.3)' },
+                { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance', okColor:'#34d399', okBg:'rgba(52,211,153,0.1)', okBorder:'rgba(52,211,153,0.3)' },
+                { key:'ownership', icon:<Eye size={13} />, label:'Ownership Docs', okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)', okBorder:'rgba(251,191,36,0.3)' },
+              ].map(({ key, icon, label, okColor, okBg, okBorder }) => {
+                const doc = car.car_documents?.find(d => d.type === key);
+                return (
+                  <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                      <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace:'nowrap' }}>
+                      {doc ? '✓ Available' : 'Not Provided'}
+                    </span>
+                  </div>
+                );
+              })}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Star size={13} style={{ color:'#fbbf24' }} />
+                  <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>Previous Owners</p>
+                </div>
+                <span style={{ fontSize:12, color:'#e2e8f0', fontWeight:600 }}>
+                  {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners!==1?'s':''}` : '—'}
+                </span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Shield size={13} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
+                  <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>Warranty</p>
+                </div>
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: car.warranty_months>0?'rgba(52,211,153,0.1)':'rgba(100,116,139,0.08)', border:`1px solid ${car.warranty_months>0?'rgba(52,211,153,0.3)':'rgba(100,116,139,0.15)'}`, color: car.warranty_months>0?'#34d399':'#475569' }}>
+                  {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance */}
+          {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats) && (
+            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>Performance &amp; Details</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
+                {[
+                  { label:'Power', value: car.horsepower ? `${car.horsepower} bhp` : null },
+                  { label:'Doors', value: car.doors ? `${car.doors} doors` : null },
+                  { label:'Seats', value: car.seats ? `${car.seats} seats` : null },
+                  { label:'0–100 km/h', value: car.acceleration ? `${car.acceleration}s` : null },
+                  { label:'Top Speed', value: car.top_speed ? `${car.top_speed} km/h` : null },
+                  { label:'Boot Space', value: car.boot_size ? `${car.boot_size}L` : null },
+                ].filter(s => s.value).map(({ label, value }) => (
+                  <div key={label} style={{ padding:'12px 14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                    <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:4 }}>{label}</p>
+                    <p style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, margin:0 }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Running Costs */}
+          {(() => {
+            const cc = car.engine_cc || 0;
+            const roadTaxMap = [[1000,20],[1200,55],[1400,70],[1600,90],[1800,200],[2000,280],[2500,380],[3000,880]];
+            const roadTax = cc > 0 ? (roadTaxMap.find(([limit]) => cc <= limit)?.[1] ?? 1880) : null;
+            const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
+            const totalFuelCost = Math.round(fuelDist * (consumption / 100) * 2.05);
+            return (
+              <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:16 }}>Running Costs</p>
+                {roadTax && (
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:10, marginBottom:10 }}>
+                    <span style={{ fontSize:12, color:'#94a3b8' }}>Road Tax (est.)</span>
+                    <span style={{ fontSize:14, color:'white', fontWeight:600 }}>RM {roadTax}/yr</span>
+                  </div>
+                )}
+                {car.co2_emissions && (
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+                      <span style={{ fontSize:12, color:'#94a3b8' }}>CO₂ Emissions</span>
+                      <span style={{ fontSize:13, color:'white', fontWeight:600 }}>{car.co2_emissions} g/km</span>
+                    </div>
+                    <div style={{ display:'flex', gap:2, height:8, borderRadius:5, overflow:'hidden' }}>
+                      {[{limit:100,color:'#22c55e'},{limit:130,color:'#86efac'},{limit:150,color:'#fde047'},{limit:170,color:'#fb923c'},{limit:200,color:'#ef4444'},{limit:999,color:'#991b1b'}].map((band,i)=>{
+                        const isActive = car.co2_emissions > [0,100,130,150,170,200][i] && car.co2_emissions <= band.limit;
+                        return <div key={i} style={{ flex:1, background: isActive ? band.color : `${band.color}25`, borderRadius: i===0?'5px 0 0 5px':i===5?'0 5px 5px 0':0 }} />;
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'14px 16px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                    <span style={{ fontSize:12, color:'#94a3b8' }}>Range Calculator</span>
+                    <span style={{ fontSize:10, color:'#334155' }}>RON95 @ RM2.05/L</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:12 }}>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.8rem', color:'white', lineHeight:1 }}>RM {totalFuelCost}</span>
+                    <span style={{ fontSize:12, color:'#475569' }}>for {fuelDist} km</span>
+                  </div>
+                  <input type="range" min={10} max={1000} step={10} value={fuelDist}
+                    onChange={e => setFuelDist(Number(e.target.value))}
+                    style={{ width:'100%', accentColor:'#dc2626', cursor:'pointer' }}
+                  />
+                  <p style={{ fontSize:10, color:'#334155', marginTop:6 }}>~{consumption}L/100km estimated</p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Location */}
+          {(car.city || car.state) && (
+            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>Location</p>
+              <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+                <div>
+                  <p style={{ fontSize:14, color:'white', fontWeight:600, margin:'0 0 3px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
+                  <p style={{ fontSize:11, color:'#475569', margin:0 }}>Malaysia</p>
+                </div>
+                <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'7px 12px', fontSize:11, color:'#94a3b8', textDecoration:'none', flexShrink:0 }}>
+                  <Eye size={12} /> View Map
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Perks */}
+          {(() => {
+            const perks = [
+              { label:'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
+              { label:'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
+              { label:'Cash Purchase', show: car.financing_type === 'cash' },
+              { label:'Part Exchange', show: true },
+              { label:'WhatsApp Chat', show: !!contactPhone },
+              { label:'Warranty Incl.', show: car.warranty_months > 0 },
+              { label:'Verified Docs', show: hasDocuments },
+              { label:'Book a Viewing', show: true },
+            ].filter(p => p.show);
+            return (
+              <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>What's Available</p>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+                  {perks.map(({ label }) => (
+                    <span key={label} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:6, padding:'5px 11px', fontSize:11, color:'#64748b' }}>
+                      <span style={{ color:'#22c55e', fontWeight:700 }}>✓</span> {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* M6 — Booking form */}
@@ -1759,6 +1927,9 @@ export default function CarDetailPage() {
                   label: "Financing",
                   value: fmtFinancing(car),
                 },
+                ...(car.horsepower ? [{ label: "Power", value: `${car.horsepower} bhp` }] : []),
+                ...(car.doors ? [{ label: "Doors", value: `${car.doors} doors` }] : []),
+                ...(car.seats ? [{ label: "Seats", value: `${car.seats} seats` }] : []),
               ].map(({ label, value }) => (
                 <div key={label} className="cdp-stat-cell">
                   <p
@@ -2201,6 +2372,219 @@ export default function CarDetailPage() {
               </div>
             )}
 
+            {/* ── CAR HISTORY ── */}
+            <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                <Shield size={13} style={{ color: '#60a5fa' }} />
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700 }}>Car History</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { key: 'puspakom', icon: <ShieldCheck size={15} />, label: 'Puspakom Inspection', sub: 'Structural & mechanical check', okColor: '#4ade80', okBg: 'rgba(34,197,94,0.1)', okBorder: 'rgba(34,197,94,0.3)' },
+                  { key: 'service_history', icon: <FileText size={15} />, label: 'Service History', sub: 'Maintenance records', okColor: '#60a5fa', okBg: 'rgba(96,165,250,0.1)', okBorder: 'rgba(96,165,250,0.3)' },
+                  { key: 'loan_clearance', icon: <BadgeCheck size={15} />, label: 'Loan Clearance', sub: 'No outstanding finance', okColor: '#34d399', okBg: 'rgba(52,211,153,0.1)', okBorder: 'rgba(52,211,153,0.3)' },
+                  { key: 'ownership', icon: <Eye size={15} />, label: 'Ownership Docs', sub: 'VOC / transfer documents', okColor: '#fbbf24', okBg: 'rgba(251,191,36,0.1)', okBorder: 'rgba(251,191,36,0.3)' },
+                ].map(({ key, icon, label, sub, okColor, okBg, okBorder }) => {
+                  const doc = car.car_documents?.find(d => d.type === key);
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
+                        <div>
+                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
+                          <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border: `1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace: 'nowrap' }}>
+                        {doc ? '✓ Available' : 'Not Provided'}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Star size={15} style={{ color: '#fbbf24' }} />
+                    <div>
+                      <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>Previous Owners</p>
+                      {(car.registration_date || car.local_reg_date) && <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Registered {new Date(car.registration_date || car.local_reg_date).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}</p>}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>
+                    {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Shield size={15} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
+                    <div>
+                      <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>Warranty</p>
+                      <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Included with purchase</p>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: car.warranty_months > 0 ? 'rgba(52,211,153,0.1)' : 'rgba(100,116,139,0.08)', border: `1px solid ${car.warranty_months > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(100,116,139,0.15)'}`, color: car.warranty_months > 0 ? '#34d399' : '#475569' }}>
+                    {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── PERFORMANCE & DETAILS ── */}
+            {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats || car.co2_emissions || car.insurance_group || car.safety_rating) && (
+              <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 20 }}>Performance &amp; Details</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                  {[
+                    { label: 'Power', value: car.horsepower ? `${Number(car.horsepower).toLocaleString()} bhp` : null },
+                    { label: 'Doors', value: car.doors ? `${car.doors} doors` : null },
+                    { label: 'Seats', value: car.seats ? `${car.seats} seats` : null },
+                    { label: '0–100 km/h', value: car.acceleration ? `${car.acceleration}s` : null },
+                    { label: 'Top Speed', value: car.top_speed ? `${car.top_speed} km/h` : null },
+                    { label: 'Boot Space', value: car.boot_size ? `${car.boot_size}L` : null },
+                    { label: 'CO₂', value: car.co2_emissions ? `${car.co2_emissions} g/km` : null },
+                    { label: 'Ins. Group', value: car.insurance_group ? String(car.insurance_group) : null },
+                    { label: 'Safety Rating', value: car.safety_rating ? `${car.safety_rating}★` : null },
+                  ].filter(s => s.value).map(({ label, value }) => (
+                    <div key={label} style={{ padding: '14px', background: '#0a1220', borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#334155', fontWeight: 700, marginBottom: 5 }}>{label}</p>
+                      <p style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500, margin: 0 }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── RUNNING COSTS ── */}
+            {(() => {
+              const cc = car.engine_cc || 0;
+              const roadTaxMap = [[1000,20],[1200,55],[1400,70],[1600,90],[1800,200],[2000,280],[2500,380],[3000,880]];
+              const roadTax = cc > 0 ? (roadTaxMap.find(([limit]) => cc <= limit)?.[1] ?? 1880) : null;
+              const co2 = car.co2_emissions;
+              const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
+              const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
+              const petrolPrice = 2.05;
+              const totalFuelCost = Math.round(fuelDist * (consumption / 100) * petrolPrice);
+              return (
+                <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
+                  {roadTax && (
+                    <div style={{ marginBottom: 24, padding: '16px 18px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, color: '#94a3b8' }}>Road Tax (estimated)</span>
+                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>RM {roadTax} / year</span>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>Based on {fmt(cc)}cc engine displacement</p>
+                    </div>
+                  )}
+                  {co2 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, color: '#94a3b8' }}>CO₂ Emissions</span>
+                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>{co2} g/km</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 2, height: 10, borderRadius: 6, overflow: 'hidden' }}>
+                        {[
+                          { limit: 100, color: '#22c55e' },
+                          { limit: 130, color: '#86efac' },
+                          { limit: 150, color: '#fde047' },
+                          { limit: 170, color: '#fb923c' },
+                          { limit: 200, color: '#ef4444' },
+                          { limit: 999, color: '#991b1b' },
+                        ].map((band, i) => {
+                          const prevLimit = [0,100,130,150,170,200][i];
+                          const isActive = co2 > prevLimit && co2 <= band.limit;
+                          return <div key={i} style={{ flex: 1, background: isActive ? band.color : `${band.color}25`, borderRadius: i === 0 ? '6px 0 0 6px' : i === 5 ? '0 6px 6px 0' : 0 }} />;
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 5 }}>
+                        <span>0</span><span>100</span><span>130</span><span>150</span><span>170</span><span>200+</span>
+                      </div>
+                    </div>
+                  )}
+                  {insGrp && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, color: '#94a3b8' }}>Insurance Group</span>
+                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>{insGrp} / 26</span>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, (insGrp / 26) * 100)}%`, height: '100%', background: `hsl(${Math.round(120 - (insGrp / 26) * 120)}, 75%, 50%)`, borderRadius: 6 }} />
+                      </div>
+                      <p style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>
+                        {insGrp <= 8 ? 'Low cost to insure' : insGrp <= 16 ? 'Moderate insurance cost' : 'Higher insurance cost'}
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '18px 20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, color: '#94a3b8' }}>Range Calculator</span>
+                      <span style={{ fontSize: 10, color: '#334155' }}>RON95 @ RM {petrolPrice}/L</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: 'white', lineHeight: 1 }}>RM {totalFuelCost}</span>
+                      <span style={{ fontSize: 12, color: '#475569' }}>for {fuelDist} km</span>
+                    </div>
+                    <input type="range" min={10} max={1000} step={10} value={fuelDist}
+                      onChange={e => setFuelDist(Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#dc2626', cursor: 'pointer' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 4 }}>
+                      <span>10 km</span><span>500 km</span><span>1,000 km</span>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
+                      {car.fuel_consumption ? `${car.fuel_consumption}L/100km (manufacturer figure)` : `~${consumption}L/100km estimated from engine size`}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── LOCATION ── */}
+            {(car.city || car.state) && (
+              <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Location</p>
+                <div style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                  <div>
+                    <p style={{ fontSize: 16, color: 'white', fontWeight: 600, margin: '0 0 4px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
+                    <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>Malaysia · {dealerName}</p>
+                  </div>
+                  <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#94a3b8', textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
+                    <Eye size={13} /> View on Map
+                  </a>
+                </div>
+                <p style={{ fontSize: 11, color: '#334155', marginTop: 8 }}>Approximate area only — confirm address when enquiring.</p>
+              </div>
+            )}
+
+            {/* ── PERKS & SERVICES ── */}
+            {(() => {
+              const perks = [
+                { label: 'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
+                { label: 'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
+                { label: 'Cash Purchase', show: car.financing_type === 'cash' },
+                { label: 'Part Exchange', show: true },
+                { label: 'WhatsApp Chat', show: !!contactPhone },
+                { label: 'Video Walkthrough', show: !!(car.video_url && getEmbedUrl(car.video_url)) },
+                { label: 'Agent Assigned', show: !!salesmanProfile },
+                { label: 'Warranty Incl.', show: car.warranty_months > 0 },
+                { label: 'Verified Docs', show: hasDocuments },
+                { label: 'Book a Viewing', show: true },
+              ].filter(p => p.show);
+              return (
+                <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>What's Available</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {perks.map(({ label }) => (
+                      <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '6px 12px', fontSize: 12, color: '#64748b' }}>
+                        <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* BOOKING FORM */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }}>
               <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Book a Viewing</p>
@@ -2299,8 +2683,11 @@ export default function CarDetailPage() {
                     </p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 20, padding: '2px 8px', marginBottom: 4 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'cdp-pulse 2s ease infinite' }} />
+                      <span style={{ fontSize: 9, color: '#4ade80', fontWeight: 600, letterSpacing: '0.08em' }}>ONLINE</span>
+                    </div>
                     {listedDays !== null && <p style={{ fontSize: 10, color: '#1e293b' }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize: 10, color: '#1e293b' }}>👁 {viewCount}</p>}
                   </div>
                 </div>
               );
@@ -2360,6 +2747,34 @@ export default function CarDetailPage() {
               style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
               <Calculator size={13} /> Financing Calculator
             </button>
+
+            {/* PERKS STRIP */}
+            {(() => {
+              const perks = [
+                { label: 'Loan Available', show: car.financing_type !== 'cash' && car.loan_eligible !== false },
+                { label: 'Sambung Bayar', show: car.financing_type === 'sambung_bayar' },
+                { label: 'Cash Purchase', show: car.financing_type === 'cash' },
+                { label: 'Part Exchange', show: true },
+                { label: 'WhatsApp Chat', show: !!contactPhone },
+                { label: 'Video Walkthrough', show: !!(car.video_url && getEmbedUrl(car.video_url)) },
+                { label: 'Agent Assigned', show: !!salesmanProfile },
+                { label: 'Warranty Incl.', show: car.warranty_months > 0 },
+                { label: 'Verified Docs', show: hasDocuments },
+                { label: 'Book a Viewing', show: true },
+              ].filter(p => p.show);
+              return (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#334155', fontWeight: 700, marginBottom: 10 }}>What's Available</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {perks.map(({ label }) => (
+                      <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 9px', fontSize: 11, color: '#475569', fontFamily: "'DM Sans',sans-serif" }}>
+                        <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {
