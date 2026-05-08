@@ -151,9 +151,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             </div>
           )}
 
-          {/* Bottom gradient */}
-          <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'70px', background:'linear-gradient(to top, rgba(13,17,23,0.95), transparent)', pointerEvents:'none' }}/>
-
           {/* Top-left badges */}
           <div style={{ position:'absolute', top:'10px', left:'10px', display:'flex', gap:'5px', flexWrap:'wrap' }}>
             {isHot && showDiscountBadge && (
