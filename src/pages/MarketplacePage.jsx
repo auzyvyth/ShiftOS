@@ -15,6 +15,11 @@ const PER_PAGE = 12;
 const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
 const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
 const TRANSMISSIONS = ['Auto','Manual'];
+const FINANCING_TYPES = [
+  { value: 'loan',          label: 'Loan' },
+  { value: 'cash',          label: 'Cash Only' },
+  { value: 'sambung_bayar', label: 'Sambung Bayar' },
+];
 const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
 const PRICE_OPTIONS = [
   { label: 'Under RM 30,000', value: '30000' },
@@ -29,7 +34,7 @@ const SORT_OPTIONS = [
   { label: 'Price: High to Low', value: 'price_desc' },
 ];
 
-const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,images,status,created_at';
+const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
 const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -50,6 +55,9 @@ function sanitizeBodyType(val) {
 }
 function sanitizeTransmission(val) {
   return TRANSMISSIONS.includes(val) ? val : null;
+}
+function sanitizeFinancing(val) {
+  return FINANCING_TYPES.map(f => f.value).includes(val) ? val : null;
 }
 function sanitizeState(val) {
   return MY_STATES.includes(val) ? val : null;
@@ -228,6 +236,7 @@ export default function MarketplacePage() {
   const transmission = sanitizeTransmission(searchParams.get('transmission') || '');
   const state        = sanitizeState(searchParams.get('state') || '');
   const maxPrice     = sanitizePrice(searchParams.get('max_price') || '');
+  const financing    = sanitizeFinancing(searchParams.get('financing') || '');
   const sort         = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
   const page         = sanitizePage(searchParams.get('page') || '1');
 
@@ -287,6 +296,7 @@ export default function MarketplacePage() {
       if (bodyType)     query = query.eq('body_type', bodyType);
       if (state)        query = query.eq('state', state);
       if (maxPrice)     query = query.lte('selling_price', maxPrice);
+      if (financing)    query = query.eq('financing_type', financing);
       if (transmission) {
         const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
         query = query.in('transmission', txVal);
@@ -308,7 +318,7 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, brand, bodyType, state, maxPrice, transmission, sort]);
+  }, [page, brand, bodyType, state, maxPrice, transmission, financing, sort]);
 
   useEffect(() => {
     fetchCars();
@@ -332,7 +342,7 @@ export default function MarketplacePage() {
 
   const resetAll = () => setSearchParams({}, { replace: true });
 
-  const hasFilters = brand || bodyType || transmission || state || maxPrice;
+  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* ── Active filter chips ── */
@@ -342,6 +352,7 @@ export default function MarketplacePage() {
     transmission && { key: 'transmission', label: transmission },
     state        && { key: 'state',        label: state },
     maxPrice     && { key: 'max_price',    label: PRICE_OPTIONS.find(p => p.value === String(maxPrice))?.label || '' },
+    financing    && { key: 'financing',    label: FINANCING_TYPES.find(f => f.value === financing)?.label || '' },
   ].filter(Boolean);
 
   /* ── Styles ── */
@@ -752,6 +763,23 @@ export default function MarketplacePage() {
                         aria-pressed={transmission === tx}
                       >
                         {tx}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment Type */}
+                <div>
+                  <span style={S.label}>Payment Type</span>
+                  <div style={S.pillGroup}>
+                    {FINANCING_TYPES.map(ft => (
+                      <button
+                        key={ft.value}
+                        style={S.pill(financing === ft.value)}
+                        onClick={() => setParam('financing', financing === ft.value ? '' : ft.value)}
+                        aria-pressed={financing === ft.value}
+                      >
+                        {ft.label}
                       </button>
                     ))}
                   </div>
