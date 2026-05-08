@@ -1395,7 +1395,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               {
                 dealer_id: dealerId,
                 ...payload,
-                status: "active",
+                status: "available",
                 // salesman_lite owns and sells their own listings
                 ...(profile?.role === "salesman"
                   ? { assigned_to: profile.id }
