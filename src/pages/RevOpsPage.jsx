@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Clock,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
@@ -626,21 +627,58 @@ export default function RevOpsPage({ userId }) {
       style={{ fontFamily: "'DM Sans',sans-serif" }}
     >
       {/* Header */}
-      <div>
-        <h1
-          style={{
-            fontFamily: "'Bebas Neue',cursive",
-            fontSize: 32,
-            letterSpacing: "0.06em",
-            color: "#f8fafc",
-            lineHeight: 1,
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1
+            style={{
+              fontFamily: "'Bebas Neue',cursive",
+              fontSize: 32,
+              letterSpacing: "0.06em",
+              color: "#f8fafc",
+              lineHeight: 1,
+            }}
+          >
+            Revenue Operations
+          </h1>
+          <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+            Your dealership at a glance
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            const month = new Date().toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+            const rows = [
+              ['ShiftOS RevOps Export', month],
+              [],
+              ['REVENUE'],
+              ['Revenue MTD', revData?.revMTD ?? ''],
+              ['GP MTD', revData?.gpMTD ?? ''],
+              ['Units Sold MTD', revData?.unitsSoldMTD ?? ''],
+              ['Avg GP/Unit', revData?.avgGPPerUnit ?? ''],
+              [],
+              ['LEADS (30d)'],
+              ['Total Leads', leadData?.total ?? ''],
+              ['Conversion Rate', leadData?.convRate != null ? `${leadData.convRate}%` : ''],
+              ['Viewing Rate', leadData?.viewingRate != null ? `${leadData.viewingRate}%` : ''],
+              [],
+              ['STOCK'],
+              ['Total Units', stockData?.total ?? ''],
+              ['Avg Days on Lot', stockData?.avgDays ?? ''],
+              ['Aged 45d+', stockData?.aged45?.length ?? ''],
+              ['Aged 60d+', stockData?.aged60?.length ?? ''],
+            ];
+            const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = `revops-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
           }}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#9ca3af', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.color = '#f9fafb'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#9ca3af'; }}
         >
-          Revenue Operations
-        </h1>
-        <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-          Your dealership at a glance
-        </p>
+          <Download size={14} /> Export CSV
+        </button>
       </div>
 
       {/* ── Alerts strip ──────────────────────────────────────────────────── */}

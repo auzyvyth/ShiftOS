@@ -26,6 +26,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import AISalesManager from '../components/AISalesManager';
+import LoansTab from '../components/LoansTab';
 import {
   Car,
   PlusCircle,
@@ -93,6 +94,9 @@ import {
   CheckSquare,
   Wrench,
   Upload,
+  Landmark,
+  Star,
+  Trophy,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -3004,6 +3008,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
+  const [leaderboard, setLeaderboard] = useState([]);
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3023,9 +3028,31 @@ function TeamTab({ managerDealership, dealerId }) {
     setAnalyticsMap(map);
   };
 
+  const fetchLeaderboard = async () => {
+    if (!dealerId) return;
+    const start = new Date();
+    start.setDate(1); start.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('car_listings')
+      .select('assigned_to, profiles(full_name, avatar_url)')
+      .eq('dealer_id', dealerId)
+      .eq('status', 'sold')
+      .gte('sold_at', start.toISOString());
+    if (!data) return;
+    const counts = {};
+    data.forEach(l => {
+      const id = l.assigned_to;
+      if (!id) return;
+      if (!counts[id]) counts[id] = { id, name: l.profiles?.full_name || 'Unknown', avatar: l.profiles?.avatar_url, sold: 0 };
+      counts[id].sold++;
+    });
+    setLeaderboard(Object.values(counts).sort((a, b) => b.sold - a.sold));
+  };
+
   useEffect(() => {
     fetchTeam();
     fetchAnalytics();
+    fetchLeaderboard();
   }, [managerDealership]);
 
   useEffect(() => {
@@ -3269,6 +3296,43 @@ function TeamTab({ managerDealership, dealerId }) {
           {teamSoldCount}
         </p>
       </div>
+
+      {/* Leaderboard */}
+      {leaderboard.length > 0 && (
+        <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+          <div className="flex items-center gap-3 p-4" style={T.divider}>
+            <Trophy className="w-4 h-4 text-yellow-400" />
+            <div>
+              <h2 className="font-semibold text-white">This Month's Leaderboard</h2>
+              <p className="text-xs text-gray-600 mt-0.5">Cars sold this calendar month</p>
+            </div>
+          </div>
+          <div style={{ padding: '8px 0' }}>
+            {leaderboard.map((s, i) => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < leaderboard.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: 12,
+                  background: i === 0 ? 'linear-gradient(135deg,#fbbf24,#f59e0b)' : i === 1 ? 'linear-gradient(135deg,#94a3b8,#64748b)' : i === 2 ? 'linear-gradient(135deg,#b45309,#78350f)' : 'rgba(255,255,255,0.06)',
+                  color: i < 3 ? '#000' : '#6b7280',
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: i === 0 ? '#fbbf24' : '#e2e8f0' }}>{s.sold}</span>
+                  <span style={{ fontSize: 11, color: '#4b5563' }}>sold</span>
+                </div>
+                {i === 0 && <Star size={14} style={{ color: '#fbbf24', flexShrink: 0 }} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <div
           className="flex items-center justify-between gap-3 p-4"
@@ -6098,6 +6162,7 @@ export default function DashboardPage() {
     services:  { title: "Services",  sub: "Add-ons & product catalogue" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
+    loans:      { title: "Loan Tracker",     sub: "Bank submissions, approvals & commissions" },
   };
 
   const NAV = [
@@ -6113,6 +6178,7 @@ export default function DashboardPage() {
     { id: "documents", Icon: FileText, label: "Documents" },
     { id: "revops",   Icon: BarChart3, label: "RevOps" },
     { id: "services", Icon: Wrench,   label: "Services & Add-ons" },
+    { id: "loans",    Icon: Landmark, label: "Loan Tracker" },
   ];
 
   const STAT_CARDS = [
@@ -6904,6 +6970,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
+          )}
+          {activeTab === "loans" && userId && (
+            <LoansTab userId={userId} listings={listings} salesmen={salesmen} />
           )}
         </div>
       </main>

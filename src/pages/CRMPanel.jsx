@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus } from "lucide-react";
+import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, UserCheck, Clock, Car as CarIcon, MapPin } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
@@ -2756,6 +2756,127 @@ const CRM_CSS = `
   }
 `;
 
+// ─── WalkInTab ────────────────────────────────────────────────────────────────
+const WALKIN_EMPTY = { name: '', phone: '', car_interest: '', notes: '' };
+
+function WalkInTab({ userId, listings }) {
+  const [logs, setLogs] = useState([]);
+  const [form, setForm] = useState(WALKIN_EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const fetchLogs = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('leads')
+      .select('id, buyer_name, phone, notes, created_at, stage')
+      .eq('dealer_id', userId)
+      .eq('lead_source', 'walk_in')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setLogs(data || []);
+  }, [userId]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  async function handleLog() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    const notes = [form.car_interest && `Interested in: ${form.car_interest}`, form.notes].filter(Boolean).join('\n');
+    await supabase.from('leads').insert({
+      dealer_id: userId,
+      buyer_name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      notes: notes || null,
+      stage: 'new',
+      lead_source: 'walk_in',
+      is_deleted: false,
+    });
+    toast.success('Walk-in logged!');
+    setForm(WALKIN_EMPTY);
+    setShowForm(false);
+    setSaving(false);
+    fetchLogs();
+  }
+
+  const iStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: '#f9fafb', outline: 'none', fontFamily: 'DM Sans, sans-serif', boxSizing: 'border-box' };
+  const lStyle = { fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'block' };
+
+  return (
+    <div style={{ padding: 16, fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f9fafb' }}>Walk-In Log</h3>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4b5563' }}>Log foot traffic even if they don't convert</p>
+        </div>
+        <button onClick={() => setShowForm(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#dc2626', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+          <Plus size={14} /> Log Walk-In
+        </button>
+      </div>
+
+      {showForm && (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lStyle}>Customer Name *</label>
+              <input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="Full name" style={iStyle} />
+            </div>
+            <div>
+              <label style={lStyle}>Phone</label>
+              <input value={form.phone} onChange={e => setF('phone', e.target.value)} placeholder="+601X-XXXXXXX" style={iStyle} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={lStyle}>Car Interested In</label>
+            <input value={form.car_interest} onChange={e => setF('car_interest', e.target.value)} placeholder="e.g. Honda Civic 2022" style={iStyle} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={lStyle}>Notes</label>
+            <textarea value={form.notes} onChange={e => setF('notes', e.target.value)} placeholder="Budget, timeline, any other details…" rows={2} style={{ ...iStyle, resize: 'vertical' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowForm(false)} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#9ca3af', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }}>Cancel</button>
+            <button onClick={handleLog} disabled={saving || !form.name.trim()} style={{ padding: '7px 16px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }}>{saving ? 'Saving…' : 'Log'}</button>
+          </div>
+        </div>
+      )}
+
+      {logs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#374151' }}>
+          <MapPin size={28} style={{ marginBottom: 10, opacity: 0.3 }} />
+          <p style={{ fontSize: 13, margin: 0 }}>No walk-ins logged yet</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {logs.map(log => (
+            <div key={log.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <UserCheck size={15} style={{ color: '#f87171' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>{log.buyer_name}</p>
+                    {log.phone && <p style={{ fontSize: 11, color: '#6b7280', margin: '1px 0 0' }}>{log.phone}</p>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#4b5563', flexShrink: 0 }}>
+                  <Clock size={11} />
+                  {new Date(log.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              {log.notes && <p style={{ fontSize: 12, color: '#6b7280', margin: '8px 0 0', paddingLeft: 40, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{log.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── CRMPanel (exported) ──────────────────────────────────────────────────────
 export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
   const [tab, setTab] = useState("pipeline");
@@ -2764,6 +2885,7 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
     { id: "pipeline", label: "Pipeline" },
     { id: "enquiries", label: "Enquiries" },
     { id: "bookings", label: "Bookings" },
+    { id: "walk_in", label: "Walk-Ins" },
   ];
 
   return (
@@ -2802,6 +2924,9 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
             listings={listings}
             salesmen={salesmen}
           />
+        )}
+        {tab === "walk_in" && (
+          <WalkInTab userId={userId} listings={listings} />
         )}
       </div>
     </div>

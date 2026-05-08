@@ -20,24 +20,44 @@ function corsHeaders(origin: string | null) {
 serve(async (req) => {
   const origin = req.headers.get("origin");
 
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
 
   try {
-    const { prompt } = await req.json();
-    if (!prompt) {
-      return new Response(JSON.stringify({ error: "missing prompt" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
-      });
-    }
+    const body = await req.json();
+    // Support two call formats:
+    // Simple: { prompt: "..." }
+    // Chat:   { system: "...", messages: [...], max_tokens: N }
+    const { prompt, system, messages, max_tokens } = body;
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "AI not configured" }), {
         status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
+      });
+    }
+
+    let anthropicBody: Record<string, unknown>;
+    if (messages && Array.isArray(messages)) {
+      // Multi-turn chat format
+      anthropicBody = {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: max_tokens || 1024,
+        ...(system ? { system } : {}),
+        messages,
+      };
+    } else if (prompt) {
+      // Simple prompt format
+      anthropicBody = {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      };
+    } else {
+      return new Response(JSON.stringify({ error: "missing prompt or messages" }), {
+        status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
       });
     }
@@ -49,11 +69,7 @@ serve(async (req) => {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: JSON.stringify(anthropicBody),
     });
 
     if (!res.ok) {

@@ -41,7 +41,7 @@ export function useDealerSnapshot(userId) {
       const events = analyticsRes.data || [];
 
       const now = Date.now();
-      const active = listings.filter(c => c.status === 'active');
+      const active = listings.filter(c => c.status !== 'sold');
 
       const activeListings = active.length;
 
