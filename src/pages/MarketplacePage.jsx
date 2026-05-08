@@ -29,7 +29,7 @@ const SORT_OPTIONS = [
   { label: 'Price: High to Low', value: 'price_desc' },
 ];
 
-const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at';
+const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,images,status,created_at';
 const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
