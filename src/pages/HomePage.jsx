@@ -38,7 +38,7 @@ import {
 import { getEmbedUrl } from "../utils/videoEmbed";
 
 const CAR_FIELDS =
-  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at";
+  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,images,status,created_at";
 
 const BRANDS = [
   "Perodua",

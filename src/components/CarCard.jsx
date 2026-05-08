@@ -45,7 +45,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const isNew       = ageDays !== null && ageDays <= 7;
   const isSold      = status === 'sold';
   const isReserved  = status === 'reserved';
-  const isRecon     = car.is_recon || false;
+  const isRecon     = car.is_recon || car.condition === 'recon' || false;
 
   const image = !imgError && (
     (Array.isArray(car.images) && car.images[0]) ||
@@ -123,7 +123,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           .cc-cell-lbl    { font-size: 9px !important; }
           .cc-cell-val    { font-size: 11px !important; }
           .cc-divider     { margin-bottom: 8px !important; }
-          .cc-wa          { font-size: 11px !important; padding: 8px !important; }
+          .cc-wa          { width: 34px !important; height: 34px !important; }
           .cc-badge       { font-size: 9px !important; padding: 2px 6px !important; }
           .cc-yrchip      { font-size: 9px !important; padding: 2px 6px !important; }
           .cc-cmp         { display: none !important; }
@@ -337,48 +337,72 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           {/* Divider */}
           <div className="cc-divider" style={{ borderTop: '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))', marginBottom: 10 }} />
 
-          {/* WhatsApp CTA */}
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cc-wa"
-            onClick={e => {
-              e.stopPropagation();
-              supabase.from('whatsapp_enquiries').insert({
-                dealer_id:     car.dealer_id || null,
-                listing_id:    car.id        || null,
-                buyer_name:    null,
-                buyer_phone:   null,
-                buyer_message: waText,
-                source:        'car_card',
-                status:        'new',
-                ref_slug:      getSlugFromURL() || null,
-              }).then(() => {});
-              trackEvent(supabase, 'whatsapp_click', {
-                car_id:    car.id,
-                car_name:  `${year} ${brand} ${model}`,
-                dealer_id: car.dealer_id || null,
-                metadata:  { source: 'car_card' },
-              });
-            }}
-            style={{
-              marginTop: 'auto',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: isSold ? 'rgba(255,255,255,0.03)' : 'rgba(37,211,102,0.08)',
-              border: isSold
-                ? '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.06))'
-                : '1px solid rgba(37,211,102,0.2)',
-              color: isSold ? 'var(--color-text-secondary, #6b7280)' : '#25D366',
-              borderRadius: 'var(--border-radius-md, 10px)',
-              padding: '9px 14px', fontSize: 12, fontWeight: 700,
-              textDecoration: 'none', transition: 'all 0.18s',
-              pointerEvents: isSold ? 'none' : 'auto',
-            }}
-          >
-            <MessageCircle size={13} />
-            {isSold ? 'No Longer Available' : 'Enquire via WhatsApp'}
-          </a>
+          {/* Bottom row: condition + grade (left) | WA icon (right) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto' }}>
+            {/* Left: condition pill + grade */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 0 }}>
+              {car.condition && (
+                <span style={{
+                  display: 'inline-block',
+                  alignSelf: 'flex-start',
+                  fontSize: 10, fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 20,
+                  ...(car.condition === 'recon'
+                    ? { background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }
+                    : car.condition === 'new'
+                    ? { background: 'rgba(16,185,129,0.12)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)' }
+                    : { background: 'rgba(107,114,128,0.12)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.25)' }),
+                }}>
+                  {{ used: 'Used', recon: 'Recon', new: 'New' }[car.condition] || car.condition}
+                </span>
+              )}
+              {hasGrade && <GradeBadge auctionGrade={auctionGrade} interiorGrade={interiorGrade} size="sm" />}
+              {!car.condition && !hasGrade && <span style={{ fontSize: 10, color: 'var(--color-text-secondary, #6b7280)' }}>—</span>}
+            </div>
+
+            {/* Right: WA icon-only button */}
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cc-wa"
+              onClick={e => {
+                e.stopPropagation();
+                supabase.from('whatsapp_enquiries').insert({
+                  dealer_id:     car.dealer_id || null,
+                  listing_id:    car.id        || null,
+                  buyer_name:    null,
+                  buyer_phone:   null,
+                  buyer_message: waText,
+                  source:        'car_card',
+                  status:        'new',
+                  ref_slug:      getSlugFromURL() || null,
+                }).then(() => {});
+                trackEvent(supabase, 'whatsapp_click', {
+                  car_id:    car.id,
+                  car_name:  `${year} ${brand} ${model}`,
+                  dealer_id: car.dealer_id || null,
+                  metadata:  { source: 'car_card' },
+                });
+              }}
+              style={{
+                flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 40, height: 40,
+                background: isSold ? 'rgba(255,255,255,0.03)' : 'rgba(37,211,102,0.08)',
+                border: isSold
+                  ? '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.06))'
+                  : '1px solid rgba(37,211,102,0.2)',
+                color: isSold ? 'var(--color-text-secondary, #6b7280)' : '#25D366',
+                borderRadius: 'var(--border-radius-md, 10px)',
+                textDecoration: 'none', transition: 'all 0.18s',
+                pointerEvents: isSold ? 'none' : 'auto',
+              }}
+            >
+              <MessageCircle size={16} />
+            </a>
+          </div>
         </div>
       </div>
     </>
