@@ -485,14 +485,14 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Photos",    icon: Camera,      desc: "Upload images first" },
-  { id: 2, label: "Identity",  icon: Car,         desc: "Brand & model" },
-  { id: 3, label: "Condition", icon: Check,       desc: "Mileage & colour" },
-  { id: 4, label: "Specs",     icon: Gauge,       desc: "Type & engine" },
-  { id: 5, label: "History",   icon: ShieldCheck, desc: "Recon & import" },
-  { id: 6, label: "Location",  icon: MapPin,      desc: "State & city" },
-  { id: 7, label: "Pricing",   icon: DollarSign,  desc: "Prices & discount" },
-  { id: 8, label: "Details",   icon: FileText,    desc: "Specs, features & docs" },
+  { id: 1, label: "Photos",    icon: Camera,      desc: "Upload car photos & video" },
+  { id: 2, label: "Car Info",  icon: Car,         desc: "Brand, model & engine" },
+  { id: 3, label: "Condition", icon: Gauge,       desc: "Mileage & colour" },
+  { id: 4, label: "History",   icon: ShieldCheck, desc: "Registration & recon" },
+  { id: 5, label: "Location",  icon: MapPin,      desc: "State & city" },
+  { id: 6, label: "Pricing",   icon: DollarSign,  desc: "Price & payment terms" },
+  { id: 7, label: "Details",   icon: FileText,    desc: "Features & add-ons" },
+  { id: 8, label: "Documents", icon: BadgeCheck,  desc: "Verification docs" },
 ];
 
 const DOC_TYPES = [
@@ -1220,12 +1220,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
   const canNext = () => {
     if (step === 1) return form.images.length > 0;
-    if (step === 2) return form.brand && form.model && form.year;
+    if (step === 2) return form.brand && form.model && form.year && form.bodyType && form.fuelType;
     if (step === 3) return form.mileage && form.colour && form.condition;
-    if (step === 4) return form.bodyType && form.fuelType;
-    if (step === 5) return true;
-    if (step === 6) return form.state && form.city;
-    if (step === 7) return form.basePrice && form.sellingPrice;
+    if (step === 4) return true;
+    if (step === 5) return form.state && form.city;
+    if (step === 6) return form.basePrice && form.sellingPrice;
     return true;
   };
 
@@ -1376,7 +1375,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         if (draftId) {
           const { data, error } = await supabase
             .from("car_listings")
-            .update({ ...payload, status: "active" })
+            .update({ ...payload, status: "available" })
             .eq("id", draftId)
             .select()
             .single();
@@ -1514,16 +1513,14 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         )}
       </div>
 
-      {/* ── Step 2: Identity ── */}
+      {/* ── Step 2: Car Info (brand + specs merged) ── */}
       {step === 2 && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Brand" required>
               <Combobox
                 value={form.brand}
-                onChange={(v) =>
-                  setForm((f) => ({ ...f, brand: v, model: "" }))
-                }
+                onChange={(v) => setForm((f) => ({ ...f, brand: v, model: "" }))}
                 options={ALL_BRANDS}
                 placeholder="e.g. Toyota"
               />
@@ -1538,58 +1535,39 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-          <Field label="Variant">
-            <input
-              name="variant"
-              value={form.variant}
-              onChange={handleChange}
-              placeholder="e.g. 1.5 G"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Year" required>
-            <input
-              type="number"
-              name="year"
-              value={form.year}
-              onChange={handleChange}
-              placeholder="e.g. 2021"
-              min="1900"
-              max="2030"
-              className={inputCls}
-            />
-          </Field>
-        </div>
-      )}
-
-      {/* ── Step 4: Specs ── */}
-      {step === 4 && (
-        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Variant">
+              <input
+                name="variant"
+                value={form.variant}
+                onChange={handleChange}
+                placeholder="e.g. 1.5 G"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Year" required>
+              <input
+                type="number"
+                name="year"
+                value={form.year}
+                onChange={handleChange}
+                placeholder="e.g. 2021"
+                min="1900"
+                max="2030"
+                className={inputCls}
+              />
+            </Field>
+          </div>
           <Field label="Body Type" required>
-            <PillSelect
-              options={BODY_TYPES}
-              value={form.bodyType}
-              onChange={(v) => set("bodyType", v)}
-            />
+            <PillSelect options={BODY_TYPES} value={form.bodyType} onChange={(v) => set("bodyType", v)} />
           </Field>
           <Field label="Fuel Type" required>
-            <PillSelect
-              options={FUEL_TYPES}
-              value={form.fuelType}
-              onChange={(v) => set("fuelType", v)}
-            />
+            <PillSelect options={FUEL_TYPES} value={form.fuelType} onChange={(v) => set("fuelType", v)} />
           </Field>
           <Field label="Transmission">
-            <PillSelect
-              options={["Auto", "Manual"]}
-              value={form.transmission}
-              onChange={(v) => set("transmission", v)}
-            />
+            <PillSelect options={["Auto", "Manual"]} value={form.transmission} onChange={(v) => set("transmission", v)} />
           </Field>
-          <Field
-            label="Engine Displacement (CC)"
-            hint="Used for road tax & insurance calc"
-          >
+          <Field label="Engine Displacement (CC)" hint="Used for road tax & insurance calc">
             <div className="space-y-3">
               <div className="relative">
                 <input
@@ -1602,9 +1580,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   max="10000"
                   className={`${inputCls} pr-12`}
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
-                  cc
-                </span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">cc</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {CC_PRESETS.map((cc) => (
@@ -1614,27 +1590,17 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     onClick={() => set("engineCc", String(cc))}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
                   >
-                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
-                    cc
+                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}cc
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      `/calculator?carPrice=${encodeURIComponent(form.sellingPrice || "")}&engineCc=${encodeURIComponent(form.engineCc || "")}&bodyType=${encodeURIComponent(form.bodyType || "")}`,
-                    )
-                  }
-                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  Estimate Road Tax
-                </button>
-                <p className="text-xs text-gray-400">
-                  Opens calculator with current CC & body type
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/calculator?carPrice=${encodeURIComponent(form.sellingPrice || "")}&engineCc=${encodeURIComponent(form.engineCc || "")}&bodyType=${encodeURIComponent(form.bodyType || "")}`)}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                Estimate Road Tax
+              </button>
             </div>
           </Field>
         </div>
@@ -1644,11 +1610,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       {step === 3 && (
         <div className="space-y-5">
           <Field label="Condition" required>
-            <PillSelect
-              options={CONDITIONS}
-              value={form.condition}
-              onChange={(v) => set("condition", v)}
-            />
+            <PillSelect options={CONDITIONS} value={form.condition} onChange={(v) => set("condition", v)} />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Mileage (km)" required>
@@ -1672,46 +1634,50 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-          <Field label="Registration Date">
-            <input
-              type="date"
-              name="registrationDate"
-              value={form.registrationDate}
-              onChange={handleChange}
-              className={inputCls}
-            />
-          </Field>
-          <Field
-            label="Plate Number"
-            hint="Optional — vehicle registration plate"
-          >
-            <input
-              name="plate_number"
-              value={form.plate_number}
-              onChange={handleChange}
-              placeholder="e.g. WXY 1234"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="VIN Number" hint="Vehicle Identification Number">
+        </div>
+      )}
+
+      {/* ── Step 4: History ── */}
+      {step === 4 && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Registration Date">
+              <input
+                type="date"
+                name="registrationDate"
+                value={form.registrationDate}
+                onChange={handleChange}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Plate Number">
+              <input
+                name="plate_number"
+                value={form.plate_number}
+                onChange={handleChange}
+                placeholder="e.g. WXX 1234"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="VIN / Chassis Number">
             <input
               name="vin_number"
               value={form.vin_number}
               onChange={handleChange}
-              placeholder="e.g. JN1CA31D1XT000001"
+              placeholder="17-character VIN"
               className={inputCls}
             />
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Previous Owners">
+            <Field label="Previous Owners" hint="Number of prior registered owners">
               <input
                 type="number"
                 name="previous_owners"
                 value={form.previous_owners}
                 onChange={handleChange}
-                placeholder="e.g. 2"
+                placeholder="e.g. 1"
                 min="0"
-                max="10"
                 className={inputCls}
               />
             </Field>
@@ -1725,28 +1691,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-          <Field label="Financing">
-            <PillSelect
-              options={["Cash", "Loan", "Sambung Bayar"]}
-              value={
-                form.financing_type === "cash" ? "Cash"
-                : form.financing_type === "sambung_bayar" ? "Sambung Bayar"
-                : "Loan"
-              }
-              onChange={(v) => {
-                const ft = v === "Cash" ? "cash" : v === "Sambung Bayar" ? "sambung_bayar" : "loan";
-                set("financing_type", ft);
-                set("loan_eligible", ft !== "cash");
-              }}
-            />
-          </Field>
-        </div>
-      )}
 
-      {/* ── Step 5: History (Recon & Import) ── */}
-      {step === 5 && (
-        <div className="space-y-6">
-          {/* Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-800 border border-gray-700 rounded-2xl">
             <div>
               <p className="text-white font-semibold text-sm">
@@ -1765,36 +1710,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
               />
             </button>
-          </div>
-
-          {/* Perks & availability */}
-          <div className="p-4 bg-gray-800 border border-gray-700 rounded-2xl space-y-3">
-            <div>
-              <p className="text-white font-semibold text-sm">What's Available</p>
-              <p className="text-gray-500 text-xs mt-0.5">Tick the options you offer for this listing</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {PERKS.map(({ key, label }) => {
-                const active = (form.dealer_perks || []).includes(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      const curr = form.dealer_perks || [];
-                      set("dealer_perks", active ? curr.filter(k => k !== key) : [...curr, key]);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                      active
-                        ? "bg-green-500/15 border-green-500/40 text-green-400"
-                        : "bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400"
-                    }`}
-                  >
-                    {active ? "✓ " : ""}{label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {form.isRecon && (
@@ -1940,8 +1855,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 6: Location ── */}
-      {step === 6 && (
+      {/* ── Step 5: Location ── */}
+      {step === 5 && (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -1977,8 +1892,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* ── Step 7: Pricing ── */}
-      {step === 7 && (
+      {/* ── Step 6: Pricing ── */}
+      {step === 6 && (
         <div className="space-y-5">
           <Field
             label="Base Price (RM)"
@@ -2074,6 +1989,16 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
             </div>
           )}
+          <Field label="Financing Type">
+            <PillSelect
+              options={["loan", "cash", "sambung_bayar"]}
+              value={form.financing_type}
+              onChange={(v) => set("financing_type", v)}
+            />
+            <p className="text-xs text-gray-600 mt-1.5">
+              Loan = bank financing · Cash only · Sambung Bayar = take over existing loan
+            </p>
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
@@ -2106,188 +2031,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-
-          {/* ── Included Services & Add-ons ── */}
-          <div className="rounded-2xl border border-gray-800 overflow-hidden">
-            {/* Header toggle */}
-            <button
-              type="button"
-              onClick={() => setServicesOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-900 hover:bg-gray-800/80 transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <Tag className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-semibold text-white">
-                  Included Services &amp; Add-ons
-                </span>
-                {form.included_services.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold">
-                    {form.included_services.length}
-                  </span>
-                )}
-              </div>
-              {servicesOpen ? (
-                <ChevronUp className="w-4 h-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-
-            {servicesOpen && (
-              <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
-                {/* Attached list */}
-                {form.included_services.length > 0 && (
-                  <div className="space-y-2">
-                    {form.included_services.map((svc, idx) => {
-                      const cfg = getCategoryCfg(svc.category);
-                      const CatIcon = cfg.icon;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-800/60 border border-gray-700"
-                        >
-                          <CatIcon
-                            className="w-4 h-4 flex-shrink-0"
-                            style={{ color: cfg.color }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                              {svc.name}
-                            </p>
-                            <p className="text-xs text-gray-500">{cfg.label}</p>
-                          </div>
-                          <span className="text-sm font-semibold text-white whitespace-nowrap">
-                            RM {Number(svc.selling_price || 0).toLocaleString()}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeService(idx)}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                          >
-                            <XIcon className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {/* Cost summary */}
-                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
-                      <span className="text-xs text-gray-400 font-medium">
-                        Total included services cost
-                      </span>
-                      <span className="text-sm font-semibold text-blue-400">
-                        RM{" "}
-                        {form.included_services
-                          .reduce((s, x) => s + Number(x.selling_price || 0), 0)
-                          .toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Service toggle */}
-                {!pickerOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-700 hover:border-blue-500/40 text-gray-500 hover:text-blue-400 text-sm transition-colors"
-                  >
-                    <Tag className="w-4 h-4" />
-                    Add a service from catalogue
-                  </button>
-                ) : (
-                  <div className="rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
-                    {/* Search bar */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
-                      <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                      <input
-                        type="text"
-                        value={serviceSearch}
-                        onChange={(e) => setServiceSearch(e.target.value)}
-                        placeholder="Search catalogue…"
-                        className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPickerOpen(false);
-                          setServiceSearch("");
-                        }}
-                        className="text-gray-500 hover:text-white"
-                      >
-                        <XIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {/* Catalogue list */}
-                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-700/50">
-                      {serviceCatalogue.length === 0 && (
-                        <p className="text-center text-gray-600 text-sm py-6">
-                          {catalogueLoaded
-                            ? "No products in catalogue yet"
-                            : "Loading…"}
-                        </p>
-                      )}
-                      {serviceCatalogue
-                        .filter(
-                          (p) =>
-                            !serviceSearch ||
-                            p.name
-                              .toLowerCase()
-                              .includes(serviceSearch.toLowerCase()) ||
-                            p.category
-                              .toLowerCase()
-                              .includes(serviceSearch.toLowerCase()),
-                        )
-                        .filter((p) => p.is_active !== false)
-                        .map((p) => {
-                          const cfg = getCategoryCfg(p.category);
-                          const CatIcon = cfg.icon;
-                          const alreadyAdded = form.included_services.some(
-                            (s) => s.id === p.id,
-                          );
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              disabled={alreadyAdded}
-                              onClick={() => addService(p)}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${alreadyAdded ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-700/50"}`}
-                            >
-                              <CatIcon
-                                className="w-4 h-4 flex-shrink-0"
-                                style={{ color: cfg.color }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
-                                  {p.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {cfg.label}
-                                </p>
-                              </div>
-                              <span className="text-sm font-semibold text-white whitespace-nowrap">
-                                RM{" "}
-                                {Number(p.selling_price || 0).toLocaleString()}
-                              </span>
-                              {alreadyAdded && (
-                                <span className="text-xs text-gray-500">
-                                  Added
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
-      {/* ── Step 8: Details ── */}
-      {step === 8 && (
+      {/* ── Step 7: Details ── */}
+      {step === 7 && (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea
@@ -2319,6 +2067,139 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               rows={3}
             />
           </Field>
+
+          {/* What's Available — dealer perks */}
+          <div className="p-4 bg-gray-800 border border-gray-700 rounded-2xl space-y-3">
+            <div>
+              <p className="text-white font-semibold text-sm">What's Available</p>
+              <p className="text-gray-500 text-xs mt-0.5">Tick the options you offer for this listing</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {PERKS.map(({ key, label }) => {
+                const active = (form.dealer_perks || []).includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      const curr = form.dealer_perks || [];
+                      set("dealer_perks", active ? curr.filter(k => k !== key) : [...curr, key]);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                      active
+                        ? "bg-green-500/15 border-green-500/40 text-green-400"
+                        : "bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400"
+                    }`}
+                  >
+                    {active ? "✓ " : ""}{label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Included Services & Add-ons */}
+          <div className="rounded-2xl border border-gray-800 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setServicesOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-900 hover:bg-gray-800/80 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Tag className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-semibold text-white">
+                  Included Services &amp; Add-ons
+                </span>
+                {form.included_services.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold">
+                    {form.included_services.length}
+                  </span>
+                )}
+              </div>
+              {servicesOpen ? (
+                <ChevronUp className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              )}
+            </button>
+            {servicesOpen && (
+              <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+                {form.included_services.length > 0 && (
+                  <div className="space-y-2">
+                    {form.included_services.map((svc, idx) => {
+                      const cfg = getCategoryCfg(svc.category);
+                      const CatIcon = cfg.icon;
+                      return (
+                        <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-800/60 border border-gray-700">
+                          <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{svc.name}</p>
+                            <p className="text-xs text-gray-500">{cfg.label}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-white whitespace-nowrap">
+                            RM {Number(svc.selling_price || 0).toLocaleString()}
+                          </span>
+                          <button type="button" onClick={() => removeService(idx)} className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
+                            <XIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
+                      <span className="text-xs text-gray-400 font-medium">Total included services cost</span>
+                      <span className="text-sm font-semibold text-blue-400">
+                        RM {form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!pickerOpen ? (
+                  <button type="button" onClick={() => setPickerOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-700 hover:border-blue-500/40 text-gray-500 hover:text-blue-400 text-sm transition-colors">
+                    <Tag className="w-4 h-4" />
+                    Add a service from catalogue
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
+                      <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      <input type="text" value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search catalogue…" className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none" autoFocus />
+                      <button type="button" onClick={() => { setPickerOpen(false); setServiceSearch(""); }} className="text-gray-500 hover:text-white">
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-700/50">
+                      {serviceCatalogue.length === 0 && (
+                        <p className="text-center text-gray-600 text-sm py-6">
+                          {catalogueLoaded ? "No products in catalogue yet" : "Loading…"}
+                        </p>
+                      )}
+                      {serviceCatalogue
+                        .filter((p) => !serviceSearch || p.name.toLowerCase().includes(serviceSearch.toLowerCase()) || p.category.toLowerCase().includes(serviceSearch.toLowerCase()))
+                        .filter((p) => p.is_active !== false)
+                        .map((p) => {
+                          const cfg = getCategoryCfg(p.category);
+                          const CatIcon = cfg.icon;
+                          const alreadyAdded = form.included_services.some((s) => s.id === p.id);
+                          return (
+                            <button key={p.id} type="button" disabled={alreadyAdded} onClick={() => addService(p)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${alreadyAdded ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-700/50"}`}>
+                              <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">{p.name}</p>
+                                <p className="text-xs text-gray-500">{cfg.label}</p>
+                              </div>
+                              <span className="text-sm font-semibold text-white whitespace-nowrap">
+                                RM {Number(p.selling_price || 0).toLocaleString()}
+                              </span>
+                              {alreadyAdded && <span className="text-xs text-gray-500">Added</span>}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -2498,60 +2379,37 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
             {form.video_url && <VideoPreview url={form.video_url} />}
           </div>
+        </div>
+      )}
 
-          {/* Car Documents */}
+      {/* ── Step 8: Documents ── */}
+      {step === 8 && (
+        <div className="space-y-5">
           <div className="rounded-2xl border border-gray-800 overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-900">
               <BadgeCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-white">
-                Car Documents
-              </span>
+              <span className="text-sm font-semibold text-white">Car Documents</span>
               {form.car_documents.length > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
                   {form.car_documents.length}
                 </span>
               )}
-              <span className="ml-auto text-xs text-gray-600">
-                Puspakom, service history, insurance…
-              </span>
+              <span className="ml-auto text-xs text-gray-600">Puspakom, service history, insurance…</span>
             </div>
             <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
               {form.car_documents.length > 0 && (
                 <div className="space-y-2">
                   {form.car_documents.map((doc, i) => {
-                    const dt =
-                      DOC_TYPES.find((d) => d.key === doc.type) ||
-                      DOC_TYPES[DOC_TYPES.length - 1];
+                    const dt = DOC_TYPES.find((d) => d.key === doc.type) || DOC_TYPES[DOC_TYPES.length - 1];
                     return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl"
-                      >
-                        <BadgeCheck
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ color: dt.color }}
-                        />
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl">
+                        <BadgeCheck className="w-4 h-4 flex-shrink-0" style={{ color: dt.color }} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
-                            {doc.name}
-                          </p>
-                          <p className="text-xs" style={{ color: dt.color }}>
-                            {dt.label}
-                          </p>
+                          <p className="text-sm font-medium text-white truncate">{doc.name}</p>
+                          <p className="text-xs" style={{ color: dt.color }}>{dt.label}</p>
                         </div>
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0"
-                        >
-                          View
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => removeDocument(i)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                        >
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0">View</a>
+                        <button type="button" onClick={() => removeDocument(i)} className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
                           <XIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -2566,173 +2424,70 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                 >
                   {DOC_TYPES.map((d) => (
-                    <option
-                      key={d.key}
-                      value={d.key}
-                      style={{ background: "#111827" }}
-                    >
-                      {d.label}
-                    </option>
+                    <option key={d.key} value={d.key} style={{ background: "#111827" }}>{d.label}</option>
                   ))}
                 </select>
-                <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-700 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
-                >
+                <label className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-700 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}>
                   {docUploading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
-                      Uploading…
-                    </>
+                    <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading…</>
                   ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" /> Upload
-                    </>
+                    <><Upload className="w-3.5 h-3.5" /> Upload</>
                   )}
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    onChange={handleDocumentFile}
-                    disabled={docUploading}
-                    className="hidden"
-                  />
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleDocumentFile} disabled={docUploading} className="hidden" />
                 </label>
               </div>
-              <p className="text-xs text-gray-600">
-                PDF, JPG or PNG — shown to buyers on the listing page and earns
-                a Verified badge on listing cards.
-              </p>
+              <p className="text-xs text-gray-600">PDF, JPG or PNG — earns a Verified badge on listing cards.</p>
             </div>
           </div>
 
           {form.brand && (
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">
-                Listing Summary
-              </p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">Listing Summary</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                 <span className="text-gray-500">Vehicle</span>
-                <span className="text-white font-medium">
-                  {form.brand} {form.model} {form.variant}
-                </span>
+                <span className="text-white font-medium">{form.brand} {form.model} {form.variant}</span>
                 <span className="text-gray-500">Year</span>
                 <span className="text-white">{form.year}</span>
                 <span className="text-gray-500">Body / Fuel</span>
-                <span className="text-white">
-                  {form.bodyType} · {form.fuelType}
-                </span>
+                <span className="text-white">{form.bodyType} · {form.fuelType}</span>
                 <span className="text-gray-500">Transmission</span>
                 <span className="text-white">{form.transmission}</span>
-                {form.engineCc && (
-                  <>
-                    <span className="text-gray-500">Engine CC</span>
-                    <span className="text-white">
-                      {Number(form.engineCc).toLocaleString()}cc
-                    </span>
-                  </>
-                )}
+                {form.engineCc && (<><span className="text-gray-500">Engine CC</span><span className="text-white">{Number(form.engineCc).toLocaleString()}cc</span></>)}
                 <span className="text-gray-500">Mileage</span>
-                <span className="text-white">
-                  {Number(form.mileage).toLocaleString()} km
-                </span>
+                <span className="text-white">{Number(form.mileage).toLocaleString()} km</span>
                 <span className="text-gray-500">Condition</span>
                 <span className="text-white capitalize">{form.condition}</span>
                 <span className="text-gray-500">Location</span>
-                <span className="text-white">
-                  {form.city}, {form.state}
-                </span>
+                <span className="text-white">{form.city}, {form.state}</span>
                 <span className="text-gray-500">Selling Price</span>
-                <span className="text-white font-semibold">
-                  RM {Number(form.sellingPrice).toLocaleString()}
-                </span>
+                <span className="text-white font-semibold">RM {Number(form.sellingPrice).toLocaleString()}</span>
                 {hasDiscount && (
                   <>
                     <span className="text-gray-500">Original Price</span>
-                    <span className="text-white line-through opacity-60">
-                      RM {Number(form.originalPrice).toLocaleString()}
-                    </span>
+                    <span className="text-white line-through opacity-60">RM {Number(form.originalPrice).toLocaleString()}</span>
                     <span className="text-gray-500">Discount</span>
-                    <span
-                      className={`font-semibold ${isHotDeal ? "text-red-400" : "text-green-400"}`}
-                    >
-                      {isHotDeal ? "🔥 " : ""}−RM {discountAmt.toLocaleString()}{" "}
-                      ({discountPct}%)
+                    <span className={`font-semibold ${isHotDeal ? "text-red-400" : "text-green-400"}`}>
+                      {isHotDeal ? "🔥 " : ""}−RM {discountAmt.toLocaleString()} ({discountPct}%)
                     </span>
                   </>
                 )}
                 <span className="text-gray-500">Photos</span>
-                <span className="text-white">
-                  {form.images.length} selected
-                </span>
-                {form.previous_owners !== "" && (
-                  <>
-                    <span className="text-gray-500">Prev. Owners</span>
-                    <span className="text-white">{form.previous_owners}</span>
-                  </>
-                )}
-                {form.road_tax_expiry && (
-                  <>
-                    <span className="text-gray-500">Road Tax Expiry</span>
-                    <span className="text-white">{form.road_tax_expiry}</span>
-                  </>
-                )}
+                <span className="text-white">{form.images.length} selected</span>
+                {form.previous_owners !== "" && (<><span className="text-gray-500">Prev. Owners</span><span className="text-white">{form.previous_owners}</span></>)}
+                {form.road_tax_expiry && (<><span className="text-gray-500">Road Tax Expiry</span><span className="text-white">{form.road_tax_expiry}</span></>)}
                 <span className="text-gray-500">Financing</span>
-                <span
-                  className={
-                    form.financing_type === "cash"
-                      ? "text-gray-400"
-                      : "text-emerald-400 font-semibold"
-                  }
-                >
+                <span className={form.financing_type === "cash" ? "text-gray-400" : "text-emerald-400 font-semibold"}>
                   {form.financing_type === "cash" ? "Cash Only" : form.financing_type === "sambung_bayar" ? "Sambung Bayar" : "Loan Available"}
                 </span>
-                {form.deposit_amount && (
-                  <>
-                    <span className="text-gray-500">Deposit to Reserve</span>
-                    <span className="text-white">
-                      RM {Number(form.deposit_amount).toLocaleString()}
-                    </span>
-                  </>
-                )}
-                {form.warranty_months !== "" && (
-                  <>
-                    <span className="text-gray-500">Warranty</span>
-                    <span className="text-white">
-                      {form.warranty_months === "0" ||
-                      form.warranty_months === 0
-                        ? "None"
-                        : `${form.warranty_months} months`}
-                    </span>
-                  </>
-                )}
+                {form.deposit_amount && (<><span className="text-gray-500">Deposit to Reserve</span><span className="text-white">RM {Number(form.deposit_amount).toLocaleString()}</span></>)}
+                {form.warranty_months !== "" && (<><span className="text-gray-500">Warranty</span><span className="text-white">{form.warranty_months === "0" || form.warranty_months === 0 ? "None" : `${form.warranty_months} months`}</span></>)}
                 {form.isRecon && (
                   <>
                     <span className="text-gray-500">Type</span>
-                    <span className="text-red-400 font-semibold">
-                      Recon / Import
-                    </span>
-                    {form.auctionGrade && (
-                      <>
-                        <span className="text-gray-500">Auction Grade</span>
-                        <span className="text-white">
-                          {form.auctionGrade}
-                          {form.interiorGrade ? " | " + form.interiorGrade : ""}
-                        </span>
-                      </>
-                    )}
-                    {form.importCountry && (
-                      <>
-                        <span className="text-gray-500">Import Country</span>
-                        <span className="text-white">{form.importCountry}</span>
-                      </>
-                    )}
-                    {form.chassisStatus && (
-                      <>
-                        <span className="text-gray-500">Chassis</span>
-                        <span className="text-white capitalize">
-                          {form.chassisStatus.replace("_", " ")}
-                        </span>
-                      </>
-                    )}
+                    <span className="text-red-400 font-semibold">Recon / Import</span>
+                    {form.auctionGrade && (<><span className="text-gray-500">Auction Grade</span><span className="text-white">{form.auctionGrade}{form.interiorGrade ? " | " + form.interiorGrade : ""}</span></>)}
+                    {form.importCountry && (<><span className="text-gray-500">Import Country</span><span className="text-white">{form.importCountry}</span></>)}
+                    {form.chassisStatus && (<><span className="text-gray-500">Chassis</span><span className="text-white capitalize">{form.chassisStatus.replace("_", " ")}</span></>)}
                   </>
                 )}
               </div>
