@@ -4598,6 +4598,15 @@ function StockTab({ userId, listings }) {
 
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const ch = supabase
+      .channel(`stock_units_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_units', filter: `dealer_id=eq.${userId}` }, fetchUnits)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [userId]);
+
   const daysInStock = (purchaseDate) => {
     if (!purchaseDate) return '—';
     return Math.floor((Date.now() - new Date(purchaseDate)) / 86400000);
@@ -7307,6 +7316,7 @@ export default function DashboardPage() {
                   });
                   setPendingStockSaving(false);
                   setPendingStockListing(null);
+                  toast.success('Added to stock!');
                 }}
                 className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
                 style={T.btnRed}
