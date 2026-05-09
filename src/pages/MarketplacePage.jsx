@@ -476,10 +476,8 @@ export default function MarketplacePage() {
       if (yearFrom)     query = query.gte('year', yearFrom);
       if (yearTo)       query = query.lte('year', yearTo);
       if (mileageMax)   query = query.lte('mileage', mileageMax);
-      if (hotDeals)     query = query.not('original_price', 'is', null).gt('original_price', 0);
-      if (condition === 'recon') query = query.eq('is_recon', true);
-      else if (condition === 'new')  query = query.eq('condition', 'new');
-      else if (condition === 'used') query = query.eq('is_recon', false);
+      if (hotDeals)   query = query.not('original_price', 'is', null).gt('original_price', 0);
+      if (condition)  query = query.eq('condition', condition);
       if (transmission) {
         const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
         query = query.in('transmission', txVal);
