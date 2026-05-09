@@ -1382,12 +1382,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           if (error) throw error;
           savedListing = data;
         } else {
-          console.log(
-            "[CarForm] insert dealer_id:",
-            dealerId,
-            "| role:",
-            profile?.role,
-          );
           const { data, error } = await supabase
             .from("car_listings")
             .insert([

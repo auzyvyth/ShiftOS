@@ -46,8 +46,6 @@ export function useLeads() {
       .from('leads')
       .update(stagePayload)
       .eq('id', id);
-    console.log('leads update error:', JSON.stringify(err));
-    console.log('leads update payload:', JSON.stringify(stagePayload));
     if (err) throw err;
     const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
     if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));
@@ -60,8 +58,6 @@ export function useLeads() {
       .from('leads')
       .update(updatePayload)
       .eq('id', id);
-    console.log('leads update error:', JSON.stringify(err));
-    console.log('leads update payload:', JSON.stringify(updatePayload));
     if (err) throw err;
     const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
     if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));

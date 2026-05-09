@@ -252,7 +252,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     setCoachMessages(newHistory);
     setCoachLoading(true);
     try {
-      const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
+      const AI_PROXY = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
       const res = await fetch(AI_PROXY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

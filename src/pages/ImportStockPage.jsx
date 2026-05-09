@@ -7,7 +7,7 @@ import Step1Upload from "../components/ImportStockPage/Step1Upload";
 import Step2Preview from "../components/ImportStockPage/Step2Preview";
 import Step3Import from "../components/ImportStockPage/Step3Import";
 
-const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
+const AI_PROXY = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1/ai/messages";
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","description":""}

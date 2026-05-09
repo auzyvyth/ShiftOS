@@ -61,7 +61,7 @@ import LayerCanvas, {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
-const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
 const AI_LIMIT = 100;
 
 const FORMATS = [
@@ -2774,7 +2774,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     setRemovingBg(true);
     setRemoveBgError(null);
     try {
-      const REMOVEBG_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/removebg`;
+      const REMOVEBG_PROXY = `${SERVER_URL}/removebg`;
       const imgResp = await fetch(url);
       const imgBlob = await imgResp.blob();
       // Convert blob to base64 so it can be sent as JSON to the server proxy
