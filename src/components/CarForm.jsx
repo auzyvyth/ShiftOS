@@ -1670,7 +1670,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Previous Owners" hint="Number of prior registered owners">
+            <Field label="Previous Owners" hint="0 = first owner">
               <input
                 type="number"
                 name="previous_owners"
@@ -1990,14 +1990,22 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             </div>
           )}
           <Field label="Financing Type">
-            <PillSelect
-              options={["loan", "cash", "sambung_bayar"]}
-              value={form.financing_type}
-              onChange={(v) => set("financing_type", v)}
-            />
-            <p className="text-xs text-gray-600 mt-1.5">
-              Loan = bank financing · Cash only · Sambung Bayar = take over existing loan
-            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "loan", label: "Loan Available" },
+                { value: "cash", label: "Cash Only" },
+                { value: "sambung_bayar", label: "Sambung Bayar" },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => set("financing_type", value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${form.financing_type === value ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field
