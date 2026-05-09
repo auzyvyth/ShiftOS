@@ -1,11 +1,34 @@
-User-agent: *
+User-agent: Googlebot
 Allow: /
-Allow: /cars
-Allow: /cars/
-
 Disallow: /dashboard
 Disallow: /salesman
 Disallow: /admin
 Disallow: /accounts
+Disallow: /onboarding
+Disallow: /auth
+Disallow: /login
+Disallow: /register
+
+User-agent: Bingbot
+Allow: /
+Disallow: /dashboard
+Disallow: /salesman
+Disallow: /admin
+Disallow: /accounts
+Disallow: /onboarding
+Disallow: /auth
+Disallow: /login
+Disallow: /register
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /salesman
+Disallow: /admin
+Disallow: /accounts
+Disallow: /onboarding
+Disallow: /auth
+Disallow: /login
+Disallow: /register
 
 Sitemap: https://xdrive.my/sitemap.xml

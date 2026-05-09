@@ -143,11 +143,12 @@ function buildCarHtml(car, dealer) {
   <title>${esc(name)} | xdrive.my</title>
   <meta name="description" content="${esc(description)}" />
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_MY" />
+  <meta property="og:site_name" content="XDrive" />
   <meta property="og:title" content="${esc(name)}" />
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:image" content="${esc(image)}" />
   <meta property="og:url" content="${esc(url)}" />
-  <meta property="og:site_name" content="xdrive.my" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(name)}" />
   <meta name="twitter:description" content="${esc(description)}" />
@@ -176,9 +177,18 @@ export default async function handler(req) {
       `<!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8" />
   <title>XDrive — Used Cars in Malaysia</title>
-  <meta property="og:title" content="XDrive" />
+  <meta name="description" content="Browse verified used cars from trusted dealers across Malaysia." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_MY" />
+  <meta property="og:site_name" content="XDrive" />
+  <meta property="og:title" content="XDrive — Used Cars in Malaysia" />
   <meta property="og:description" content="Browse verified used cars from trusted dealers across Malaysia." />
   <meta property="og:image" content="${SITE_URL}/og-default.jpg" />
+  <meta property="og:url" content="${SITE_URL}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="XDrive — Used Cars in Malaysia" />
+  <meta name="twitter:description" content="Browse verified used cars from trusted dealers across Malaysia." />
+  <meta name="twitter:image" content="${SITE_URL}/og-default.jpg" />
 </head><body></body></html>`,
       {
         headers: {

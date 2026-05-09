@@ -704,17 +704,28 @@ export default function CarDetailPage() {
           name="robots"
           content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
         />
-        <meta
-          name="description"
-          content={
-            car
-              ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString("en-MY")}, ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km, ` : ""}${car.transmission || ""}. Verified dealer on XDrive.`
-              : ""
-          }
-        />
-        {car && (
-          <link rel="canonical" href={`https://xdrive.my/cars/${car.slug}`} />
-        )}
+        {(() => {
+          const desc = car
+            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString("en-MY")}, ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km, ` : ""}${car.transmission || ""}. Verified dealer on XDrive.`
+            : "";
+          const img = car?.images?.[0] || "https://xdrive.my/og-default.jpg";
+          const url = car ? `https://xdrive.my/cars/${car.slug}` : "https://xdrive.my";
+          return <>
+            <meta name="description" content={desc} />
+            <meta property="og:type" content="website" />
+            <meta property="og:locale" content="en_MY" />
+            <meta property="og:site_name" content="XDrive" />
+            <meta property="og:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />
+            <meta property="og:description" content={desc} />
+            <meta property="og:image" content={img} />
+            <meta property="og:url" content={url} />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />
+            <meta name="twitter:description" content={desc} />
+            <meta name="twitter:image" content={img} />
+            {car && <link rel="canonical" href={url} />}
+          </>;
+        })()}
       </Helmet>
 
       <style>{`
@@ -1345,6 +1356,12 @@ export default function CarDetailPage() {
               style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.06)', color:'#475569', borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
               <Calculator size={13} /> Financing Calculator
             </button>
+            {dealer?.subdomain && (
+              <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', color:'#94a3b8', borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
+                <ExternalLink size={13} /> Visit Dealer's Page
+              </a>
+            )}
             <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'14px 0' }} />
             {/* Dealer row */}
             {(() => {
@@ -2777,6 +2794,12 @@ export default function CarDetailPage() {
               style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
               <Calculator size={13} /> Financing Calculator
             </button>
+            {dealer?.subdomain && (
+              <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
+                <ExternalLink size={13} /> Visit Dealer's Page
+              </a>
+            )}
 
             {/* SALESMAN CARD */}
             {salesmanProfile && (() => {

@@ -9,6 +9,8 @@ const INTERNAL_PATHS = [
   "/accounts",
   "/onboarding",
   "/auth",
+  "/login",
+  "/register",
 ];
 
 export default function handler(req, res) {
@@ -26,6 +28,7 @@ Allow: /
 ${disallowLines}
 
 User-agent: *
+Allow: /
 ${disallowLines}
 
 Sitemap: ${baseUrl}/sitemap.xml

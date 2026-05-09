@@ -844,6 +844,9 @@ const HomePage = () => {
               : "Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive."
           }
         />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="en_MY" />
+        <meta property="og:site_name" content={profile?.site_name || profile?.dealership || "XDrive"} />
         <meta
           property="og:title"
           content={
@@ -853,11 +856,47 @@ const HomePage = () => {
           }
         />
         <meta
+          property="og:description"
+          content={
+            profile
+              ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
+              : "Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive."
+          }
+        />
+        <meta
           property="og:image"
           content={profile?.site_logo_url || "https://xdrive.my/og-default.jpg"}
         />
+        <meta
+          property="og:url"
+          content={profile?.subdomain ? `https://${profile.subdomain}.xdrive.my` : "https://xdrive.my"}
+        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content={
+            profile
+              ? `${profile.site_name || profile.dealership} — Used Cars`
+              : "XDrive — Used Cars in Malaysia"
+          }
+        />
+        <meta
+          name="twitter:description"
+          content={
+            profile
+              ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
+              : "Buy & sell verified used cars in Malaysia. Best prices, easy financing, trusted dealers on XDrive."
+          }
+        />
+        <meta
+          name="twitter:image"
+          content={profile?.site_logo_url || "https://xdrive.my/og-default.jpg"}
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="canonical" href="https://xdrive.my" />
+        <link
+          rel="canonical"
+          href={profile?.subdomain ? `https://${profile.subdomain}.xdrive.my` : "https://xdrive.my"}
+        />
         {!profile && (
           <script type="application/ld+json">
             {JSON.stringify({
