@@ -219,7 +219,20 @@ export default function CompareModal() {
   const handleShare = async () => {
     const params = new URLSearchParams();
     cars.forEach((c, i) => { if (c.slug) params.set(['a', 'b', 'c', 'd'][i], c.slug); });
-    await navigator.clipboard.writeText(`${window.location.origin}/compare?${params}`).catch(() => {});
+    const url   = `${window.location.origin}/compare?${params}`;
+    const title = `Compare ${n} Cars on XDrive`;
+    const text  = cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user cancelled — do nothing
+      }
+    }
+    // Desktop fallback: copy to clipboard
+    await navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -409,8 +422,34 @@ export default function CompareModal() {
                       <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#fff', letterSpacing: 1, lineHeight: 1, marginBottom: 6 }}>
                         {[car.year, car.model, car.variant].filter(Boolean).join(' ')}
                       </p>
-                      <p style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{fmtRM(car.selling_price)}</p>
-                      {monthly && <p style={{ fontSize: 11, color: '#4b5563', marginBottom: 8 }}>~RM {monthly.toLocaleString()}/mo est.</p>}
+                      {(() => {
+                        const hasDisc = car.original_price > 0 && car.original_price > car.selling_price;
+                        const pct     = hasDisc ? Math.round((car.original_price - car.selling_price) / car.original_price * 100) : 0;
+                        const mOrig   = hasDisc ? calcMonthly(car.original_price) : null;
+                        return (
+                          <>
+                            {hasDisc && (
+                              <p style={{ fontSize: 12, color: '#6b7280', textDecoration: 'line-through', marginBottom: 1 }}>
+                                {fmtRM(car.original_price)}
+                              </p>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                              <p style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: 0 }}>{fmtRM(car.selling_price)}</p>
+                              {hasDisc && (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)', padding: '1px 7px', borderRadius: 20 }}>
+                                  -{pct}%
+                                </span>
+                              )}
+                            </div>
+                            {monthly && (
+                              <p style={{ fontSize: 11, color: '#4b5563', marginBottom: 8 }}>
+                                {mOrig && <span style={{ textDecoration: 'line-through', marginRight: 5 }}>~RM {mOrig.toLocaleString()}/mo</span>}
+                                ~RM {monthly.toLocaleString()}/mo est.
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                         {car.slug && (
@@ -539,9 +578,47 @@ export default function CompareModal() {
                   <tbody style={{ background: '#080C14' }}>
                     {/* PRICING */}
                     <SectionHeader label="Pricing" colSpan={n} />
-                    <Row label="Asking Price"  values={cars.map(c => fmtRM(c.selling_price))}  highlight={hl.price} />
-                    <Row label="Monthly Est."  values={cars.map(c => { const m = calcMonthly(c.selling_price); return m ? `RM ${m.toLocaleString()}` : '—'; })} />
-                    <Row label="Original Price" values={cars.map(c => fmtRM(c.original_price))} />
+                    <tr>
+                      <td style={LABEL_CELL}>Asking Price</td>
+                      {cars.map((car, i) => {
+                        const hasDisc = car.original_price > 0 && car.original_price > car.selling_price;
+                        const pct     = hasDisc ? Math.round((car.original_price - car.selling_price) / car.original_price * 100) : 0;
+                        return (
+                          <td key={i} style={{ ...DATA_CELL, fontWeight: 600, color: hl.price[i] || '#d1d5db' }}>
+                            {hasDisc && (
+                              <div style={{ fontSize: 11, color: '#4b5563', textDecoration: 'line-through', marginBottom: 2 }}>
+                                {fmtRM(car.original_price)}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span>{fmtRM(car.selling_price)}</span>
+                              {hasDisc && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)', padding: '1px 7px', borderRadius: 20 }}>
+                                  -{pct}%
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td style={LABEL_CELL}>Monthly Est.</td>
+                      {cars.map((car, i) => {
+                        const m     = calcMonthly(car.selling_price);
+                        const mOrig = car.original_price > 0 && car.original_price > car.selling_price ? calcMonthly(car.original_price) : null;
+                        return (
+                          <td key={i} style={{ ...DATA_CELL, color: '#d1d5db' }}>
+                            {mOrig && (
+                              <div style={{ fontSize: 11, color: '#4b5563', textDecoration: 'line-through', marginBottom: 2 }}>
+                                RM {mOrig.toLocaleString()}/mo
+                              </div>
+                            )}
+                            <div>{m ? `RM ${m.toLocaleString()}/mo` : '—'}</div>
+                          </td>
+                        );
+                      })}
+                    </tr>
                     <Row label="Financing"     values={cars.map(fmtFinancing)} />
 
                     {/* BASICS */}
