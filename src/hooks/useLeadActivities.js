@@ -36,7 +36,6 @@ export function useLeadActivities(leadId, dealerId) {
     const { data, error } = await supabase
       .from('lead_activities')
       .insert(row);
-    console.log('activity error:', JSON.stringify(error));
     if (error) throw error;
     await fetchActivities();
   }, [leadId, fetchActivities]);

@@ -407,6 +407,35 @@ export default function OnboardingPage() {
       }
       try {
         const isS = v.accountType === "salesman";
+
+        // Check subdomain / slug uniqueness before attempting upsert
+        if (!isS && v.subdomain) {
+          const { data: taken } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("subdomain", v.subdomain)
+            .neq("id", userId)
+            .maybeSingle();
+          if (taken) {
+            setError(`The URL "${v.subdomain}.xdrive.my" is already taken. Go back and choose a different one.`);
+            setLoading(false);
+            return;
+          }
+        }
+        if (isS && v.salesmanSlug) {
+          const { data: taken } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("slug", v.salesmanSlug)
+            .neq("id", userId)
+            .maybeSingle();
+          if (taken) {
+            setError(`The profile URL "xdrive.my/s/${v.salesmanSlug}" is already taken. Go back and choose a different one.`);
+            setLoading(false);
+            return;
+          }
+        }
+
         const payload = isS
           ? {
               id: userId,
@@ -452,7 +481,11 @@ export default function OnboardingPage() {
         setDone(true);
         setTimeout(() => navigate(isS ? "/salesman-lite" : "/dashboard"), 2600);
       } catch (e) {
-        setError(e.message);
+        const msg = e.message || "";
+        if (msg.includes("subdomain")) setError("That URL is already taken. Go back and choose a different subdomain.");
+        else if (msg.includes("slug") || msg.includes("profiles_slug")) setError("That profile URL is already taken. Go back and choose a different one.");
+        else if (msg.includes("duplicate") || msg.includes("unique")) setError("One of your details is already in use. Go back and check your URL or email.");
+        else setError(msg);
         setLoading(false);
       }
       return;
