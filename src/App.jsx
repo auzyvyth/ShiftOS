@@ -28,6 +28,7 @@ import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ImportStockPage from "./pages/ImportStockPage";
 import ComparePage from "./pages/ComparePage";
+import MarketplacePage from "./pages/MarketplacePage";
 import SavedCarsPage from "./pages/SavedCarsPage";
 import CompareBar from "./components/CompareBar";
 import CompareModal from "./components/CompareModal";
@@ -56,6 +57,7 @@ function App() {
         <Route path="/cars" element={<CarsPage />} />
         <Route path="/cars/:slug" element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/saved" element={<SavedCarsPage />} />
 

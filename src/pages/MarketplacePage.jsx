@@ -37,6 +37,18 @@ const SORT_OPTIONS = [
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
 
+const MILEAGE_OPTIONS = [
+  { label: 'Under 20,000 km',  value: '20000' },
+  { label: 'Under 50,000 km',  value: '50000' },
+  { label: 'Under 80,000 km',  value: '80000' },
+  { label: 'Under 150,000 km', value: '150000' },
+];
+const CONDITION_OPTIONS = [
+  { value: 'used',  label: 'Used' },
+  { value: 'new',   label: 'New' },
+  { value: 'recon', label: 'Recon / Import' },
+];
+
 const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
 const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
 
@@ -82,18 +94,19 @@ function sanitizeQ(val) {
   if (!val || typeof val !== 'string') return '';
   return val.replace(/[%_\\]/g, '').slice(0, 60).trim();
 }
+function sanitizeCondition(val) {
+  return CONDITION_OPTIONS.map(c => c.value).includes(val) ? val : null;
+}
+function sanitizeMileageMax(val) {
+  const n = parseInt(val, 10);
+  return [20000, 50000, 80000, 150000].includes(n) ? n : null;
+}
 
 /* ── Marketplace Header ─────────────────────────────────────────────────────── */
-const NAV_LINKS = [
-  { label: 'Browse Cars',  href: '/' },
-  { label: 'Hot Deals',    href: '/?sort=newest' },
-  { label: 'Recon Cars',   href: '/?financing=loan' },
-  { label: 'Sell Your Car', href: '/login' },
-];
-
 const MarketplaceHeader = () => {
-  const [scrolled, setScrolled]   = useState(false);
-  const [menuOpen, setMenuOpen]   = useState(false);
+  const [scrolled, setScrolled]       = useState(false);
+  const [menuOpen, setMenuOpen]       = useState(false);
+  const [conditionOpen, setCondOpen]  = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -104,192 +117,120 @@ const MarketplaceHeader = () => {
 
   useEffect(() => {
     if (!menuOpen) return;
-    const onClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [menuOpen]);
 
   return (
     <>
       <style>{`
-        .mh-root {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-        }
-        .mh-root.scrolled {
-          background: rgba(12,12,14,0.88) !important;
-          backdrop-filter: blur(16px) saturate(1.4);
-          -webkit-backdrop-filter: blur(16px) saturate(1.4);
-          box-shadow: 0 1px 0 rgba(255,255,255,0.06);
-        }
-        .mh-nav-link {
-          color: #9ca3af;
-          font-size: 14px;
-          font-weight: 500;
-          text-decoration: none;
-          padding: 6px 2px;
-          position: relative;
-          transition: color 0.15s;
-          font-family: 'Outfit', sans-serif;
-          white-space: nowrap;
-        }
-        .mh-nav-link::after {
-          content: '';
-          position: absolute;
-          bottom: 0; left: 0; right: 0;
-          height: 1.5px;
-          background: #dc2626;
-          transform: scaleX(0);
-          transition: transform 0.2s ease;
-          transform-origin: left;
-          border-radius: 2px;
-        }
-        .mh-nav-link:hover { color: #fff; }
-        .mh-nav-link:hover::after { transform: scaleX(1); }
-        .mh-cta {
-          display: flex; align-items: center; gap: 7px;
-          background: #dc2626;
-          color: #fff;
-          font-size: 14px; font-weight: 700;
-          padding: 9px 18px;
-          border-radius: 9px;
-          text-decoration: none;
-          font-family: 'Outfit', sans-serif;
-          transition: background 0.15s, transform 0.15s;
-          white-space: nowrap;
-        }
-        .mh-cta:hover { background: #b91c1c; transform: translateY(-1px); }
-        .mh-hamburger {
-          display: none;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          color: #fff;
-          border-radius: 8px;
-          padding: 8px;
-          cursor: pointer;
-          align-items: center; justify-content: center;
-          transition: background 0.15s;
-        }
-        .mh-hamburger:hover { background: rgba(255,255,255,0.1); }
-        .mh-mobile-nav {
-          display: none;
-          flex-direction: column;
-          gap: 2px;
-          padding: 12px 20px 16px;
-          border-top: 1px solid rgba(255,255,255,0.06);
-          background: rgba(12,12,14,0.97);
-          backdrop-filter: blur(16px);
-        }
-        .mh-mobile-link {
-          color: #9ca3af;
-          font-size: 15px; font-weight: 500;
-          text-decoration: none;
-          padding: 11px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-          font-family: 'Outfit', sans-serif;
-          transition: color 0.15s;
-        }
-        .mh-mobile-link:last-child { border-bottom: none; }
-        .mh-mobile-link:hover { color: #fff; }
-        .mh-mobile-cta {
-          margin-top: 10px;
-          display: flex; align-items: center; justify-content: center; gap: 7px;
-          background: #dc2626; color: #fff;
-          font-size: 15px; font-weight: 700;
-          padding: 13px;
-          border-radius: 10px;
-          text-decoration: none;
-          font-family: 'Outfit', sans-serif;
-        }
-        @media (max-width: 720px) {
-          .mh-desktop-nav { display: none !important; }
-          .mh-hamburger    { display: flex !important; }
-          .mh-mobile-nav.open { display: flex !important; }
+        .mh-root { position:sticky; top:0; z-index:100; transition:background 0.25s,box-shadow 0.25s; }
+        .mh-root.scrolled { background:rgba(12,12,14,0.9)!important; backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 1px 0 rgba(255,255,255,0.06); }
+        .mh-nav-link { color:#9ca3af; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
+        .mh-nav-link::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
+        .mh-nav-link:hover { color:#fff; }
+        .mh-nav-link:hover::after { transform:scaleX(1); }
+        /* Hot Deals — flame accent */
+        .mh-hot-link { color:#fb923c!important; }
+        .mh-hot-link::after { background:#fb923c!important; }
+        .mh-hot-link:hover { color:#fdba74!important; }
+        /* Condition dropdown */
+        .mh-dropdown { position:relative; }
+        .mh-dropdown-trigger { color:#9ca3af; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
+        .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
+        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus { color:#fff; }
+        .mh-dropdown:hover .mh-dropdown-trigger::after { transform:scaleX(1); }
+        .mh-dropdown-chevron { transition:transform 0.2s; display:inline-block; }
+        .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
+        .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:170px; background:rgba(10,14,24,0.98); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; backdrop-filter:blur(20px); box-shadow:0 12px 40px rgba(0,0,0,0.7); z-index:200; }
+        .mh-dropdown:hover .mh-dropdown-menu { display:flex; }
+        .mh-dropdown-item { color:#9ca3af; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
+        .mh-dropdown-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
+        /* CTA */
+        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; }
+        .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); }
+        /* Hamburger */
+        .mh-hamburger { display:none; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
+        .mh-hamburger:hover { background:rgba(255,255,255,0.1); }
+        /* Mobile drawer */
+        .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(12,12,14,0.97); backdrop-filter:blur(16px); }
+        .mh-mobile-link { color:#9ca3af; font-size:15px; font-weight:500; text-decoration:none; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:'Outfit',sans-serif; transition:color 0.15s; display:block; }
+        .mh-mobile-link:hover { color:#fff; }
+        .mh-mobile-sub { padding:6px 0 6px 16px; display:flex; flex-direction:column; gap:0; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:8px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
+        .mh-mobile-sub-item:hover { color:#fff; }
+        .mh-mobile-cta { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:13px; border-radius:10px; text-decoration:none; font-family:'Outfit',sans-serif; }
+        @media (max-width:720px) {
+          .mh-desktop-nav { display:none!important; }
+          .mh-hamburger { display:flex!important; }
+          .mh-mobile-nav.open { display:flex!important; }
         }
       `}</style>
 
-      <header
-        className={`mh-root${scrolled ? ' scrolled' : ''}`}
-        style={{ background: 'transparent', borderBottom: '1px solid transparent' }}
-        ref={menuRef}
-      >
-        {/* ── Top bar ── */}
-        <div style={{
-          maxWidth: '1360px',
-          margin: '0 auto',
-          padding: '0 20px',
-          height: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '24px',
-        }}>
+      <header className={`mh-root${scrolled ? ' scrolled' : ''}`} style={{ background:'transparent', borderBottom:'1px solid transparent' }} ref={menuRef}>
+        <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 20px', height:'64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'24px' }}>
           {/* Logo */}
-          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-            <span style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: '26px',
-              letterSpacing: '0.04em',
-              lineHeight: 1,
-            }}>
-              <span style={{ color: '#dc2626' }}>X</span>
-              <span style={{ color: '#ffffff' }}>DRIVE</span>
+          <Link to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:'2px', flexShrink:0 }}>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'26px', letterSpacing:'0.04em', lineHeight:1 }}>
+              <span style={{ color:'#dc2626' }}>X</span><span style={{ color:'#ffffff' }}>DRIVE</span>
             </span>
-            <span style={{
-              fontSize: '9px',
-              fontWeight: '700',
-              color: '#6b7280',
-              letterSpacing: '0.1em',
-              marginLeft: '4px',
-              marginTop: '2px',
-              fontFamily: "'Outfit', sans-serif",
-            }}>.MY</span>
+            <span style={{ fontSize:'9px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.1em', marginLeft:'4px', marginTop:'2px', fontFamily:"'Outfit',sans-serif" }}>.MY</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="mh-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '28px', flex: 1, justifyContent: 'center' }}>
-            {NAV_LINKS.map(l => (
-              <a key={l.label} href={l.href} className="mh-nav-link">{l.label}</a>
-            ))}
+          <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
+            <a href="/marketplace" className="mh-nav-link">Browse Cars</a>
+            <a href="/marketplace?hot_deals=true" className="mh-nav-link mh-hot-link" style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+              <Flame size={13} /> Hot Deals
+            </a>
+            {/* Condition dropdown */}
+            <div className="mh-dropdown">
+              <button className="mh-dropdown-trigger" aria-haspopup="true">
+                Condition <span className="mh-dropdown-chevron">▾</span>
+              </button>
+              <div className="mh-dropdown-menu" role="menu">
+                <a href="/marketplace?condition=used"  className="mh-dropdown-item">🚗 Used Cars</a>
+                <a href="/marketplace?condition=new"   className="mh-dropdown-item">✨ New Cars</a>
+                <a href="/marketplace?condition=recon" className="mh-dropdown-item">🔁 Recon / Import</a>
+              </div>
+            </div>
           </nav>
 
-          {/* Right side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-            <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', fontWeight: '500', textDecoration: 'none', fontFamily: "'Outfit', sans-serif" }}>
-              <Phone size={13} />
-              +60 17-415 5191
+          {/* Right */}
+          <div style={{ display:'flex', alignItems:'center', gap:'12px', flexShrink:0 }}>
+            <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
+              <Phone size={13} /> +60 17-415 5191
             </a>
-            <a href="/login" className="mh-cta">
-              List Your Car
-            </a>
-            <button
-              className="mh-hamburger"
-              aria-label="Toggle menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(o => !o)}
-            >
+            <a href="/login" className="mh-cta">List Your Car</a>
+            <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
 
-        {/* ── Mobile nav drawer ── */}
+        {/* Mobile drawer */}
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
-          {NAV_LINKS.map(l => (
-            <a key={l.label} href={l.href} className="mh-mobile-link" onClick={() => setMenuOpen(false)}>
-              {l.label}
-            </a>
-          ))}
-          <a href="tel:+60174155191" className="mh-mobile-link" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a href="/marketplace" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Browse Cars</a>
+          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
+          <button
+            className="mh-mobile-link"
+            style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'11px 0', color:'#9ca3af', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }}
+            onClick={() => setCondOpen(o => !o)}
+          >
+            Condition <span style={{ fontSize:12 }}>{conditionOpen ? '▲' : '▼'}</span>
+          </button>
+          {conditionOpen && (
+            <div className="mh-mobile-sub">
+              {[['used','🚗 Used Cars'],['new','✨ New Cars'],['recon','🔁 Recon / Import']].map(([v,l]) => (
+                <a key={v} href={`/marketplace?condition=${v}`} className="mh-mobile-sub-item" onClick={() => setMenuOpen(false)}>{l}</a>
+              ))}
+            </div>
+          )}
+          <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}>
             <Phone size={14} /> +60 17-415 5191
           </a>
-          <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>
-            List Your Car
-          </a>
+          <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
         </div>
       </header>
     </>
@@ -465,6 +406,9 @@ export default function MarketplacePage() {
   const yearFrom     = sanitizeYear(searchParams.get('year_from') || '');
   const yearTo       = sanitizeYear(searchParams.get('year_to') || '');
   const q            = sanitizeQ(searchParams.get('q') || '');
+  const condition    = sanitizeCondition(searchParams.get('condition') || '');
+  const mileageMax   = sanitizeMileageMax(searchParams.get('mileage_max') || '');
+  const hotDeals     = searchParams.get('hot_deals') === 'true';
   const sort         = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
   const page         = sanitizePage(searchParams.get('page') || '1');
 
@@ -531,6 +475,11 @@ export default function MarketplacePage() {
       if (financing)    query = query.eq('financing_type', financing);
       if (yearFrom)     query = query.gte('year', yearFrom);
       if (yearTo)       query = query.lte('year', yearTo);
+      if (mileageMax)   query = query.lte('mileage', mileageMax);
+      if (hotDeals)     query = query.not('original_price', 'is', null).gt('original_price', 0);
+      if (condition === 'recon') query = query.eq('is_recon', true);
+      else if (condition === 'new')  query = query.eq('condition', 'new');
+      else if (condition === 'used') query = query.eq('is_recon', false);
       if (transmission) {
         const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
         query = query.in('transmission', txVal);
@@ -552,7 +501,7 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, sort]);
+  }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
 
   useEffect(() => {
     fetchCars();
@@ -576,7 +525,7 @@ export default function MarketplacePage() {
 
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing || yearFrom || yearTo || q;
+  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* ── Active filter chips ── */
@@ -590,6 +539,9 @@ export default function MarketplacePage() {
     financing    && { key: 'financing',    label: FINANCING_TYPES.find(f => f.value === financing)?.label || '' },
     yearFrom     && { key: 'year_from',    label: `From ${yearFrom}` },
     yearTo       && { key: 'year_to',      label: `To ${yearTo}` },
+    condition    && { key: 'condition',    label: CONDITION_OPTIONS.find(c => c.value === condition)?.label || condition },
+    mileageMax   && { key: 'mileage_max', label: MILEAGE_OPTIONS.find(m => m.value === String(mileageMax))?.label || '' },
+    hotDeals     && { key: 'hot_deals',   label: '🔥 Hot Deals' },
   ].filter(Boolean);
 
   /* ── Styles ── */
@@ -822,7 +774,7 @@ export default function MarketplacePage() {
       <Helmet>
         <title>XDrive — Malaysia's Used Car Marketplace</title>
         <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
-        <link rel="canonical" href="https://xdrive.my/marketplace" />
+        <link rel="canonical" href={`https://xdrive.my/marketplace${hotDeals ? '?hot_deals=true' : condition ? `?condition=${condition}` : ''}`} />
         <meta property="og:type"        content="website" />
         <meta property="og:url"         content="https://xdrive.my/marketplace" />
         <meta property="og:locale"      content="en_MY" />
@@ -1094,6 +1046,38 @@ export default function MarketplacePage() {
                   </div>
                 </div>
 
+                {/* Condition */}
+                <div>
+                  <span style={S.label}>Condition</span>
+                  <div style={S.pillGroup}>
+                    {CONDITION_OPTIONS.map(co => (
+                      <button
+                        key={co.value}
+                        style={S.pill(condition === co.value)}
+                        onClick={() => setParam('condition', condition === co.value ? '' : co.value)}
+                        aria-pressed={condition === co.value}
+                      >
+                        {co.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mileage */}
+                <div>
+                  <label style={S.label} htmlFor="filter-mileage">Max Mileage</label>
+                  <select
+                    id="filter-mileage"
+                    className="mp-select"
+                    style={S.select}
+                    value={mileageMax || ''}
+                    onChange={e => setParam('mileage_max', e.target.value)}
+                  >
+                    <option value="">Any Mileage</option>
+                    {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
+                  </select>
+                </div>
+
                 {/* Payment Type */}
                 <div>
                   <span style={S.label}>Payment Type</span>
@@ -1110,6 +1094,22 @@ export default function MarketplacePage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Hot Deals toggle */}
+                <div>
+                  <span style={S.label}>Deals</span>
+                  <button
+                    style={{
+                      ...S.pill(hotDeals),
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      ...(hotDeals ? { background: 'rgba(251,146,60,0.15)', borderColor: '#fb923c', color: '#fb923c' } : {}),
+                    }}
+                    onClick={() => setParam('hot_deals', hotDeals ? '' : 'true')}
+                    aria-pressed={hotDeals}
+                  >
+                    <Flame size={13} /> Hot Deals Only
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1123,7 +1123,7 @@ export default function MarketplacePage() {
                     <button
                       className="mp-chip-x"
                       style={S.chipX}
-                      onClick={() => setParam(chip.key, '')}
+                      onClick={() => chip.key === 'hot_deals' ? setParam('hot_deals', '') : setParam(chip.key, '')}
                       aria-label={`Remove ${chip.label} filter`}
                     >
                       <X size={12} />
