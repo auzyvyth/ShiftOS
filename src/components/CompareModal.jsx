@@ -192,6 +192,7 @@ export default function CompareModal() {
       .from('car_listings')
       .select(SELECT_COLS)
       .in('id', compareIds)
+      .in('status', ['available', 'reserved'])
       .then(({ data }) => {
         const ordered = compareIds.map(id => (data || []).find(c => c.id === id)).filter(Boolean);
         setCars(ordered);
@@ -388,7 +389,7 @@ export default function CompareModal() {
 
                 return (
                   <div key={car.id} style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
-                    <div style={{ position: 'relative', aspectRatio: '16/9', background: '#0d1117' }}>
+                    <div style={{ position: 'relative', height: '160px', background: '#0d1117', flexShrink: 0 }}>
                       {img
                         ? <img src={img} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🚗</div>
@@ -494,7 +495,7 @@ export default function CompareModal() {
                           <th key={car.id} style={{ position: 'sticky', top: 0, zIndex: 10, background: '#080C14', padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.07)', verticalAlign: 'top', minWidth: 210, textAlign: 'left' }}>
                             {/* Photo */}
                             <div style={{ position: 'relative', marginBottom: 10 }}>
-                              <div style={{ aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', background: '#0d1117' }}>
+                              <div style={{ height: '160px', borderRadius: 8, overflow: 'hidden', background: '#0d1117' }}>
                                 {img
                                   ? <img src={img} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🚗</div>
