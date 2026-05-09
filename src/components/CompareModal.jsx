@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
-import { X, ExternalLink, MessageCircle, Check, Share2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { X, ExternalLink, MessageCircle, Check, Share2, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useCompare } from '../hooks/useCompare';
 import { useCompareModal } from '../hooks/useCompareModal';
@@ -164,6 +164,7 @@ function SvcBadge({ name }) {
 export default function CompareModal() {
   const { compareIds, removeFromCompare, clearCompare } = useCompare();
   const { open, closeModal } = useCompareModal();
+  const navigate = useNavigate();
 
   const [cars, setCars]           = useState([]);
   const [loading, setLoading]     = useState(false);
@@ -339,6 +340,21 @@ export default function CompareModal() {
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {n < 4 && (
+              <button
+                onClick={() => { closeModal(); navigate('/marketplace'); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px', borderRadius: 8, cursor: 'pointer',
+                  background: 'rgba(220,38,38,0.1)',
+                  border: '1px solid rgba(220,38,38,0.3)',
+                  color: '#f87171', fontSize: 12, fontWeight: 600,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                <Plus size={13} /> Add Car
+              </button>
+            )}
             {n >= 2 && (
               <button onClick={handleShare} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -726,12 +742,17 @@ export default function CompareModal() {
               </div>
             </div>
 
-            {/* ── Nudge: only 1 car selected ── */}
-            {n === 1 && (
+            {/* ── Nudge: fewer than 2 cars ── */}
+            {n < 2 && (
               <div style={{ marginTop: 24, background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <p style={{ fontSize: 14, color: '#9ca3af' }}>Add at least one more car to start comparing</p>
-                <button onClick={closeModal} style={{ padding: '8px 20px', borderRadius: 8, background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
-                  Browse cars →
+                <p style={{ fontSize: 14, color: '#9ca3af' }}>
+                  {n === 0 ? 'No cars selected.' : 'Add at least one more car to start comparing.'}
+                </p>
+                <button
+                  onClick={() => { closeModal(); navigate('/marketplace'); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                >
+                  <Plus size={13} /> Browse Cars
                 </button>
               </div>
             )}

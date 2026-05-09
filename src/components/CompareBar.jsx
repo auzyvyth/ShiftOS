@@ -10,11 +10,11 @@ export default function CompareBar() {
   const [cars, setCars] = useState({});
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const panelRef = useRef(null);
+  const panelRef   = useRef(null);
   const prevCountRef = useRef(compareIds.length);
+  const mountedRef   = useRef(false);
 
-  // Track whether bubble just appeared (for pop animation)
-  const [justAppeared, setJustAppeared] = useState(compareIds.length > 0);
+  const [justAppeared, setJustAppeared] = useState(false);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -22,19 +22,27 @@ export default function CompareBar() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  // Trigger pop animation only when going from 0 → 1+
+  // Count change handler — skip initial mount so session-restored IDs don't trigger
   useEffect(() => {
-    if (prevCountRef.current === 0 && compareIds.length > 0) {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    const prev = prevCountRef.current;
+    const curr = compareIds.length;
+
+    if (prev === 0 && curr > 0) {
       setJustAppeared(true);
       const t = setTimeout(() => setJustAppeared(false), 300);
-      prevCountRef.current = compareIds.length;
+      prevCountRef.current = curr;
       return () => clearTimeout(t);
     }
-    if (compareIds.length === 0) setOpen(false);
-    prevCountRef.current = compareIds.length;
-  }, [compareIds.length]);
+    if (curr > prev) openModal(); // user just added a car — reopen modal
+    if (curr === 0) setOpen(false);
+    prevCountRef.current = curr;
+  }, [compareIds.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch car data for new IDs
+  // Fetch minimal card data for IDs not yet in local state
   useEffect(() => {
     const missing = compareIds.filter((id) => !cars[id]);
     if (!missing.length) return;
@@ -51,13 +59,6 @@ export default function CompareBar() {
         });
       });
   }, [compareIds]);
-
-  // Auto-open modal when all 4 slots are filled
-  useEffect(() => {
-    if (compareIds.length < 4) return;
-    const allLoaded = compareIds.every(id => cars[id]?.slug);
-    if (allLoaded) openModal();
-  }, [compareIds, cars]);
 
   // Close panel on outside click
   useEffect(() => {
