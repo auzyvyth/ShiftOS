@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone, Search } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone, Search, ArrowLeftRight } from 'lucide-react';
+import { useCompare } from '../hooks/useCompare';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
 import { useCTAContext } from '../hooks/useCTAContext';
@@ -452,6 +453,7 @@ const Pagination = ({ page, totalPages, onPage }) => {
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const ctaCtx = useCTAContext();
+  const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
 
   /* Filters from URL */
   const brand        = sanitizeBrand(searchParams.get('brand') || '');
@@ -1199,9 +1201,45 @@ export default function MarketplacePage() {
                       </button>
                     </div>
                   )
-                  : cars.map(car => (
-                    <CarCard key={car.id} car={car} ctaContext={ctaCtx} />
-                  ))
+                  : cars.map(car => {
+                    const inCompare = isInCompare(car.id);
+                    const compareFull = compareIds.length >= 4 && !inCompare;
+                    return (
+                      <div key={car.id} style={{ position: 'relative' }}>
+                        <CarCard car={car} ctaContext={ctaCtx} />
+                        <button
+                          onClick={() => inCompare ? removeFromCompare(car.id) : addToCompare(car.id)}
+                          disabled={compareFull}
+                          title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            zIndex: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.65)',
+                            border: `1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.15)'}`,
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            color: inCompare ? '#fff' : 'rgba(255,255,255,0.7)',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: compareFull ? 'not-allowed' : 'pointer',
+                            opacity: compareFull ? 0.4 : 1,
+                            backdropFilter: 'blur(8px)',
+                            fontFamily: "'Outfit', sans-serif",
+                            letterSpacing: '0.02em',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <ArrowLeftRight size={11} />
+                          {inCompare ? 'Added' : 'Compare'}
+                        </button>
+                      </div>
+                    );
+                  })
               }
             </div>
           )}
