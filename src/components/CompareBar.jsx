@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ArrowLeftRight } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
+import { useCompareModal } from '../hooks/useCompareModal';
 import { supabase } from '../supabaseClient';
 
 export default function CompareBar() {
   const { compareIds, removeFromCompare, clearCompare } = useCompare();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { openModal } = useCompareModal();
   const [cars, setCars] = useState({});
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -53,18 +52,11 @@ export default function CompareBar() {
       });
   }, [compareIds]);
 
-  // Auto-navigate to /compare when all 4 slots are filled
+  // Auto-open modal when all 4 slots are filled
   useEffect(() => {
     if (compareIds.length < 4) return;
-    if (location.pathname === '/compare') return;
     const allLoaded = compareIds.every(id => cars[id]?.slug);
-    if (!allLoaded) return;
-    const params = new URLSearchParams();
-    compareIds.forEach((id, i) => {
-      const slug = cars[id]?.slug;
-      if (slug) params.set(['a', 'b', 'c', 'd'][i], slug);
-    });
-    navigate(`/compare?${params.toString()}`);
+    if (allLoaded) openModal();
   }, [compareIds, cars]);
 
   // Close panel on outside click
@@ -83,12 +75,7 @@ export default function CompareBar() {
   const canCompare = count >= 2;
 
   const handleCompare = () => {
-    const params = new URLSearchParams();
-    compareIds.forEach((id, i) => {
-      const slug = cars[id]?.slug;
-      if (slug) params.set(['a', 'b', 'c', 'd'][i], slug);
-    });
-    navigate(`/compare?${params.toString()}`);
+    openModal();
     setOpen(false);
   };
 

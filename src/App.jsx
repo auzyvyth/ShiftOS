@@ -30,6 +30,7 @@ import ImportStockPage from "./pages/ImportStockPage";
 import ComparePage from "./pages/ComparePage";
 import SavedCarsPage from "./pages/SavedCarsPage";
 import CompareBar from "./components/CompareBar";
+import CompareModal from "./components/CompareModal";
 import "./i18n/config";
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
         }}
       />
       <CompareBar />
+      <CompareModal />
       <Routes>
         {/* Public — XDrive */}
         <Route path="/" element={<HomePage />} />
