@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone, Search } from 'lucide-react';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
 import { useCTAContext } from '../hooks/useCTAContext';
@@ -32,6 +32,9 @@ const SORT_OPTIONS = [
   { label: 'Price: Low to High', value: 'price_asc' },
   { label: 'Price: High to Low', value: 'price_desc' },
 ];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
 
 const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
 const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
@@ -69,6 +72,14 @@ function sanitizePrice(val) {
 function sanitizePage(val) {
   const n = parseInt(val, 10);
   return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+function sanitizeYear(val) {
+  const n = parseInt(val, 10);
+  return Number.isFinite(n) && n >= 1990 && n <= CURRENT_YEAR ? n : null;
+}
+function sanitizeQ(val) {
+  if (!val || typeof val !== 'string') return '';
+  return val.replace(/[%_\\]/g, '').slice(0, 60).trim();
 }
 
 /* ── Marketplace Header ─────────────────────────────────────────────────────── */
@@ -449,8 +460,14 @@ export default function MarketplacePage() {
   const state        = sanitizeState(searchParams.get('state') || '');
   const maxPrice     = sanitizePrice(searchParams.get('max_price') || '');
   const financing    = sanitizeFinancing(searchParams.get('financing') || '');
+  const yearFrom     = sanitizeYear(searchParams.get('year_from') || '');
+  const yearTo       = sanitizeYear(searchParams.get('year_to') || '');
+  const q            = sanitizeQ(searchParams.get('q') || '');
   const sort         = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
   const page         = sanitizePage(searchParams.get('page') || '1');
+
+  const [searchInput, setSearchInput] = useState(q);
+  useEffect(() => { setSearchInput(q); }, [q]);
 
   /* Data state */
   const [cars, setCars]           = useState([]);
@@ -473,17 +490,17 @@ export default function MarketplacePage() {
   /* ── Fetch marketplace stats ── */
   useEffect(() => {
     async function fetchStats() {
-      const [listingsRes, hotRes] = await Promise.all([
-        supabase.from('car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available'),
-        supabase.from('car_listings').select('id', { count: 'exact', head: true })
+      const [listingsRes, dealersRes, hotRes] = await Promise.all([
+        supabase.from('car_listings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+        supabase.from('car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available').limit(2000),
+        supabase.from('car_listings').select('*', { count: 'exact', head: true })
           .eq('status', 'available')
           .not('original_price', 'is', null)
           .gt('original_price', 0),
       ]);
-      const allListings = listingsRes.data || [];
-      const uniqueDealers = new Set(allListings.map(r => r.dealer_id)).size;
+      const uniqueDealers = new Set((dealersRes.data || []).map(r => r.dealer_id)).size;
       setStats({
-        listings: listingsRes.count ?? allListings.length,
+        listings: listingsRes.count ?? 0,
         dealers: uniqueDealers,
         hotDeals: hotRes.count ?? 0,
       });
@@ -504,11 +521,14 @@ export default function MarketplacePage() {
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
         .eq('status', 'available');
 
+      if (q)            query = query.or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`);
       if (brand)        query = query.eq('brand', brand);
       if (bodyType)     query = query.eq('body_type', bodyType);
       if (state)        query = query.eq('state', state);
       if (maxPrice)     query = query.lte('selling_price', maxPrice);
       if (financing)    query = query.eq('financing_type', financing);
+      if (yearFrom)     query = query.gte('year', yearFrom);
+      if (yearTo)       query = query.lte('year', yearTo);
       if (transmission) {
         const txVal = transmission === 'Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT'];
         query = query.in('transmission', txVal);
@@ -530,7 +550,7 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, brand, bodyType, state, maxPrice, transmission, financing, sort]);
+  }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, sort]);
 
   useEffect(() => {
     fetchCars();
@@ -552,19 +572,22 @@ export default function MarketplacePage() {
     setSearchParams(next, { replace: true });
   };
 
-  const resetAll = () => setSearchParams({}, { replace: true });
+  const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing;
+  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing || yearFrom || yearTo || q;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* ── Active filter chips ── */
   const activeChips = [
+    q            && { key: 'q',            label: `"${q}"` },
     brand        && { key: 'brand',        label: brand },
     bodyType     && { key: 'body_type',    label: bodyType },
     transmission && { key: 'transmission', label: transmission },
     state        && { key: 'state',        label: state },
     maxPrice     && { key: 'max_price',    label: PRICE_OPTIONS.find(p => p.value === String(maxPrice))?.label || '' },
     financing    && { key: 'financing',    label: FINANCING_TYPES.find(f => f.value === financing)?.label || '' },
+    yearFrom     && { key: 'year_from',    label: `From ${yearFrom}` },
+    yearTo       && { key: 'year_to',      label: `To ${yearTo}` },
   ].filter(Boolean);
 
   /* ── Styles ── */
@@ -797,6 +820,26 @@ export default function MarketplacePage() {
       <Helmet>
         <title>XDrive — Malaysia's Used Car Marketplace</title>
         <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
+        <link rel="canonical" href="https://xdrive.my/marketplace" />
+        <meta property="og:type"        content="website" />
+        <meta property="og:url"         content="https://xdrive.my/marketplace" />
+        <meta property="og:locale"      content="en_MY" />
+        <meta property="og:site_name"   content="XDrive" />
+        <meta property="og:title"       content="XDrive — Malaysia's Used Car Marketplace" />
+        <meta property="og:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia." />
+        <meta property="og:image"       content="https://xdrive.my/og-marketplace.jpg" />
+        <meta name="twitter:card"        content="summary_large_image" />
+        <meta name="twitter:title"       content="XDrive — Malaysia's Used Car Marketplace" />
+        <meta name="twitter:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia." />
+        <meta name="twitter:image"       content="https://xdrive.my/og-marketplace.jpg" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "XDrive Marketplace",
+          "description": "Browse thousands of verified used cars from trusted dealers across Malaysia.",
+          "url": "https://xdrive.my/marketplace",
+          "publisher": { "@type": "Organization", "name": "XDrive", "url": "https://xdrive.my" },
+        })}</script>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </Helmet>
@@ -840,6 +883,50 @@ export default function MarketplacePage() {
             <p style={S.subtitle}>
               Browse thousands of verified used cars from trusted dealers across Malaysia.
             </p>
+
+            {/* ── Search bar ── */}
+            <form
+              onSubmit={e => { e.preventDefault(); setParam('q', searchInput); }}
+              style={{ position: 'relative', maxWidth: '540px', margin: '0 auto 36px' }}
+            >
+              <Search size={18} style={{
+                position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)',
+                color: '#6b7280', pointerEvents: 'none',
+              }} />
+              <input
+                type="search"
+                placeholder="Search brand, model, or variant…"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '12px',
+                  padding: '16px 54px 16px 50px',
+                  color: '#fff',
+                  fontSize: '16px',
+                  fontFamily: "'Outfit', sans-serif",
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  backdropFilter: 'blur(8px)',
+                }}
+                onKeyDown={e => e.key === 'Enter' && setParam('q', sanitizeQ(searchInput))}
+              />
+              <button
+                type="submit"
+                style={{
+                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                  background: '#dc2626', color: '#fff', border: 'none',
+                  borderRadius: '8px', padding: '10px 18px',
+                  fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Search
+              </button>
+            </form>
+
             <div style={S.statsRow}>
               <StatItem
                 icon={Car}
@@ -944,6 +1031,31 @@ export default function MarketplacePage() {
                     <option value="">All States</option>
                     {MY_STATES.map(s => <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>)}
                   </select>
+                </div>
+
+                {/* Year Range */}
+                <div>
+                  <span style={S.label}>Year</span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="mp-select"
+                      style={{ ...S.select, flex: 1 }}
+                      value={yearFrom || ''}
+                      onChange={e => setParam('year_from', e.target.value)}
+                    >
+                      <option value="">From</option>
+                      {YEARS.map(y => <option key={y} value={y} style={{ background: '#0d1117' }}>{y}</option>)}
+                    </select>
+                    <select
+                      className="mp-select"
+                      style={{ ...S.select, flex: 1 }}
+                      value={yearTo || ''}
+                      onChange={e => setParam('year_to', e.target.value)}
+                    >
+                      <option value="">To</option>
+                      {YEARS.map(y => <option key={y} value={y} style={{ background: '#0d1117' }}>{y}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Body Type */}
