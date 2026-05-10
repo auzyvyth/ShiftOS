@@ -1037,6 +1037,55 @@ export default function MarketplacePage() {
           </div>
         </section>
 
+        {/* ── Brand strip ── */}
+        <section style={{ background: '#0C0C0E', padding: '40px 20px 32px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+            <p style={{ fontSize: '11px', fontWeight: '700', color: '#C4A265', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: "'Outfit',sans-serif" }}>Shop by Brand</p>
+            <h2 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: '700', color: '#f0f0f0', margin: '0 0 24px', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.04em' }}>Popular Brands</h2>
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {[
+                { label: 'All',          to: '/marketplace',                         initials: 'ALL', color: '#DC2626' },
+                { label: 'Perodua',      to: '/marketplace?brand=Perodua',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
+                { label: 'Proton',       to: '/marketplace?brand=Proton',       logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg',           invert: true },
+                { label: 'Toyota',       to: '/marketplace?brand=Toyota',       logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg',                 invert: true },
+                { label: 'Honda',        to: '/marketplace?brand=Honda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
+                { label: 'Nissan',       to: '/marketplace?brand=Nissan',       logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg',            invert: true },
+                { label: 'Mazda',        to: '/marketplace?brand=Mazda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg',             invert: true },
+                { label: 'Mitsubishi',   to: '/marketplace?brand=Mitsubishi',   logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
+                { label: 'BMW',          to: '/marketplace?brand=BMW',          logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
+                { label: 'Mercedes',     to: '/marketplace?brand=Mercedes-Benz',logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg',    invert: true },
+                { label: 'Hyundai',      to: '/marketplace?brand=Hyundai',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg',  invert: true },
+              ].map(({ label, to, logo, initials, color, invert }) => {
+                const isActive = brand && label !== 'All' && searchParams.get('brand') === label;
+                return (
+                  <a
+                    key={label}
+                    href={to}
+                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
+                  >
+                    <div style={{
+                      width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
+                      background: isActive ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.12)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {logo ? (
+                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: invert ? 'brightness(0) invert(1)' : 'none' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                      ) : null}
+                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: isActive ? '#f87171' : '#9ca3af', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         <div style={S.wrap}>
           {/* Brand pills */}
           <div style={S.brandRow}>
