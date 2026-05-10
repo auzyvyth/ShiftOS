@@ -866,26 +866,28 @@ export default function MarketplacePage() {
           {/* ── Centred copy + search ── */}
           <div style={{ maxWidth:'900px', margin:'0 auto', padding:'112px 24px 72px', textAlign:'center', position:'relative', zIndex:1 }}>
 
-            {/* Live badge */}
-            <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'10px', background:'rgba(0,0,0,0.05)', border:'1px solid rgba(0,0,0,0.09)', color:'#6b7280', fontSize:'11px', fontWeight:'700', padding:'7px 20px', borderRadius:'100px', marginBottom:'36px', fontFamily:"'Outfit',sans-serif", letterSpacing:'0.08em', textTransform:'uppercase' }}>
-              <span className="mp-pulse-dot"/>
-              <span style={{ color:'#f87171' }}>Live</span>
-              &nbsp;&mdash;&nbsp;{stats.listings ? `${stats.listings.toLocaleString()} Cars Available` : "Malaysia's Finest Selection"}
+            {/* Trust pill */}
+            <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.08)', border:'0.5px solid rgba(220,38,38,0.25)', color:'#dc2626', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
+                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.18)" stroke="#dc2626" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M9 12l2 2 4-4" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Malaysia's first fully-verified used car marketplace
             </div>
 
             {/* Headline */}
-            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 22px', lineHeight:'0.9', letterSpacing:'0.015em' }}>
-              <span className="mp-anim-fade mp-anim-d1" style={{ display:'block', fontSize:'clamp(48px,6.5vw,90px)', color:'#111827' }}>
-                MALAYSIA'S PREMIER
+            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.01em' }}>
+              <span className="mp-anim-fade mp-anim-d1" style={{ display:'block', fontSize:'clamp(52px,7vw,96px)', color:'#111827' }}>
+                Buy used cars.
               </span>
-              <span className="mp-anim-fade mp-anim-d2" style={{ display:'block', fontSize:'clamp(62px,9vw,130px)', color:'#dc2626' }}>
-                CAR MARKETPLACE
+              <span className="mp-anim-fade mp-anim-d2" style={{ display:'block', fontSize:'clamp(52px,7vw,96px)', color:'rgba(17,24,39,0.32)' }}>
+                Without the bullshit.
               </span>
             </h1>
 
             {/* Subtitle */}
-            <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'16px', color:'#6b7280', maxWidth:'460px', margin:'0 auto 48px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'500' }}>
-              Thousands of verified listings from trusted dealers across all 14 states of Malaysia.
+            <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'15px', color:'#6b7280', maxWidth:'460px', margin:'0 auto 44px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
+              Every listing on xdrive.my is from a verified dealer — complete with documents, real photos, and a track record. No phantom listings. No Mudah-style scams.
             </p>
 
             {/* ── Inline search bar ── */}
