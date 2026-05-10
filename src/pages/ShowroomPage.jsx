@@ -165,7 +165,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
       style={{ display:'flex', flexDirection:'row', background:'#0b0f18', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'190px', minWidth:0 }}
     >
       {/* ── Image column ── */}
-      <div style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0a0d14', overflow:'hidden' }}>
+      <div className="sc-img-col" style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0a0d14', overflow:'hidden' }}>
         {image ? (
           <>
             {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
@@ -214,7 +214,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
       </div>
 
       {/* ── Content column ── */}
-      <div style={{ flex:1, padding:'11px 14px 11px', display:'flex', flexDirection:'column', minWidth:0 }}>
+      <div className="sc-content-col" style={{ flex:1, padding:'11px 14px 11px', display:'flex', flexDirection:'column', minWidth:0 }}>
 
         {/* Row 1: condition pill + year badge */}
         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:'6px' }}>
@@ -239,7 +239,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
         </h3>
 
         {/* Row 3: inline specs — 2 lines allowed */}
-        <p style={{ fontSize:'11px', color:'#6b7280', margin:'0 0 auto', lineHeight:'1.5', whiteSpace:'normal', wordBreak:'break-word', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+        <p className="sc-spec-line" style={{ fontSize:'11px', color:'#6b7280', margin:'0 0 6px', lineHeight:'1.5', whiteSpace:'normal', wordBreak:'break-word', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
           {specParts.join('  •  ')}
         </p>
 
@@ -518,6 +518,9 @@ export default function ShowroomPage() {
         @media(max-width:640px){
           .sr-grid { grid-template-columns:1fr !important; gap:10px !important }
           .sr-topbar { flex-wrap:wrap !important }
+          .sc-root { height:auto !important; min-height:150px; }
+          .sc-img-col { width:36% !important; max-width:none !important; min-height:150px; }
+          .sc-content-col { padding:9px 11px 9px !important; }
         }
       `}</style>
 
