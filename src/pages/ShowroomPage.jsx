@@ -131,7 +131,9 @@ export default function ShowroomPage() {
   const [cars, setCars]               = useState([]);
   const [totalCount, setTotal]        = useState(0);
   const [loading, setLoading]         = useState(true);
+  const [fetching, setFetching]       = useState(false);
   const [error, setError]             = useState(null);
+  const initialLoad = useRef(true);
   const [drawerOpen, setDrawerOpen]   = useState(false);
   const [topbarVisible, setTopbarVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -174,7 +176,8 @@ export default function ShowroomPage() {
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   const fetchCars = useCallback(async () => {
-    setLoading(true); setError(null);
+    if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
+    setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
       let query = supabase.from('car_listings')
@@ -200,10 +203,11 @@ export default function ShowroomPage() {
       if (err) throw err;
       setCars(data || []); setTotal(count || 0);
     } catch { setError('Failed to load listings. Please try again.'); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setFetching(false); initialLoad.current = false; }
   }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
 
-  useEffect(() => { fetchCars(); window.scrollTo({ top:0, behavior:'smooth' }); }, [fetchCars]);
+  useEffect(() => { fetchCars(); }, [fetchCars]);
+  useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
 
   const activeChips = [
     q           && { key:'q',           label:`"${q}"` },
@@ -467,7 +471,9 @@ export default function ShowroomPage() {
                 </div>
               )}
               {!error && (
-                <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'18px' }}>
+                <div style={{ position:'relative' }}>
+                  {fetching && <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(8,12,20,0.5)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}><span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'DM Sans',sans-serif" }}>Updating…</span></div>}
+                <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'18px', opacity: fetching?0.45:1, transition:'opacity 0.2s' }}>
                   {loading
                     ? Array.from({ length:PER_PAGE }).map((_,i)=><Skeleton key={i}/>)
                     : cars.length===0
@@ -494,6 +500,7 @@ export default function ShowroomPage() {
                           );
                         })
                   }
+                </div>
                 </div>
               )}
               {!loading && !error && totalPages>1 && (
