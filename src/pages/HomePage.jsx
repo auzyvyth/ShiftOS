@@ -997,18 +997,18 @@ const HomePage = () => {
               }}
             >
               {[
-                { label: "All Brands", to: "/cars", initials: "ALL", color: "#DC2626" },
-                { label: "Perodua", to: "/cars?brand=Perodua", initials: "PDZ", color: "#1a4fa0" },
-                { label: "Proton", to: "/cars?brand=Proton", initials: "PRT", color: "#1e3a5f" },
-                { label: "Toyota", slug: "toyota", to: "/cars?brand=Toyota" },
-                { label: "Honda", slug: "honda", to: "/cars?brand=Honda" },
-                { label: "Nissan", slug: "nissan", to: "/cars?brand=Nissan" },
-                { label: "Mazda", slug: "mazda", to: "/cars?brand=Mazda" },
-                { label: "Mitsubishi", slug: "mitsubishi", to: "/cars?brand=Mitsubishi" },
-                { label: "BMW", slug: "bmw", to: "/cars?brand=BMW" },
-                { label: "Mercedes-Benz", slug: "mercedes-benz", to: "/cars?brand=Mercedes-Benz" },
-                { label: "Hyundai", slug: "hyundai", to: "/cars?brand=Hyundai" },
-              ].map(({ label, to, slug, initials, color }) => (
+                { label: "All Brands", to: "/marketplace", initials: "ALL", color: "#DC2626" },
+                { label: "Perodua",      to: "/marketplace?brand=Perodua",      logo: "https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg" },
+                { label: "Proton",       to: "/marketplace?brand=Proton",       logo: "https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg", invert: true },
+                { label: "Toyota",       to: "/marketplace?brand=Toyota",       logo: "https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg", invert: true },
+                { label: "Honda",        to: "/marketplace?brand=Honda",        logo: "https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg" },
+                { label: "Nissan",       to: "/marketplace?brand=Nissan",       logo: "https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg", invert: true },
+                { label: "Mazda",        to: "/marketplace?brand=Mazda",        logo: "https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg", invert: true },
+                { label: "Mitsubishi",   to: "/marketplace?brand=Mitsubishi",   logo: "https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg" },
+                { label: "BMW",          to: "/marketplace?brand=BMW",          logo: "https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg" },
+                { label: "Mercedes-Benz",to: "/marketplace?brand=Mercedes-Benz",logo: "https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg", invert: true },
+                { label: "Hyundai",      to: "/marketplace?brand=Hyundai",      logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg", invert: true },
+              ].map(({ label, to, logo, initials, color, invert }) => (
                 <Link
                   key={label}
                   to={to}
@@ -1023,21 +1023,22 @@ const HomePage = () => {
                 >
                   <div
                     style={{
-                      width: 72,
-                      height: 64,
+                      width: 88,
+                      height: 72,
                       borderRadius: 14,
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      padding: 12,
                       transition: "background 0.2s, border-color 0.2s, transform 0.15s",
                       overflow: "hidden",
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.background = "rgba(220,38,38,0.12)";
                       e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)";
-                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.transform = "translateY(-3px)";
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background = "rgba(255,255,255,0.04)";
@@ -1045,13 +1046,16 @@ const HomePage = () => {
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    {slug ? (
+                    {logo ? (
                       <img
-                        src={`https://cdn.simpleicons.org/${slug}/ffffff`}
+                        src={logo}
                         alt={label}
-                        width={32}
-                        height={32}
-                        style={{ objectFit: "contain", filter: "brightness(0.9)" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                          filter: invert ? "brightness(0) invert(1)" : "none",
+                        }}
                         onError={e => {
                           e.currentTarget.style.display = "none";
                           e.currentTarget.nextSibling.style.display = "flex";
@@ -1060,15 +1064,15 @@ const HomePage = () => {
                     ) : null}
                     <span
                       style={{
-                        display: slug ? "none" : "flex",
+                        display: logo ? "none" : "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        width: 36,
-                        height: 36,
+                        width: 40,
+                        height: 40,
                         borderRadius: 8,
                         background: color || "rgba(255,255,255,0.1)",
                         color: "#fff",
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: "0.05em",
                         fontFamily: "'DM Sans',sans-serif",
@@ -1084,7 +1088,7 @@ const HomePage = () => {
                       fontFamily: "'DM Sans',sans-serif",
                       fontWeight: 500,
                       textAlign: "center",
-                      maxWidth: 72,
+                      maxWidth: 88,
                       lineHeight: 1.2,
                     }}
                   >
