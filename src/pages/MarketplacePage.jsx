@@ -52,7 +52,7 @@ const CONDITION_OPTIONS = [
 ];
 
 const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
-const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
+const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 function dedupe(arr) {
@@ -1021,9 +1021,20 @@ export default function MarketplacePage() {
                       : cars.map(car => {
                           const inCompare = isInCompare(car.id);
                           const compareFull = compareIds.length >= 4 && !inCompare;
+                          const sellerRole = car.dealer?.role;
+                          const isAgent = sellerRole === 'salesman';
+                          const sellerLabel = isAgent ? 'Agent' : 'Dealer';
+                          const sellerColor = isAgent
+                            ? { bg:'rgba(251,146,60,0.15)', border:'rgba(251,146,60,0.35)', color:'#fb923c' }
+                            : { bg:'rgba(59,130,246,0.15)', border:'rgba(59,130,246,0.35)', color:'#60a5fa' };
                           return (
                             <div key={car.id} style={{ position:'relative' }}>
                               <CarCard car={car} ctaContext={ctaCtx} />
+                              {/* Seller badge — bottom-left of image */}
+                              <div style={{ position:'absolute', top:'10px', left:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
+                                <Users size={9} color={sellerColor.color}/>
+                                <span style={{ fontSize:'10px', fontWeight:'700', color: sellerColor.color, fontFamily:"'Outfit',sans-serif", letterSpacing:'0.03em' }}>{sellerLabel}</span>
+                              </div>
                               <button
                                 onClick={e => { e.stopPropagation(); if (compareFull) { toast.error('Compare is full — remove a car first (max 4)', { duration:2500 }); return; } inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}

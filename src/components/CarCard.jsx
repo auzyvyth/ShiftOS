@@ -104,7 +104,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
         }
 
         @media (max-width: 520px) {
-          .cc-img         { height: 150px !important; }
+          .cc-img         { height: auto !important; aspect-ratio: 16/9 !important; }
           .cc-body        { padding: 10px !important; }
           .cc-name        { font-size: 13px !important; margin-bottom: 2px !important; }
           .cc-sub         { margin-bottom: 8px !important; }
