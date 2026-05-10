@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { setRef, trackEvent } from '../lib/analytics';
-import { trackEvent as trackAnalyticsEvent, getSlugFromURL } from '../utils/analytics';
+import { trackEvent as trackAnalyticsEvent } from '../utils/analytics';
 import { captureRef, getRef } from '../utils/refTracking';
 import {
   RotateCcw, ChevronDown, Search, SlidersHorizontal, X,
@@ -196,7 +196,7 @@ const CarsPage = () => {
     sessionStorage.setItem(sessionKey, '1');
     trackAnalyticsEvent(supabase, 'store_visit', {
       dealer_id: tenant.id,
-      metadata: { source: getSlugFromURL() ? 'salesman_link' : 'organic', page: '/cars' },
+      metadata: { source: getRef() ? 'salesman_link' : 'organic', page: '/cars' },
     });
   }, [tenantLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -32,7 +32,6 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import {
   getOrCreateSessionId,
-  getSlugFromURL,
   trackEvent,
 } from "../utils/analytics";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -408,7 +407,7 @@ const HomePage = () => {
     sessionStorage.setItem(sessionKey, "1");
     trackEvent(supabase, "store_visit", {
       dealer_id: tenant?.id || null,
-      metadata: { source: getSlugFromURL() ? "salesman_link" : "organic" },
+      metadata: { source: getRef() ? "salesman_link" : "organic" },
     });
   }, [tenantLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 

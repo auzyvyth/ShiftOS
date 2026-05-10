@@ -4,7 +4,8 @@ import { Gauge, Settings2, MessageCircle, Fuel, Calendar } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
-import { trackEvent, getSlugFromURL } from '../utils/analytics';
+import { trackEvent } from '../utils/analytics';
+import { getRef } from '../utils/refTracking';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -303,7 +304,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                   buyer_message: waText,
                   source:        'car_card',
                   status:        'new',
-                  ref_slug:      getSlugFromURL() || null,
+                  ref_slug:      getRef() || null,
                 }).then(() => {});
                 trackEvent(supabase, 'whatsapp_click', {
                   car_id:    car.id,

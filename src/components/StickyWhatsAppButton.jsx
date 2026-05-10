@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
-import { trackEvent, getSlugFromURL } from '../utils/analytics';
+import { trackEvent } from '../utils/analytics';
+import { getRef } from '../utils/refTracking';
 
 export default function StickyWhatsAppButton({ phoneNumber, message }) {
   const { t } = useTranslation();
@@ -36,7 +37,7 @@ export default function StickyWhatsAppButton({ phoneNumber, message }) {
         buyer_message: msg,
         source: 'sticky_button',
         status: 'new',
-        ref_slug: getSlugFromURL() || null,
+        ref_slug: getRef() || null,
       }).then(() => {});
     }
   };

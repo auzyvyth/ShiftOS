@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
-import { trackEvent, getSlugFromURL } from "../utils/analytics";
+import { trackEvent } from "../utils/analytics";
+import { getRef } from "../utils/refTracking";
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -882,7 +883,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                     buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
                     source: 'hero_carousel',
                     status: 'new',
-                    ref_slug: getSlugFromURL(),
+                    ref_slug: getRef(),
                   });
                 } catch (e) { console.warn(e); }
               })();
