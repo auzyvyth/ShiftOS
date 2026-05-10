@@ -29,6 +29,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ImportStockPage from "./pages/ImportStockPage";
 import ComparePage from "./pages/ComparePage";
 import MarketplacePage from "./pages/MarketplacePage";
+import ShowroomPage from "./pages/ShowroomPage";
 import SavedCarsPage from "./pages/SavedCarsPage";
 import CompareBar from "./components/CompareBar";
 import CompareModal from "./components/CompareModal";
@@ -58,6 +59,7 @@ function App() {
         <Route path="/cars/:slug" element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/showroom" element={<ShowroomPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/saved" element={<SavedCarsPage />} />
 

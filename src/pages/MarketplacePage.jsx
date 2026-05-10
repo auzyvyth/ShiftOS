@@ -181,7 +181,7 @@ const MarketplaceHeader = () => {
 
           {/* Desktop nav */}
           <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
-            <Link to="/marketplace" className="mh-nav-link">Browse Cars</Link>
+            <Link to="/showroom" className="mh-nav-link">Showroom</Link>
             <a href="/marketplace?hot_deals=true" className="mh-nav-link mh-hot-link" style={{ display:'flex', alignItems:'center', gap:'5px' }}>
               <Flame size={13} /> Hot Deals
             </a>
@@ -212,7 +212,7 @@ const MarketplaceHeader = () => {
 
         {/* Mobile drawer */}
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
-          <Link to="/marketplace" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Browse Cars</Link>
+          <Link to="/showroom" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Showroom</Link>
           <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
           <button
             className="mh-mobile-link"
@@ -1044,17 +1044,17 @@ export default function MarketplacePage() {
             <h2 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: '700', color: '#f0f0f0', margin: '0 0 24px', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.04em' }}>Popular Brands</h2>
             <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
-                { label: 'All',          to: '/marketplace',                         initials: 'ALL', color: '#DC2626' },
-                { label: 'Perodua',      to: '/marketplace?brand=Perodua',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
-                { label: 'Proton',       to: '/marketplace?brand=Proton',       logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg',           invert: true },
-                { label: 'Toyota',       to: '/marketplace?brand=Toyota',       logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg',                 invert: true },
-                { label: 'Honda',        to: '/marketplace?brand=Honda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-                { label: 'Nissan',       to: '/marketplace?brand=Nissan',       logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg',            invert: true },
-                { label: 'Mazda',        to: '/marketplace?brand=Mazda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg',             invert: true },
-                { label: 'Mitsubishi',   to: '/marketplace?brand=Mitsubishi',   logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
-                { label: 'BMW',          to: '/marketplace?brand=BMW',          logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
-                { label: 'Mercedes',     to: '/marketplace?brand=Mercedes-Benz',logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg',    invert: true },
-                { label: 'Hyundai',      to: '/marketplace?brand=Hyundai',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg',  invert: true },
+                { label: 'All',          to: '/showroom',                            initials: 'ALL', color: '#DC2626' },
+                { label: 'Perodua',      to: '/showroom?brand=Perodua',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
+                { label: 'Proton',       to: '/showroom?brand=Proton',       logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg',           invert: true },
+                { label: 'Toyota',       to: '/showroom?brand=Toyota',       logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg',                 invert: true },
+                { label: 'Honda',        to: '/showroom?brand=Honda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
+                { label: 'Nissan',       to: '/showroom?brand=Nissan',       logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg',            invert: true },
+                { label: 'Mazda',        to: '/showroom?brand=Mazda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg',             invert: true },
+                { label: 'Mitsubishi',   to: '/showroom?brand=Mitsubishi',   logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
+                { label: 'BMW',          to: '/showroom?brand=BMW',          logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
+                { label: 'Mercedes',     to: '/showroom?brand=Mercedes-Benz',logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg',    invert: true },
+                { label: 'Hyundai',      to: '/showroom?brand=Hyundai',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg',  invert: true },
               ].map(({ label, to, logo, initials, color, invert }) => {
                 const isActive = brand && label !== 'All' && searchParams.get('brand') === label;
                 return (
