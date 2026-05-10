@@ -96,15 +96,14 @@ const Pagination = ({ page, totalPages, onPage }) => {
 
 /* ── Skeleton ────────────────────────────────────────────────────────────── */
 const Skeleton = () => (
-  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', display:'flex', height:'170px' }}>
-    <div style={{ width:'220px', flexShrink:0, background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
-    <div style={{ flex:1, padding:'14px 16px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-      {[70,45,60].map((w,i) => <div key={i} style={{ height:'11px', width:`${w}%`, background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite', animationDelay:`${i*0.1}s` }}/>)}
-      <div style={{ display:'flex', gap:'6px' }}>{[1,2,3,4].map(i=><div key={i} style={{ flex:1, height:'38px', background:'#1a2332', borderRadius:'7px', animation:'sr-shimmer 1.5s infinite', animationDelay:`${i*0.08}s` }}/>)}</div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div style={{ height:'20px', width:'50px', background:'#1a2332', borderRadius:'20px', animation:'sr-shimmer 1.5s infinite' }}/>
-        <div style={{ width:'34px', height:'34px', background:'#1a2332', borderRadius:'9px', animation:'sr-shimmer 1.5s infinite' }}/>
-      </div>
+  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', display:'flex', height:'190px' }}>
+    <div style={{ width:'38%', maxWidth:'220px', flexShrink:0, background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
+    <div style={{ flex:1, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'10px' }}>
+      <div style={{ height:'12px', width:'75%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ height:'10px', width:'45%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ height:'22px', width:'60%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite', marginTop:'4px' }}/>
+      <div style={{ height:'10px', width:'80%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ marginTop:'auto', height:'34px', width:'100%', background:'#1a2332', borderRadius:'8px', animation:'sr-shimmer 1.5s infinite' }}/>
     </div>
   </div>
 );
@@ -131,25 +130,28 @@ const ShowroomCard = ({ car, ctaContext }) => {
   const hasDiscount  = origPrice && origPrice > 0 && price > 0 && origPrice > price;
   const discountPct  = hasDiscount ? Math.round(((origPrice-price)/origPrice)*100) : null;
   const isHot        = hasDiscount && discountPct >= 3;
+  const photoCount   = Array.isArray(car.images) ? car.images.length : 0;
 
   const image = !imgError && (Array.isArray(car.images) && car.images[0] || null);
   const normalTx = ['Auto','Automatic','AT'].includes(transmission) ? 'Auto' : ['Manual','MT'].includes(transmission) ? 'Manual' : transmission || null;
   const waText = `Hi, I'm interested in the ${year} ${brand} ${model}${variant?' '+variant:''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
   const whatsappUrl = buildWaUrl(ctxResolved || { type:'listing', profile:null, ref:null }, XDRIVE_WA, waText);
+  const monthly = calcMonthlyAmt(price);
 
-  const specs = [
-    { icon:Gauge,    label:'Mileage', value: mileage ? Number(mileage).toLocaleString('en-MY')+' km' : '—' },
-    { icon:Calendar, label:'Year',    value: year ? String(year) : '—' },
-    { icon:Fuel,     label:'Fuel',    value: car.fuel_type || '—' },
-    { icon:Settings2,label:'Gearbox', value: normalTx || '—' },
-  ];
+  /* compact inline spec string: 30,000 km  •  Auto  •  Petrol  •  KL */
+  const specParts = [
+    mileage ? Number(mileage).toLocaleString('en-MY')+' km' : null,
+    normalTx,
+    car.fuel_type || null,
+    location,
+  ].filter(Boolean);
 
   const condStyle = car.condition === 'recon'
     ? { background:'rgba(139,92,246,0.15)', color:'#a78bfa', border:'1px solid rgba(139,92,246,0.3)' }
     : car.condition === 'new'
     ? { background:'rgba(16,185,129,0.12)', color:'#34d399', border:'1px solid rgba(16,185,129,0.3)' }
-    : { background:'rgba(107,114,128,0.12)', color:'#9ca3af', border:'1px solid rgba(107,114,128,0.25)' };
+    : { background:'rgba(107,114,128,0.15)', color:'#9ca3af', border:'1px solid rgba(107,114,128,0.3)' };
 
   return (
     <div
@@ -159,79 +161,92 @@ const ShowroomCard = ({ car, ctaContext }) => {
         trackEvent(supabase, 'card_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
         navigate('/cars/' + (car.slug || car.id));
       }}
-      style={{ display:'flex', flexDirection:'row', background:'#0d1117', border: isHot?'0.5px solid rgba(220,38,38,0.25)':'0.5px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'170px', minWidth:0 }}
+      style={{ display:'flex', flexDirection:'row', background:'#0b0f18', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'190px', minWidth:0 }}
     >
-      {/* Image */}
-      <div style={{ width:'38%', maxWidth:'220px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
+      {/* ── Image column ── */}
+      <div style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
         {image ? (
           <>
             {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
             <img src={image} alt={`${year} ${brand} ${model}`} onError={()=>setImgError(true)} onLoad={()=>setImgLoaded(true)} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:imgLoaded?1:0, transition:'opacity 0.3s', filter:isSold?'grayscale(60%)':'none' }}/>
-            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:50, background:'linear-gradient(to top,rgba(13,17,23,0.6),transparent)', pointerEvents:'none' }}/>
           </>
         ) : (
           <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Car size={28} color="#2d3748"/>
           </div>
         )}
+
+        {/* Price overlay — bottom of image */}
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 10px 8px', background:'linear-gradient(to top,rgba(0,0,0,0.88) 60%,transparent)', pointerEvents:'none' }}>
+          {hasDiscount && <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.5)', textDecoration:'line-through', lineHeight:1, marginBottom:'1px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
+          <div style={{ fontSize:'15px', fontWeight:'800', color: isHot?'#fca5a5':'#ffffff', lineHeight:1, letterSpacing:'-0.02em' }}>
+            {price ? 'RM '+price.toLocaleString('en-MY') : 'P.O.R'}
+          </div>
+        </div>
+
+        {/* Photo count badge */}
+        {photoCount > 1 && (
+          <div style={{ position:'absolute', top:6, left:6, display:'flex', alignItems:'center', gap:3, background:'rgba(0,0,0,0.65)', borderRadius:'6px', padding:'3px 7px', backdropFilter:'blur(4px)' }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span style={{ fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.75)' }}>{photoCount}</span>
+          </div>
+        )}
+
+        {/* Hot badge */}
         {isHot && discountPct && (
-          <div style={{ position:'absolute', top:8, right:8, background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 8px', borderRadius:'20px' }}>-{discountPct}%</div>
+          <div style={{ position:'absolute', top:6, right:6, background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>-{discountPct}%</div>
         )}
       </div>
 
-      {/* Content */}
-      <div style={{ flex:1, padding:'12px 16px', display:'flex', flexDirection:'column', justifyContent:'space-between', minWidth:0 }}>
-        {/* Name + location */}
-        <div>
-          <h3 style={{ color:'#f3f4f6', fontSize:14, fontWeight:600, margin:'0 0 2px', lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {[year, brand, model, variant].filter(Boolean).join(' ')}
-          </h3>
-          <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5 }}>
-            {car.colour && <span style={{ fontSize:11, color:'#6b7280' }}>{car.colour}</span>}
-            {car.colour && location && <span style={{ width:3, height:3, borderRadius:'50%', background:'#6b7280', flexShrink:0, display:'inline-block' }}/>}
-            {location && <span style={{ fontSize:11, color:'#6b7280' }}>{location}</span>}
-          </div>
-          {/* Price */}
-          <div>
-            {hasDiscount && <span style={{ color:'#6b7280', fontSize:10, textDecoration:'line-through', display:'block' }}>RM {origPrice.toLocaleString('en-MY')}</span>}
-            <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-              <span style={{ color:isHot?'#f87171':'#ffffff', fontSize:17, fontWeight:700, lineHeight:1 }}>
-                {price ? 'RM '+price.toLocaleString('en-MY') : 'P.O.R'}
-              </span>
-              {calcMonthlyAmt(price) && (
-                <span style={{ color:'#6b7280', fontSize:10 }}>est. RM {calcMonthlyAmt(price).toLocaleString('en-MY')}/mo</span>
-              )}
-            </div>
-          </div>
+      {/* ── Content column ── */}
+      <div style={{ flex:1, padding:'11px 14px 11px', display:'flex', flexDirection:'column', minWidth:0 }}>
+
+        {/* Row 1: condition pill + year badge */}
+        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:'6px' }}>
+          {car.condition && (
+            <span style={{ fontSize:'10px', fontWeight:'700', padding:'2px 8px', borderRadius:'20px', flexShrink:0, ...condStyle }}>
+              {{ used:'Used', recon:'Recon', new:'New' }[car.condition] || car.condition}
+            </span>
+          )}
+          {year && (
+            <span style={{ fontSize:'10px', fontWeight:'600', color:'#6b7280', padding:'2px 7px', borderRadius:'20px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>{year}</span>
+          )}
+          {isHot && (
+            <span style={{ fontSize:'10px', fontWeight:'700', color:'#fb923c', marginLeft:'auto', flexShrink:0 }}>
+              Save RM {(origPrice-price).toLocaleString('en-MY')}
+            </span>
+          )}
         </div>
 
-        {/* Specs row */}
-        <div style={{ display:'flex', gap:5 }}>
-          {specs.map((s,i) => (
-            <div key={i} style={{ flex:1, background:'rgba(255,255,255,0.04)', borderRadius:7, padding:'5px 8px', minWidth:0 }}>
-              <span style={{ display:'block', fontSize:9, color:'#6b7280', lineHeight:1.2, whiteSpace:'nowrap' }}>{s.label}</span>
-              <span style={{ display:'block', fontSize:11, fontWeight:600, color:'#f3f4f6', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.value}</span>
-            </div>
-          ))}
-        </div>
+        {/* Row 2: car name */}
+        <h3 style={{ color:'#f1f5f9', fontSize:'14px', fontWeight:'700', margin:'0 0 4px', lineHeight:'1.25', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+          {[brand, model, variant].filter(Boolean).join(' ')}
+        </h3>
 
-        {/* Bottom: condition + WA */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          {car.condition
-            ? <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, ...condStyle }}>{{ used:'Used', recon:'Recon', new:'New' }[car.condition] || car.condition}</span>
-            : <span/>}
-          <a
-            href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-            onClick={e => {
-              e.stopPropagation();
-              supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
-              trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
-            }}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, background:isSold?'rgba(255,255,255,0.03)':'rgba(37,211,102,0.08)', border:isSold?'0.5px solid rgba(255,255,255,0.06)':'1px solid rgba(37,211,102,0.2)', color:isSold?'#6b7280':'#25D366', borderRadius:9, textDecoration:'none', transition:'all 0.18s', pointerEvents:isSold?'none':'auto', flexShrink:0 }}
-          >
-            <MessageCircle size={15}/>
-          </a>
-        </div>
+        {/* Row 3: inline specs */}
+        <p style={{ fontSize:'11px', color:'#6b7280', margin:'0 0 auto', lineHeight:'1.4', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {specParts.join('  •  ')}
+        </p>
+
+        {/* Row 4: monthly estimate */}
+        {monthly && (
+          <p style={{ fontSize:'10px', color:'#4b5563', margin:'4px 0 6px', lineHeight:1 }}>
+            est. <span style={{ color:'#6b7280', fontWeight:'600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
+          </p>
+        )}
+
+        {/* Row 5: WA button — full width */}
+        <a
+          href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+          onClick={e => {
+            e.stopPropagation();
+            supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
+            trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
+          }}
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', width:'100%', padding:'7px 0', background: isSold?'rgba(255,255,255,0.03)':'rgba(37,211,102,0.1)', border: isSold?'1px solid rgba(255,255,255,0.06)':'1px solid rgba(37,211,102,0.25)', color: isSold?'#4b5563':'#25D366', borderRadius:'8px', textDecoration:'none', fontSize:'12px', fontWeight:'700', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s', pointerEvents: isSold?'none':'auto', boxSizing:'border-box', flexShrink:0 }}
+        >
+          <MessageCircle size={13}/> WhatsApp
+        </a>
       </div>
     </div>
   );
