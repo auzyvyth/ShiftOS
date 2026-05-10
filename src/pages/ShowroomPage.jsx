@@ -5,15 +5,16 @@ import { toast } from 'sonner';
 import {
   X, ChevronLeft, ChevronRight, RotateCcw, Car,
   SlidersHorizontal, Search, Flame, ArrowLeftRight,
+  Gauge, Settings2, MessageCircle, Fuel, Calendar,
 } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Footer from '@/components/Footer';
-import CarCard from '@/components/CarCard';
-import { useCTAContext } from '../hooks/useCTAContext';
+import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { isSubdomain } from '../hooks/useTenant';
+import { getRef } from '../utils/refTracking';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -95,13 +96,146 @@ const Pagination = ({ page, totalPages, onPage }) => {
 
 /* ── Skeleton ────────────────────────────────────────────────────────────── */
 const Skeleton = () => (
-  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', overflow:'hidden' }}>
-    <div style={{ height:'190px', background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
-    <div style={{ padding:'16px' }}>
-      {[80,55,95,70].map((w,i) => <div key={i} style={{ height:'11px', width:`${w}%`, background:'#1a2332', borderRadius:'5px', marginBottom:'9px', animation:'sr-shimmer 1.5s infinite', animationDelay:`${i*0.1}s` }}/>)}
+  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', display:'flex', height:'170px' }}>
+    <div style={{ width:'220px', flexShrink:0, background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
+    <div style={{ flex:1, padding:'14px 16px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+      {[70,45,60].map((w,i) => <div key={i} style={{ height:'11px', width:`${w}%`, background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite', animationDelay:`${i*0.1}s` }}/>)}
+      <div style={{ display:'flex', gap:'6px' }}>{[1,2,3,4].map(i=><div key={i} style={{ flex:1, height:'38px', background:'#1a2332', borderRadius:'7px', animation:'sr-shimmer 1.5s infinite', animationDelay:`${i*0.08}s` }}/>)}</div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ height:'20px', width:'50px', background:'#1a2332', borderRadius:'20px', animation:'sr-shimmer 1.5s infinite' }}/>
+        <div style={{ width:'34px', height:'34px', background:'#1a2332', borderRadius:'9px', animation:'sr-shimmer 1.5s infinite' }}/>
+      </div>
     </div>
   </div>
 );
+
+const XDRIVE_WA = '60174155191';
+const calcMonthlyAmt = p => (!p||p<=0) ? null : Math.round((p*0.9*(1+3.5/100*7))/(7*12));
+
+/* ── Horizontal card (Showroom-only) ─────────────────────────────────────── */
+const ShowroomCard = ({ car, ctaContext }) => {
+  const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  const brand        = car.brand || 'Unknown';
+  const model        = car.model || '';
+  const variant      = car.variant || '';
+  const year         = car.year || '';
+  const price        = car.selling_price || 0;
+  const origPrice    = car.original_price || null;
+  const mileage      = car.mileage || null;
+  const transmission = car.transmission || null;
+  const location     = car.state || null;
+  const isSold       = (car.status || '') === 'sold';
+  const hasDiscount  = origPrice && origPrice > 0 && price > 0 && origPrice > price;
+  const discountPct  = hasDiscount ? Math.round(((origPrice-price)/origPrice)*100) : null;
+  const isHot        = hasDiscount && discountPct >= 3;
+
+  const image = !imgError && (Array.isArray(car.images) && car.images[0] || null);
+  const normalTx = ['Auto','Automatic','AT'].includes(transmission) ? 'Auto' : ['Manual','MT'].includes(transmission) ? 'Manual' : transmission || null;
+  const waText = `Hi, I'm interested in the ${year} ${brand} ${model}${variant?' '+variant:''}. Can you share more details?`;
+  const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
+  const whatsappUrl = buildWaUrl(ctxResolved || { type:'listing', profile:null, ref:null }, XDRIVE_WA, waText);
+
+  const specs = [
+    { icon:Gauge,    label:'Mileage', value: mileage ? Number(mileage).toLocaleString('en-MY')+' km' : '—' },
+    { icon:Calendar, label:'Year',    value: year ? String(year) : '—' },
+    { icon:Fuel,     label:'Fuel',    value: car.fuel_type || '—' },
+    { icon:Settings2,label:'Gearbox', value: normalTx || '—' },
+  ];
+
+  const condStyle = car.condition === 'recon'
+    ? { background:'rgba(139,92,246,0.15)', color:'#a78bfa', border:'1px solid rgba(139,92,246,0.3)' }
+    : car.condition === 'new'
+    ? { background:'rgba(16,185,129,0.12)', color:'#34d399', border:'1px solid rgba(16,185,129,0.3)' }
+    : { background:'rgba(107,114,128,0.12)', color:'#9ca3af', border:'1px solid rgba(107,114,128,0.25)' };
+
+  return (
+    <div
+      className={`sc-root${isHot?' hot':''}`}
+      onClick={() => {
+        if (isSold || !(car.slug || car.id)) return;
+        trackEvent(supabase, 'card_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
+        navigate('/cars/' + (car.slug || car.id));
+      }}
+      style={{ display:'flex', flexDirection:'row', background:'#0d1117', border: isHot?'0.5px solid rgba(220,38,38,0.25)':'0.5px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'170px' }}
+    >
+      {/* Image */}
+      <div style={{ width:'220px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
+        {image ? (
+          <>
+            {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
+            <img src={image} alt={`${year} ${brand} ${model}`} onError={()=>setImgError(true)} onLoad={()=>setImgLoaded(true)} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:imgLoaded?1:0, transition:'opacity 0.3s', filter:isSold?'grayscale(60%)':'none' }}/>
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:50, background:'linear-gradient(to top,rgba(13,17,23,0.6),transparent)', pointerEvents:'none' }}/>
+          </>
+        ) : (
+          <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Car size={28} color="#2d3748"/>
+          </div>
+        )}
+        {isHot && discountPct && (
+          <div style={{ position:'absolute', top:8, right:8, background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 8px', borderRadius:'20px' }}>-{discountPct}%</div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex:1, padding:'12px 16px', display:'flex', flexDirection:'column', justifyContent:'space-between', minWidth:0 }}>
+        {/* Name + location */}
+        <div>
+          <h3 style={{ color:'#f3f4f6', fontSize:14, fontWeight:600, margin:'0 0 2px', lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {[year, brand, model, variant].filter(Boolean).join(' ')}
+          </h3>
+          <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5 }}>
+            {car.colour && <span style={{ fontSize:11, color:'#6b7280' }}>{car.colour}</span>}
+            {car.colour && location && <span style={{ width:3, height:3, borderRadius:'50%', background:'#6b7280', flexShrink:0, display:'inline-block' }}/>}
+            {location && <span style={{ fontSize:11, color:'#6b7280' }}>{location}</span>}
+          </div>
+          {/* Price */}
+          <div>
+            {hasDiscount && <span style={{ color:'#6b7280', fontSize:10, textDecoration:'line-through', display:'block' }}>RM {origPrice.toLocaleString('en-MY')}</span>}
+            <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+              <span style={{ color:isHot?'#f87171':'#ffffff', fontSize:17, fontWeight:700, lineHeight:1 }}>
+                {price ? 'RM '+price.toLocaleString('en-MY') : 'P.O.R'}
+              </span>
+              {calcMonthlyAmt(price) && (
+                <span style={{ color:'#6b7280', fontSize:10 }}>est. RM {calcMonthlyAmt(price).toLocaleString('en-MY')}/mo</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Specs row */}
+        <div style={{ display:'flex', gap:5 }}>
+          {specs.map((s,i) => (
+            <div key={i} style={{ flex:1, background:'rgba(255,255,255,0.04)', borderRadius:7, padding:'5px 8px', minWidth:0 }}>
+              <span style={{ display:'block', fontSize:9, color:'#6b7280', lineHeight:1.2, whiteSpace:'nowrap' }}>{s.label}</span>
+              <span style={{ display:'block', fontSize:11, fontWeight:600, color:'#f3f4f6', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom: condition + WA */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          {car.condition
+            ? <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, ...condStyle }}>{{ used:'Used', recon:'Recon', new:'New' }[car.condition] || car.condition}</span>
+            : <span/>}
+          <a
+            href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+            onClick={e => {
+              e.stopPropagation();
+              supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
+              trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
+            }}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, background:isSold?'rgba(255,255,255,0.03)':'rgba(37,211,102,0.08)', border:isSold?'0.5px solid rgba(255,255,255,0.06)':'1px solid rgba(37,211,102,0.2)', color:isSold?'#6b7280':'#25D366', borderRadius:9, textDecoration:'none', transition:'all 0.18s', pointerEvents:isSold?'none':'auto', flexShrink:0 }}
+          >
+            <MessageCircle size={15}/>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /* ── Main ────────────────────────────────────────────────────────────────── */
 export default function ShowroomPage() {
@@ -345,13 +479,16 @@ export default function ShowroomPage() {
         .sr-sidebar::-webkit-scrollbar-thumb { background:#374151; border-radius:2px }
         .sr-brand-scroll::-webkit-scrollbar { display:none }
         .sr-mobile-filter-btn { display:none !important }
+        .sc-root { transition:transform 0.2s ease,box-shadow 0.2s ease,border-color 0.2s ease; }
+        .sc-root:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,0.5); border-color:rgba(255,255,255,0.14) !important; }
+        .sc-root.hot:hover { box-shadow:0 12px 32px rgba(220,38,38,0.18); border-color:rgba(220,38,38,0.4) !important; }
         @media(max-width:1024px){
           .sr-mobile-filter-btn { display:flex !important }
           .sr-layout { flex-direction:column !important }
           .sr-sidebar-desktop { display:none !important }
         }
         @media(max-width:640px){
-          .sr-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important }
+          .sr-grid { grid-template-columns:1fr !important; gap:10px !important }
           .sr-topbar { flex-wrap:wrap !important }
         }
       `}</style>
@@ -473,7 +610,7 @@ export default function ShowroomPage() {
               {!error && (
                 <div style={{ position:'relative' }}>
                   {fetching && <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(8,12,20,0.5)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}><span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'DM Sans',sans-serif" }}>Updating…</span></div>}
-                <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'18px', opacity: fetching?0.45:1, transition:'opacity 0.2s' }}>
+                <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity: fetching?0.45:1, transition:'opacity 0.2s' }}>
                   {loading
                     ? Array.from({ length:PER_PAGE }).map((_,i)=><Skeleton key={i}/>)
                     : cars.length===0
@@ -489,10 +626,10 @@ export default function ShowroomPage() {
                           const inCompare=isInCompare(car.id), compareFull=compareIds.length>=4&&!inCompare;
                           return (
                             <div key={car.id} style={{ position:'relative' }}>
-                              <CarCard car={car} ctaContext={ctaCtx}/>
+                              <ShowroomCard car={car} ctaContext={ctaCtx}/>
                               <button
                                 onClick={e=>{ e.stopPropagation(); if(compareFull){toast.error('Compare full — remove a car first (max 4)',{duration:2500});return;} inCompare?removeFromCompare(car.id):addToCompare(car.id); }}
-                                style={{ position:'absolute', top:'10px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: inCompare?'rgba(220,38,38,0.85)':'rgba(0,0,0,0.72)', border:`1px solid ${inCompare?'#dc2626':'rgba(255,255,255,0.2)'}`, borderRadius:'8px', padding:'5px 9px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', backdropFilter:'blur(6px)', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s' }}
+                                style={{ position:'absolute', top:'8px', left:'8px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: inCompare?'rgba(220,38,38,0.85)':'rgba(0,0,0,0.72)', border:`1px solid ${inCompare?'#dc2626':'rgba(255,255,255,0.2)'}`, borderRadius:'8px', padding:'5px 9px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', backdropFilter:'blur(6px)', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s' }}
                               >
                                 <ArrowLeftRight size={10}/>{inCompare?'Added':'Compare'}
                               </button>
