@@ -978,6 +978,125 @@ const HomePage = () => {
           </section>
         )}
 
+      {/* ══════════ BRAND STRIP ══════════ */}
+      {!isSubdomain() && (
+        <section style={{ background: "#080C14", padding: "40px 0 36px" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
+            <p className="sec-eyebrow" style={{ marginBottom: 6 }}>Shop by Brand</p>
+            <h2 className="sec-title" style={{ marginBottom: 28, fontSize: "clamp(20px,3.5vw,28px)" }}>
+              Popular Brands
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                overflowX: "auto",
+                paddingBottom: 8,
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+            >
+              {[
+                { label: "All Brands", to: "/cars", initials: "ALL", color: "#DC2626" },
+                { label: "Perodua", to: "/cars?brand=Perodua", initials: "PDZ", color: "#1a4fa0" },
+                { label: "Proton", to: "/cars?brand=Proton", initials: "PRT", color: "#1e3a5f" },
+                { label: "Toyota", slug: "toyota", to: "/cars?brand=Toyota" },
+                { label: "Honda", slug: "honda", to: "/cars?brand=Honda" },
+                { label: "Nissan", slug: "nissan", to: "/cars?brand=Nissan" },
+                { label: "Mazda", slug: "mazda", to: "/cars?brand=Mazda" },
+                { label: "Mitsubishi", slug: "mitsubishi", to: "/cars?brand=Mitsubishi" },
+                { label: "BMW", slug: "bmw", to: "/cars?brand=BMW" },
+                { label: "Mercedes-Benz", slug: "mercedes-benz", to: "/cars?brand=Mercedes-Benz" },
+                { label: "Hyundai", slug: "hyundai", to: "/cars?brand=Hyundai" },
+              ].map(({ label, to, slug, initials, color }) => (
+                <Link
+                  key={label}
+                  to={to}
+                  style={{
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 10,
+                    textDecoration: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 72,
+                      height: 64,
+                      borderRadius: 14,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "background 0.2s, border-color 0.2s, transform 0.15s",
+                      overflow: "hidden",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = "rgba(220,38,38,0.12)";
+                      e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                      e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    {slug ? (
+                      <img
+                        src={`https://cdn.simpleicons.org/${slug}/ffffff`}
+                        alt={label}
+                        width={32}
+                        height={32}
+                        style={{ objectFit: "contain", filter: "brightness(0.9)" }}
+                        onError={e => {
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.nextSibling.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <span
+                      style={{
+                        display: slug ? "none" : "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: color || "rgba(255,255,255,0.1)",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                        fontFamily: "'DM Sans',sans-serif",
+                      }}
+                    >
+                      {initials}
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#9ca3af",
+                      fontFamily: "'DM Sans',sans-serif",
+                      fontWeight: 500,
+                      textAlign: "center",
+                      maxWidth: 72,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ══════════ HOT DEALS ══════════ */}
       {(hotDeals.length > 0 || loading) && (
         <section className="sec-pad" style={secA}>

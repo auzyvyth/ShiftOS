@@ -749,36 +749,6 @@ const CarsPage = () => {
 
           <div className="cars-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
 
-            {/* ── Desktop sidebar ── */}
-            <aside
-              className="cars-sidebar filter-sidebar"
-              style={{
-                width:'240px', flexShrink:0,
-                background:'linear-gradient(145deg,#0d1117,#111827)',
-                border:'1px solid rgba(255,255,255,0.07)',
-                borderRadius:'16px', padding:'16px 18px',
-                position:'sticky', top:'145px',
-                maxHeight:'calc(100vh - 180px)', overflowY:'auto',
-              }}
-            >
-              {/* Sidebar header */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px' }}>
-                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeFilterCount}</span>
-                  )}
-                </h2>
-                {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="reset-btn" style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', transition:'color 0.15s', fontFamily:"'DM Sans',sans-serif" }}>
-                    <RotateCcw size={10}/> Reset
-                  </button>
-                )}
-              </div>
-              <FilterPanel/>
-            </aside>
-
             {/* ── Car grid ── */}
             <div style={{ flex:1, minWidth:0 }}>
               {displayed.length > 0 ? (
@@ -838,6 +808,36 @@ const CarsPage = () => {
                 </div>
               )}
             </div>
+
+            {/* ── Desktop sidebar ── */}
+            <aside
+              className="cars-sidebar filter-sidebar"
+              style={{
+                width:'240px', flexShrink:0,
+                background:'linear-gradient(145deg,#0d1117,#111827)',
+                border:'1px solid rgba(255,255,255,0.07)',
+                borderRadius:'16px', padding:'16px 18px',
+                position:'sticky', top:'145px',
+                maxHeight:'calc(100vh - 180px)', overflowY:'auto',
+              }}
+            >
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px' }}>
+                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeFilterCount}</span>
+                  )}
+                </h2>
+                {activeFilterCount > 0 && (
+                  <button onClick={resetFilters} className="reset-btn" style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', transition:'color 0.15s', fontFamily:"'DM Sans',sans-serif" }}>
+                    <RotateCcw size={10}/> Reset
+                  </button>
+                )}
+              </div>
+              <FilterPanel/>
+            </aside>
+
           </div>
         </div>
       </div>

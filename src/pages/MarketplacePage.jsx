@@ -424,6 +424,11 @@ export default function MarketplacePage() {
   const [error, setError]         = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  useEffect(() => {
+    document.body.style.overflow = filtersOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [filtersOpen]);
+
   /* Stats (fetched once) */
   const [stats, setStats] = useState({ listings: null, dealers: null, hotDeals: null });
 
@@ -769,6 +774,101 @@ export default function MarketplacePage() {
     },
   };
 
+  const FilterGroup = ({ title, children }) => (
+    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      <p style={{ fontSize:'11px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
+      {children}
+    </div>
+  );
+
+  const renderFilters = () => (
+    <div style={{ fontFamily:"'Outfit',sans-serif" }}>
+      <FilterGroup title="Hot Deals">
+        <button
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals ? 'rgba(251,146,60,0.1)' : 'rgba(255,255,255,0.03)', border: hotDeals ? '1px solid rgba(251,146,60,0.3)' : '1px solid rgba(255,255,255,0.07)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals ? '#fb923c' : '#9ca3af', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s ease' }}
+          onClick={() => setParam('hot_deals', hotDeals ? '' : 'true')}
+          aria-pressed={hotDeals}
+        >
+          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
+          {hotDeals && <span style={{ fontSize:12 }}>✓</span>}
+        </button>
+      </FilterGroup>
+
+      <FilterGroup title="Brand">
+        <select className="mp-select" style={S.select} value={brand || ''} onChange={e => setParam('brand', e.target.value)}>
+          <option value="">All Brands</option>
+          {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+        </select>
+      </FilterGroup>
+
+      <FilterGroup title="Budget">
+        <select className="mp-select" style={S.select} value={maxPrice || ''} onChange={e => setParam('max_price', e.target.value)}>
+          <option value="">Any Budget</option>
+          {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+        </select>
+      </FilterGroup>
+
+      <FilterGroup title="Location">
+        <select className="mp-select" style={S.select} value={state || ''} onChange={e => setParam('state', e.target.value)}>
+          <option value="">All States</option>
+          {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+        </select>
+      </FilterGroup>
+
+      <FilterGroup title="Year">
+        <div style={{ display:'flex', gap:'8px' }}>
+          <select className="mp-select" style={{ ...S.select, flex:1 }} value={yearFrom || ''} onChange={e => setParam('year_from', e.target.value)}>
+            <option value="">From</option>
+            {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+          </select>
+          <select className="mp-select" style={{ ...S.select, flex:1 }} value={yearTo || ''} onChange={e => setParam('year_to', e.target.value)}>
+            <option value="">To</option>
+            {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+          </select>
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="Body Type">
+        <div style={S.pillGroup}>
+          {BODY_TYPES.map(bt => (
+            <button key={bt} style={S.pill(bodyType === bt)} onClick={() => setParam('body_type', bodyType === bt ? '' : bt)} aria-pressed={bodyType === bt}>{bt}</button>
+          ))}
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="Transmission">
+        <div style={S.pillGroup}>
+          {TRANSMISSIONS.map(tx => (
+            <button key={tx} style={S.pill(transmission === tx)} onClick={() => setParam('transmission', transmission === tx ? '' : tx)} aria-pressed={transmission === tx}>{tx}</button>
+          ))}
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="Condition">
+        <div style={S.pillGroup}>
+          {CONDITION_OPTIONS.map(co => (
+            <button key={co.value} style={S.pill(condition === co.value)} onClick={() => setParam('condition', condition === co.value ? '' : co.value)} aria-pressed={condition === co.value}>{co.label}</button>
+          ))}
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="Max Mileage">
+        <select className="mp-select" style={S.select} value={mileageMax || ''} onChange={e => setParam('mileage_max', e.target.value)}>
+          <option value="">Any Mileage</option>
+          {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+        </select>
+      </FilterGroup>
+
+      <FilterGroup title="Payment Type">
+        <div style={S.pillGroup}>
+          {FINANCING_TYPES.map(ft => (
+            <button key={ft.value} style={S.pill(financing === ft.value)} onClick={() => setParam('financing', financing === ft.value ? '' : ft.value)} aria-pressed={financing === ft.value}>{ft.label}</button>
+          ))}
+        </div>
+      </FilterGroup>
+    </div>
+  );
+
   return (
     <>
       <Helmet>
@@ -818,9 +918,40 @@ export default function MarketplacePage() {
           top: -200px; left: 50%; transform: translateX(-50%);
           pointer-events: none;
         }
+        .mp-sidebar::-webkit-scrollbar { width: 3px; }
+        .mp-sidebar::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+        .mp-filter-fab { display: none; }
+        @media(max-width:1024px){
+          .mp-desktop-sidebar { display: none !important; }
+          .mp-filter-fab { display: flex !important; }
+          .mp-cars-layout { flex-direction: column !important; }
+        }
       `}</style>
 
       <MarketplaceHeader />
+
+      {/* Mobile drawer backdrop */}
+      {filtersOpen && (
+        <div onClick={() => setFiltersOpen(false)} style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)' }} />
+      )}
+
+      {/* Mobile filter drawer */}
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:50, width:'300px', maxWidth:'90vw', background:'#0d1117', borderLeft:'1px solid rgba(255,255,255,0.07)', transform: filtersOpen ? 'translateX(0)' : 'translateX(100%)', transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+          <h2 style={{ color:'white', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
+            <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
+            {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>}
+          </h2>
+          <button onClick={() => setFiltersOpen(false)} style={{ background:'rgba(255,255,255,0.05)', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}><X size={16}/></button>
+        </div>
+        <div className="mp-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}>
+          {renderFilters()}
+        </div>
+        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'10px' }}>
+          <button onClick={resetAll} style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#9ca3af', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Reset all</button>
+          <button onClick={() => setFiltersOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Show {totalCount} cars</button>
+        </div>
+      </div>
 
       <div style={S.page}>
         {/* ── Hero ── */}
@@ -907,363 +1038,132 @@ export default function MarketplacePage() {
         </section>
 
         <div style={S.wrap}>
-          {/* ── Brand Quick-Filter Pills ── */}
+          {/* Brand pills */}
           <div style={S.brandRow}>
             <div className="mp-brand-scroll" style={S.brandScroll}>
               {BRANDS.map(b => (
-                <button
-                  key={b}
-                  className="mp-brand-pill"
-                  style={S.brandPill(brand === b)}
-                  onClick={() => setParam('brand', brand === b ? '' : b)}
-                  aria-pressed={brand === b}
-                >
-                  {b}
-                </button>
+                <button key={b} className="mp-brand-pill" style={S.brandPill(brand === b)} onClick={() => setParam('brand', brand === b ? '' : b)} aria-pressed={brand === b}>{b}</button>
               ))}
             </div>
           </div>
 
-          {/* ── Filters ── */}
-          <div style={S.filtersSection}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                className="mp-filter-toggle"
-                style={S.filterToggleBtn}
-                onClick={() => setFiltersOpen(o => !o)}
-                aria-expanded={filtersOpen}
-              >
-                <SlidersHorizontal size={16} />
-                {filtersOpen ? 'Hide Filters' : 'Show Filters'}
-              </button>
+          {/* Two-column layout */}
+          <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'24px' }}>
 
-              {hasFilters && (
-                <button className="mp-reset-btn" style={S.resetBtn} onClick={resetAll}>
-                  <RotateCcw size={14} /> Reset All Filters
-                </button>
+            {/* Left: results */}
+            <div style={{ flex:1, minWidth:0 }}>
+              {/* Active chips */}
+              {activeChips.length > 0 && (
+                <div style={{ ...S.chipsRow, paddingTop:0, marginBottom:'16px' }}>
+                  <span style={{ fontSize:'13px', color:'#6b7280', marginRight:'4px' }}>Active:</span>
+                  {activeChips.map(chip => (
+                    <span key={chip.key} style={S.chip}>
+                      {chip.label}
+                      <button className="mp-chip-x" style={S.chipX} onClick={() => chip.key === 'hot_deals' ? setParam('hot_deals', '') : setParam(chip.key, '')} aria-label={`Remove ${chip.label} filter`}>
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                  <button className="mp-reset-btn" style={{ ...S.resetBtn, padding:'4px 10px', fontSize:'12px' }} onClick={resetAll}><RotateCcw size={11}/> Clear all</button>
+                </div>
+              )}
+
+              {/* Results header */}
+              <div style={S.resultsHeader}>
+                <div style={S.resultsCount}>
+                  {loading ? 'Loading…' : `${totalCount.toLocaleString()} car${totalCount !== 1 ? 's' : ''} found`}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <label htmlFor="sort-select" style={{ fontSize:'14px', color:'#6b7280', whiteSpace:'nowrap' }}>Sort by</label>
+                  <select id="sort-select" className="mp-select" style={{ ...S.select, width:'auto', fontSize:'14px', padding:'9px 14px' }} value={sort} onChange={e => setParam('sort', e.target.value)}>
+                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div style={{ textAlign:'center', padding:'60px 20px' }}>
+                  <p style={{ color:'#f87171', fontSize:'17px', marginBottom:'20px' }}>{error}</p>
+                  <button onClick={fetchCars} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'14px 28px', borderRadius:'10px', fontSize:'16px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Try Again</button>
+                </div>
+              )}
+
+              {/* Cars grid */}
+              {!error && (
+                <div style={S.carsGrid}>
+                  {loading
+                    ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)
+                    : cars.length === 0
+                      ? (
+                        <div style={S.emptyState}>
+                          <Car size={56} color="#374151" style={{ marginBottom:'20px' }} />
+                          <p style={{ color:'#6b7280', fontSize:'19px', fontWeight:'600', marginBottom:'12px' }}>No cars match your filters</p>
+                          <p style={{ color:'#4b5563', fontSize:'16px', marginBottom:'28px' }}>Try adjusting your search or browse all available cars.</p>
+                          <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'14px 32px', borderRadius:'10px', fontSize:'16px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Browse All Cars</button>
+                        </div>
+                      )
+                      : cars.map(car => {
+                          const inCompare = isInCompare(car.id);
+                          const compareFull = compareIds.length >= 4 && !inCompare;
+                          return (
+                            <div key={car.id} style={{ position:'relative' }}>
+                              <CarCard car={car} ctaContext={ctaCtx} />
+                              <button
+                                onClick={e => { e.stopPropagation(); if (compareFull) { toast.error('Compare is full — remove a car first (max 4)', { duration:2500 }); return; } inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
+                                title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
+                                style={{ position:'absolute', top:'10px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'5px', background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.72)', border:`1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.2)'}`, borderRadius:'8px', padding:'6px 10px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', fontFamily:"'Outfit',sans-serif", letterSpacing:'0.02em', transition:'all 0.15s' }}
+                              >
+                                <ArrowLeftRight size={11} />
+                                {inCompare ? 'Added' : 'Compare'}
+                              </button>
+                            </div>
+                          );
+                        })
+                  }
+                </div>
+              )}
+
+              {/* Pagination */}
+              {!loading && !error && totalPages > 1 && (
+                <div style={S.paginationWrap}>
+                  <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                  <p style={{ textAlign:'center', color:'#4b5563', fontSize:'14px', marginTop:'16px' }}>
+                    Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,totalCount)} of {totalCount.toLocaleString()} cars
+                  </p>
+                </div>
               )}
             </div>
 
-            {filtersOpen && (
-              <div style={S.filterGrid}>
-                {/* Brand */}
-                <div>
-                  <label style={S.label} htmlFor="filter-brand">Brand</label>
-                  <select
-                    id="filter-brand"
-                    className="mp-select"
-                    style={S.select}
-                    value={brand || ''}
-                    onChange={e => setParam('brand', e.target.value)}
-                  >
-                    <option value="">All Brands</option>
-                    {BRANDS.map(b => <option key={b} value={b} style={{ background: '#0d1117' }}>{b}</option>)}
-                  </select>
-                </div>
-
-                {/* Max Price */}
-                <div>
-                  <label style={S.label} htmlFor="filter-price">Budget</label>
-                  <select
-                    id="filter-price"
-                    className="mp-select"
-                    style={S.select}
-                    value={maxPrice || ''}
-                    onChange={e => setParam('max_price', e.target.value)}
-                  >
-                    <option value="">Any Budget</option>
-                    {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
-                  </select>
-                </div>
-
-                {/* State */}
-                <div>
-                  <label style={S.label} htmlFor="filter-state">Location</label>
-                  <select
-                    id="filter-state"
-                    className="mp-select"
-                    style={S.select}
-                    value={state || ''}
-                    onChange={e => setParam('state', e.target.value)}
-                  >
-                    <option value="">All States</option>
-                    {MY_STATES.map(s => <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>)}
-                  </select>
-                </div>
-
-                {/* Year Range */}
-                <div>
-                  <span style={S.label}>Year</span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select
-                      className="mp-select"
-                      style={{ ...S.select, flex: 1 }}
-                      value={yearFrom || ''}
-                      onChange={e => setParam('year_from', e.target.value)}
-                    >
-                      <option value="">From</option>
-                      {YEARS.map(y => <option key={y} value={y} style={{ background: '#0d1117' }}>{y}</option>)}
-                    </select>
-                    <select
-                      className="mp-select"
-                      style={{ ...S.select, flex: 1 }}
-                      value={yearTo || ''}
-                      onChange={e => setParam('year_to', e.target.value)}
-                    >
-                      <option value="">To</option>
-                      {YEARS.map(y => <option key={y} value={y} style={{ background: '#0d1117' }}>{y}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Body Type */}
-                <div>
-                  <span style={S.label}>Body Type</span>
-                  <div style={S.pillGroup}>
-                    {BODY_TYPES.map(bt => (
-                      <button
-                        key={bt}
-                        style={S.pill(bodyType === bt)}
-                        onClick={() => setParam('body_type', bodyType === bt ? '' : bt)}
-                        aria-pressed={bodyType === bt}
-                      >
-                        {bt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Transmission */}
-                <div>
-                  <span style={S.label}>Transmission</span>
-                  <div style={S.pillGroup}>
-                    {TRANSMISSIONS.map(tx => (
-                      <button
-                        key={tx}
-                        style={S.pill(transmission === tx)}
-                        onClick={() => setParam('transmission', transmission === tx ? '' : tx)}
-                        aria-pressed={transmission === tx}
-                      >
-                        {tx}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Condition */}
-                <div>
-                  <span style={S.label}>Condition</span>
-                  <div style={S.pillGroup}>
-                    {CONDITION_OPTIONS.map(co => (
-                      <button
-                        key={co.value}
-                        style={S.pill(condition === co.value)}
-                        onClick={() => setParam('condition', condition === co.value ? '' : co.value)}
-                        aria-pressed={condition === co.value}
-                      >
-                        {co.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Mileage */}
-                <div>
-                  <label style={S.label} htmlFor="filter-mileage">Max Mileage</label>
-                  <select
-                    id="filter-mileage"
-                    className="mp-select"
-                    style={S.select}
-                    value={mileageMax || ''}
-                    onChange={e => setParam('mileage_max', e.target.value)}
-                  >
-                    <option value="">Any Mileage</option>
-                    {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
-                  </select>
-                </div>
-
-                {/* Payment Type */}
-                <div>
-                  <span style={S.label}>Payment Type</span>
-                  <div style={S.pillGroup}>
-                    {FINANCING_TYPES.map(ft => (
-                      <button
-                        key={ft.value}
-                        style={S.pill(financing === ft.value)}
-                        onClick={() => setParam('financing', financing === ft.value ? '' : ft.value)}
-                        aria-pressed={financing === ft.value}
-                      >
-                        {ft.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hot Deals toggle */}
-                <div>
-                  <span style={S.label}>Deals</span>
-                  <button
-                    style={{
-                      ...S.pill(hotDeals),
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      ...(hotDeals ? { background: 'rgba(251,146,60,0.15)', borderColor: '#fb923c', color: '#fb923c' } : {}),
-                    }}
-                    onClick={() => setParam('hot_deals', hotDeals ? '' : 'true')}
-                    aria-pressed={hotDeals}
-                  >
-                    <Flame size={13} /> Hot Deals Only
+            {/* Right: filter sidebar */}
+            <aside className="mp-desktop-sidebar mp-sidebar" style={{ width:'260px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'20px', position:'sticky', top:'80px', maxHeight:'calc(100vh - 100px)', overflowY:'auto' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
+                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
+                  Filters
+                  {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
+                </h2>
+                {hasFilters && (
+                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
+                    <RotateCcw size={10}/> Reset
                   </button>
-                </div>
+                )}
               </div>
-            )}
-
-            {/* Active filter chips */}
-            {activeChips.length > 0 && (
-              <div style={S.chipsRow}>
-                <span style={{ fontSize: '13px', color: '#6b7280', marginRight: '4px' }}>Active:</span>
-                {activeChips.map(chip => (
-                  <span key={chip.key} style={S.chip}>
-                    {chip.label}
-                    <button
-                      className="mp-chip-x"
-                      style={S.chipX}
-                      onClick={() => chip.key === 'hot_deals' ? setParam('hot_deals', '') : setParam(chip.key, '')}
-                      aria-label={`Remove ${chip.label} filter`}
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+              {renderFilters()}
+            </aside>
           </div>
-
-          {/* ── Results Header ── */}
-          <div style={S.resultsHeader}>
-            <div style={S.resultsCount}>
-              {loading
-                ? 'Loading...'
-                : `${totalCount.toLocaleString()} car${totalCount !== 1 ? 's' : ''} found`}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label htmlFor="sort-select" style={{ fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>Sort by</label>
-              <select
-                id="sort-select"
-                className="mp-select"
-                style={{ ...S.select, width: 'auto', fontSize: '14px', padding: '9px 14px' }}
-                value={sort}
-                onChange={e => setParam('sort', e.target.value)}
-              >
-                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: '#0d1117' }}>{o.label}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* ── Error ── */}
-          {error && (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <p style={{ color: '#f87171', fontSize: '17px', marginBottom: '20px' }}>{error}</p>
-              <button
-                onClick={fetchCars}
-                style={{
-                  background: '#dc2626', color: '#fff', border: 'none',
-                  padding: '14px 28px', borderRadius: '10px',
-                  fontSize: '16px', fontWeight: '700', cursor: 'pointer',
-                  fontFamily: "'Outfit', sans-serif",
-                }}
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {/* ── Cars Grid ── */}
-          {!error && (
-            <div style={S.carsGrid}>
-              {loading
-                ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)
-                : cars.length === 0
-                  ? (
-                    <div style={S.emptyState}>
-                      <Car size={56} color="#374151" style={{ marginBottom: '20px' }} />
-                      <p style={{ color: '#6b7280', fontSize: '19px', fontWeight: '600', marginBottom: '12px' }}>
-                        No cars match your filters
-                      </p>
-                      <p style={{ color: '#4b5563', fontSize: '16px', marginBottom: '28px' }}>
-                        Try adjusting your search or browse all available cars.
-                      </p>
-                      <button
-                        onClick={resetAll}
-                        style={{
-                          background: '#dc2626', color: '#fff', border: 'none',
-                          padding: '14px 32px', borderRadius: '10px',
-                          fontSize: '16px', fontWeight: '700', cursor: 'pointer',
-                          fontFamily: "'Outfit', sans-serif",
-                        }}
-                      >
-                        Browse All Cars
-                      </button>
-                    </div>
-                  )
-                  : cars.map(car => {
-                    const inCompare = isInCompare(car.id);
-                    const compareFull = compareIds.length >= 4 && !inCompare;
-                    return (
-                      <div key={car.id} style={{ position: 'relative' }}>
-                        <CarCard car={car} ctaContext={ctaCtx} />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (compareFull) {
-                              toast.error('Compare is full — remove a car first (max 4)', { duration: 2500 });
-                              return;
-                            }
-                            inCompare ? removeFromCompare(car.id) : addToCompare(car.id);
-                          }}
-                          title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
-                          style={{
-                            position: 'absolute',
-                            top: '10px',
-                            right: '10px',
-                            zIndex: 10,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.72)',
-                            border: `1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.2)'}`,
-                            borderRadius: '8px',
-                            padding: '6px 10px',
-                            color: inCompare ? '#fff' : '#fff',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            backdropFilter: 'blur(6px)',
-                            WebkitBackdropFilter: 'blur(6px)',
-                            fontFamily: "'Outfit', sans-serif",
-                            letterSpacing: '0.02em',
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          <ArrowLeftRight size={11} />
-                          {inCompare ? 'Added' : 'Compare'}
-                        </button>
-                      </div>
-                    );
-                  })
-              }
-            </div>
-          )}
-
-          {/* ── Pagination ── */}
-          {!loading && !error && totalPages > 1 && (
-            <div style={S.paginationWrap}>
-              <Pagination page={page} totalPages={totalPages} onPage={setPage} />
-              <p style={{ textAlign: 'center', color: '#4b5563', fontSize: '14px', marginTop: '16px' }}>
-                Showing {((page - 1) * PER_PAGE) + 1}–{Math.min(page * PER_PAGE, totalCount)} of {totalCount.toLocaleString()} cars
-              </p>
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* Mobile filter FAB */}
+      <div className="mp-filter-fab" style={{ position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)', zIndex:30 }}>
+        <button
+          onClick={() => setFiltersOpen(true)}
+          style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', padding:'13px 24px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 24px rgba(220,38,38,0.4)', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
+        >
+          <SlidersHorizontal size={14}/>
+          Filters {activeChips.length > 0 && `(${activeChips.length})`}
+        </button>
       </div>
 
       <Footer />
