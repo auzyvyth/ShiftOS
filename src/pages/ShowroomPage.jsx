@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
   X, ChevronLeft, ChevronRight, RotateCcw, Car,
   SlidersHorizontal, Search, Flame, ArrowLeftRight,
-  Gauge, Settings2, MessageCircle, Fuel, Calendar,
+  Gauge, Settings2, MessageCircle, Fuel, Calendar, Users,
 } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
@@ -55,7 +55,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
 
 const CAR_FIELDS   = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
-const DEALER_JOIN  = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color)';
+const DEALER_JOIN  = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Sanitisers ──────────────────────────────────────────────────────────── */
 const sanitize = {
@@ -164,11 +164,11 @@ const ShowroomCard = ({ car, ctaContext }) => {
       style={{ display:'flex', flexDirection:'row', background:'#0b0f18', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'190px', minWidth:0 }}
     >
       {/* ── Image column ── */}
-      <div style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
+      <div style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0a0d14', overflow:'hidden' }}>
         {image ? (
           <>
             {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
-            <img src={image} alt={`${year} ${brand} ${model}`} onError={()=>setImgError(true)} onLoad={()=>setImgLoaded(true)} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:imgLoaded?1:0, transition:'opacity 0.3s', filter:isSold?'grayscale(60%)':'none' }}/>
+            <img src={image} alt={`${year} ${brand} ${model}`} onError={()=>setImgError(true)} onLoad={()=>setImgLoaded(true)} style={{ width:'100%', height:'100%', objectFit:'contain', objectPosition:'center', opacity:imgLoaded?1:0, transition:'opacity 0.3s', filter:isSold?'grayscale(60%)':'none' }}/>
           </>
         ) : (
           <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -177,25 +177,39 @@ const ShowroomCard = ({ car, ctaContext }) => {
         )}
 
         {/* Price overlay — bottom of image */}
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 10px 8px', background:'linear-gradient(to top,rgba(0,0,0,0.88) 60%,transparent)', pointerEvents:'none' }}>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'24px 10px 7px', background:'linear-gradient(to top,rgba(0,0,0,0.82) 55%,transparent)', pointerEvents:'none' }}>
           {hasDiscount && <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.5)', textDecoration:'line-through', lineHeight:1, marginBottom:'1px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
-          <div style={{ fontSize:'15px', fontWeight:'800', color: isHot?'#fca5a5':'#ffffff', lineHeight:1, letterSpacing:'-0.02em' }}>
+          <div style={{ fontSize:'14px', fontWeight:'800', color: isHot?'#fca5a5':'#ffffff', lineHeight:1, letterSpacing:'-0.02em' }}>
             {price ? 'RM '+price.toLocaleString('en-MY') : 'P.O.R'}
           </div>
         </div>
 
-        {/* Photo count badge */}
-        {photoCount > 1 && (
-          <div style={{ position:'absolute', top:6, left:6, display:'flex', alignItems:'center', gap:3, background:'rgba(0,0,0,0.65)', borderRadius:'6px', padding:'3px 7px', backdropFilter:'blur(4px)' }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span style={{ fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.75)' }}>{photoCount}</span>
+        {/* Top badges row */}
+        <div style={{ position:'absolute', top:6, left:6, right:6, display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:4 }}>
+          {/* Seller badge */}
+          {(() => {
+            const role = car.dealer?.role;
+            const isAgent = role === 'salesman';
+            return (
+              <div style={{ display:'flex', alignItems:'center', gap:3, background: isAgent?'rgba(251,146,60,0.18)':'rgba(59,130,246,0.18)', border:`1px solid ${isAgent?'rgba(251,146,60,0.4)':'rgba(59,130,246,0.4)'}`, borderRadius:'6px', padding:'2px 7px', backdropFilter:'blur(6px)' }}>
+                <Users size={8} color={isAgent?'#fb923c':'#60a5fa'}/>
+                <span style={{ fontSize:'9px', fontWeight:'700', color: isAgent?'#fb923c':'#60a5fa' }}>{isAgent?'Agent':'Dealer'}</span>
+              </div>
+            );
+          })()}
+          {/* Photo count + hot badge */}
+          <div style={{ display:'flex', gap:4, alignItems:'center', marginLeft:'auto' }}>
+            {photoCount > 1 && (
+              <div style={{ display:'flex', alignItems:'center', gap:3, background:'rgba(0,0,0,0.6)', borderRadius:'6px', padding:'2px 6px', backdropFilter:'blur(4px)' }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span style={{ fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.75)' }}>{photoCount}</span>
+              </div>
+            )}
+            {isHot && discountPct && (
+              <div style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>-{discountPct}%</div>
+            )}
           </div>
-        )}
-
-        {/* Hot badge */}
-        {isHot && discountPct && (
-          <div style={{ position:'absolute', top:6, right:6, background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>-{discountPct}%</div>
-        )}
+        </div>
       </div>
 
       {/* ── Content column ── */}
