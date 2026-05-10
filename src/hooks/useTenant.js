@@ -111,8 +111,27 @@ export default function useTenant() {
 
     resolve();
 
+    // Re-check when the user returns to the tab after a long idle (bfcache
+    // or background suspension can leave stale dealer branding in state).
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') resolve();
+    };
+    // Re-check on browser back/forward so navigating from a dealer subdomain
+    // back to xdrive.my clears the tenant immediately.
+    const onPop = () => resolve();
+
+    // pageshow fires when a page is restored from bfcache (persisted=true)
+    const onPageShow = (e) => { if (e.persisted) resolve(); };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('popstate', onPop);
+    window.addEventListener('pageshow', onPageShow);
+
     return () => {
       if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('pageshow', onPageShow);
     };
   }, []);
 
