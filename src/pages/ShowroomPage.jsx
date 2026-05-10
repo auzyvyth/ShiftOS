@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // useRef kept for initialLoad
 import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
@@ -159,10 +159,10 @@ const ShowroomCard = ({ car, ctaContext }) => {
         trackEvent(supabase, 'card_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
         navigate('/cars/' + (car.slug || car.id));
       }}
-      style={{ display:'flex', flexDirection:'row', background:'#0d1117', border: isHot?'0.5px solid rgba(220,38,38,0.25)':'0.5px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'170px' }}
+      style={{ display:'flex', flexDirection:'row', background:'#0d1117', border: isHot?'0.5px solid rgba(220,38,38,0.25)':'0.5px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'170px', minWidth:0 }}
     >
       {/* Image */}
-      <div style={{ width:'220px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
+      <div style={{ width:'38%', maxWidth:'220px', flexShrink:0, position:'relative', background:'#0e0e14', overflow:'hidden' }}>
         {image ? (
           <>
             {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
@@ -269,26 +269,11 @@ export default function ShowroomPage() {
   const [error, setError]             = useState(null);
   const initialLoad = useRef(true);
   const [drawerOpen, setDrawerOpen]   = useState(false);
-  const [topbarVisible, setTopbarVisible] = useState(true);
-  const lastScrollY = useRef(0);
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const currentY = window.scrollY;
-      const delta = currentY - lastScrollY.current;
-      if (currentY < 80) setTopbarVisible(true);
-      else if (delta > 4) setTopbarVisible(false);
-      else if (delta < -4) setTopbarVisible(true);
-      lastScrollY.current = currentY;
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     const key = 'sv_fired_main';
@@ -517,7 +502,7 @@ export default function ShowroomPage() {
       <div style={{ background:'#080C14', minHeight:'100vh', fontFamily:"'DM Sans',sans-serif" }}>
 
         {/* ── Top bar ── */}
-        <div style={{ background:'rgba(8,12,20,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20, transform: topbarVisible?'translateY(0)':'translateY(-100%)', transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+        <div style={{ background:'rgba(8,12,20,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-topbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
               {/* Search */}
@@ -625,7 +610,7 @@ export default function ShowroomPage() {
                       : cars.map(car=>{
                           const inCompare=isInCompare(car.id), compareFull=compareIds.length>=4&&!inCompare;
                           return (
-                            <div key={car.id} style={{ position:'relative' }}>
+                            <div key={car.id} style={{ position:'relative', minWidth:0 }}>
                               <ShowroomCard car={car} ctaContext={ctaCtx}/>
                               <button
                                 onClick={e=>{ e.stopPropagation(); if(compareFull){toast.error('Compare full — remove a car first (max 4)',{duration:2500});return;} inCompare?removeFromCompare(car.id):addToCompare(car.id); }}
