@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
@@ -133,12 +133,26 @@ export default function ShowroomPage() {
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [drawerOpen, setDrawerOpen]   = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topbarVisible, setTopbarVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+      if (currentY < 80) setTopbarVisible(true);
+      else if (delta > 4) setTopbarVisible(false);
+      else if (delta < -4) setTopbarVisible(true);
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     const key = 'sv_fired_main';
@@ -328,9 +342,9 @@ export default function ShowroomPage() {
         .sr-brand-scroll::-webkit-scrollbar { display:none }
         .sr-mobile-filter-btn { display:none !important }
         @media(max-width:1024px){
-          .sr-desktop-filter-btn { display:none !important }
           .sr-mobile-filter-btn { display:flex !important }
           .sr-layout { flex-direction:column !important }
+          .sr-sidebar-desktop { display:none !important }
         }
         @media(max-width:640px){
           .sr-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important }
@@ -362,31 +376,27 @@ export default function ShowroomPage() {
       <div style={{ background:'#080C14', minHeight:'100vh', fontFamily:"'DM Sans',sans-serif" }}>
 
         {/* ── Top bar ── */}
-        <div style={{ background:'rgba(8,12,20,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'16px 0', position:'sticky', top:'72px', zIndex:20 }}>
+        <div style={{ background:'rgba(8,12,20,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20, transform: topbarVisible?'translateY(0)':'translateY(-100%)', transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-topbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
               {/* Search */}
               <form onSubmit={e=>{ e.preventDefault(); const sq=sanitize.q(searchInput); navigate(sq?`/showroom?q=${encodeURIComponent(sq)}`:'/showroom'); }} style={{ position:'relative', flex:1, minWidth:'180px' }}>
-                <Search size={14} style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#4b5563', pointerEvents:'none' }}/>
+                <Search size={13} style={{ position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'#4b5563', pointerEvents:'none' }}/>
                 <input
                   type="search"
                   placeholder="Search brand, model, year…"
                   value={searchInput}
                   onChange={e=>setSearchInput(e.target.value)}
-                  style={{ width:'100%', paddingLeft:'36px', paddingRight:'12px', paddingTop:'10px', paddingBottom:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'10px', color:'white', fontSize:'13px', fontFamily:"'DM Sans',sans-serif", outline:'none', boxSizing:'border-box' }}
+                  style={{ width:'100%', paddingLeft:'32px', paddingRight:'10px', paddingTop:'7px', paddingBottom:'7px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'white', fontSize:'13px', fontFamily:"'DM Sans',sans-serif", outline:'none', boxSizing:'border-box' }}
                 />
               </form>
               {/* Sort */}
-              <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'10px', padding:'10px 14px', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
+              <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'7px 12px', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
                 {SORT_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
               </select>
-              {/* Filters toggle — desktop */}
-              <button className="sr-desktop-filter-btn" onClick={()=>setSidebarOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:'6px', background: sidebarOpen?'rgba(220,38,38,0.15)':'rgba(255,255,255,0.05)', border: sidebarOpen?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.09)', borderRadius:'10px', padding:'10px 14px', color: sidebarOpen?'#f87171':'#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
-                <SlidersHorizontal size={14}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
-              </button>
               {/* Mobile filter */}
-              <button className="sr-fab sr-mobile-filter-btn" onClick={()=>setDrawerOpen(true)} style={{ display:'none', alignItems:'center', gap:'6px', background: activeChips.length>0?'rgba(220,38,38,0.15)':'rgba(255,255,255,0.05)', border: activeChips.length>0?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.09)', borderRadius:'10px', padding:'10px 14px', color: activeChips.length>0?'#f87171':'#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
-                <SlidersHorizontal size={14}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
+              <button className="sr-fab sr-mobile-filter-btn" onClick={()=>setDrawerOpen(true)} style={{ display:'none', alignItems:'center', gap:'6px', background: activeChips.length>0?'rgba(220,38,38,0.15)':'rgba(255,255,255,0.05)', border: activeChips.length>0?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'7px 12px', color: activeChips.length>0?'#f87171':'#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
+                <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
               </button>
             </div>
           </div>
@@ -434,6 +444,19 @@ export default function ShowroomPage() {
           </div>
 
           <div className="sr-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
+
+            {/* Left filter sidebar — always visible on desktop */}
+            <aside className="sr-sidebar sr-sidebar-desktop" style={{ width:'230px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'16px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'DM Sans',sans-serif" }}>
+                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
+                  Filters
+                  {activeChips.length>0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
+                </h2>
+                {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'DM Sans',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
+              </div>
+              <Filters/>
+            </aside>
 
             {/* Car grid */}
             <div style={{ flex:1, minWidth:0 }}>
@@ -483,23 +506,6 @@ export default function ShowroomPage() {
               )}
             </div>
 
-            {/* Right filter sidebar — shows on click */}
-            {sidebarOpen && (
-              <aside className="sr-sidebar" style={{ width:'250px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'18px', position:'sticky', top:'145px', maxHeight:'calc(100vh - 170px)', overflowY:'auto' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                  <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'DM Sans',sans-serif" }}>
-                    <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
-                    Filters
-                    {activeChips.length>0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
-                  </h2>
-                  <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-                    {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'DM Sans',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
-                    <button onClick={()=>setSidebarOpen(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', display:'flex', alignItems:'center' }}><X size={14}/></button>
-                  </div>
-                </div>
-                <Filters/>
-              </aside>
-            )}
           </div>
         </div>
       </div>
