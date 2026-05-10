@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone, Search, ArrowLeftRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Search, ArrowLeftRight } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
+import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
@@ -103,140 +104,7 @@ function sanitizeMileageMax(val) {
   return [20000, 50000, 80000, 150000].includes(n) ? n : null;
 }
 
-/* ── Marketplace Header ─────────────────────────────────────────────────────── */
-const MarketplaceHeader = () => {
-  const [scrolled, setScrolled]       = useState(false);
-  const [menuOpen, setMenuOpen]       = useState(false);
-  const [conditionOpen, setCondOpen]  = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [menuOpen]);
-
-  return (
-    <>
-      <style>{`
-        .mh-root { position:sticky; top:0; z-index:100; transition:background 0.25s,box-shadow 0.25s; }
-        .mh-root.scrolled { background:rgba(12,12,14,0.9)!important; backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 1px 0 rgba(255,255,255,0.06); }
-        .mh-nav-link { color:#9ca3af; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
-        .mh-nav-link::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-nav-link:hover { color:#fff; }
-        .mh-nav-link:hover::after { transform:scaleX(1); }
-        /* Hot Deals — flame accent */
-        .mh-hot-link { color:#fb923c!important; }
-        .mh-hot-link::after { background:#fb923c!important; }
-        .mh-hot-link:hover { color:#fdba74!important; }
-        /* Condition dropdown */
-        .mh-dropdown { position:relative; }
-        .mh-dropdown-trigger { color:#9ca3af; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
-        .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus { color:#fff; }
-        .mh-dropdown:hover .mh-dropdown-trigger::after { transform:scaleX(1); }
-        .mh-dropdown-chevron { transition:transform 0.2s; display:inline-block; }
-        .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
-        .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:170px; background:rgba(10,14,24,0.98); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; backdrop-filter:blur(20px); box-shadow:0 12px 40px rgba(0,0,0,0.7); z-index:200; }
-        .mh-dropdown:hover .mh-dropdown-menu { display:flex; }
-        .mh-dropdown-item { color:#9ca3af; font-size:13px; font-weight:500; text-decoration:none; padding:9px 12px; border-radius:8px; font-family:'Outfit',sans-serif; transition:background 0.12s,color 0.12s; white-space:nowrap; }
-        .mh-dropdown-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
-        /* CTA */
-        .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; }
-        .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); }
-        /* Hamburger */
-        .mh-hamburger { display:none; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
-        .mh-hamburger:hover { background:rgba(255,255,255,0.1); }
-        /* Mobile drawer */
-        .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(12,12,14,0.97); backdrop-filter:blur(16px); }
-        .mh-mobile-link { color:#9ca3af; font-size:15px; font-weight:500; text-decoration:none; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:'Outfit',sans-serif; transition:color 0.15s; display:block; }
-        .mh-mobile-link:hover { color:#fff; }
-        .mh-mobile-sub { padding:6px 0 6px 16px; display:flex; flex-direction:column; gap:0; border-bottom:1px solid rgba(255,255,255,0.05); }
-        .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:8px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
-        .mh-mobile-sub-item:hover { color:#fff; }
-        .mh-mobile-cta { margin-top:10px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:13px; border-radius:10px; text-decoration:none; font-family:'Outfit',sans-serif; }
-        @media (max-width:720px) {
-          .mh-desktop-nav { display:none!important; }
-          .mh-hamburger { display:flex!important; }
-          .mh-mobile-nav.open { display:flex!important; }
-        }
-      `}</style>
-
-      <header className={`mh-root${scrolled ? ' scrolled' : ''}`} style={{ background:'transparent', borderBottom:'1px solid transparent' }} ref={menuRef}>
-        <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 20px', height:'64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'24px' }}>
-          {/* Logo */}
-          <Link to="/" style={{ textDecoration:'none', display:'flex', alignItems:'center', gap:'2px', flexShrink:0 }}>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'26px', letterSpacing:'0.04em', lineHeight:1 }}>
-              <span style={{ color:'#dc2626' }}>X</span><span style={{ color:'#ffffff' }}>DRIVE</span>
-            </span>
-            <span style={{ fontSize:'9px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.1em', marginLeft:'4px', marginTop:'2px', fontFamily:"'Outfit',sans-serif" }}>.MY</span>
-          </Link>
-
-          {/* Desktop nav */}
-          <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
-            <Link to="/showroom" className="mh-nav-link">Showroom</Link>
-            <a href="/marketplace?hot_deals=true" className="mh-nav-link mh-hot-link" style={{ display:'flex', alignItems:'center', gap:'5px' }}>
-              <Flame size={13} /> Hot Deals
-            </a>
-            {/* Condition dropdown */}
-            <div className="mh-dropdown">
-              <button className="mh-dropdown-trigger" aria-haspopup="true">
-                Condition <span className="mh-dropdown-chevron">▾</span>
-              </button>
-              <div className="mh-dropdown-menu" role="menu">
-                <a href="/marketplace?condition=used"  className="mh-dropdown-item">🚗 Used Cars</a>
-                <a href="/marketplace?condition=new"   className="mh-dropdown-item">✨ New Cars</a>
-                <a href="/marketplace?condition=recon" className="mh-dropdown-item">🔁 Recon / Import</a>
-              </div>
-            </div>
-          </nav>
-
-          {/* Right */}
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', flexShrink:0 }}>
-            <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
-              <Phone size={13} /> +60 17-415 5191
-            </a>
-            <a href="/login" className="mh-cta">List Your Car</a>
-            <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
-              {menuOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile drawer */}
-        <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
-          <Link to="/showroom" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Showroom</Link>
-          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
-          <button
-            className="mh-mobile-link"
-            style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'11px 0', color:'#9ca3af', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }}
-            onClick={() => setCondOpen(o => !o)}
-          >
-            Condition <span style={{ fontSize:12 }}>{conditionOpen ? '▲' : '▼'}</span>
-          </button>
-          {conditionOpen && (
-            <div className="mh-mobile-sub">
-              {[['used','🚗 Used Cars'],['new','✨ New Cars'],['recon','🔁 Recon / Import']].map(([v,l]) => (
-                <a key={v} href={`/marketplace?condition=${v}`} className="mh-mobile-sub-item" onClick={() => setMenuOpen(false)}>{l}</a>
-              ))}
-            </div>
-          )}
-          <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-            <Phone size={14} /> +60 17-415 5191
-          </a>
-          <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
-        </div>
-      </header>
-    </>
-  );
-};
+/* MarketplaceHeader imported from ../components/MarketplaceHeader */
 
 /* ── Skeleton Card ──────────────────────────────────────────────────────────── */
 const SkeletonCard = () => (
@@ -423,6 +291,7 @@ export default function MarketplacePage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = filtersOpen ? 'hidden' : '';
@@ -1038,11 +907,9 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Brand strip ── */}
-        <section style={{ background: '#0C0C0E', padding: '40px 20px 32px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <section style={{ background: '#0C0C0E', padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#C4A265', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px', fontFamily: "'Outfit',sans-serif" }}>Shop by Brand</p>
-            <h2 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: '700', color: '#f0f0f0', margin: '0 0 24px', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.04em' }}>Popular Brands</h2>
-            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
                 { label: 'All',          to: '/showroom',                            initials: 'ALL', color: '#DC2626' },
                 { label: 'Perodua',      to: '/showroom?brand=Perodua',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
@@ -1087,15 +954,6 @@ export default function MarketplacePage() {
         </section>
 
         <div style={S.wrap}>
-          {/* Brand pills */}
-          <div style={S.brandRow}>
-            <div className="mp-brand-scroll" style={S.brandScroll}>
-              {BRANDS.map(b => (
-                <button key={b} className="mp-brand-pill" style={S.brandPill(brand === b)} onClick={() => setParam('brand', brand === b ? '' : b)} aria-pressed={brand === b}>{b}</button>
-              ))}
-            </div>
-          </div>
-
           {/* Two-column layout */}
           <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'24px' }}>
 
@@ -1127,6 +985,14 @@ export default function MarketplacePage() {
                   <select id="sort-select" className="mp-select" style={{ ...S.select, width:'auto', fontSize:'14px', padding:'9px 14px' }} value={sort} onChange={e => setParam('sort', e.target.value)}>
                     {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
                   </select>
+                  <button
+                    className="mp-desktop-sidebar-toggle"
+                    onClick={() => setSidebarOpen(o => !o)}
+                    style={{ display:'flex', alignItems:'center', gap:'6px', background: sidebarOpen ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)', border: sidebarOpen ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'9px 14px', color: sidebarOpen ? '#f87171' : '#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
+                  >
+                    <SlidersHorizontal size={14}/>
+                    Filters {activeChips.length > 0 && `(${activeChips.length})`}
+                  </button>
                 </div>
               </div>
 
@@ -1184,22 +1050,23 @@ export default function MarketplacePage() {
               )}
             </div>
 
-            {/* Right: filter sidebar */}
-            <aside className="mp-desktop-sidebar mp-sidebar" style={{ width:'260px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'20px', position:'sticky', top:'80px', maxHeight:'calc(100vh - 100px)', overflowY:'auto' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
-                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
-                  Filters
-                  {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
-                </h2>
-                {hasFilters && (
-                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
-                    <RotateCcw size={10}/> Reset
-                  </button>
-                )}
-              </div>
-              {renderFilters()}
-            </aside>
+            {/* Right: filter sidebar — desktop toggle */}
+            {sidebarOpen && (
+              <aside className="mp-sidebar" style={{ width:'260px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'20px', position:'sticky', top:'80px', maxHeight:'calc(100vh - 100px)', overflowY:'auto' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                  <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
+                    <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
+                    Filters
+                    {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
+                  </h2>
+                  <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                    {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
+                    <button onClick={() => setSidebarOpen(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', display:'flex', alignItems:'center' }}><X size={14}/></button>
+                  </div>
+                </div>
+                {renderFilters()}
+              </aside>
+            )}
           </div>
         </div>
       </div>
