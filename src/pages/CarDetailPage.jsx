@@ -40,6 +40,7 @@ import FinancingCalculator from "../components/FinancingCalculator";
 import CarCard from "../components/CarCard";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
+import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
 
 /* ─── helpers ─── */
@@ -1302,7 +1303,7 @@ export default function CarDetailPage() {
           <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
             {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
           </p>
-          {(dealer?.subdomain || dealer?.slug) && (
+          {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
             <a
               href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
               target="_blank" rel="noopener noreferrer"
@@ -1390,7 +1391,7 @@ export default function CarDetailPage() {
               style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.06)', color:'#475569', borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
               <Calculator size={13} /> Financing Calculator
             </button>
-            {dealer?.subdomain && (
+            {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', color:'#94a3b8', borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
@@ -1850,7 +1851,7 @@ export default function CarDetailPage() {
                     View all listings →
                   </Link>
                 )}
-                {dealer?.subdomain && (
+                {dealer?.subdomain && !isSubdomain() && (
                   <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', marginTop:6, fontSize:12, color:'#94a3b8', textDecoration:'none' }}>
                     Go to dealer's page →
                   </a>
@@ -2796,7 +2797,7 @@ export default function CarDetailPage() {
             <div style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, margin: 0 }}>Asking Price</p>
-                {(dealer?.subdomain || dealer?.slug) && (
+                {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
                   <a
                     href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
                     target="_blank" rel="noopener noreferrer"
@@ -2857,7 +2858,7 @@ export default function CarDetailPage() {
               style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
               <Calculator size={13} /> Financing Calculator
             </button>
-            {dealer?.subdomain && (
+            {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
@@ -2895,7 +2896,7 @@ export default function CarDetailPage() {
                       View all listings →
                     </Link>
                   )}
-                  {dealer?.subdomain && (
+                  {dealer?.subdomain && !isSubdomain() && (
                     <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: '#94a3b8', textDecoration: 'none' }}>
                       Go to dealer's page →
                     </a>
