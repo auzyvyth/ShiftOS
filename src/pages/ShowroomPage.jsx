@@ -10,7 +10,7 @@ import {
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import Footer from '@/components/Footer';
-import GradeBadge from '@/components/GradeBadge';
+import GradeBadge from '../components/GradeBadge';
 import { useCTAContext, buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
@@ -113,7 +113,7 @@ const XDRIVE_WA = '60174155191';
 const calcMonthlyAmt = p => (!p||p<=0) ? null : Math.round((p*0.9*(1+3.5/100*7))/(7*12));
 
 /* ── Horizontal card (Showroom-only) ─────────────────────────────────────── */
-const ShowroomCard = ({ car, ctaContext, inCompare, compareFull, onCompare }) => {
+const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false, onCompare }) => {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -239,15 +239,15 @@ const ShowroomCard = ({ car, ctaContext, inCompare, compareFull, onCompare }) =>
         </h3>
 
         {/* Row 3: inline specs — 2 lines allowed */}
-        <p style={{ fontSize:'11px', color:'#6b7280', margin:'0 0 auto', lineHeight:'1.5', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
+        <p style={{ fontSize:'11px', color:'#6b7280', margin:'0 0 auto', lineHeight:'1.5', whiteSpace:'normal', wordBreak:'break-word', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
           {specParts.join('  •  ')}
         </p>
 
-        {/* Row 4: compare button + grade badge */}
-        <div style={{ display:'flex', alignItems:'center', gap:'6px', margin:'5px 0 4px', flexWrap:'wrap' }}>
+        {/* Row 4: compare + grade */}
+        <div style={{ display:'flex', alignItems:'center', gap:'6px', margin:'6px 0 4px', flexWrap:'wrap' }}>
           <button
-            onClick={e=>{ e.stopPropagation(); onCompare && onCompare(); }}
-            style={{ display:'flex', alignItems:'center', gap:'4px', background: inCompare?'rgba(220,38,38,0.15)':'rgba(255,255,255,0.05)', border:`1px solid ${inCompare?'rgba(220,38,38,0.4)':'rgba(255,255,255,0.1)'}`, borderRadius:'6px', padding:'3px 9px', color: inCompare?'#f87171':'#9ca3af', fontSize:'11px', fontWeight:'700', cursor: compareFull&&!inCompare?'not-allowed':'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s', flexShrink:0, opacity: compareFull&&!inCompare?0.5:1 }}
+            onClick={e=>{ e.stopPropagation(); if(compareFull){ toast.error('Compare full — remove a car first (max 4)',{duration:2500}); return; } onCompare && onCompare(); }}
+            style={{ display:'flex', alignItems:'center', gap:'4px', background: inCompare?'rgba(220,38,38,0.85)':'rgba(255,255,255,0.07)', border:`1px solid ${inCompare?'#dc2626':'rgba(255,255,255,0.15)'}`, borderRadius:'7px', padding:'4px 9px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s', flexShrink:0 }}
           >
             <ArrowLeftRight size={10}/>{inCompare?'Added':'Compare'}
           </button>
@@ -258,7 +258,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare, compareFull, onCompare }) =>
 
         {/* Row 5: monthly estimate */}
         {monthly && (
-          <p style={{ fontSize:'10px', color:'#4b5563', margin:'0 0 5px', lineHeight:1 }}>
+          <p style={{ fontSize:'10px', color:'#4b5563', margin:'0 0 6px', lineHeight:1 }}>
             est. <span style={{ color:'#6b7280', fontWeight:'600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
           </p>
         )}
@@ -653,15 +653,14 @@ export default function ShowroomPage() {
                       : cars.map(car=>{
                           const inCompare=isInCompare(car.id), compareFull=compareIds.length>=4&&!inCompare;
                           return (
-                            <div key={car.id} style={{ minWidth:0 }}>
-                              <ShowroomCard
-                                car={car}
-                                ctaContext={ctaCtx}
-                                inCompare={inCompare}
-                                compareFull={compareFull}
-                                onCompare={()=>{ if(compareFull){toast.error('Compare full — remove a car first (max 4)',{duration:2500});return;} inCompare?removeFromCompare(car.id):addToCompare(car.id); }}
-                              />
-                            </div>
+                            <ShowroomCard
+                              key={car.id}
+                              car={car}
+                              ctaContext={ctaCtx}
+                              inCompare={inCompare}
+                              compareFull={compareFull}
+                              onCompare={()=>{ inCompare?removeFromCompare(car.id):addToCompare(car.id); }}
+                            />
                           );
                         })
                   }
