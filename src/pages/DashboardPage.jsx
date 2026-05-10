@@ -236,7 +236,7 @@ const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-blue-400 border border-blue-400/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
       <Clock className="w-3 h-3" />
       {d}d
     </span>
@@ -1803,7 +1803,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 }
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjustedStaleIds, onListingUpdated }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -1814,6 +1814,42 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
   const [loading, setLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const endRef = useRef(null);
+
+  const [quickEditListing, setQuickEditListing] = useState(null);
+  const [quickEditForm, setQuickEditForm] = useState({});
+  const [quickEditSaving, setQuickEditSaving] = useState(false);
+  const [staleShowAll, setStaleShowAll] = useState(false);
+
+  const openQuickEdit = (l) => {
+    setQuickEditListing(l);
+    setQuickEditForm({
+      selling_price: l.selling_price ?? '',
+      original_price: l.original_price ?? '',
+      status: l.status || 'available',
+      condition: l.condition || 'used',
+    });
+  };
+
+  const saveQuickEdit = async () => {
+    if (!quickEditListing) return;
+    setQuickEditSaving(true);
+    const patch = {
+      selling_price:  Number(quickEditForm.selling_price) || null,
+      original_price: Number(quickEditForm.original_price) || null,
+      status:         quickEditForm.status,
+      condition:      quickEditForm.condition,
+    };
+    const { error } = await supabase
+      .from('car_listings')
+      .update(patch)
+      .eq('id', quickEditListing.id);
+    setQuickEditSaving(false);
+    if (error) { toast.error('Save failed: ' + error.message); return; }
+    onStaleAdjusted?.(quickEditListing.id);
+    onListingUpdated?.(quickEditListing.id, patch);
+    setQuickEditListing(null);
+    toast.success('Listing updated');
+  };
   useEffect(() => {
     if (chatOpen) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatOpen]);
@@ -2285,7 +2321,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {visibleStale.slice(0, 5).map((l) => (
+                  {(staleShowAll ? visibleStale : visibleStale.slice(0, 5)).map((l) => (
                     <div
                       key={l.id}
                       className="flex items-center justify-between py-2"
@@ -2314,27 +2350,27 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                         <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
                           {getListingAge(l.created_at)}d
                         </span>
-                        {onEditListing && (
-                          <button
-                            onClick={() => {
-                              onEditListing(l);
-                            }}
-                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
-                            style={{
-                              background: "rgba(59,130,246,0.1)",
-                              border: "1px solid rgba(59,130,246,0.25)",
-                              color: "#93c5fd",
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
-                          >
-                            Adjust
-                          </button>
-                        )}
+                        <button
+                          onClick={() => openQuickEdit(l)}
+                          className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
+                          style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", color: "#93c5fd" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
+                        >
+                          Adjust
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
+                {visibleStale.length > 5 && (
+                  <button
+                    onClick={() => setStaleShowAll(p => !p)}
+                    className="mt-2 text-xs text-amber-400/70 hover:text-amber-300 transition-colors"
+                  >
+                    {staleShowAll ? 'Show less' : `Show all ${visibleStale.length} listings`}
+                  </button>
+                )}
               </div>
             )}
             {adjustedStale.length > 0 && (
@@ -2405,6 +2441,75 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
           </>
         );
       })()}
+
+      {/* ── Quick-edit modal ── */}
+      {quickEditListing && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden" style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* header */}
+            <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div>
+                <p className="text-white font-semibold text-sm">{quickEditListing.brand} {quickEditListing.model} {quickEditListing.year}</p>
+                <p className="text-amber-400/70 text-xs mt-0.5">{getListingAge(quickEditListing.created_at)} days listed — needs attention</p>
+              </div>
+              <button onClick={() => setQuickEditListing(null)} className="text-gray-500 hover:text-white p-1 -mt-1 -mr-1 transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            {/* fields */}
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1.5">Selling Price (RM)</label>
+                  <input type="number" value={quickEditForm.selling_price} onChange={e => setQuickEditForm(p => ({ ...p, selling_price: e.target.value }))} placeholder="0" className={iCls} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1.5">Was / Original (RM)</label>
+                  <input type="number" value={quickEditForm.original_price} onChange={e => setQuickEditForm(p => ({ ...p, original_price: e.target.value }))} placeholder="optional" className={iCls} />
+                </div>
+              </div>
+              {/* discount preview */}
+              {Number(quickEditForm.original_price) > Number(quickEditForm.selling_price) && Number(quickEditForm.selling_price) > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                  <Tag className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                  <p className="text-red-300 text-xs">
+                    Shows <span className="font-semibold line-through text-gray-500">RM {Number(quickEditForm.original_price).toLocaleString()}</span> → <span className="font-semibold">RM {Number(quickEditForm.selling_price).toLocaleString()}</span> &nbsp;
+                    <span className="text-red-400 font-bold">
+                      -{Math.round(((Number(quickEditForm.original_price) - Number(quickEditForm.selling_price)) / Number(quickEditForm.original_price)) * 100)}%
+                    </span>
+                    {" "}discount badge on marketplace
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1.5">Status</label>
+                  <select value={quickEditForm.status} onChange={e => setQuickEditForm(p => ({ ...p, status: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    {['available','reserved','sold'].map(s => <option key={s} value={s} style={{ background: '#111827' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1.5">Condition</label>
+                  <select value={quickEditForm.condition} onChange={e => setQuickEditForm(p => ({ ...p, condition: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    {['used','recon','new'].map(s => <option key={s} value={s} style={{ background: '#111827' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            {/* footer */}
+            <div className="flex gap-3 p-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => setQuickEditListing(null)} className="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button
+                onClick={saveQuickEdit}
+                disabled={quickEditSaving || !quickEditForm.selling_price}
+                className="btn-shimmer flex-1 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-50"
+                style={T.btnRed}
+              >
+                {quickEditSaving ? 'Saving…' : 'Save & Mark Adjusted'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <style>{`
           .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.05); }
@@ -6951,6 +7056,7 @@ export default function DashboardPage() {
               onEditListing={setEditListing}
               onStaleAdjusted={handleStaleAdjusted}
               adjustedStaleIds={adjustedStaleIds}
+              onListingUpdated={(id, patch) => setListings(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))}
             />
           )}
           {activeTab === "ai_manager" && snapshot && (
@@ -7305,37 +7411,20 @@ export default function DashboardPage() {
                 disabled={pendingStockSaving || !pendingStockForm.purchase_price}
                 onClick={async () => {
                   setPendingStockSaving(true);
-                  await supabase.from('stock_units').insert({
-                    dealer_id: userId,
-                    listing_id: pendingStockListing.id,
-                    // Mirror car identity fields from the listing
-                    brand:          pendingStockListing.brand,
-                    model:          pendingStockListing.model,
-                    year:           pendingStockListing.year,
-                    variant:        pendingStockListing.variant,
-                    colour:         pendingStockListing.colour,
-                    mileage:        pendingStockListing.mileage,
-                    transmission:   pendingStockListing.transmission,
-                    fuel_type:      pendingStockListing.fuel_type,
-                    body_type:      pendingStockListing.body_type,
-                    engine_cc:      pendingStockListing.engine_cc,
-                    is_recon:       pendingStockListing.is_recon,
-                    import_country: pendingStockListing.import_country,
-                    auction_grade:  pendingStockListing.auction_grade,
-                    interior_grade: pendingStockListing.interior_grade,
-                    auction_house:  pendingStockListing.auction_house,
-                    vin_number:     pendingStockListing.vin_number,
-                    asking_price:   pendingStockListing.selling_price,
-                    // Purchase-specific fields from the modal form
-                    purchase_price: Number(pendingStockForm.purchase_price) || 0,
-                    purchase_date: pendingStockForm.purchase_date || null,
-                    purchase_source: pendingStockForm.purchase_source || null,
-                    recon_cost: Number(pendingStockForm.recon_cost) || 0,
-                    status: 'in_stock',
-                  });
+                  // The trigger already created a stock_unit row — update it with the purchase details
+                  const { error } = await supabase.from('stock_units')
+                    .update({
+                      purchase_price:  Number(pendingStockForm.purchase_price) || 0,
+                      purchase_date:   pendingStockForm.purchase_date || null,
+                      purchase_source: pendingStockForm.purchase_source || null,
+                      recon_cost:      Number(pendingStockForm.recon_cost) || 0,
+                    })
+                    .eq('listing_id', pendingStockListing.id)
+                    .eq('dealer_id', userId);
                   setPendingStockSaving(false);
+                  if (error) { toast.error('Failed to save: ' + error.message); return; }
                   setPendingStockListing(null);
-                  toast.success('Added to stock!');
+                  toast.success('Purchase details saved!');
                 }}
                 className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
                 style={T.btnRed}

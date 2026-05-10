@@ -258,6 +258,7 @@ export default function CarDetailPage() {
     date: "",
     time: "09:00",
     notes: "",
+    state: "",
   });
   const [focusedField, setFocused] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -266,7 +267,7 @@ export default function CarDetailPage() {
 
   /* enquiry modal */
   const [showEnquiryModal, setShowEnquiryModal] = useState(false);
-  const [enquiryForm, setEnquiryForm] = useState({ name: "", phone: "" });
+  const [enquiryForm, setEnquiryForm] = useState({ name: "", phone: "", state: "" });
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
 
   /* view count */
@@ -406,7 +407,7 @@ export default function CarDetailPage() {
         const { data: d } = await supabase
           .from("public_dealer_profiles")
           .select(
-            "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug",
+            "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug,subdomain",
           )
           .eq("id", carData.dealer_id)
           .maybeSingle();
@@ -586,6 +587,7 @@ export default function CarDetailPage() {
           listing_id: car.id,
           buyer_name: enquiryForm.name,
           buyer_phone: enquiryForm.phone,
+          buyer_state: enquiryForm.state || null,
           buyer_message:
             `Enquiry about ${car.brand} ${car.model} ${car.variant || ""}`.trim(),
           ref_slug: getRef() || null,
@@ -598,12 +600,23 @@ export default function CarDetailPage() {
           enqErr.message,
           enqErr,
         );
+      // Create leads row so buyer_state feeds the demand heatmap
+      await supabase.from("leads").insert({
+        dealer_id: listing.dealer_id,
+        salesman_id: listing.assigned_to || null,
+        car_listing_id: car.id,
+        buyer_name: enquiryForm.name,
+        phone: enquiryForm.phone,
+        buyer_state: enquiryForm.state || null,
+        lead_source: "whatsapp",
+        stage: "new",
+      });
     }
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
     window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
     setShowEnquiryModal(false);
     setEnquirySubmitting(false);
-    setEnquiryForm({ name: "", phone: "" });
+    setEnquiryForm({ name: "", phone: "", state: "" });
   }
 
   async function handleBook(e) {
@@ -634,12 +647,24 @@ export default function CarDetailPage() {
         notes: form.notes || null,
         status: "confirmed",
       });
-    setSubmitting(false);
     if (bookErr) {
+      setSubmitting(false);
       console.error("[handleBook] insert error:", bookErr.message, bookErr);
       alert("Booking failed. Please try again.");
       return;
     }
+    // Create leads row so buyer_state feeds the demand heatmap
+    await supabase.from("leads").insert({
+      dealer_id: car.dealer_id,
+      salesman_id: salesmanId,
+      car_listing_id: car.id,
+      buyer_name: form.name,
+      phone: form.phone,
+      buyer_state: form.state || null,
+      lead_source: "enquiry",
+      stage: "new",
+    });
+    setSubmitting(false);
     setBooked(true);
   }
 
@@ -1274,9 +1299,18 @@ export default function CarDetailPage() {
           <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color:'white', lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
             {car.model}{car.variant ? ' '+car.variant : ''}
           </h1>
-          <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:16 }}>
+          <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
             {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
           </p>
+          {(dealer?.subdomain || dealer?.slug) && (
+            <a
+              href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#60a5fa', textDecoration:'none', marginBottom:16, letterSpacing:'0.04em' }}
+            >
+              {dealer.site_name || dealer.dealership} ↗
+            </a>
+          )}
           <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
             <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color:'white', lineHeight:1, margin:0 }}>
               {fmtPrice(car.selling_price)}
@@ -1766,6 +1800,15 @@ export default function CarDetailPage() {
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
                   style={{ ...inputStyle(focusedField === 'notes'), resize:'vertical', minHeight:72 }} />
+                <select value={form.state}
+                  onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
+                  onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
+                  style={{ ...inputStyle(focusedField === 'state'), cursor:'pointer' }}>
+                  <option value="" style={{ background:'#0d1117' }}>Your state (optional)</option>
+                  {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
+                    <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>
+                  ))}
+                </select>
                 <button type="submit" disabled={submitting}
                   style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily:"'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing:'0.02em', transition:'opacity .2s', boxShadow:'0 4px 20px rgba(220,38,38,0.25)' }}>
                   {submitting ? 'Booking…' : 'Confirm Viewing'}
@@ -2670,6 +2713,15 @@ export default function CarDetailPage() {
                       onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                       onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
                       style={{ ...inputStyle(focusedField === 'notes'), resize: 'vertical', minHeight: 72 }} />
+                    <select value={form.state}
+                      onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
+                      onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
+                      style={{ ...inputStyle(focusedField === 'state'), cursor: 'pointer' }}>
+                      <option value="" style={{ background: '#0d1117' }}>Your state (optional)</option>
+                      {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
+                        <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>
+                      ))}
+                    </select>
                     <button type="submit" disabled={submitting}
                       style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: '9px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing: '0.02em', transition: 'opacity .2s', boxShadow: '0 4px 20px rgba(220,38,38,0.25)' }}>
                       {submitting ? 'Booking…' : 'Confirm Viewing'}
@@ -2742,7 +2794,18 @@ export default function CarDetailPage() {
 
             {/* PRICE BLOCK */}
             <div style={{ marginBottom: 4 }}>
-              <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 6 }}>Asking Price</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, margin: 0 }}>Asking Price</p>
+                {(dealer?.subdomain || dealer?.slug) && (
+                  <a
+                    href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none', letterSpacing: '0.03em' }}
+                  >
+                    {dealer.site_name || dealer.dealership} ↗
+                  </a>
+                )}
+              </div>
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: 'white', lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
               {calcMonthly(car.selling_price) && (
                 <p style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
@@ -2943,8 +3006,19 @@ export default function CarDetailPage() {
               placeholder="Phone number (e.g. 0123456789)"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
             />
+            <select
+              value={enquiryForm.state}
+              onChange={e => setEnquiryForm(p => ({ ...p, state: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
+              style={{ cursor: 'pointer' }}
+            >
+              <option value="" style={{ background: '#0d1117' }}>Your state (optional)</option>
+              {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
+                <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>
+              ))}
+            </select>
             <button
               onClick={handleEnquirySubmit}
               disabled={!enquiryForm.name || !enquiryForm.phone || enquirySubmitting}

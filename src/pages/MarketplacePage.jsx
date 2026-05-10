@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
 import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Menu, Phone, Search, ArrowLeftRight } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
@@ -180,7 +181,7 @@ const MarketplaceHeader = () => {
 
           {/* Desktop nav */}
           <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
-            <a href="/marketplace" className="mh-nav-link">Browse Cars</a>
+            <Link to="/marketplace" className="mh-nav-link">Browse Cars</Link>
             <a href="/marketplace?hot_deals=true" className="mh-nav-link mh-hot-link" style={{ display:'flex', alignItems:'center', gap:'5px' }}>
               <Flame size={13} /> Hot Deals
             </a>
@@ -211,7 +212,7 @@ const MarketplaceHeader = () => {
 
         {/* Mobile drawer */}
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
-          <a href="/marketplace" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Browse Cars</a>
+          <Link to="/marketplace" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Browse Cars</Link>
           <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
           <button
             className="mh-mobile-link"
@@ -393,6 +394,7 @@ const Pagination = ({ page, totalPages, onPage }) => {
 /* ── Main Component ─────────────────────────────────────────────────────────── */
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const ctaCtx = useCTAContext();
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
 
@@ -838,7 +840,11 @@ export default function MarketplacePage() {
 
             {/* ── Search bar ── */}
             <form
-              onSubmit={e => { e.preventDefault(); setParam('q', searchInput); }}
+              onSubmit={e => {
+                e.preventDefault();
+                const sq = sanitizeQ(searchInput);
+                navigate(sq ? `/marketplace?q=${encodeURIComponent(sq)}` : '/marketplace');
+              }}
               style={{ position: 'relative', maxWidth: '540px', margin: '0 auto 36px' }}
             >
               <Search size={18} style={{
@@ -863,7 +869,7 @@ export default function MarketplacePage() {
                   boxSizing: 'border-box',
                   backdropFilter: 'blur(8px)',
                 }}
-                onKeyDown={e => e.key === 'Enter' && setParam('q', sanitizeQ(searchInput))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const sq = sanitizeQ(searchInput); navigate(sq ? `/marketplace?q=${encodeURIComponent(sq)}` : '/marketplace'); } }}
               />
               <button
                 type="submit"
@@ -1206,8 +1212,14 @@ export default function MarketplacePage() {
                       <div key={car.id} style={{ position: 'relative' }}>
                         <CarCard car={car} ctaContext={ctaCtx} />
                         <button
-                          onClick={() => inCompare ? removeFromCompare(car.id) : addToCompare(car.id)}
-                          disabled={compareFull}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (compareFull) {
+                              toast.error('Compare is full — remove a car first (max 4)', { duration: 2500 });
+                              return;
+                            }
+                            inCompare ? removeFromCompare(car.id) : addToCompare(car.id);
+                          }}
                           title={compareFull ? 'Compare full (max 4)' : inCompare ? 'Remove from compare' : 'Add to compare'}
                           style={{
                             position: 'absolute',
@@ -1217,16 +1229,16 @@ export default function MarketplacePage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '5px',
-                            background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.65)',
-                            border: `1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.15)'}`,
+                            background: inCompare ? 'rgba(220,38,38,0.85)' : 'rgba(0,0,0,0.72)',
+                            border: `1px solid ${inCompare ? '#dc2626' : 'rgba(255,255,255,0.2)'}`,
                             borderRadius: '8px',
                             padding: '6px 10px',
-                            color: inCompare ? '#fff' : 'rgba(255,255,255,0.7)',
+                            color: inCompare ? '#fff' : '#fff',
                             fontSize: '11px',
                             fontWeight: '700',
-                            cursor: compareFull ? 'not-allowed' : 'pointer',
-                            opacity: compareFull ? 0.4 : 1,
-                            backdropFilter: 'blur(8px)',
+                            cursor: 'pointer',
+                            backdropFilter: 'blur(6px)',
+                            WebkitBackdropFilter: 'blur(6px)',
                             fontFamily: "'Outfit', sans-serif",
                             letterSpacing: '0.02em',
                             transition: 'all 0.15s',
