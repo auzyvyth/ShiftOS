@@ -160,7 +160,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
       onClick={() => {
         if (isSold || !(car.slug || car.id)) return;
         trackEvent(supabase, 'card_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
-        navigate('/cars/' + (car.slug || car.id));
+        navigate('/showroom/' + (car.slug || car.id));
       }}
       style={{ display:'flex', flexDirection:'row', background:'#0b0f18', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'190px', minWidth:0 }}
     >

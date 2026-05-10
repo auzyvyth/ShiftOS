@@ -198,7 +198,7 @@ function useCarSchema(listing) {
           }
         : undefined,
       image: listing.images ?? undefined,
-      url: `https://xdrive.my/cars/${listing.slug}`,
+      url: `https://xdrive.my/showroom/${listing.slug}`,
       offers: {
         "@type": "Offer",
         price: listing.selling_price,
@@ -735,7 +735,7 @@ export default function CarDetailPage() {
             ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString("en-MY")}, ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km, ` : ""}${car.transmission || ""}. Verified dealer on XDrive.`
             : "";
           const img = car?.images?.[0] || "https://xdrive.my/og-default.jpg";
-          const url = car ? `https://xdrive.my/cars/${car.slug}` : "https://xdrive.my";
+          const url = car ? `https://xdrive.my/showroom/${car.slug}` : "https://xdrive.my";
           return <>
             <meta name="description" content={desc} />
             <meta property="og:type" content="website" />

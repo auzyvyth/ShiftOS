@@ -57,6 +57,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/cars" element={<CarsPage />} />
         <Route path="/cars/:slug" element={<CarDetailPage />} />
+        <Route path="/showroom/:slug" element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/showroom" element={<ShowroomPage />} />

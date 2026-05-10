@@ -109,14 +109,15 @@ function sanitizeMileageMax(val) {
 /* ── Skeleton Card ──────────────────────────────────────────────────────────── */
 const SkeletonCard = () => (
   <div style={{
-    background: '#0d1117',
-    border: '1px solid rgba(255,255,255,0.07)',
+    background: '#ffffff',
+    border: '1px solid rgba(0,0,0,0.07)',
     borderRadius: '16px',
     overflow: 'hidden',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   }}>
     <div style={{
       height: '200px',
-      background: 'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)',
+      background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)',
       backgroundSize: '200% 100%',
       animation: 'mp-shimmer 1.5s infinite',
     }} />
@@ -125,7 +126,7 @@ const SkeletonCard = () => (
         <div key={i} style={{
           height: '12px',
           width: `${w}%`,
-          background: '#1a2332',
+          background: '#e8e6e0',
           borderRadius: '6px',
           marginBottom: '10px',
           animation: 'mp-shimmer 1.5s infinite',
@@ -143,11 +144,12 @@ const StatItem = ({ icon: Icon, value, label, color }) => (
     alignItems: 'center',
     gap: '14px',
     padding: '20px 28px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.07)',
+    background: '#ffffff',
+    border: '1px solid rgba(0,0,0,0.08)',
     borderRadius: '14px',
     flex: '1',
     minWidth: '160px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   }}>
     <div style={{
       width: '44px',
@@ -162,7 +164,7 @@ const StatItem = ({ icon: Icon, value, label, color }) => (
       <Icon size={20} color={color ? '#fff' : '#dc2626'} />
     </div>
     <div>
-      <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: '22px', fontWeight: '700', color: '#111827', lineHeight: 1.1 }}>{value}</div>
       <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>{label}</div>
     </div>
   </div>
@@ -190,9 +192,9 @@ const Pagination = ({ page, totalPages, onPage }) => {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(0,0,0,0.1)',
     background: 'transparent',
-    color: '#9ca3af',
+    color: '#6b7280',
     fontSize: '15px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -422,12 +424,12 @@ export default function MarketplacePage() {
   const S = {
     page: {
       minHeight: '100vh',
-      background: '#0C0C0E',
+      background: '#F7F6F2',
       fontFamily: "'Outfit', sans-serif",
     },
     hero: {
-      background: 'linear-gradient(160deg, #0c0c0e 0%, #110810 40%, #0c0c0e 100%)',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      background: 'linear-gradient(160deg, #F2F0EC 0%, #EDE9E3 40%, #F2F0EC 100%)',
+      borderBottom: '1px solid rgba(0,0,0,0.06)',
       padding: '72px 20px 48px',
       position: 'relative',
       overflow: 'hidden',
@@ -456,7 +458,7 @@ export default function MarketplacePage() {
     headline: {
       fontFamily: "'Bebas Neue', sans-serif",
       fontSize: 'clamp(48px, 8vw, 80px)',
-      color: '#ffffff',
+      color: '#111827',
       lineHeight: '0.95',
       letterSpacing: '0.02em',
       margin: '0 0 18px',
@@ -486,7 +488,7 @@ export default function MarketplacePage() {
     },
     brandRow: {
       padding: '24px 0',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid rgba(0,0,0,0.06)',
     },
     brandScroll: {
       display: 'flex',
@@ -499,9 +501,9 @@ export default function MarketplacePage() {
       flexShrink: 0,
       padding: '10px 18px',
       borderRadius: '50px',
-      border: `1px solid ${active ? '#dc2626' : 'rgba(255,255,255,0.1)'}`,
+      border: `1px solid ${active ? '#dc2626' : 'rgba(0,0,0,0.1)'}`,
       background: active ? '#dc2626' : 'transparent',
-      color: active ? '#fff' : '#9ca3af',
+      color: active ? '#fff' : '#6b7280',
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
@@ -511,15 +513,15 @@ export default function MarketplacePage() {
     }),
     filtersSection: {
       padding: '20px 0',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid rgba(0,0,0,0.06)',
     },
     filterToggleBtn: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      color: '#fff',
+      background: '#ffffff',
+      border: '1px solid rgba(0,0,0,0.1)',
+      color: '#111827',
       fontSize: '15px',
       fontWeight: '600',
       padding: '11px 20px',
@@ -544,11 +546,11 @@ export default function MarketplacePage() {
     },
     select: {
       width: '100%',
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.1)',
+      background: '#ffffff',
+      border: '1px solid rgba(0,0,0,0.1)',
       borderRadius: '10px',
       padding: '12px 16px',
-      color: '#fff',
+      color: '#111827',
       fontSize: '15px',
       appearance: 'none',
       cursor: 'pointer',
@@ -563,9 +565,9 @@ export default function MarketplacePage() {
     pill: (active) => ({
       padding: '10px 16px',
       borderRadius: '50px',
-      border: `1px solid ${active ? '#dc2626' : 'rgba(255,255,255,0.1)'}`,
-      background: active ? 'rgba(220,38,38,0.15)' : 'transparent',
-      color: active ? '#f87171' : '#9ca3af',
+      border: `1px solid ${active ? '#dc2626' : 'rgba(0,0,0,0.1)'}`,
+      background: active ? 'rgba(220,38,38,0.08)' : '#ffffff',
+      color: active ? '#dc2626' : '#6b7280',
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
@@ -611,7 +613,7 @@ export default function MarketplacePage() {
     resultsCount: {
       fontSize: '18px',
       fontWeight: '700',
-      color: '#fff',
+      color: '#111827',
     },
     carsGrid: {
       display: 'grid',
@@ -632,8 +634,8 @@ export default function MarketplacePage() {
       alignItems: 'center',
       gap: '8px',
       background: 'transparent',
-      border: '1px solid rgba(255,255,255,0.1)',
-      color: '#9ca3af',
+      border: '1px solid rgba(0,0,0,0.1)',
+      color: '#6b7280',
       fontSize: '14px',
       fontWeight: '600',
       padding: '10px 16px',
@@ -644,7 +646,7 @@ export default function MarketplacePage() {
   };
 
   const FilterGroup = ({ title, children }) => (
-    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
       <p style={{ fontSize:'11px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
       {children}
     </div>
@@ -654,7 +656,7 @@ export default function MarketplacePage() {
     <div style={{ fontFamily:"'Outfit',sans-serif" }}>
       <FilterGroup title="Hot Deals">
         <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals ? 'rgba(251,146,60,0.1)' : 'rgba(255,255,255,0.03)', border: hotDeals ? '1px solid rgba(251,146,60,0.3)' : '1px solid rgba(255,255,255,0.07)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals ? '#fb923c' : '#9ca3af', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s ease' }}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals ? 'rgba(251,146,60,0.1)' : '#ffffff', border: hotDeals ? '1px solid rgba(251,146,60,0.3)' : '1px solid rgba(0,0,0,0.08)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals ? '#fb923c' : '#6b7280', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s ease' }}
           onClick={() => setParam('hot_deals', hotDeals ? '' : 'true')}
           aria-pressed={hotDeals}
         >
@@ -666,21 +668,21 @@ export default function MarketplacePage() {
       <FilterGroup title="Brand">
         <select className="mp-select" style={S.select} value={brand || ''} onChange={e => setParam('brand', e.target.value)}>
           <option value="">All Brands</option>
-          {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+          {BRANDS.map(b => <option key={b} value={b} style={{ background:'#fff' }}>{b}</option>)}
         </select>
       </FilterGroup>
 
       <FilterGroup title="Budget">
         <select className="mp-select" style={S.select} value={maxPrice || ''} onChange={e => setParam('max_price', e.target.value)}>
           <option value="">Any Budget</option>
-          {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+          {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
         </select>
       </FilterGroup>
 
       <FilterGroup title="Location">
         <select className="mp-select" style={S.select} value={state || ''} onChange={e => setParam('state', e.target.value)}>
           <option value="">All States</option>
-          {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+          {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#fff' }}>{s}</option>)}
         </select>
       </FilterGroup>
 
@@ -688,11 +690,11 @@ export default function MarketplacePage() {
         <div style={{ display:'flex', gap:'8px' }}>
           <select className="mp-select" style={{ ...S.select, flex:1 }} value={yearFrom || ''} onChange={e => setParam('year_from', e.target.value)}>
             <option value="">From</option>
-            {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+            {YEARS.map(y => <option key={y} value={y} style={{ background:'#fff' }}>{y}</option>)}
           </select>
           <select className="mp-select" style={{ ...S.select, flex:1 }} value={yearTo || ''} onChange={e => setParam('year_to', e.target.value)}>
             <option value="">To</option>
-            {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+            {YEARS.map(y => <option key={y} value={y} style={{ background:'#fff' }}>{y}</option>)}
           </select>
         </div>
       </FilterGroup>
@@ -724,7 +726,7 @@ export default function MarketplacePage() {
       <FilterGroup title="Max Mileage">
         <select className="mp-select" style={S.select} value={mileageMax || ''} onChange={e => setParam('mileage_max', e.target.value)}>
           <option value="">Any Mileage</option>
-          {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+          {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
         </select>
       </FilterGroup>
 
@@ -774,21 +776,21 @@ export default function MarketplacePage() {
         }
         .mp-brand-scroll::-webkit-scrollbar { display: none }
         .mp-brand-pill:hover { opacity: 0.85; transform: translateY(-1px) }
-        .mp-reset-btn:hover  { color: #fff !important; border-color: rgba(255,255,255,0.25) !important }
+        .mp-reset-btn:hover  { color: #111827 !important; border-color: rgba(0,0,0,0.25) !important }
         .mp-chip-x:hover     { opacity: 0.7 }
         .mp-select:focus     { border-color: rgba(220,38,38,0.5) !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.12) }
-        .mp-filter-toggle:hover { background: rgba(255,255,255,0.07) !important }
-        .mp-next-prev:hover:not(:disabled) { background: rgba(255,255,255,0.06) !important; color: #fff !important }
-        .mp-page-btn:hover { background: rgba(255,255,255,0.05) !important }
+        .mp-filter-toggle:hover { background: rgba(0,0,0,0.05) !important }
+        .mp-next-prev:hover:not(:disabled) { background: rgba(0,0,0,0.05) !important; color: #111827 !important }
+        .mp-page-btn:hover { background: rgba(0,0,0,0.05) !important }
         .mp-hero-glow {
           position: absolute;
           width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(220,38,38,0.08) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(220,38,38,0.06) 0%, transparent 70%);
           top: -200px; left: 50%; transform: translateX(-50%);
           pointer-events: none;
         }
         .mp-sidebar::-webkit-scrollbar { width: 3px; }
-        .mp-sidebar::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+        .mp-sidebar::-webkit-scrollbar-thumb { background: #d1d0cc; border-radius: 2px; }
         .mp-filter-fab { display: none; }
         @media(max-width:1024px){
           .mp-desktop-sidebar { display: none !important; }
@@ -806,18 +808,18 @@ export default function MarketplacePage() {
         .mp-card-slide { animation:mp-slide-right 0.5s cubic-bezier(0.22,1,0.36,1) both; }
         /* Featured cards */
         .mp-feat-card { transition:transform 0.25s ease,border-color 0.25s ease,box-shadow 0.25s ease; }
-        .mp-feat-card:hover { transform:translateY(-5px); border-color:rgba(220,38,38,0.35) !important; box-shadow:0 24px 56px rgba(0,0,0,0.65); }
+        .mp-feat-card:hover { transform:translateY(-5px); border-color:rgba(220,38,38,0.4) !important; box-shadow:0 16px 40px rgba(0,0,0,0.14); }
         .mp-feat-img  { transition:transform 0.45s ease; width:100%; height:100%; object-fit:cover; display:block; }
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
         /* Search bar */
         .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
-        .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 0 0 4px rgba(220,38,38,0.1); }
+        .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
         .mp-search-btn:hover { background:#b91c1c !important; }
         /* Responsive */
         @media(max-width:768px){
           .mp-featured-strip { grid-template-columns:1fr 1fr !important; }
           .mp-search-outer   { flex-direction:column !important; border-radius:16px !important; }
-          .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.07) !important; padding:12px 18px !important; }
+          .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; padding:12px 18px !important; }
           .mp-search-btn     { padding:14px !important; justify-content:center; border-radius:0 0 14px 14px !important; }
         }
         @media(max-width:480px){
@@ -835,37 +837,37 @@ export default function MarketplacePage() {
       )}
 
       {/* Mobile filter drawer */}
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:50, width:'300px', maxWidth:'90vw', background:'#0d1117', borderLeft:'1px solid rgba(255,255,255,0.07)', transform: filtersOpen ? 'translateX(0)' : 'translateX(100%)', transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif" }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-          <h2 style={{ color:'white', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:50, width:'300px', maxWidth:'90vw', background:'#ffffff', borderLeft:'1px solid rgba(0,0,0,0.08)', transform: filtersOpen ? 'translateX(0)' : 'translateX(100%)', transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+          <h2 style={{ color:'#111827', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>}
           </h2>
-          <button onClick={() => setFiltersOpen(false)} style={{ background:'rgba(255,255,255,0.05)', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}><X size={16}/></button>
+          <button onClick={() => setFiltersOpen(false)} style={{ background:'rgba(0,0,0,0.05)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}><X size={16}/></button>
         </div>
         <div className="mp-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}>
           {renderFilters()}
         </div>
-        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#9ca3af', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Reset all</button>
+        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(0,0,0,0.08)', display:'flex', gap:'10px' }}>
+          <button onClick={resetAll} style={{ flex:1, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.1)', color:'#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Reset all</button>
           <button onClick={() => setFiltersOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Show {totalCount} cars</button>
         </div>
       </div>
 
       <div style={S.page}>
         {/* ── Hero — Premium ── */}
-        <section style={{ background:'#06060a', position:'relative', overflow:'hidden' }}>
+        <section style={{ background:'#F2F0EB', position:'relative', overflow:'hidden' }}>
 
           {/* Background layers */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
-          <div style={{ position:'absolute', top:'-250px', left:'50%', transform:'translateX(-50%)', width:'1100px', height:'900px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.16) 0%,transparent 58%)', pointerEvents:'none', zIndex:0 }}/>
-          <div style={{ position:'absolute', top:0, right:'-100px', width:'600px', height:'600px', background:'radial-gradient(circle,rgba(80,20,180,0.06) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
+          <div style={{ position:'absolute', top:'-250px', left:'50%', transform:'translateX(-50%)', width:'1100px', height:'900px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.09) 0%,transparent 58%)', pointerEvents:'none', zIndex:0 }}/>
+          <div style={{ position:'absolute', top:0, right:'-100px', width:'600px', height:'600px', background:'radial-gradient(circle,rgba(220,38,38,0.04) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
 
           {/* ── Centred copy + search ── */}
           <div style={{ maxWidth:'900px', margin:'0 auto', padding:'112px 24px 72px', textAlign:'center', position:'relative', zIndex:1 }}>
 
             {/* Live badge */}
-            <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', color:'#9ca3af', fontSize:'11px', fontWeight:'700', padding:'7px 20px', borderRadius:'100px', marginBottom:'36px', fontFamily:"'Outfit',sans-serif", letterSpacing:'0.08em', textTransform:'uppercase' }}>
+            <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'10px', background:'rgba(0,0,0,0.05)', border:'1px solid rgba(0,0,0,0.09)', color:'#6b7280', fontSize:'11px', fontWeight:'700', padding:'7px 20px', borderRadius:'100px', marginBottom:'36px', fontFamily:"'Outfit',sans-serif", letterSpacing:'0.08em', textTransform:'uppercase' }}>
               <span className="mp-pulse-dot"/>
               <span style={{ color:'#f87171' }}>Live</span>
               &nbsp;&mdash;&nbsp;{stats.listings ? `${stats.listings.toLocaleString()} Cars Available` : "Malaysia's Finest Selection"}
@@ -873,7 +875,7 @@ export default function MarketplacePage() {
 
             {/* Headline */}
             <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 22px', lineHeight:'0.9', letterSpacing:'0.015em' }}>
-              <span className="mp-anim-fade mp-anim-d1" style={{ display:'block', fontSize:'clamp(48px,6.5vw,90px)', color:'#ffffff' }}>
+              <span className="mp-anim-fade mp-anim-d1" style={{ display:'block', fontSize:'clamp(48px,6.5vw,90px)', color:'#111827' }}>
                 MALAYSIA'S PREMIER
               </span>
               <span className="mp-anim-fade mp-anim-d2" style={{ display:'block', fontSize:'clamp(62px,9vw,130px)', color:'#dc2626' }}>
@@ -882,31 +884,31 @@ export default function MarketplacePage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'16px', color:'#6b7280', maxWidth:'460px', margin:'0 auto 48px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
+            <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'16px', color:'#6b7280', maxWidth:'460px', margin:'0 auto 48px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'500' }}>
               Thousands of verified listings from trusted dealers across all 14 states of Malaysia.
             </p>
 
             {/* ── Inline search bar ── */}
-            <div className="mp-search-outer mp-anim-fade mp-anim-d3" style={{ display:'flex', alignItems:'stretch', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'18px', overflow:'hidden', maxWidth:'840px', margin:'0 auto 36px', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)' }}>
-              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(255,255,255,0.07)', textAlign:'left' }}>
+            <div className="mp-search-outer mp-anim-fade mp-anim-d3" style={{ display:'flex', alignItems:'stretch', background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'18px', overflow:'hidden', maxWidth:'840px', margin:'0 auto 36px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)' }}>
+              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(0,0,0,0.07)', textAlign:'left' }}>
                 <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
-                <select value={brand||''} onChange={e=>setParam('brand',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:brand?'#fff':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
+                <select value={brand||''} onChange={e=>setParam('brand',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:brand?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
                   <option value="">Any Brand</option>
-                  {BRANDS.map(b=><option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+                  {BRANDS.map(b=><option key={b} value={b} style={{ background:'#fff' }}>{b}</option>)}
                 </select>
               </div>
-              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(255,255,255,0.07)', textAlign:'left' }}>
+              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(0,0,0,0.07)', textAlign:'left' }}>
                 <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Location</p>
-                <select value={state||''} onChange={e=>setParam('state',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:state?'#fff':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
+                <select value={state||''} onChange={e=>setParam('state',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:state?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
                   <option value="">All States</option>
-                  {MY_STATES.map(s=><option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                  {MY_STATES.map(s=><option key={s} value={s} style={{ background:'#fff' }}>{s}</option>)}
                 </select>
               </div>
               <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', textAlign:'left' }}>
                 <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Budget</p>
-                <select value={maxPrice||''} onChange={e=>setParam('max_price',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:maxPrice?'#fff':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
+                <select value={maxPrice||''} onChange={e=>setParam('max_price',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:maxPrice?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
                   <option value="">Any Budget</option>
-                  {PRICE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                  {PRICE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
                 </select>
               </div>
               <button
@@ -928,7 +930,7 @@ export default function MarketplacePage() {
               >
                 <Flame size={13}/> Hot Deals {stats.hotDeals ? `(${stats.hotDeals}+)` : ''}
               </button>
-              <div style={{ width:'1px', height:'18px', background:'rgba(255,255,255,0.08)', margin:'0 4px' }}/>
+              <div style={{ width:'1px', height:'18px', background:'rgba(0,0,0,0.1)', margin:'0 4px' }}/>
               {[['Verified Dealers'],['14 States Covered'],['Free to Browse']].map(([t])=>(
                 <span key={t} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'13px', color:'#4b5563', fontFamily:"'Outfit',sans-serif", fontWeight:'500', whiteSpace:'nowrap' }}>
                   <span style={{ color:'#22c55e', fontWeight:'900', fontSize:'14px' }}>&#10003;</span> {t}
@@ -949,7 +951,7 @@ export default function MarketplacePage() {
               <button
                 onClick={()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth'})}
                 style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'#6b7280', fontWeight:'700', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'3px', transition:'color 0.15s' }}
-                onMouseEnter={e=>e.currentTarget.style.color='#fff'}
+                onMouseEnter={e=>e.currentTarget.style.color='#111827'}
                 onMouseLeave={e=>e.currentTarget.style.color='#6b7280'}
               >
                 View all {!loading&&totalCount?`${totalCount.toLocaleString()} `:''}cars <ChevronRight size={13}/>
@@ -959,11 +961,11 @@ export default function MarketplacePage() {
             <div className="mp-featured-strip" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'14px' }}>
               {(loading&&cars.length===0 ? Array.from({length:4}) : cars.slice(0,4)).map((car,i)=>(
                 car ? (
-                  <a key={car.id} href={`/cars/${car.slug||car.id}`} className="mp-feat-card mp-card-slide" style={{ background:'#0e1118', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'14px', overflow:'hidden', textDecoration:'none', display:'block', animationDelay:`${0.32+i*0.1}s` }}>
-                    <div style={{ height:'170px', background:'#0a0d14', position:'relative', overflow:'hidden' }}>
+                  <a key={car.id} href={`/showroom/${car.slug||car.id}`} className="mp-feat-card mp-card-slide" style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', overflow:'hidden', textDecoration:'none', display:'block', animationDelay:`${0.32+i*0.1}s`, boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+                    <div style={{ height:'170px', background:'#f0eeea', position:'relative', overflow:'hidden' }}>
                       {Array.isArray(car.images)&&car.images[0]
                         ? <img src={car.images[0]} alt="" className="mp-feat-img" loading="lazy"/>
-                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}><Car size={32} color="#1a2436"/></div>
+                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}><Car size={32} color="#d1cfc9"/></div>
                       }
                       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 13px 10px', background:'linear-gradient(to top,rgba(0,0,0,0.92) 30%,transparent)', pointerEvents:'none' }}>
                         <div style={{ fontSize:'16px', fontWeight:'900', color:'#fff', letterSpacing:'-0.02em', fontFamily:"'DM Sans',sans-serif" }}>
@@ -977,7 +979,7 @@ export default function MarketplacePage() {
                       )}
                     </div>
                     <div style={{ padding:'12px 14px 14px' }}>
-                      <p style={{ margin:'0 0 5px', fontSize:'13px', fontWeight:'700', color:'#f1f5f9', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:"'DM Sans',sans-serif" }}>
+                      <p style={{ margin:'0 0 5px', fontSize:'13px', fontWeight:'700', color:'#111827', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:"'DM Sans',sans-serif" }}>
                         {[car.year,car.brand,car.model].filter(Boolean).join(' ')}
                       </p>
                       <p style={{ margin:0, fontSize:'11px', color:'#6b7280', fontFamily:"'DM Sans',sans-serif", overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
@@ -986,11 +988,11 @@ export default function MarketplacePage() {
                     </div>
                   </a>
                 ) : (
-                  <div key={i} className="mp-card-slide" style={{ background:'#0e1118', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'14px', overflow:'hidden', animationDelay:`${0.32+i*0.1}s` }}>
-                    <div style={{ height:'170px', background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'mp-shimmer 1.5s infinite' }}/>
+                  <div key={i} className="mp-card-slide" style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', overflow:'hidden', animationDelay:`${0.32+i*0.1}s`, boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ height:'170px', background:'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize:'200% 100%', animation:'mp-shimmer 1.5s infinite' }}/>
                     <div style={{ padding:'12px 14px' }}>
-                      <div style={{ height:'12px', width:'72%', background:'#1a2332', borderRadius:'4px', marginBottom:'8px', animation:'mp-shimmer 1.5s infinite' }}/>
-                      <div style={{ height:'10px', width:'48%', background:'#1a2332', borderRadius:'4px', animation:'mp-shimmer 1.5s infinite' }}/>
+                      <div style={{ height:'12px', width:'72%', background:'#e8e6e0', borderRadius:'4px', marginBottom:'8px', animation:'mp-shimmer 1.5s infinite' }}/>
+                      <div style={{ height:'10px', width:'48%', background:'#e8e6e0', borderRadius:'4px', animation:'mp-shimmer 1.5s infinite' }}/>
                     </div>
                   </div>
                 )
@@ -999,7 +1001,7 @@ export default function MarketplacePage() {
           </div>
 
           {/* ── Stats bar ── */}
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', background:'rgba(0,0,0,0.32)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'22px 24px', position:'relative', zIndex:1 }}>
+          <div style={{ borderTop:'1px solid rgba(0,0,0,0.06)', background:'rgba(255,255,255,0.65)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'22px 24px', position:'relative', zIndex:1 }}>
             <div className="mp-hero-stats" style={{ maxWidth:'1360px', margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', gap:0 }}>
               {[
                 { value:stats.listings!=null?`${stats.listings.toLocaleString()}+`:'--', label:'Cars Listed',      red:false },
@@ -1009,10 +1011,10 @@ export default function MarketplacePage() {
               ].map((s,i,arr)=>(
                 <React.Fragment key={s.label}>
                   <div className="mp-hero-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'0 52px', textAlign:'center' }}>
-                    <div style={{ fontSize:'32px', fontWeight:'800', color:s.red?'#f87171':'#ffffff', lineHeight:1, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em' }}>{s.value}</div>
-                    <div style={{ fontSize:'10px', color:'#4b5563', fontWeight:'700', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                    <div style={{ fontSize:'32px', fontWeight:'800', color:s.red?'#dc2626':'#111827', lineHeight:1, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em' }}>{s.value}</div>
+                    <div style={{ fontSize:'10px', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
                   </div>
-                  {i<arr.length-1 && <div style={{ width:'1px', height:'34px', background:'rgba(255,255,255,0.06)', flexShrink:0 }}/>}
+                  {i<arr.length-1 && <div style={{ width:'1px', height:'34px', background:'rgba(0,0,0,0.1)', flexShrink:0 }}/>}
                 </React.Fragment>
               ))}
             </div>
@@ -1020,7 +1022,7 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Brand strip ── */}
-        <section style={{ background: '#0C0C0E', padding: '28px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <section style={{ background: '#F7F6F2', padding: '28px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
@@ -1045,20 +1047,20 @@ export default function MarketplacePage() {
                   >
                     <div style={{
                       width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
-                      background: isActive ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
+                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.12)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.08)' : '#ffffff'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
                       {logo ? (
-                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: invert ? 'brightness(0) invert(1)' : 'none' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'none' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
                       ) : null}
-                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
+                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
                     </div>
-                    <span style={{ fontSize: '11px', color: isActive ? '#f87171' : '#9ca3af', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
+                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#6b7280', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
                   </a>
                 );
               })}
@@ -1096,12 +1098,12 @@ export default function MarketplacePage() {
                 <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                   <label htmlFor="sort-select" style={{ fontSize:'14px', color:'#6b7280', whiteSpace:'nowrap' }}>Sort by</label>
                   <select id="sort-select" className="mp-select" style={{ ...S.select, width:'auto', fontSize:'14px', padding:'9px 14px' }} value={sort} onChange={e => setParam('sort', e.target.value)}>
-                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
                   </select>
                   <button
                     className="mp-desktop-sidebar-toggle"
                     onClick={() => setSidebarOpen(o => !o)}
-                    style={{ display:'flex', alignItems:'center', gap:'6px', background: sidebarOpen ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)', border: sidebarOpen ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'9px 14px', color: sidebarOpen ? '#f87171' : '#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
+                    style={{ display:'flex', alignItems:'center', gap:'6px', background: sidebarOpen ? 'rgba(220,38,38,0.08)' : '#ffffff', border: sidebarOpen ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(0,0,0,0.1)', borderRadius:'10px', padding:'9px 14px', color: sidebarOpen ? '#dc2626' : '#6b7280', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
                   >
                     <SlidersHorizontal size={14}/>
                     Filters {activeChips.length > 0 && `(${activeChips.length})`}
@@ -1176,9 +1178,9 @@ export default function MarketplacePage() {
 
             {/* Right: filter sidebar — desktop toggle */}
             {sidebarOpen && (
-              <aside className="mp-sidebar" style={{ width:'260px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'20px', position:'sticky', top:'80px', maxHeight:'calc(100vh - 100px)', overflowY:'auto' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                  <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
+              <aside className="mp-sidebar" style={{ width:'260px', flexShrink:0, background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'16px', padding:'20px', position:'sticky', top:'80px', maxHeight:'calc(100vh - 100px)', overflowY:'auto', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', paddingBottom:'12px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+                  <h2 style={{ color:'#111827', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
                     <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
                     Filters
                     {activeChips.length > 0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}

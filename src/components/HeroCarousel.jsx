@@ -905,7 +905,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
         )}
         {s.car_listing_id && (
           <Link
-            to={`/cars/${s.car_listings?.slug || s.car_listing_id}`}
+            to={`${isSubdomain() ? '/cars' : '/showroom'}/${s.car_listings?.slug || s.car_listing_id}`}
             className="hc-view"
           >
             View Details

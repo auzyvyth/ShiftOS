@@ -6,6 +6,7 @@ import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
+import { isSubdomain } from '../hooks/useTenant';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -132,7 +133,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
             dealer_id: car.dealer_id || null,
             metadata: { source: 'car_card' },
           });
-          navigate('/cars/' + (car.slug || car.id));
+          navigate((isSubdomain() ? '/cars/' : '/showroom/') + (car.slug || car.id));
         }}
         style={{
           background: 'var(--color-background-primary, #0d1117)',

@@ -544,7 +544,7 @@ const CarsPage = () => {
             "itemListElement": filteredCars.slice(0, 10).map((car, i) => ({
               "@type": "ListItem",
               "position": i + 1,
-              "url": `https://xdrive.my/cars/${car.slug}`,
+              "url": `https://xdrive.my/showroom/${car.slug}`,
               "name": `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
             })),
           })}</script>
