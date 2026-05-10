@@ -795,6 +795,27 @@ export default function MarketplacePage() {
           .mp-filter-fab { display: flex !important; }
           .mp-cars-layout { flex-direction: column !important; }
         }
+        @keyframes mp-fade-up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes mp-slide-right { from{opacity:0;transform:translateX(22px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes mp-pulse-ring { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.35;transform:scale(0.65)} }
+        .mp-pulse-dot { width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;animation:mp-pulse-ring 2s ease-in-out infinite; }
+        .mp-anim-fade { animation:mp-fade-up 0.55s ease both; }
+        .mp-anim-d1  { animation-delay:0.12s; }
+        .mp-anim-d2  { animation-delay:0.24s; }
+        .mp-anim-d3  { animation-delay:0.36s; }
+        .mp-card-slide { animation:mp-slide-right 0.45s ease both; }
+        .mp-hero-card { transition:transform 0.2s ease,border-color 0.2s ease; }
+        .mp-hero-card:hover { transform:translateY(-3px); border-color:rgba(220,38,38,0.32) !important; }
+        @media(max-width:960px){
+          .mp-hero-split { flex-direction:column !important; gap:32px !important; }
+          .mp-hero-right { display:none !important; }
+          .mp-hero-left  { flex:1 1 100% !important; max-width:100% !important; }
+          .mp-hero-fields { grid-template-columns:1fr 1fr !important; }
+        }
+        @media(max-width:480px){
+          .mp-hero-fields { grid-template-columns:1fr !important; }
+          .mp-hero-stats  { flex-wrap:nowrap !important; overflow-x:auto !important; justify-content:flex-start !important; padding:0 4px !important; }
+        }
       `}</style>
 
       <MarketplaceHeader />
@@ -823,85 +844,139 @@ export default function MarketplacePage() {
       </div>
 
       <div style={S.page}>
-        {/* ── Hero ── */}
-        <section style={S.hero}>
-          <div className="mp-hero-glow" />
-          <div style={S.heroInner}>
-            <div style={S.eyebrow}>
-              <Flame size={13} /> Malaysia's #1 Used Car Marketplace
+        {/* ── Hero (split layout) ── */}
+        <section style={{ background:'linear-gradient(145deg,#07070a 0%,#0c0710 50%,#07070a 100%)', position:'relative', overflow:'hidden' }}>
+          {/* bg glows */}
+          <div style={{ position:'absolute', top:'-180px', left:'22%', width:'700px', height:'700px', background:'radial-gradient(circle,rgba(220,38,38,0.07) 0%,transparent 65%)', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', bottom:'-80px', right:'8%', width:'420px', height:'420px', background:'radial-gradient(circle,rgba(109,40,217,0.04) 0%,transparent 70%)', pointerEvents:'none' }}/>
+
+          <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'80px 24px 56px' }}>
+            <div className="mp-hero-split" style={{ display:'flex', gap:'60px', alignItems:'center' }}>
+
+              {/* ── Left: copy + filters ── */}
+              <div className="mp-hero-left" style={{ flex:'0 0 50%', maxWidth:'580px' }}>
+                {/* Eyebrow */}
+                <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', color:'#f87171', fontSize:'11px', fontWeight:'700', padding:'5px 14px', borderRadius:'20px', marginBottom:'22px', letterSpacing:'0.07em', textTransform:'uppercase', fontFamily:"'Outfit',sans-serif" }}>
+                  <span className="mp-pulse-dot"/>
+                  Malaysia's #1 Car Marketplace
+                </div>
+
+                {/* Headline */}
+                <h1 className="mp-anim-fade mp-anim-d1" style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(52px,6vw,84px)', color:'#fff', lineHeight:'0.93', letterSpacing:'0.02em', margin:'0 0 18px' }}>
+                  FIND YOUR<br/><span style={{ color:'#dc2626' }}>PERFECT CAR</span><br/>IN MALAYSIA
+                </h1>
+
+                <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'15px', color:'#9ca3af', lineHeight:'1.65', margin:'0 0 28px', maxWidth:'440px', fontFamily:"'Outfit',sans-serif" }}>
+                  Verified listings from trusted dealers across Malaysia. New, used &amp; recon — all in one place.
+                </p>
+
+                {/* 3-field filter card */}
+                <div className="mp-anim-fade mp-anim-d2" style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'16px', padding:'16px', marginBottom:'20px' }}>
+                  <div className="mp-hero-fields" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginBottom:'12px' }}>
+                    <div>
+                      <p style={{ fontSize:'9px', fontWeight:'800', color:'#6b7280', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
+                      <select value={brand||''} onChange={e=>setParam('brand',e.target.value)} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'8px', padding:'9px 10px', color:brand?'#fff':'#4b5563', fontSize:'13px', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box' }}>
+                        <option value="">Any Brand</option>
+                        {BRANDS.map(b=><option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={{ fontSize:'9px', fontWeight:'800', color:'#6b7280', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Location</p>
+                      <select value={state||''} onChange={e=>setParam('state',e.target.value)} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'8px', padding:'9px 10px', color:state?'#fff':'#4b5563', fontSize:'13px', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box' }}>
+                        <option value="">All States</option>
+                        {MY_STATES.map(s=><option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={{ fontSize:'9px', fontWeight:'800', color:'#6b7280', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Budget</p>
+                      <select value={maxPrice||''} onChange={e=>setParam('max_price',e.target.value)} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'8px', padding:'9px 10px', color:maxPrice?'#fff':'#4b5563', fontSize:'13px', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box' }}>
+                        <option value="">Any Budget</option>
+                        {PRICE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    onClick={()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth',block:'start'})}
+                    style={{ width:'100%', background:'linear-gradient(135deg,#dc2626,#b91c1c)', color:'#fff', border:'none', borderRadius:'10px', padding:'13px', fontSize:'15px', fontWeight:'800', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}
+                  >
+                    <Search size={15}/>
+                    {stats.listings ? `Browse ${stats.listings.toLocaleString()}+ Cars` : 'Browse All Cars'}
+                  </button>
+                </div>
+
+                {/* Trust strip */}
+                <div className="mp-anim-fade mp-anim-d3" style={{ display:'flex', gap:'20px', flexWrap:'wrap' }}>
+                  {['Verified Dealers','Nationwide Coverage','Free to Browse'].map(t=>(
+                    <span key={t} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'12px', color:'#6b7280', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}>
+                      <span style={{ color:'#22c55e', fontWeight:'900' }}>✓</span> {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Right: live listing cards ── */}
+              <div className="mp-hero-right" style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                {(loading && cars.length===0 ? Array.from({length:4}) : cars.slice(0,4)).map((car,i)=>(
+                  car
+                    ? (
+                      <a key={car.id} href={`/cars/${car.slug||car.id}`} className="mp-card-slide mp-hero-card" style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', overflow:'hidden', textDecoration:'none', display:'block', animationDelay:`${0.25+i*0.12}s` }}>
+                        <div style={{ height:'120px', background:'#0a0d14', position:'relative', overflow:'hidden' }}>
+                          {Array.isArray(car.images)&&car.images[0]
+                            ? <img src={car.images[0]} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} loading="lazy"/>
+                            : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}><Car size={24} color="#1e2a3a"/></div>
+                          }
+                          {car.selling_price && (
+                            <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 10px 6px', background:'linear-gradient(to top,rgba(0,0,0,0.85),transparent)', pointerEvents:'none' }}>
+                              <div style={{ fontSize:'13px', fontWeight:'800', color:'#fff' }}>RM {car.selling_price.toLocaleString('en-MY')}</div>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ padding:'9px 11px 11px' }}>
+                          <p style={{ margin:'0 0 3px', fontSize:'12px', fontWeight:'700', color:'#f1f5f9', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:"'DM Sans',sans-serif" }}>
+                            {[car.year,car.brand,car.model].filter(Boolean).join(' ')}
+                          </p>
+                          <p style={{ margin:0, fontSize:'10px', color:'#6b7280', fontFamily:"'DM Sans',sans-serif", overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                            {[car.mileage ? Number(car.mileage).toLocaleString('en-MY')+' km' : null, car.state].filter(Boolean).join(' • ')||' '}
+                          </p>
+                        </div>
+                      </a>
+                    )
+                    : (
+                      <div key={i} className="mp-card-slide" style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', animationDelay:`${0.25+i*0.12}s` }}>
+                        <div style={{ height:'120px', background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'mp-shimmer 1.5s infinite' }}/>
+                        <div style={{ padding:'9px 11px' }}>
+                          <div style={{ height:'10px', width:'70%', background:'#1a2332', borderRadius:'4px', marginBottom:'7px', animation:'mp-shimmer 1.5s infinite' }}/>
+                          <div style={{ height:'9px', width:'45%', background:'#1a2332', borderRadius:'4px', animation:'mp-shimmer 1.5s infinite' }}/>
+                        </div>
+                      </div>
+                    )
+                ))}
+                {!loading && totalCount > 4 && (
+                  <button onClick={()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth'})} style={{ gridColumn:'1/-1', background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'#6b7280', fontWeight:'600', fontFamily:"'Outfit',sans-serif", padding:'6px 0', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px' }}>
+                    View all {totalCount.toLocaleString()} listings →
+                  </button>
+                )}
+              </div>
             </div>
-            <h1 style={S.headline}>
-              Find Your<br />
-              <span style={S.headlineAccent}>Perfect Car</span>
-            </h1>
-            <p style={S.subtitle}>
-              Browse thousands of verified used cars from trusted dealers across Malaysia.
-            </p>
+          </div>
 
-            {/* ── Search bar ── */}
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                const sq = sanitizeQ(searchInput);
-                navigate(sq ? `/marketplace?q=${encodeURIComponent(sq)}` : '/marketplace');
-              }}
-              style={{ position: 'relative', maxWidth: '540px', margin: '0 auto 36px' }}
-            >
-              <Search size={18} style={{
-                position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)',
-                color: '#6b7280', pointerEvents: 'none',
-              }} />
-              <input
-                type="search"
-                placeholder="Search brand, model, or variant…"
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: '12px',
-                  padding: '16px 54px 16px 50px',
-                  color: '#fff',
-                  fontSize: '16px',
-                  fontFamily: "'Outfit', sans-serif",
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  backdropFilter: 'blur(8px)',
-                }}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const sq = sanitizeQ(searchInput); navigate(sq ? `/marketplace?q=${encodeURIComponent(sq)}` : '/marketplace'); } }}
-              />
-              <button
-                type="submit"
-                style={{
-                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
-                  background: '#dc2626', color: '#fff', border: 'none',
-                  borderRadius: '8px', padding: '10px 18px',
-                  fontSize: '14px', fontWeight: '700', cursor: 'pointer',
-                  fontFamily: "'Outfit', sans-serif",
-                }}
-              >
-                Search
-              </button>
-            </form>
-
-            <div style={S.statsRow}>
-              <StatItem
-                icon={Car}
-                value={stats.listings !== null ? `${stats.listings.toLocaleString()}+` : '—'}
-                label="Cars Listed"
-              />
-              <StatItem
-                icon={Users}
-                value={stats.dealers !== null ? `${stats.dealers}` : '—'}
-                label="Trusted Dealers"
-              />
-              <StatItem
-                icon={Flame}
-                value={stats.hotDeals !== null ? `${stats.hotDeals}+` : '—'}
-                label="Hot Deals"
-                color="rgba(251,146,60,0.15)"
-              />
+          {/* ── Bottom stats bar ── */}
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', background:'rgba(0,0,0,0.22)', backdropFilter:'blur(12px)', padding:'18px 24px' }}>
+            <div className="mp-hero-stats" style={{ maxWidth:'1360px', margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'wrap', gap:'0' }}>
+              {[
+                { value: stats.listings!=null ? `${stats.listings.toLocaleString()}+` : '—', label:'Cars Listed' },
+                { value: stats.dealers!=null ? String(stats.dealers) : '—', label:'Verified Dealers' },
+                { value:'14', label:'States Covered' },
+                { value: stats.hotDeals!=null ? `${stats.hotDeals}+` : '—', label:'Hot Deals' },
+              ].map((s,i,arr)=>(
+                <React.Fragment key={s.label}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'0 36px', textAlign:'center' }}>
+                    <div style={{ fontSize:'28px', fontWeight:'800', color:'#fff', lineHeight:1, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em' }}>{s.value}</div>
+                    <div style={{ fontSize:'10px', color:'#6b7280', fontWeight:'700', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:'3px', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                  </div>
+                  {i<arr.length-1 && <div style={{ width:'1px', height:'32px', background:'rgba(255,255,255,0.07)', flexShrink:0 }}/>}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         </section>
@@ -958,7 +1033,7 @@ export default function MarketplacePage() {
           <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'24px' }}>
 
             {/* Left: results */}
-            <div style={{ flex:1, minWidth:0 }}>
+            <div id="mp-results" style={{ flex:1, minWidth:0 }}>
               {/* Active chips */}
               {activeChips.length > 0 && (
                 <div style={{ ...S.chipsRow, paddingTop:0, marginBottom:'16px' }}>
