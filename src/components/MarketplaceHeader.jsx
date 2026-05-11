@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { X, Flame, Menu, Phone } from 'lucide-react';
 
 export default function MarketplaceHeader() {
@@ -7,6 +7,12 @@ export default function MarketplaceHeader() {
   const [menuOpen, setMenuOpen]      = useState(false);
   const [conditionOpen, setCondOpen] = useState(false);
   const menuRef = useRef(null);
+  const { pathname, search } = useLocation();
+  const sp = new URLSearchParams(search);
+
+  const isShowroom  = (pathname === '/showroom' || pathname === '/marketplace') && !sp.get('hot_deals') && !sp.get('condition');
+  const isHotDeals  = sp.get('hot_deals') === 'true';
+  const isCondition = !!sp.get('condition');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -28,16 +34,16 @@ export default function MarketplaceHeader() {
         .mh-root.scrolled { background:rgba(12,12,14,0.9)!important; backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 1px 0 rgba(255,255,255,0.06); }
         .mh-nav-link { color:#9ca3af; font-size:14px; font-weight:500; text-decoration:none; padding:6px 2px; position:relative; transition:color 0.15s; font-family:'Outfit',sans-serif; white-space:nowrap; }
         .mh-nav-link::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-nav-link:hover { color:#fff; }
-        .mh-nav-link:hover::after { transform:scaleX(1); }
+        .mh-nav-link:hover,.mh-nav-link.active { color:#fff; }
+        .mh-nav-link:hover::after,.mh-nav-link.active::after { transform:scaleX(1); }
         .mh-hot-link { color:#fb923c!important; }
         .mh-hot-link::after { background:#fb923c!important; }
         .mh-hot-link:hover { color:#fdba74!important; }
         .mh-dropdown { position:relative; }
         .mh-dropdown-trigger { color:#9ca3af; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:'Outfit',sans-serif; white-space:nowrap; background:none; border:none; padding:6px 2px; position:relative; transition:color 0.15s; }
         .mh-dropdown-trigger::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1.5px; background:#dc2626; transform:scaleX(0); transition:transform 0.2s; transform-origin:left; border-radius:2px; }
-        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus { color:#fff; }
-        .mh-dropdown:hover .mh-dropdown-trigger::after { transform:scaleX(1); }
+        .mh-dropdown:hover .mh-dropdown-trigger, .mh-dropdown-trigger:focus, .mh-dropdown-trigger.active { color:#fff; }
+        .mh-dropdown:hover .mh-dropdown-trigger::after, .mh-dropdown-trigger.active::after { transform:scaleX(1); }
         .mh-dropdown-chevron { transition:transform 0.2s; display:inline-block; }
         .mh-dropdown:hover .mh-dropdown-chevron { transform:rotate(180deg); }
         .mh-dropdown-menu { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); min-width:170px; background:rgba(10,14,24,0.98); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; backdrop-filter:blur(20px); box-shadow:0 12px 40px rgba(0,0,0,0.7); z-index:200; }
@@ -50,7 +56,8 @@ export default function MarketplaceHeader() {
         .mh-hamburger:hover { background:rgba(255,255,255,0.1); }
         .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(12,12,14,0.97); backdrop-filter:blur(16px); }
         .mh-mobile-link { color:#9ca3af; font-size:15px; font-weight:500; text-decoration:none; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:'Outfit',sans-serif; transition:color 0.15s; display:block; }
-        .mh-mobile-link:hover { color:#fff; }
+        .mh-mobile-link:hover,.mh-mobile-link.active { color:#fff; }
+        .mh-mobile-link.active { border-left:2px solid #dc2626; padding-left:10px; }
         .mh-mobile-sub { padding:6px 0 6px 16px; display:flex; flex-direction:column; gap:0; border-bottom:1px solid rgba(255,255,255,0.05); }
         .mh-mobile-sub-item { color:#6b7280; font-size:13px; font-weight:500; text-decoration:none; padding:8px 0; font-family:'Outfit',sans-serif; transition:color 0.12s; }
         .mh-mobile-sub-item:hover { color:#fff; }
@@ -72,12 +79,12 @@ export default function MarketplaceHeader() {
           </Link>
 
           <nav className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'28px', flex:1, justifyContent:'center' }}>
-            <Link to="/showroom" className="mh-nav-link">Showroom</Link>
-            <a href="/marketplace?hot_deals=true" className="mh-nav-link mh-hot-link" style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+            <Link to="/showroom" className={`mh-nav-link${isShowroom ? ' active' : ''}`}>Showroom</Link>
+            <a href="/marketplace?hot_deals=true" className={`mh-nav-link mh-hot-link${isHotDeals ? ' active' : ''}`} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
               <Flame size={13} /> Hot Deals
             </a>
             <div className="mh-dropdown">
-              <button className="mh-dropdown-trigger" aria-haspopup="true">
+              <button className={`mh-dropdown-trigger${isCondition ? ' active' : ''}`} aria-haspopup="true">
                 Condition <span className="mh-dropdown-chevron">▾</span>
               </button>
               <div className="mh-dropdown-menu" role="menu">
@@ -100,7 +107,7 @@ export default function MarketplaceHeader() {
         </div>
 
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
-          <Link to="/showroom" className="mh-mobile-link" onClick={() => setMenuOpen(false)}>Showroom</Link>
+          <Link to="/showroom" className={`mh-mobile-link${isShowroom ? ' active' : ''}`} onClick={() => setMenuOpen(false)}>Showroom</Link>
           <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
           <button className="mh-mobile-link" style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'11px 0', color:'#9ca3af', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }} onClick={() => setCondOpen(o => !o)}>
             Condition <span style={{ fontSize:12 }}>{conditionOpen ? '▲' : '▼'}</span>
