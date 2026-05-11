@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Search, ArrowLeftRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Search, ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
@@ -289,6 +289,16 @@ export default function MarketplacePage() {
 
   const [heroQ,      setHeroQ]      = useState('');
   const [heroBudget, setHeroBudget] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advBrand,       setAdvBrand]       = useState('');
+  const [advBodyType,    setAdvBodyType]    = useState('');
+  const [advCondition,   setAdvCondition]   = useState('');
+  const [advState,       setAdvState]       = useState('');
+  const [advYearFrom,    setAdvYearFrom]    = useState('');
+  const [advYearTo,      setAdvYearTo]      = useState('');
+  const [advMileageMax,  setAdvMileageMax]  = useState('');
+  const [advTransmission,setAdvTransmission]= useState('');
+  const [advFinancing,   setAdvFinancing]   = useState('');
 
   /* Data state */
   const [cars, setCars]           = useState([]);
@@ -746,19 +756,19 @@ export default function MarketplacePage() {
   return (
     <>
       <Helmet>
-        <title>XDrive — Malaysia's Used Car Marketplace</title>
-        <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
+        <title>XDrive — Malaysia's Car Marketplace</title>
+        <meta name="description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
         <link rel="canonical" href={`https://xdrive.my/marketplace${hotDeals ? '?hot_deals=true' : condition ? `?condition=${condition}` : ''}`} />
         <meta property="og:type"        content="website" />
         <meta property="og:url"         content="https://xdrive.my/marketplace" />
         <meta property="og:locale"      content="en_MY" />
         <meta property="og:site_name"   content="XDrive" />
-        <meta property="og:title"       content="XDrive — Malaysia's Used Car Marketplace" />
-        <meta property="og:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia." />
+        <meta property="og:title"       content="XDrive — Malaysia's Car Marketplace" />
+        <meta property="og:description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia." />
         <meta property="og:image"       content="https://xdrive.my/og-marketplace.jpg" />
         <meta name="twitter:card"        content="summary_large_image" />
-        <meta name="twitter:title"       content="XDrive — Malaysia's Used Car Marketplace" />
-        <meta name="twitter:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia." />
+        <meta name="twitter:title"       content="XDrive — Malaysia's Car Marketplace" />
+        <meta name="twitter:description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia." />
         <meta name="twitter:image"       content="https://xdrive.my/og-marketplace.jpg" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
@@ -882,7 +892,7 @@ export default function MarketplacePage() {
           {/* ── Two-column hero ── */}
           <div className="mp-hero-two-col" style={{ maxWidth:'1280px', margin:'0 auto', padding:'96px 40px 72px', display:'flex', alignItems:'center', gap:'72px', position:'relative', zIndex:1 }}>
 
-            {/* LEFT: copy + search */}
+            {/* LEFT: copy + trust card */}
             <div style={{ flex:'1 1 0', minWidth:0 }}>
 
               {/* Trust pill */}
@@ -891,120 +901,241 @@ export default function MarketplacePage() {
                   <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
                   <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Malaysia's first fully-verified used car marketplace
+                Malaysia's first fully-verified car marketplace
               </div>
 
               {/* Headline */}
               <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.03em', fontSize:'clamp(52px,6vw,96px)', textAlign:'left' }}>
-                <span style={{ display:'block', color:'#ffffff' }}>Buy used cars.</span>
-                <span style={{ display:'block', color:'rgba(255,255,255,0.32)' }}>Without the bullshit.</span>
+                <span style={{ display:'block', color:'#ffffff' }}>New. Used. Recon.</span>
+                <span style={{ display:'block', color:'#dc2626' }}>Find it here.</span>
               </h1>
 
               {/* Subheadline */}
-              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.48)', maxWidth:'420px', margin:'0 0 40px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400', textAlign:'left' }}>
-                Every listing on xdrive.my is from a verified dealer — complete with documents, real photos, and a track record. No phantom listings. No Mudah-style scams.
+              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.48)', maxWidth:'420px', margin:'0 0 36px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400', textAlign:'left' }}>
+                Every type of car, every budget — from verified dealers across Malaysia. Full docs, real photos, zero phantom listings.
               </p>
 
-              {/* ── Search bar ── */}
-              <form
-                onSubmit={e => { e.preventDefault(); const p = new URLSearchParams(); if (heroQ) p.set('q', heroQ); if (heroBudget) p.set('budget', heroBudget); navigate(`/showroom${p.toString() ? `?${p}` : ''}`); }}
-              >
-                <div className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', overflow:'hidden', maxWidth:'560px' }}>
-                  <div className="mp-hero-input-wrap" style={{ flex:1, display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', minWidth:0 }}>
+              {/* "Every listing includes" card — hidden on mobile */}
+              <div className="mp-hero-illus" style={{ width:'auto' }}>
+                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'24px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
+                    <div style={{ width:'32px', height:'32px', borderRadius:'10px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
+                        <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p style={{ margin:0, fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
+                      <p style={{ margin:0, fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
+                    </div>
+                  </div>
+                  {[
+                    { label:'Full ownership docs', desc:'Grant, roadtax & insurance verified', iconBg:'rgba(34,197,94,0.15)', iconBorder:'rgba(34,197,94,0.25)', icon:<path d="M9 12h6M9 16h6M5 8h14M5 4h14v16H5V4z" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/> },
+                    { label:'Service history', desc:'Complete maintenance records included', iconBg:'rgba(59,130,246,0.15)', iconBorder:'rgba(59,130,246,0.25)', icon:<><path d="M12 8v4l3 3" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#60a5fa" strokeWidth="1.5"/></> },
+                    { label:'Verified dealer badge', desc:'All dealers certified and background-checked', iconBg:'rgba(245,158,11,0.15)', iconBorder:'rgba(245,158,11,0.25)', icon:<><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></> },
+                  ].map(({ label, desc, iconBg, iconBorder, icon }) => (
+                    <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'12px', marginBottom:'14px' }}>
+                      <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">{icon}</svg>
+                      </div>
+                      <div style={{ paddingTop:'1px' }}>
+                        <p style={{ margin:'0 0 2px', fontSize:'13px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
+                        <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.38)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.5' }}>{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT: Advanced search */}
+            <div style={{ flexShrink:0, width:'440px', maxWidth:'100%' }}>
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'28px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                <p style={{ margin:'0 0 18px', fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Find your next car</p>
+
+                <form onSubmit={e => {
+                  e.preventDefault();
+                  const p = new URLSearchParams();
+                  if (heroQ)           p.set('q', heroQ);
+                  if (heroBudget)      p.set('max_price', heroBudget);
+                  if (advBrand)        p.set('brand', advBrand);
+                  if (advBodyType)     p.set('body_type', advBodyType);
+                  if (advCondition)    p.set('condition', advCondition);
+                  if (advState)        p.set('state', advState);
+                  if (advYearFrom)     p.set('year_from', advYearFrom);
+                  if (advYearTo)       p.set('year_to', advYearTo);
+                  if (advMileageMax)   p.set('mileage_max', advMileageMax);
+                  if (advTransmission) p.set('transmission', advTransmission);
+                  if (advFinancing)    p.set('financing', advFinancing);
+                  navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
+                }}>
+                  {/* Main search input */}
+                  <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'12px', overflow:'hidden', marginBottom:'10px' }}>
+                    <Search size={15} style={{ flexShrink:0, margin:'0 0 0 16px', color:'rgba(255,255,255,0.35)' }}/>
                     <input
                       type="text"
                       value={heroQ}
                       onChange={e=>setHeroQ(e.target.value)}
-                      placeholder="Search by make, model, or registration..."
-                      style={{ width:'100%', border:'none', outline:'none', padding:'17px 20px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
+                      placeholder="Make, model, or registration..."
+                      style={{ flex:1, border:'none', outline:'none', padding:'15px 14px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
                     />
                   </div>
-                  <div className="mp-hero-budget-wrap" style={{ position:'relative', display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
-                    <select
-                      value={heroBudget}
-                      onChange={e=>setHeroBudget(e.target.value)}
-                      style={{ border:'none', outline:'none', padding:'17px 32px 17px 18px', fontSize:'14px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none', whiteSpace:'nowrap' }}
+
+                  {/* Budget + Search */}
+                  <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
+                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'12px', overflow:'hidden' }}>
+                      <select
+                        value={heroBudget}
+                        onChange={e=>setHeroBudget(e.target.value)}
+                        style={{ flex:1, border:'none', outline:'none', padding:'14px 32px 14px 14px', fontSize:'13px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}
+                      >
+                        <option value="" style={{ background:'#0d1117' }}>Any budget</option>
+                        {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                      </select>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                    <button
+                      type="submit"
+                      style={{ background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, borderRadius:'12px', transition:'background 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                      onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                     >
-                      <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                      <option value="under100k" style={{ background:'#0d1117' }}>Under RM 100k</option>
-                      <option value="100k-300k" style={{ background:'#0d1117' }}>RM 100k–300k</option>
-                      <option value="above300k" style={{ background:'#0d1117' }}>RM 300k+</option>
-                    </select>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                      <Search size={14}/> Search
+                    </button>
                   </div>
+
+                  {/* Advanced toggle */}
                   <button
-                    type="submit"
-                    className="mp-hero-search-btn"
-                    style={{ background:'#ffffff', color:'#0d0d10', border:'none', padding:'0 24px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, whiteSpace:'nowrap', borderRadius:'0 10px 10px 0' }}
+                    type="button"
+                    onClick={() => setAdvancedOpen(o => !o)}
+                    style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', color:'rgba(255,255,255,0.45)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:'0', marginBottom: advancedOpen ? '16px' : '0' }}
                   >
-                    <Search size={15}/> Search
+                    <ChevronDown size={13} style={{ transform: advancedOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 0.2s' }}/>
+                    Advanced search
                   </button>
-                </div>
-              </form>
-            </div>
 
-            {/* RIGHT: "every listing includes" card */}
-            <div className="mp-hero-illus" style={{ flexShrink:0, width:'340px' }}>
-              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'28px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-                {/* Card header */}
-                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'24px' }}>
-                  <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p style={{ margin:0, fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
-                    <p style={{ margin:0, fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
-                  </div>
-                </div>
+                  {/* Advanced panel */}
+                  {advancedOpen && (
+                    <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:'16px', display:'flex', flexDirection:'column', gap:'14px' }}>
 
-                {/* Items */}
-                {[
-                  {
-                    label: 'Full ownership docs',
-                    desc:  'Grant, roadtax & insurance verified',
-                    iconBg: 'rgba(34,197,94,0.15)',
-                    iconBorder: 'rgba(34,197,94,0.25)',
-                    iconColor: '#4ade80',
-                    icon: <path d="M9 12h6M9 16h6M5 8h14M5 4h14v16H5V4z" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>,
-                  },
-                  {
-                    label: 'Service history',
-                    desc:  'Complete maintenance records included',
-                    iconBg: 'rgba(59,130,246,0.15)',
-                    iconBorder: 'rgba(59,130,246,0.25)',
-                    iconColor: '#60a5fa',
-                    icon: <><path d="M12 8v4l3 3" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#60a5fa" strokeWidth="1.5"/></>,
-                  },
-                  {
-                    label: 'Verified dealer badge',
-                    desc:  'All dealers certified and background-checked',
-                    iconBg: 'rgba(245,158,11,0.15)',
-                    iconBorder: 'rgba(245,158,11,0.25)',
-                    iconColor: '#fbbf24',
-                    icon: <><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></>,
-                  },
-                ].map(({ label, desc, iconBg, iconBorder, iconColor, icon }) => (
-                  <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'14px', marginBottom:'18px' }}>
-                    <div style={{ width:'38px', height:'38px', borderRadius:'10px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">{icon}</svg>
+                      {/* Condition */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Condition</p>
+                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                          {CONDITION_OPTIONS.map(co => (
+                            <button key={co.value} type="button"
+                              onClick={() => setAdvCondition(advCondition === co.value ? '' : co.value)}
+                              style={{ padding:'7px 14px', borderRadius:'50px', border:`1px solid ${advCondition===co.value?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advCondition===co.value?'rgba(220,38,38,0.18)':'transparent', color: advCondition===co.value?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                            >{co.label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Brand */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
+                        <div style={{ position:'relative' }}>
+                          <select value={advBrand} onChange={e=>setAdvBrand(e.target.value)}
+                            style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 32px 11px 14px', color: advBrand?'#fff':'rgba(255,255,255,0.42)', fontSize:'13px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                            <option value="" style={{ background:'#0d1117' }}>All Brands</option>
+                            {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+                          </select>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
+                      </div>
+
+                      {/* Body type */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Body Type</p>
+                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                          {BODY_TYPES.map(bt => (
+                            <button key={bt} type="button"
+                              onClick={() => setAdvBodyType(advBodyType === bt ? '' : bt)}
+                              style={{ padding:'7px 12px', borderRadius:'50px', border:`1px solid ${advBodyType===bt?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advBodyType===bt?'rgba(220,38,38,0.18)':'transparent', color: advBodyType===bt?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                            >{bt}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* State + Mileage */}
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                        <div>
+                          <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>State</p>
+                          <div style={{ position:'relative' }}>
+                            <select value={advState} onChange={e=>setAdvState(e.target.value)}
+                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advState?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                              <option value="" style={{ background:'#0d1117' }}>All States</option>
+                              {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                            </select>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                        </div>
+                        <div>
+                          <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Max Mileage</p>
+                          <div style={{ position:'relative' }}>
+                            <select value={advMileageMax} onChange={e=>setAdvMileageMax(e.target.value)}
+                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advMileageMax?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                              <option value="" style={{ background:'#0d1117' }}>Any km</option>
+                              {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                            </select>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Year range */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Year</p>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                          <div style={{ position:'relative' }}>
+                            <select value={advYearFrom} onChange={e=>setAdvYearFrom(e.target.value)}
+                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advYearFrom?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                              <option value="" style={{ background:'#0d1117' }}>From</option>
+                              {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+                            </select>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                          <div style={{ position:'relative' }}>
+                            <select value={advYearTo} onChange={e=>setAdvYearTo(e.target.value)}
+                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advYearTo?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                              <option value="" style={{ background:'#0d1117' }}>To</option>
+                              {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+                            </select>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Transmission */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Transmission</p>
+                        <div style={{ display:'flex', gap:'6px' }}>
+                          {TRANSMISSIONS.map(tx => (
+                            <button key={tx} type="button"
+                              onClick={() => setAdvTransmission(advTransmission === tx ? '' : tx)}
+                              style={{ padding:'7px 16px', borderRadius:'50px', border:`1px solid ${advTransmission===tx?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advTransmission===tx?'rgba(220,38,38,0.18)':'transparent', color: advTransmission===tx?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                            >{tx}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Payment type */}
+                      <div>
+                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Payment</p>
+                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                          {FINANCING_TYPES.map(ft => (
+                            <button key={ft.value} type="button"
+                              onClick={() => setAdvFinancing(advFinancing === ft.value ? '' : ft.value)}
+                              style={{ padding:'7px 12px', borderRadius:'50px', border:`1px solid ${advFinancing===ft.value?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advFinancing===ft.value?'rgba(220,38,38,0.18)':'transparent', color: advFinancing===ft.value?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                            >{ft.label}</button>
+                          ))}
+                        </div>
+                      </div>
+
                     </div>
-                    <div style={{ paddingTop:'1px' }}>
-                      <p style={{ margin:'0 0 3px', fontSize:'14px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
-                      <p style={{ margin:0, fontSize:'12px', color:'rgba(255,255,255,0.38)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.5' }}>{desc}</p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Footer CTA */}
-                <div style={{ marginTop:'20px', paddingTop:'18px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
-                  <a href="/showroom" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'rgba(255,255,255,0.55)', fontSize:'13px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}>
-                    <span>Browse verified listings</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </a>
-                </div>
+                  )}
+                </form>
               </div>
             </div>
           </div>
