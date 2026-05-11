@@ -76,13 +76,13 @@ const Pagination = ({ page, totalPages, onPage }) => {
   else if (page >= totalPages - 3) { pages.push(1,'…',totalPages-4,totalPages-3,totalPages-2,totalPages-1,totalPages); }
   else { pages.push(1,'…',page-1,page,page+1,'…',totalPages); }
 
-  const btn = { minWidth:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'9px', border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'#9ca3af', fontSize:'14px', fontWeight:'600', cursor:'pointer', transition:'all 0.15s', fontFamily:"'DM Sans',sans-serif", padding:'0 8px' };
+  const btn = { minWidth:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'9px', border:'1px solid rgba(0,0,0,0.1)', background:'#ffffff', color:'#374151', fontSize:'14px', fontWeight:'600', cursor:'pointer', transition:'all 0.15s', fontFamily:"'Outfit',sans-serif", padding:'0 8px' };
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', flexWrap:'wrap' }}>
       <button onClick={() => onPage(page-1)} disabled={page===1} style={{ ...btn, opacity: page===1?0.35:1, cursor: page===1?'not-allowed':'pointer', gap:'4px', padding:'0 12px', fontSize:'13px' }}><ChevronLeft size={15}/> Prev</button>
       {pages.map((p,i) => p==='…'
-        ? <span key={`e${i}`} style={{ color:'#4b5563', padding:'0 4px' }}>…</span>
-        : <button key={p} onClick={() => onPage(p)} style={{ ...btn, background: p===page?'#dc2626':'transparent', borderColor: p===page?'#dc2626':'rgba(255,255,255,0.1)', color: p===page?'#fff':'#9ca3af' }}>{p}</button>
+        ? <span key={`e${i}`} style={{ color:'#9ca3af', padding:'0 4px' }}>…</span>
+        : <button key={p} onClick={() => onPage(p)} style={{ ...btn, background: p===page?'#dc2626':'#ffffff', borderColor: p===page?'#dc2626':'rgba(0,0,0,0.1)', color: p===page?'#fff':'#374151' }}>{p}</button>
       )}
       <button onClick={() => onPage(page+1)} disabled={page===totalPages} style={{ ...btn, opacity: page===totalPages?0.35:1, cursor: page===totalPages?'not-allowed':'pointer', gap:'4px', padding:'0 12px', fontSize:'13px' }}>Next <ChevronRight size={15}/></button>
     </div>
@@ -91,14 +91,14 @@ const Pagination = ({ page, totalPages, onPage }) => {
 
 /* ── Skeleton ────────────────────────────────────────────────────────────── */
 const Skeleton = () => (
-  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', display:'flex', height:'190px' }}>
-    <div style={{ width:'38%', maxWidth:'220px', flexShrink:0, background:'linear-gradient(90deg,#111827 25%,#1a2332 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
+  <div style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:'12px', overflow:'hidden', display:'flex', height:'190px' }}>
+    <div style={{ width:'38%', maxWidth:'220px', flexShrink:0, background:'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>
     <div style={{ flex:1, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'10px' }}>
-      <div style={{ height:'12px', width:'75%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
-      <div style={{ height:'10px', width:'45%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
-      <div style={{ height:'22px', width:'60%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite', marginTop:'4px' }}/>
-      <div style={{ height:'10px', width:'80%', background:'#1a2332', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
-      <div style={{ marginTop:'auto', height:'34px', width:'100%', background:'#1a2332', borderRadius:'8px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ height:'12px', width:'75%', background:'#e5e7eb', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ height:'10px', width:'45%', background:'#e5e7eb', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ height:'22px', width:'60%', background:'#e5e7eb', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite', marginTop:'4px' }}/>
+      <div style={{ height:'10px', width:'80%', background:'#e5e7eb', borderRadius:'5px', animation:'sr-shimmer 1.5s infinite' }}/>
+      <div style={{ marginTop:'auto', height:'34px', width:'100%', background:'#e5e7eb', borderRadius:'8px', animation:'sr-shimmer 1.5s infinite' }}/>
     </div>
   </div>
 );
@@ -143,10 +143,10 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
   ].filter(Boolean);
 
   const condStyle = car.condition === 'recon'
-    ? { background:'rgba(139,92,246,0.15)', color:'#a78bfa', border:'1px solid rgba(139,92,246,0.3)' }
+    ? { background:'rgba(139,92,246,0.1)', color:'#7c3aed', border:'1px solid rgba(139,92,246,0.22)' }
     : car.condition === 'new'
-    ? { background:'rgba(16,185,129,0.12)', color:'#34d399', border:'1px solid rgba(16,185,129,0.3)' }
-    : { background:'rgba(107,114,128,0.15)', color:'#9ca3af', border:'1px solid rgba(107,114,128,0.3)' };
+    ? { background:'rgba(5,150,105,0.09)', color:'#059669', border:'1px solid rgba(5,150,105,0.22)' }
+    : { background:'rgba(0,0,0,0.05)', color:'#374151', border:'1px solid rgba(0,0,0,0.1)' };
 
   return (
     <div
@@ -156,18 +156,18 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
         trackEvent(supabase, 'card_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
         navigate('/showroom/' + (car.slug || car.id));
       }}
-      style={{ display:'flex', flexDirection:'row', background:'#0b0f18', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'DM Sans',sans-serif", height:'190px', minWidth:0 }}
+      style={{ display:'flex', flexDirection:'row', background:'#ffffff', border: isHot?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(0,0,0,0.08)', borderRadius:'12px', overflow:'hidden', cursor: isSold?'default':'pointer', fontFamily:"'Outfit',sans-serif", height:'190px', minWidth:0 }}
     >
       {/* ── Image column ── */}
-      <div className="sc-img-col" style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#0a0d14', overflow:'hidden' }}>
+      <div className="sc-img-col" style={{ width:'38%', maxWidth:'210px', flexShrink:0, position:'relative', background:'#f3f4f6', overflow:'hidden' }}>
         {image ? (
           <>
-            {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
+            {!imgLoaded && <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize:'200% 100%', animation:'sr-shimmer 1.5s infinite' }}/>}
             <img src={image} alt={`${year} ${brand} ${model}`} onError={()=>setImgError(true)} onLoad={()=>setImgLoaded(true)} style={{ width:'100%', height:'100%', objectFit:'contain', objectPosition:'center', opacity:imgLoaded?1:0, transition:'opacity 0.3s', filter:isSold?'grayscale(60%)':'none' }}/>
           </>
         ) : (
           <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <Car size={28} color="#2d3748"/>
+            <Car size={28} color="#9ca3af"/>
           </div>
         )}
 
@@ -218,7 +218,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
             </span>
           )}
           {year && (
-            <span style={{ fontSize:'10px', fontWeight:'600', color:'#6b7280', padding:'2px 7px', borderRadius:'20px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>{year}</span>
+            <span style={{ fontSize:'10px', fontWeight:'600', color:'#374151', padding:'2px 7px', borderRadius:'20px', background:'rgba(0,0,0,0.05)', border:'1px solid rgba(0,0,0,0.09)', flexShrink:0 }}>{year}</span>
           )}
           {isHot && (
             <span style={{ fontSize:'10px', fontWeight:'700', color:'#fb923c', marginLeft:'auto', flexShrink:0 }}>
@@ -228,7 +228,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
         </div>
 
         {/* Row 2: car name */}
-        <h3 style={{ color:'#f1f5f9', fontSize:'14px', fontWeight:'700', margin:'0 0 4px', lineHeight:'1.25', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+        <h3 style={{ color:'#111827', fontSize:'14px', fontWeight:'700', margin:'0 0 4px', lineHeight:'1.25', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
           {[brand, model, variant].filter(Boolean).join(' ')}
         </h3>
 
@@ -241,7 +241,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
         <div style={{ display:'flex', alignItems:'center', gap:'6px', margin:'6px 0 4px', flexWrap:'wrap' }}>
           <button
             onClick={e=>{ e.stopPropagation(); if(compareFull){ toast.error('Compare full — remove a car first (max 4)',{duration:2500}); return; } onCompare && onCompare(); }}
-            style={{ display:'flex', alignItems:'center', gap:'4px', background: inCompare?'rgba(220,38,38,0.85)':'rgba(255,255,255,0.07)', border:`1px solid ${inCompare?'#dc2626':'rgba(255,255,255,0.15)'}`, borderRadius:'7px', padding:'4px 9px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s', flexShrink:0 }}
+            style={{ display:'flex', alignItems:'center', gap:'4px', background: inCompare?'#dc2626':'rgba(0,0,0,0.05)', border:`1px solid ${inCompare?'#dc2626':'rgba(0,0,0,0.12)'}`, borderRadius:'7px', padding:'4px 9px', color: inCompare?'#fff':'#374151', fontSize:'11px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s', flexShrink:0 }}
           >
             <ArrowLeftRight size={10}/>{inCompare?'Added':'Compare'}
           </button>
@@ -265,7 +265,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
             supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
             trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
           }}
-          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', width:'100%', padding:'7px 0', background: isSold?'rgba(255,255,255,0.03)':'rgba(37,211,102,0.1)', border: isSold?'1px solid rgba(255,255,255,0.06)':'1px solid rgba(37,211,102,0.25)', color: isSold?'#4b5563':'#25D366', borderRadius:'8px', textDecoration:'none', fontSize:'12px', fontWeight:'700', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s', pointerEvents: isSold?'none':'auto', boxSizing:'border-box', flexShrink:0 }}
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', width:'100%', padding:'7px 0', background: isSold?'rgba(0,0,0,0.03)':'rgba(37,211,102,0.08)', border: isSold?'1px solid rgba(0,0,0,0.07)':'1px solid rgba(37,211,102,0.25)', color: isSold?'#9ca3af':'#16a34a', borderRadius:'8px', textDecoration:'none', fontSize:'12px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s', pointerEvents: isSold?'none':'auto', boxSizing:'border-box', flexShrink:0 }}
         >
           <MessageCircle size={13}/> WhatsApp
         </a>
@@ -391,29 +391,29 @@ export default function ShowroomPage() {
   /* shared filter panel */
   const pill = active => ({
     padding:'8px 14px', borderRadius:'50px',
-    border:`1px solid ${active?'#dc2626':'rgba(255,255,255,0.1)'}`,
-    background: active?'rgba(220,38,38,0.15)':'transparent',
-    color: active?'#f87171':'#9ca3af',
+    border:`1px solid ${active?'#dc2626':'rgba(0,0,0,0.1)'}`,
+    background: active?'rgba(220,38,38,0.08)':'#ffffff',
+    color: active?'#dc2626':'#374151',
     fontSize:'13px', fontWeight:'600', cursor:'pointer',
-    transition:'all 0.15s', fontFamily:"'DM Sans',sans-serif",
+    transition:'all 0.15s', fontFamily:"'Outfit',sans-serif",
   });
   const sel = {
-    width:'100%', background:'rgba(255,255,255,0.04)',
-    border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px',
-    padding:'10px 14px', color:'#fff', fontSize:'14px',
+    width:'100%', background:'#ffffff',
+    border:'1px solid rgba(0,0,0,0.1)', borderRadius:'10px',
+    padding:'10px 14px', color:'#111827', fontSize:'14px',
     appearance:'none', cursor:'pointer', outline:'none',
-    fontFamily:"'DM Sans',sans-serif",
+    fontFamily:"'Outfit',sans-serif",
   };
   const FG = ({ title, children }) => (
-    <div style={{ marginBottom:'14px', paddingBottom:'14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'DM Sans',sans-serif" }}>{title}</p>
+    <div style={{ marginBottom:'14px', paddingBottom:'14px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
+      <p style={{ fontSize:'10px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
       {children}
     </div>
   );
   const Filters = () => (
     <div>
       <FG title="Hot Deals">
-        <button style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.1)':'rgba(255,255,255,0.03)', border: hotDeals?'1px solid rgba(251,146,60,0.3)':'1px solid rgba(255,255,255,0.07)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals?'#fb923c':'#9ca3af', fontSize:'13px', fontWeight:'700', fontFamily:"'DM Sans',sans-serif", transition:'all 0.15s' }} onClick={() => setParam('hot_deals', hotDeals?'':'true')}>
+        <button style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: hotDeals?'rgba(251,146,60,0.08)':'#ffffff', border: hotDeals?'1px solid rgba(251,146,60,0.3)':'1px solid rgba(0,0,0,0.1)', borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color: hotDeals?'#d97706':'#374151', fontSize:'13px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }} onClick={() => setParam('hot_deals', hotDeals?'':'true')}>
           <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
           {hotDeals && <span>✓</span>}
         </button>
@@ -421,12 +421,12 @@ export default function ShowroomPage() {
       <FG title="Brand">
         <select style={sel} value={brand||''} onChange={e=>setParam('brand',e.target.value)}>
           <option value="">All Brands</option>
-          {BRANDS.map(b=><option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+          {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
         </select>
       </FG>
       <FG title="Price Range">
         <PriceDrumPicker
-          dark={true}
+          dark={false}
           minValue={String(minPrice || '')}
           maxValue={String(maxPrice || '')}
           onApply={(min, max) => { const n=new URLSearchParams(searchParams); min?n.set('min_price',min):n.delete('min_price'); max?n.set('max_price',max):n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }}
@@ -435,18 +435,18 @@ export default function ShowroomPage() {
       <FG title="Location">
         <select style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
           <option value="">All States</option>
-          {MY_STATES.map(s=><option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+          {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
       </FG>
       <FG title="Year">
         <div style={{ display:'flex', gap:'8px' }}>
           <select style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
             <option value="">From</option>
-            {YEARS.map(y=><option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
           </select>
           <select style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
             <option value="">To</option>
-            {YEARS.map(y=><option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
+            {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
           </select>
         </div>
       </FG>
@@ -468,7 +468,7 @@ export default function ShowroomPage() {
       <FG title="Max Mileage">
         <select style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
           <option value="">Any Mileage</option>
-          {MILEAGE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+          {MILEAGE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </FG>
       <FG title="Payment">
@@ -502,18 +502,18 @@ export default function ShowroomPage() {
         <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Filter by brand, price, location, body type and more." />
         <link rel="canonical" href="https://xdrive.my/showroom" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </Helmet>
 
       <style>{`
         @keyframes sr-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .sr-sidebar::-webkit-scrollbar { width:3px }
-        .sr-sidebar::-webkit-scrollbar-thumb { background:#374151; border-radius:2px }
+        .sr-sidebar::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:2px }
         .sr-brand-scroll::-webkit-scrollbar { display:none }
         .sr-mobile-filter-btn { display:none !important }
         .sc-root { transition:transform 0.2s ease,box-shadow 0.2s ease,border-color 0.2s ease; }
-        .sc-root:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,0.5); border-color:rgba(255,255,255,0.14) !important; }
-        .sc-root.hot:hover { box-shadow:0 12px 32px rgba(220,38,38,0.18); border-color:rgba(220,38,38,0.4) !important; }
+        .sc-root:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.1); border-color:rgba(0,0,0,0.15) !important; }
+        .sc-root.hot:hover { box-shadow:0 8px 24px rgba(220,38,38,0.14); border-color:rgba(220,38,38,0.4) !important; }
         @media(max-width:1024px){
           .sr-mobile-filter-btn { display:flex !important }
           .sr-layout { flex-direction:column !important }
@@ -534,44 +534,44 @@ export default function ShowroomPage() {
       {drawerOpen && <div onClick={()=>setDrawerOpen(false)} style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)' }}/>}
 
       {/* Mobile drawer */}
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:50, width:'300px', maxWidth:'90vw', background:'#0d1117', borderLeft:'1px solid rgba(255,255,255,0.07)', transform: drawerOpen?'translateX(0)':'translateX(100%)', transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)', display:'flex', flexDirection:'column', fontFamily:"'DM Sans',sans-serif" }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-          <h2 style={{ color:'white', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:50, width:'300px', maxWidth:'90vw', background:'#ffffff', borderLeft:'1px solid rgba(0,0,0,0.08)', transform: drawerOpen?'translateX(0)':'translateX(100%)', transition:'transform 0.3s cubic-bezier(0.22,1,0.36,1)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+          <h2 style={{ color:'#111827', fontWeight:'800', fontSize:'15px', margin:0, display:'flex', alignItems:'center', gap:'8px' }}>
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length>0 && <span style={{ background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>}
           </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background:'rgba(255,255,255,0.05)', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:'8px', padding:'6px', display:'flex' }}><X size={16}/></button>
+          <button onClick={()=>setDrawerOpen(false)} style={{ background:'rgba(0,0,0,0.05)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex' }}><X size={16}/></button>
         </div>
         <div className="sr-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}><Filters/></div>
-        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#9ca3af', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>Reset</button>
-          <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>Show {totalCount} cars</button>
+        <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(0,0,0,0.08)', display:'flex', gap:'10px' }}>
+          <button onClick={resetAll} style={{ flex:1, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.1)', color:'#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Reset</button>
+          <button onClick={()=>setDrawerOpen(false)} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Show {totalCount} cars</button>
         </div>
       </div>
 
-      <div style={{ background:'#080C14', minHeight:'100vh', fontFamily:"'DM Sans',sans-serif" }}>
+      <div style={{ background:'#F7F6F2', minHeight:'100vh', fontFamily:"'Outfit',sans-serif" }}>
 
         {/* ── Top bar ── */}
-        <div style={{ background:'rgba(8,12,20,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
+        <div style={{ background:'rgba(247,246,242,0.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-topbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
               {/* Search */}
               <form onSubmit={e=>{ e.preventDefault(); const sq=sanitize.q(searchInput); navigate(sq?`/showroom?q=${encodeURIComponent(sq)}`:'/showroom'); }} style={{ position:'relative', flex:1, minWidth:'180px' }}>
-                <Search size={13} style={{ position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'#4b5563', pointerEvents:'none' }}/>
+                <Search size={13} style={{ position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af', pointerEvents:'none' }}/>
                 <input
                   type="search"
                   placeholder="Search brand, model, year…"
                   value={searchInput}
                   onChange={e=>setSearchInput(e.target.value)}
-                  style={{ width:'100%', paddingLeft:'32px', paddingRight:'10px', paddingTop:'7px', paddingBottom:'7px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'white', fontSize:'13px', fontFamily:"'DM Sans',sans-serif", outline:'none', boxSizing:'border-box' }}
+                  style={{ width:'100%', paddingLeft:'32px', paddingRight:'10px', paddingTop:'7px', paddingBottom:'7px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', color:'#111827', fontSize:'13px', fontFamily:"'Outfit',sans-serif", outline:'none', boxSizing:'border-box' }}
                 />
               </form>
               {/* Sort */}
-              <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'7px 12px', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
-                {SORT_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+              <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', padding:'7px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>
+                {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               {/* Mobile filter */}
-              <button className="sr-fab sr-mobile-filter-btn" onClick={()=>setDrawerOpen(true)} style={{ display:'none', alignItems:'center', gap:'6px', background: activeChips.length>0?'rgba(220,38,38,0.15)':'rgba(255,255,255,0.05)', border: activeChips.length>0?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'7px 12px', color: activeChips.length>0?'#f87171':'#9ca3af', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", flexShrink:0 }}>
+              <button className="sr-fab sr-mobile-filter-btn" onClick={()=>setDrawerOpen(true)} style={{ display:'none', alignItems:'center', gap:'6px', background: activeChips.length>0?'rgba(220,38,38,0.08)':'#ffffff', border: activeChips.length>0?'1px solid rgba(220,38,38,0.3)':'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', padding:'7px 12px', color: activeChips.length>0?'#dc2626':'#6b7280', fontSize:'13px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>
                 <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
               </button>
             </div>
@@ -579,20 +579,20 @@ export default function ShowroomPage() {
         </div>
 
         {/* ── Brand strip ── */}
-        <div style={{ borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'24px 0' }}>
+        <div style={{ borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'24px 0', background:'#F7F6F2' }}>
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-brand-scroll" style={{ display:'flex', gap:'10px', overflowX:'auto', paddingBottom:'4px', scrollbarWidth:'none' }}>
-              {BRAND_LOGOS.map(({ label, to, logo, initials, color, invert }) => {
+              {BRAND_LOGOS.map(({ label, to, logo, initials, color }) => {
                 const active = brand === label || (label==='All' && !brand);
                 return (
                   <Link key={label} to={to} style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', textDecoration:'none' }}>
-                    <div style={{ width:'76px', height:'60px', borderRadius:'12px', padding:'10px', background: active?'rgba(220,38,38,0.12)':'rgba(255,255,255,0.04)', border:`1px solid ${active?'rgba(220,38,38,0.4)':'rgba(255,255,255,0.08)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
+                    <div style={{ width:'76px', height:'60px', borderRadius:'12px', padding:'10px', background: active?'rgba(220,38,38,0.08)':'#ffffff', border:`1px solid ${active?'rgba(220,38,38,0.35)':'rgba(0,0,0,0.09)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
                       {logo
-                        ? <img src={logo} alt={label} style={{ width:'100%', height:'100%', objectFit:'contain', filter: invert?'brightness(0) invert(1)':'none' }} onError={e=>{ e.currentTarget.style.display='none'; e.currentTarget.nextSibling.style.display='flex'; }}/>
+                        ? <img src={logo} alt={label} style={{ width:'100%', height:'100%', objectFit:'contain', filter:'none' }} onError={e=>{ e.currentTarget.style.display='none'; e.currentTarget.nextSibling.style.display='flex'; }}/>
                         : null}
-                      <span style={{ display: logo?'none':'flex', alignItems:'center', justifyContent:'center', width:'36px', height:'36px', borderRadius:'7px', background: color||'rgba(255,255,255,0.1)', color:'#fff', fontSize:'10px', fontWeight:'700', fontFamily:"'DM Sans',sans-serif" }}>{initials}</span>
+                      <span style={{ display: logo?'none':'flex', alignItems:'center', justifyContent:'center', width:'36px', height:'36px', borderRadius:'7px', background: color||'rgba(0,0,0,0.08)', color:'#fff', fontSize:'10px', fontWeight:'700', fontFamily:"'Outfit',sans-serif" }}>{initials}</span>
                     </div>
-                    <span style={{ fontSize:'10px', color: active?'#f87171':'#6b7280', fontFamily:"'DM Sans',sans-serif", fontWeight: active?'700':'500', textAlign:'center', maxWidth:'76px', lineHeight:1.2 }}>{label}</span>
+                    <span style={{ fontSize:'10px', color: active?'#dc2626':'#6b7280', fontFamily:"'Outfit',sans-serif", fontWeight: active?'700':'500', textAlign:'center', maxWidth:'76px', lineHeight:1.2 }}>{label}</span>
                   </Link>
                 );
               })}
@@ -607,7 +607,7 @@ export default function ShowroomPage() {
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px', marginBottom:'20px' }}>
             <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
               <span style={{ color:'#6b7280', fontSize:'13px' }}>
-                <span style={{ color:'white', fontWeight:'700' }}>{loading?'…':totalCount.toLocaleString()}</span> cars found
+                <span style={{ color:'#111827', fontWeight:'700' }}>{loading?'…':totalCount.toLocaleString()}</span> cars found
               </span>
               {activeChips.map(chip => (
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.25)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px' }}>
@@ -615,21 +615,21 @@ export default function ShowroomPage() {
                   <button onClick={()=>{ if(chip.key==='price_range'){const n=new URLSearchParams(searchParams);n.delete('min_price');n.delete('max_price');n.delete('page');setSearchParams(n,{replace:true});}else if(chip.key==='hot_deals'){setParam('hot_deals','');}else{setParam(chip.key,'');} }} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex' }}><X size={10}/></button>
                 </span>
               ))}
-              {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'DM Sans',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
+              {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
             </div>
           </div>
 
           <div className="sr-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>
 
             {/* Left filter sidebar — always visible on desktop */}
-            <aside className="sr-sidebar sr-sidebar-desktop" style={{ width:'230px', flexShrink:0, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'16px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                <h2 style={{ color:'white', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'DM Sans',sans-serif" }}>
+            <aside className="sr-sidebar sr-sidebar-desktop" style={{ width:'230px', flexShrink:0, background:'#ffffff', border:'1px solid rgba(0,0,0,0.09)', borderRadius:'16px', padding:'16px', position:'sticky', top:'130px', maxHeight:'calc(100vh - 150px)', overflowY:'auto' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+                <h2 style={{ color:'#111827', fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
                   <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/>
                   Filters
                   {activeChips.length>0 && <span style={{ background:'#dc2626', color:'white', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>}
                 </h2>
-                {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'DM Sans',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
+                {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={10}/> Reset</button>}
               </div>
               <Filters/>
             </aside>
@@ -639,22 +639,22 @@ export default function ShowroomPage() {
               {error && (
                 <div style={{ textAlign:'center', padding:'60px 20px' }}>
                   <p style={{ color:'#f87171', fontSize:'16px', marginBottom:'16px' }}>{error}</p>
-                  <button onClick={fetchCars} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 24px', borderRadius:'10px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>Try Again</button>
+                  <button onClick={fetchCars} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 24px', borderRadius:'10px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Try Again</button>
                 </div>
               )}
               {!error && (
                 <div style={{ position:'relative' }}>
-                  {fetching && <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(8,12,20,0.5)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}><span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'DM Sans',sans-serif" }}>Updating…</span></div>}
+                  {fetching && <div style={{ position:'absolute', inset:0, zIndex:5, background:'rgba(247,246,242,0.6)', borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}><span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span></div>}
                 <div className="sr-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'14px', opacity: fetching?0.45:1, transition:'opacity 0.2s' }}>
                   {loading
                     ? Array.from({ length:PER_PAGE }).map((_,i)=><Skeleton key={i}/>)
                     : cars.length===0
                       ? (
                         <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
-                          <Car size={52} color="#374151" style={{ marginBottom:'16px' }}/>
-                          <p style={{ color:'#6b7280', fontSize:'18px', fontWeight:'600', marginBottom:'8px' }}>No cars match your filters</p>
-                          <p style={{ color:'#4b5563', fontSize:'14px', marginBottom:'24px' }}>Try adjusting your search or browse all available cars.</p>
-                          <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 28px', borderRadius:'50px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>Browse All Cars</button>
+                          <Car size={52} color="#9ca3af" style={{ marginBottom:'16px' }}/>
+                          <p style={{ color:'#374151', fontSize:'18px', fontWeight:'600', marginBottom:'8px' }}>No cars match your filters</p>
+                          <p style={{ color:'#6b7280', fontSize:'14px', marginBottom:'24px' }}>Try adjusting your search or browse all available cars.</p>
+                          <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 28px', borderRadius:'50px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Browse All Cars</button>
                         </div>
                       )
                       : cars.map(car=>{
@@ -677,7 +677,7 @@ export default function ShowroomPage() {
               {!loading && !error && totalPages>1 && (
                 <div style={{ padding:'40px 0 20px' }}>
                   <Pagination page={page} totalPages={totalPages} onPage={setPage}/>
-                  <p style={{ textAlign:'center', color:'#4b5563', fontSize:'13px', marginTop:'12px' }}>
+                  <p style={{ textAlign:'center', color:'#6b7280', fontSize:'13px', marginTop:'12px' }}>
                     Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,totalCount)} of {totalCount.toLocaleString()} cars
                   </p>
                 </div>
@@ -690,7 +690,7 @@ export default function ShowroomPage() {
 
       {/* Mobile FAB */}
       <div className="sr-fab" style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:30 }}>
-        <button onClick={()=>setDrawerOpen(true)} style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', padding:'13px 24px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 24px rgba(220,38,38,0.4)', fontFamily:"'DM Sans',sans-serif", whiteSpace:'nowrap' }}>
+        <button onClick={()=>setDrawerOpen(true)} style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', padding:'13px 24px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 24px rgba(220,38,38,0.4)', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}>
           <SlidersHorizontal size={14}/>
           Filters {activeChips.length>0&&`(${activeChips.length})`}
         </button>
