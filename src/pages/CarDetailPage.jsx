@@ -1303,9 +1303,9 @@ export default function CarDetailPage() {
           <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
             {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
           </p>
-          {(dealer?.subdomain || dealer?.slug) && !isSubdomain() && (
+          {dealer?.subdomain && !isSubdomain() && (
             <a
-              href={dealer.subdomain ? `https://${dealer.subdomain}.xdrive.my` : `https://xdrive.my/s/${dealer.slug}`}
+              href={`https://${dealer.subdomain}.xdrive.my`}
               target="_blank" rel="noopener noreferrer"
               style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#60a5fa', textDecoration:'none', marginBottom:16, letterSpacing:'0.04em' }}
             >

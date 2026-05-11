@@ -66,7 +66,7 @@ export default function SalesmanProfilePage() {
     <div style={{ minHeight: '100vh', background: '#060c14', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans',sans-serif", padding: '0 24px', textAlign: 'center', color: '#fff' }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&display=swap');`}</style>
       <p style={{ fontSize: 15, color: '#4b5563', marginBottom: 24 }}>Agent not found.</p>
-      <Link to="/cars" style={{ fontSize: 13, color: '#dc2626', textDecoration: 'none' }}>← Browse cars</Link>
+      <Link to="/showroom" style={{ fontSize: 13, color: '#dc2626', textDecoration: 'none' }}>← Browse cars</Link>
     </div>
   );
 
@@ -96,7 +96,7 @@ export default function SalesmanProfilePage() {
 
         {/* ── Back bar ── */}
         <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <Link to="/cars" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', textDecoration: 'none' }}>
+          <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', textDecoration: 'none' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Back to marketplace
           </Link>
@@ -225,7 +225,7 @@ export default function SalesmanProfilePage() {
               {listings.map(car => {
                 const img = Array.isArray(car.images) ? car.images[0] : null;
                 return (
-                  <Link key={car.id} to={`/cars/${car.slug}`} className="sp-card">
+                  <Link key={car.id} to={`/showroom/${car.slug}`} className="sp-card">
                     {/* Image */}
                     <div style={{ position: 'relative', paddingTop: '62%', background: '#080f18', overflow: 'hidden' }}>
                       {img ? (
@@ -265,7 +265,7 @@ export default function SalesmanProfilePage() {
 
         {/* ── Footer ── */}
         <div style={{ marginTop: 60, borderTop: '1px solid rgba(255,255,255,0.04)', padding: '20px 0', textAlign: 'center' }}>
-          <Link to="/cars" style={{ fontSize: 12, color: '#1e293b', textDecoration: 'none' }}>
+          <Link to="/showroom" style={{ fontSize: 12, color: '#1e293b', textDecoration: 'none' }}>
             Powered by <span style={{ color: '#dc2626', fontWeight: 600 }}>XDrive</span>
           </Link>
         </div>
