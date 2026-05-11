@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Search, ArrowLeftRight, ChevronDown } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, Flame, SlidersHorizontal, Search, ArrowLeftRight } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
@@ -824,38 +824,118 @@ export default function MarketplacePage() {
         .mp-feat-card:hover { transform:translateY(-5px); border-color:rgba(220,38,38,0.4) !important; box-shadow:0 16px 40px rgba(0,0,0,0.14); }
         .mp-feat-img  { transition:transform 0.45s ease; width:100%; height:100%; object-fit:cover; display:block; }
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
-        /* Hero search */
-        .mp-hero-search { transition:border-color 0.2s,box-shadow 0.2s; }
-        .mp-hero-search:focus-within { border-color:rgba(255,255,255,0.25) !important; box-shadow:0 0 0 3px rgba(255,255,255,0.06); }
-        .mp-hero-search-btn:hover { background:rgba(230,230,230,1) !important; }
-        .mp-hero-chip:hover { color:rgba(255,255,255,0.9) !important; border-color:rgba(255,255,255,0.2) !important; }
+        /* Hero section — full viewport height */
+        .mp-hero-section { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
         /* Listings search bar */
         .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
         .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
         .mp-search-btn:hover { background:#b91c1c !important; }
+        /* Adv modal scrollbar */
+        .mp-adv-modal::-webkit-scrollbar { width: 4px; }
+        .mp-adv-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
         /* Responsive */
+        @media(max-width:900px){
+          .mp-hero-section { height: auto !important; overflow: visible !important; }
+          .mp-hero-two-col { flex-direction: column !important; padding: 32px 20px 20px !important; gap: 24px !important; align-items: flex-start !important; }
+          .mp-hero-illus   { display: none !important; }
+        }
         @media(max-width:768px){
           .mp-featured-strip { grid-template-columns:1fr 1fr !important; }
           .mp-search-outer   { flex-direction:column !important; border-radius:16px !important; }
           .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; padding:12px 18px !important; }
           .mp-search-btn     { padding:14px !important; justify-content:center; border-radius:0 0 14px 14px !important; }
-          .mp-hero-search    { flex-direction:column !important; border-radius:14px !important; }
-          .mp-hero-input-wrap { border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.08) !important; }
-          .mp-hero-budget-wrap { border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.08) !important; }
-          .mp-hero-search-btn { padding:15px !important; justify-content:center !important; }
-          .mp-hero-illus  { display:none !important; }
-          .mp-trust-grid  { grid-template-columns:1fr 1fr !important; gap:28px 0 !important; }
-          .mp-trust-item  { border-right:none !important; padding:0 !important; }
-          .mp-hero-two-col { padding:60px 24px 48px !important; flex-direction:column !important; gap:0 !important; }
+          .mp-trust-grid  { grid-template-columns:1fr 1fr !important; gap:16px 0 !important; }
+          .mp-trust-item  { border-right:none !important; padding:0 16px !important; }
         }
         @media(max-width:480px){
           .mp-featured-strip { grid-template-columns:1fr !important; }
-          .mp-hero-stats     { overflow-x:auto !important; flex-wrap:nowrap !important; justify-content:flex-start !important; }
-          .mp-hero-stat-item { padding:0 20px !important; }
         }
       `}</style>
 
       <MarketplaceHeader />
+
+      {/* ── Advanced Search Modal ── */}
+      {advancedOpen && (
+        <>
+          <div onClick={() => setAdvancedOpen(false)} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}/>
+          <div className="mp-adv-modal" style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:201, width:'min(500px,92vw)', maxHeight:'min(580px,85vh)', overflowY:'auto', background:'#0c0f16', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px', fontFamily:"'Outfit',sans-serif", boxShadow:'0 24px 80px rgba(0,0,0,0.7)' }}>
+
+            {/* Header */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.07)', position:'sticky', top:0, background:'#0c0f16', zIndex:1 }}>
+              <div>
+                <p style={{ margin:0, fontSize:'14px', fontWeight:'700', color:'#fff', fontFamily:"'Outfit',sans-serif" }}>Advanced Search</p>
+                <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.32)', marginTop:'1px', fontFamily:"'Outfit',sans-serif" }}>Narrow down your perfect car</p>
+              </div>
+              <button onClick={() => setAdvancedOpen(false)} style={{ background:'rgba(255,255,255,0.07)', border:'none', color:'rgba(255,255,255,0.55)', width:'30px', height:'30px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                <X size={13}/>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding:'16px 20px' }}>
+
+              {/* Inline label + pills rows */}
+              {[
+                { key:'condition', label:'Condition', options: CONDITION_OPTIONS.map(c => ({ val:c.value, label:c.label })), get: advCondition, set: setAdvCondition },
+                { key:'transmission', label:'Transmission', options: TRANSMISSIONS.map(t => ({ val:t, label:t })), get: advTransmission, set: setAdvTransmission },
+                { key:'financing', label:'Payment', options: FINANCING_TYPES.map(f => ({ val:f.value, label:f.label })), get: advFinancing, set: setAdvFinancing },
+              ].map(row => (
+                <div key={row.key} style={{ display:'grid', gridTemplateColumns:'90px 1fr', alignItems:'center', gap:'10px', marginBottom:'10px', minHeight:'32px' }}>
+                  <span style={{ fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{row.label}</span>
+                  <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
+                    {row.options.map(o => (
+                      <button key={o.val} type="button" onClick={() => row.set(row.get === o.val ? '' : o.val)}
+                        style={{ padding:'5px 11px', borderRadius:'50px', border:`1px solid ${row.get===o.val?'rgba(220,38,38,0.55)':'rgba(255,255,255,0.1)'}`, background: row.get===o.val?'rgba(220,38,38,0.18)':'transparent', color: row.get===o.val?'#f87171':'rgba(255,255,255,0.48)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Divider */}
+              <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', margin:'8px 0 14px' }}/>
+
+              {/* 2-col selects */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                {[
+                  { label:'Brand', val:advBrand, set:setAdvBrand, opts:BRANDS.map(b=>({v:b,l:b})), placeholder:'All Brands' },
+                  { label:'Body Type', val:advBodyType, set:setAdvBodyType, opts:BODY_TYPES.map(b=>({v:b,l:b})), placeholder:'All Types' },
+                  { label:'State', val:advState, set:setAdvState, opts:MY_STATES.map(s=>({v:s,l:s})), placeholder:'All States' },
+                  { label:'Max Mileage', val:advMileageMax, set:setAdvMileageMax, opts:MILEAGE_OPTIONS.map(o=>({v:o.value,l:o.label})), placeholder:'Any km' },
+                  { label:'Year From', val:advYearFrom, set:setAdvYearFrom, opts:YEARS.map(y=>({v:y,l:y})), placeholder:'From' },
+                  { label:'Year To', val:advYearTo, set:setAdvYearTo, opts:YEARS.map(y=>({v:y,l:y})), placeholder:'To' },
+                ].map(({ label, val, set, opts, placeholder }) => (
+                  <div key={label}>
+                    <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
+                    <div style={{ position:'relative' }}>
+                      <select value={val} onChange={e=>set(e.target.value)}
+                        style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: val?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                        <option value="" style={{ background:'#0d1117' }}>{placeholder}</option>
+                        {opts.map(o => <option key={o.v} value={o.v} style={{ background:'#0d1117' }}>{o.l}</option>)}
+                      </select>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'8px', position:'sticky', bottom:0, background:'#0c0f16' }}>
+              <button type="button"
+                onClick={() => { setAdvBrand(''); setAdvBodyType(''); setAdvCondition(''); setAdvState(''); setAdvYearFrom(''); setAdvYearTo(''); setAdvMileageMax(''); setAdvTransmission(''); setAdvFinancing(''); }}
+                style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', color:'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                Clear all
+              </button>
+              <button type="button" onClick={() => setAdvancedOpen(false)}
+                style={{ flex:2, background:'#dc2626', border:'none', color:'white', fontSize:'12px', fontWeight:'700', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile drawer backdrop */}
       {filtersOpen && (
@@ -882,52 +962,42 @@ export default function MarketplacePage() {
 
       <div style={S.page}>
         {/* ── Hero ── */}
-        <section style={{ background:'#08090f', position:'relative', overflow:'hidden' }}>
+        <section className="mp-hero-section" style={{ background:'#08090f', position:'relative' }}>
 
           {/* BG grid */}
           <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
           {/* Red glow */}
           <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
-          {/* ── Two-column hero ── */}
-          <div className="mp-hero-two-col" style={{ maxWidth:'1280px', margin:'0 auto', padding:'96px 40px 72px', display:'flex', alignItems:'center', gap:'72px', position:'relative', zIndex:1 }}>
+          {/* ── Two-column hero ── fills remaining height via flex:1 */}
+          <div className="mp-hero-two-col" style={{ flex:1, minHeight:0, maxWidth:'1360px', width:'100%', margin:'0 auto', padding:'0 clamp(24px,5vw,60px)', display:'flex', alignItems:'center', gap:'clamp(32px,5vw,72px)', position:'relative', zIndex:1 }}>
 
             {/* LEFT: copy + trust card */}
             <div style={{ flex:'1 1 0', minWidth:0 }}>
-
-              {/* Trust pill */}
-              <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
-                  <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
-                  <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              <div style={{ display:'inline-flex', alignItems:'center', gap:'7px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'11px', fontWeight:'600', padding:'5px 13px', borderRadius:'100px', marginBottom:'14px', fontFamily:"'Outfit',sans-serif" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Malaysia's first fully-verified car marketplace
               </div>
 
-              {/* Headline */}
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.03em', fontSize:'clamp(52px,6vw,96px)', textAlign:'left' }}>
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 12px', lineHeight:'0.95', letterSpacing:'-0.02em', fontSize:'clamp(40px,4.5vw,76px)', textAlign:'left' }}>
                 <span style={{ display:'block', color:'#ffffff' }}>New. Used. Recon.</span>
                 <span style={{ display:'block', color:'#dc2626' }}>Find it here.</span>
               </h1>
 
-              {/* Subheadline */}
-              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.48)', maxWidth:'420px', margin:'0 0 36px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400', textAlign:'left' }}>
+              <p style={{ fontSize:'13px', color:'rgba(255,255,255,0.45)', maxWidth:'380px', margin:'0 0 18px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
                 Every type of car, every budget — from verified dealers across Malaysia. Full docs, real photos, zero phantom listings.
               </p>
 
-              {/* "Every listing includes" card — hidden on mobile */}
+              {/* Trust card — hidden on mobile via .mp-hero-illus */}
               <div className="mp-hero-illus" style={{ width:'auto' }}>
-                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'24px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-                    <div style={{ width:'32px', height:'32px', borderRadius:'10px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
-                        <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'14px', padding:'16px 18px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'9px', marginBottom:'14px' }}>
+                    <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
                     <div>
-                      <p style={{ margin:0, fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
-                      <p style={{ margin:0, fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
+                      <p style={{ margin:0, fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
+                      <p style={{ margin:0, fontSize:'12px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
                     </div>
                   </div>
                   {[
@@ -935,13 +1005,13 @@ export default function MarketplacePage() {
                     { label:'Service history', desc:'Complete maintenance records included', iconBg:'rgba(59,130,246,0.15)', iconBorder:'rgba(59,130,246,0.25)', icon:<><path d="M12 8v4l3 3" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#60a5fa" strokeWidth="1.5"/></> },
                     { label:'Verified dealer badge', desc:'All dealers certified and background-checked', iconBg:'rgba(245,158,11,0.15)', iconBorder:'rgba(245,158,11,0.25)', icon:<><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></> },
                   ].map(({ label, desc, iconBg, iconBorder, icon }) => (
-                    <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'12px', marginBottom:'14px' }}>
-                      <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">{icon}</svg>
+                    <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'10px', marginBottom:'10px' }}>
+                      <div style={{ width:'28px', height:'28px', borderRadius:'7px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">{icon}</svg>
                       </div>
-                      <div style={{ paddingTop:'1px' }}>
-                        <p style={{ margin:'0 0 2px', fontSize:'13px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
-                        <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.38)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.5' }}>{desc}</p>
+                      <div>
+                        <p style={{ margin:'0 0 1px', fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
+                        <p style={{ margin:0, fontSize:'10px', color:'rgba(255,255,255,0.35)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.4' }}>{desc}</p>
                       </div>
                     </div>
                   ))}
@@ -949,10 +1019,10 @@ export default function MarketplacePage() {
               </div>
             </div>
 
-            {/* RIGHT: Advanced search */}
-            <div style={{ flexShrink:0, width:'440px', maxWidth:'100%' }}>
-              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'28px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-                <p style={{ margin:'0 0 18px', fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Find your next car</p>
+            {/* RIGHT: Search card */}
+            <div style={{ flexShrink:0, width:'clamp(300px,30vw,400px)' }}>
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'16px', padding:'20px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Find your next car</p>
 
                 <form onSubmit={e => {
                   e.preventDefault();
@@ -970,178 +1040,46 @@ export default function MarketplacePage() {
                   if (advFinancing)    p.set('financing', advFinancing);
                   navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
                 }}>
-                  {/* Main search input */}
-                  <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'12px', overflow:'hidden', marginBottom:'10px' }}>
-                    <Search size={15} style={{ flexShrink:0, margin:'0 0 0 16px', color:'rgba(255,255,255,0.35)' }}/>
-                    <input
-                      type="text"
-                      value={heroQ}
-                      onChange={e=>setHeroQ(e.target.value)}
-                      placeholder="Make, model, or registration..."
-                      style={{ flex:1, border:'none', outline:'none', padding:'15px 14px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
-                    />
+                  <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden', marginBottom:'8px' }}>
+                    <Search size={13} style={{ flexShrink:0, margin:'0 0 0 13px', color:'rgba(255,255,255,0.32)' }}/>
+                    <input type="text" value={heroQ} onChange={e=>setHeroQ(e.target.value)} placeholder="Make, model, or registration..."
+                      style={{ flex:1, border:'none', outline:'none', padding:'12px 12px', fontSize:'13px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}/>
                   </div>
 
-                  {/* Budget + Search */}
-                  <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'12px', overflow:'hidden' }}>
-                      <select
-                        value={heroBudget}
-                        onChange={e=>setHeroBudget(e.target.value)}
-                        style={{ flex:1, border:'none', outline:'none', padding:'14px 32px 14px 14px', fontSize:'13px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}
-                      >
+                  <div style={{ display:'flex', gap:'8px', marginBottom:'10px' }}>
+                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                      <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
+                        style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                         <option value="" style={{ background:'#0d1117' }}>Any budget</option>
                         {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
                       </select>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                     </div>
-                    <button
-                      type="submit"
-                      style={{ background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, borderRadius:'12px', transition:'background 0.15s' }}
+                    <button type="submit"
+                      style={{ background:'#dc2626', color:'#fff', border:'none', padding:'0 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', flexShrink:0, borderRadius:'10px' }}
                       onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                       onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                    >
-                      <Search size={14}/> Search
-                    </button>
+                    ><Search size={13}/> Search</button>
                   </div>
 
-                  {/* Advanced toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setAdvancedOpen(o => !o)}
-                    style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', color:'rgba(255,255,255,0.45)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:'0', marginBottom: advancedOpen ? '16px' : '0' }}
-                  >
-                    <ChevronDown size={13} style={{ transform: advancedOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 0.2s' }}/>
+                  {/* Advanced search trigger → opens modal */}
+                  <button type="button" onClick={() => setAdvancedOpen(true)}
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.38)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:0 }}>
+                    <SlidersHorizontal size={11}/>
                     Advanced search
+                    {[advBrand,advBodyType,advCondition,advState,advYearFrom,advYearTo,advMileageMax,advTransmission,advFinancing].filter(Boolean).length > 0 && (
+                      <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 5px', borderRadius:'10px' }}>
+                        {[advBrand,advBodyType,advCondition,advState,advYearFrom,advYearTo,advMileageMax,advTransmission,advFinancing].filter(Boolean).length}
+                      </span>
+                    )}
                   </button>
-
-                  {/* Advanced panel */}
-                  {advancedOpen && (
-                    <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:'16px', display:'flex', flexDirection:'column', gap:'14px' }}>
-
-                      {/* Condition */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Condition</p>
-                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-                          {CONDITION_OPTIONS.map(co => (
-                            <button key={co.value} type="button"
-                              onClick={() => setAdvCondition(advCondition === co.value ? '' : co.value)}
-                              style={{ padding:'7px 14px', borderRadius:'50px', border:`1px solid ${advCondition===co.value?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advCondition===co.value?'rgba(220,38,38,0.18)':'transparent', color: advCondition===co.value?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
-                            >{co.label}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Brand */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
-                        <div style={{ position:'relative' }}>
-                          <select value={advBrand} onChange={e=>setAdvBrand(e.target.value)}
-                            style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 32px 11px 14px', color: advBrand?'#fff':'rgba(255,255,255,0.42)', fontSize:'13px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                            <option value="" style={{ background:'#0d1117' }}>All Brands</option>
-                            {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
-                          </select>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                        </div>
-                      </div>
-
-                      {/* Body type */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Body Type</p>
-                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-                          {BODY_TYPES.map(bt => (
-                            <button key={bt} type="button"
-                              onClick={() => setAdvBodyType(advBodyType === bt ? '' : bt)}
-                              style={{ padding:'7px 12px', borderRadius:'50px', border:`1px solid ${advBodyType===bt?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advBodyType===bt?'rgba(220,38,38,0.18)':'transparent', color: advBodyType===bt?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
-                            >{bt}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* State + Mileage */}
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-                        <div>
-                          <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>State</p>
-                          <div style={{ position:'relative' }}>
-                            <select value={advState} onChange={e=>setAdvState(e.target.value)}
-                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advState?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                              <option value="" style={{ background:'#0d1117' }}>All States</option>
-                              {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
-                            </select>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                          </div>
-                        </div>
-                        <div>
-                          <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Max Mileage</p>
-                          <div style={{ position:'relative' }}>
-                            <select value={advMileageMax} onChange={e=>setAdvMileageMax(e.target.value)}
-                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advMileageMax?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                              <option value="" style={{ background:'#0d1117' }}>Any km</option>
-                              {MILEAGE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
-                            </select>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Year range */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Year</p>
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
-                          <div style={{ position:'relative' }}>
-                            <select value={advYearFrom} onChange={e=>setAdvYearFrom(e.target.value)}
-                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advYearFrom?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                              <option value="" style={{ background:'#0d1117' }}>From</option>
-                              {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
-                            </select>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                          </div>
-                          <div style={{ position:'relative' }}>
-                            <select value={advYearTo} onChange={e=>setAdvYearTo(e.target.value)}
-                              style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'11px 28px 11px 12px', color: advYearTo?'#fff':'rgba(255,255,255,0.42)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                              <option value="" style={{ background:'#0d1117' }}>To</option>
-                              {YEARS.map(y => <option key={y} value={y} style={{ background:'#0d1117' }}>{y}</option>)}
-                            </select>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Transmission */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Transmission</p>
-                        <div style={{ display:'flex', gap:'6px' }}>
-                          {TRANSMISSIONS.map(tx => (
-                            <button key={tx} type="button"
-                              onClick={() => setAdvTransmission(advTransmission === tx ? '' : tx)}
-                              style={{ padding:'7px 16px', borderRadius:'50px', border:`1px solid ${advTransmission===tx?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advTransmission===tx?'rgba(220,38,38,0.18)':'transparent', color: advTransmission===tx?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
-                            >{tx}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Payment type */}
-                      <div>
-                        <p style={{ margin:'0 0 8px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Payment</p>
-                        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-                          {FINANCING_TYPES.map(ft => (
-                            <button key={ft.value} type="button"
-                              onClick={() => setAdvFinancing(advFinancing === ft.value ? '' : ft.value)}
-                              style={{ padding:'7px 12px', borderRadius:'50px', border:`1px solid ${advFinancing===ft.value?'rgba(220,38,38,0.6)':'rgba(255,255,255,0.12)'}`, background: advFinancing===ft.value?'rgba(220,38,38,0.18)':'transparent', color: advFinancing===ft.value?'#f87171':'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
-                            >{ft.label}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                    </div>
-                  )}
                 </form>
               </div>
             </div>
           </div>
 
-          {/* ── Trust strip ── */}
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', padding:'28px 24px' }}>
+          {/* ── Trust strip — fixed at bottom of hero ── */}
+          <div style={{ flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.07)', padding:'14px 24px', position:'relative', zIndex:1 }}>
             <div className="mp-trust-grid" style={{ maxWidth:'1360px', margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
               {[
                 { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'verified cars listed today' },
@@ -1149,9 +1087,9 @@ export default function MarketplacePage() {
                 { number:'100%', label:'listings require full documentation' },
                 { number:'Zero', label:'phantom listings or fake prices' },
               ].map((s,i) => (
-                <div key={s.number} className="mp-trust-item" style={{ padding:'0 32px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-                  <div style={{ fontSize:'24px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'5px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
-                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                <div key={s.number} className="mp-trust-item" style={{ padding:'0 28px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                  <div style={{ fontSize:'20px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'3px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
+                  <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
                 </div>
               ))}
             </div>
