@@ -994,17 +994,20 @@ export default function MarketplacePage() {
         .mp-adv-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
         /* Responsive */
         @media(max-width:900px){
-          .mp-hero-section { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; }
-          .mp-hero-two-col { flex-direction: column !important; padding: 32px 20px 20px !important; gap: 24px !important; align-items: flex-start !important; }
-          .mp-hero-illus   { display: none !important; }
+          .mp-hero-section  { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; }
+          .mp-hero-two-col  { flex-direction: column !important; padding: 20px 16px 16px !important; gap: 14px !important; align-items: stretch !important; }
+          .mp-hero-illus    { display: none !important; }
+          .mp-hero-desc     { display: none !important; }
+          .mp-hero-search   { width: 100% !important; flex-shrink: 1 !important; }
+          .mp-trust-grid    { grid-template-columns: 1fr 1fr !important; gap: 10px 0 !important; }
+          .mp-trust-item    { border-right: none !important; padding: 8px 12px !important; }
+          .mp-trust-strip   { padding: 12px 16px !important; }
         }
         @media(max-width:768px){
           .mp-featured-strip { grid-template-columns:1fr 1fr !important; }
           .mp-search-outer   { flex-direction:column !important; border-radius:16px !important; }
           .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; padding:12px 18px !important; }
           .mp-search-btn     { padding:14px !important; justify-content:center; border-radius:0 0 14px 14px !important; }
-          .mp-trust-grid  { grid-template-columns:1fr 1fr !important; gap:16px 0 !important; }
-          .mp-trust-item  { border-right:none !important; padding:0 16px !important; }
         }
         @media(max-width:480px){
           .mp-featured-strip { grid-template-columns:1fr !important; }
@@ -1138,12 +1141,12 @@ export default function MarketplacePage() {
                 Malaysia's first fully-verified car marketplace
               </div>
 
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 12px', lineHeight:'0.95', letterSpacing:'-0.02em', fontSize:'clamp(40px,4.5vw,76px)', textAlign:'left' }}>
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 10px', lineHeight:'0.95', letterSpacing:'-0.02em', fontSize:'clamp(36px,4.5vw,76px)', textAlign:'left' }}>
                 <span style={{ display:'block', color:'#ffffff' }}>New. Used. Recon.</span>
                 <span style={{ display:'block', color:'#dc2626' }}>Find it here.</span>
               </h1>
 
-              <p style={{ fontSize:'13px', color:'rgba(255,255,255,0.45)', maxWidth:'380px', margin:'0 0 18px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
+              <p className="mp-hero-desc" style={{ fontSize:'13px', color:'rgba(255,255,255,0.45)', maxWidth:'380px', margin:'0 0 18px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
                 Every type of car, every budget — from verified dealers across Malaysia. Full docs, real photos, zero phantom listings.
               </p>
 
@@ -1179,7 +1182,7 @@ export default function MarketplacePage() {
             </div>
 
             {/* RIGHT: Search card */}
-            <div style={{ flexShrink:0, width:'clamp(300px,30vw,400px)' }}>
+            <div className="mp-hero-search" style={{ flexShrink:0, width:'clamp(300px,30vw,400px)' }}>
               <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'16px', padding:'20px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
                 <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Find your next car</p>
 
@@ -1238,13 +1241,13 @@ export default function MarketplacePage() {
           </div>
 
           {/* ── Trust strip — fixed at bottom of hero ── */}
-          <div style={{ flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.07)', padding:'14px 24px', position:'relative', zIndex:1 }}>
+          <div className="mp-trust-strip" style={{ flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.07)', padding:'14px 24px', position:'relative', zIndex:1 }}>
             <div className="mp-trust-grid" style={{ maxWidth:'1360px', margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
               {[
-                { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'verified cars listed today' },
-                { number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'certified dealers across Malaysia' },
-                { number:'100%', label:'listings require full documentation' },
-                { number:'Zero', label:'phantom listings or fake prices' },
+                { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
+                { number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
+                { number:'100%', label:'Docs required' },
+                { number:'0', label:'Phantom listings' },
               ].map((s,i) => (
                 <div key={s.label} className="mp-trust-item" style={{ padding:'0 28px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
                   <div style={{ fontSize:'20px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'3px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
