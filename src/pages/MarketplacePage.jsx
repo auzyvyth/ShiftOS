@@ -107,13 +107,12 @@ function sanitizeMileageMax(val) {
 /* MarketplaceHeader imported from ../components/MarketplaceHeader */
 
 /* ── Carousel constants ─────────────────────────────────────────────────────── */
-const CAROUSEL_CARD_W = 264;
-const CAROUSEL_GAP    = 12;
+const CAROUSEL_GAP = 12;
 
 /* ── Skeleton Carousel Card ─────────────────────────────────────────────────── */
-const SkeletonCarouselCard = () => (
+const SkeletonCarouselCard = ({ width }) => (
   <div style={{
-    width: CAROUSEL_CARD_W, flexShrink: 0,
+    width, flexShrink: 0,
     background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)',
     borderRadius: 14, overflow: 'hidden',
   }}>
@@ -129,8 +128,21 @@ const SkeletonCarouselCard = () => (
 /* ── Body Type Carousel ─────────────────────────────────────────────────────── */
 function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext }) {
   const scrollRef = useRef(null);
+  const clipRef   = useRef(null);
   const [canLeft,  setCanLeft]  = useState(false);
   const [canRight, setCanRight] = useState(true);
+  const [cardW, setCardW] = useState(280);
+
+  /* Dynamically size cards so exactly 2 fill the clip container */
+  useEffect(() => {
+    const el = clipRef.current;
+    if (!el) return;
+    const calc = () => setCardW(Math.floor((el.offsetWidth - CAROUSEL_GAP) / 2));
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const updateArrows = () => {
     const el = scrollRef.current;
@@ -142,7 +154,7 @@ function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext 
   const scroll = (dir) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * (CAROUSEL_CARD_W + CAROUSEL_GAP) * 2, behavior: 'smooth' });
+    el.scrollBy({ left: dir * (cardW + CAROUSEL_GAP) * 2, behavior: 'smooth' });
   };
 
   const isEmpty = !loading && cars.length === 0;
@@ -180,22 +192,25 @@ function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext 
           </button>
         )}
 
-        <div
-          ref={scrollRef}
-          onScroll={updateArrows}
-          className="btc-scroll"
-          style={{ display: 'flex', gap: CAROUSEL_GAP, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 6, paddingTop: 2 }}
-        >
-          {loading
-            ? [...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} />)
-            : isEmpty
-            ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
-            : cars.map(car => (
-              <div key={car.id} style={{ width: CAROUSEL_CARD_W, flexShrink: 0 }}>
-                <CarCard car={car} ctaContext={ctaContext} />
-              </div>
-            ))
-          }
+        {/* overflow:hidden clips the track to exactly 2 cards wide */}
+        <div ref={clipRef} style={{ overflow: 'hidden' }}>
+          <div
+            ref={scrollRef}
+            onScroll={updateArrows}
+            className="btc-scroll"
+            style={{ display: 'flex', gap: CAROUSEL_GAP, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 6, paddingTop: 2 }}
+          >
+            {loading
+              ? [...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} width={cardW} />)
+              : isEmpty
+              ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
+              : cars.map(car => (
+                <div key={car.id} style={{ width: cardW, flexShrink: 0 }}>
+                  <CarCard car={car} ctaContext={ctaContext} />
+                </div>
+              ))
+            }
+          </div>
         </div>
 
         {canRight && !isEmpty && !loading && (
@@ -495,7 +510,13 @@ export default function MarketplacePage() {
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
         .eq('status', 'available');
 
-      if (q)            query = query.or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`);
+      if (q) {
+        const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+        tokens.forEach(t => {
+          const s = t.replace(/[%_\\]/g, '');
+          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+        });
+      }
       if (brand)        query = query.eq('brand', brand);
       if (bodyType)     query = query.eq('body_type', bodyType);
       if (state)        query = query.eq('state', state);
@@ -1297,6 +1318,8 @@ export default function MarketplacePage() {
             <div className="btc-grid">
               <BodyTypeCarousel title="Compact Cars"  eyebrow="City & Daily Drive"       bodyType="Hatchback" cars={bodyTypeCars.Hatchback} loading={bodyTypeLoading} ctaContext={ctaCtx} />
               <BodyTypeCarousel title="Sedans"         eyebrow="Executive & Family"       bodyType="Sedan"     cars={bodyTypeCars.Sedan}    loading={bodyTypeLoading} ctaContext={ctaCtx} />
+              {/* Thin divider between rows */}
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(0,0,0,0.09)', margin: '8px 0' }} />
               <BodyTypeCarousel title="SUVs"           eyebrow="Spacious & Versatile"     bodyType="SUV"       cars={bodyTypeCars.SUV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
               <BodyTypeCarousel title="MPVs"           eyebrow="Family People Carriers"   bodyType="MPV"       cars={bodyTypeCars.MPV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
             </div>
