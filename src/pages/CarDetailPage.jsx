@@ -87,13 +87,13 @@ const CDP_DOC_TYPES = {
   other: { label: "Document", color: "#6b7280" },
 };
 
-const inputStyle = (focused) => ({
+const inputStyle = (focused, th) => ({
   width: "100%",
-  background: "rgba(255,255,255,0.03)",
-  border: `1px solid ${focused ? "rgba(220,38,38,0.5)" : "rgba(255,255,255,0.08)"}`,
+  background: th?.inputBg ?? "rgba(255,255,255,0.03)",
+  border: `1px solid ${focused ? "rgba(220,38,38,0.5)" : (th?.inputBorder ?? "rgba(255,255,255,0.08)")}`,
   borderRadius: "10px",
   padding: "10px 14px",
-  color: "white",
+  color: th?.text ?? "white",
   fontSize: "13px",
   fontFamily: "'DM Sans', sans-serif",
   outline: "none",
@@ -225,6 +225,35 @@ function useCarSchema(listing) {
 
 /* ─── main ─── */
 export default function CarDetailPage() {
+  const isXdrive = !isSubdomain();
+
+  /* ── Light-theme colour tokens (xdrive.my only) ── */
+  const th = isXdrive ? {
+    pageBg:    '#F7F6F2',
+    card:      '#ffffff',
+    card2:     '#F0EEE8',
+    text:      '#111827',
+    textSec:   '#4b5563',
+    textMuted: '#6b7280',
+    border:    'rgba(0,0,0,0.08)',
+    borderSec: 'rgba(0,0,0,0.06)',
+    inputBg:   '#ffffff',
+    inputBorder:'rgba(0,0,0,0.12)',
+    shimmer:   'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)',
+  } : {
+    pageBg:    '#060c14',
+    card:      '#0a1220',
+    card2:     '#09111f',
+    text:      '#e2e8f0',
+    textSec:   '#94a3b8',
+    textMuted: '#64748b',
+    border:    'rgba(255,255,255,0.07)',
+    borderSec: 'rgba(255,255,255,0.04)',
+    inputBg:   'rgba(255,255,255,0.05)',
+    inputBorder:'rgba(255,255,255,0.12)',
+    shimmer:   'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)',
+  };
+
   const { slug } = useParams();
   const navigate = useNavigate();
 
@@ -946,6 +975,31 @@ export default function CarDetailPage() {
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
       `}</style>
 
+      {/* ── XDrive light-theme overrides ── */}
+      {isXdrive && <style>{`
+        body { background: #F7F6F2 !important; }
+        .cdp-root { background: #F7F6F2 !important; color: #111827 !important; }
+        .cdp-header { background: rgba(247,246,242,0.95) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
+        .cdp-back-btn { color: #6b7280 !important; }
+        .cdp-back-btn:hover { color: #111827 !important; }
+        .cdp-header-title { color: #111827 !important; }
+        .cdp-img-shimmer { background: linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%) !important; background-size: 400px 100% !important; }
+        .sk { background: linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%) !important; background-size: 600px 100% !important; }
+        .cdp-mosaic-grid { background: #ddd9d0 !important; }
+        .cdp-mosaic-mobile { background: #F0EEE8 !important; }
+        .cdp-arrow { background: rgba(247,246,242,0.9) !important; border-color: rgba(0,0,0,0.14) !important; color: #374151 !important; }
+        .cdp-arrow:hover { background: rgba(220,38,38,0.1) !important; border-color: rgba(220,38,38,0.3) !important; color: #dc2626 !important; }
+        .cdp-stats-grid { border-color: rgba(0,0,0,0.08) !important; background: #F0EEE8 !important; }
+        .cdp-stat-cell { background: #ffffff !important; border-right-color: rgba(0,0,0,0.07) !important; }
+        .cdp-stat-cell:hover { background: rgba(220,38,38,0.04) !important; }
+        .cdp-row { border-bottom-color: rgba(0,0,0,0.07) !important; }
+        .cdp-row:hover { background: rgba(220,38,38,0.04) !important; }
+        .cdp-sidebar { background: #ffffff !important; border-color: rgba(0,0,0,0.09) !important; box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important; }
+        .cdp-mobile-bar { background: rgba(247,246,242,0.98) !important; border-top-color: rgba(0,0,0,0.08) !important; }
+        .cdp-mobile-bar-wa { border-color: rgba(34,197,94,0.35) !important; background: rgba(34,197,94,0.07) !important; }
+        .cdp-header-redline { background: linear-gradient(to right, #dc2626, rgba(220,38,38,0.3), transparent) !important; }
+      `}</style>}
+
       <div className="cdp-root">
         {/* ── header ── */}
         <header className="cdp-header" style={{ position: "sticky" }}>
@@ -1047,7 +1101,7 @@ export default function CarDetailPage() {
                   style={{
                     fontFamily: "'Bebas Neue',sans-serif",
                     fontSize: "clamp(1.8rem,3vw,2.8rem)",
-                    color: "white",
+                    color: th.text,
                     lineHeight: 1,
                     letterSpacing: "0.04em",
                     margin: 0,
@@ -1785,19 +1839,19 @@ export default function CarDetailPage() {
                 <input type="text" placeholder="Your name" required value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'name')} />
+                  style={inputStyle(focusedField === 'name', th)} />
                 <input type="tel" placeholder="Phone number" required value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'phone')} />
+                  style={inputStyle(focusedField === 'phone', th)} />
                 <input type="date" required min={today} value={form.date}
                   onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                   onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'date'), colorScheme:'dark' }} />
+                  style={{ ...inputStyle(focusedField === 'date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
                 <select value={form.time}
                   onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
                   onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'time'), cursor:'pointer' }}>
+                  style={{ ...inputStyle(focusedField === 'time', th), cursor:'pointer' }}>
                   {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
                     <option key={t} value={t} style={{ background:'#0d1117' }}>
                       {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
@@ -1807,11 +1861,11 @@ export default function CarDetailPage() {
                 <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'notes'), resize:'vertical', minHeight:72 }} />
+                  style={{ ...inputStyle(focusedField === 'notes', th), resize:'vertical', minHeight:72 }} />
                 <select value={form.state}
                   onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
                   onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'state'), cursor:'pointer' }}>
+                  style={{ ...inputStyle(focusedField === 'state', th), cursor:'pointer' }}>
                   <option value="" style={{ background:'#0d1117' }}>Your state (optional)</option>
                   {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
                     <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>
@@ -1906,7 +1960,7 @@ export default function CarDetailPage() {
               style={{
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: "clamp(3rem,5vw,4.4rem)",
-                color: "white",
+                color: th.text,
                 lineHeight: 0.95,
                 letterSpacing: "0.04em",
                 marginBottom: 10,
@@ -2410,7 +2464,7 @@ export default function CarDetailPage() {
                 <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <PlayCircle size={13} style={{ color: '#dc2626' }} /> Watch Walkthrough
                 </p>
-                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 12, overflow: 'hidden', border: `1px solid ${th.border}` }}>
                   <iframe src={getEmbedUrl(car.video_url)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} allowFullScreen title={`${car.year} ${car.brand} ${car.model} walkthrough`} />
                 </div>
               </div>
@@ -2434,12 +2488,12 @@ export default function CarDetailPage() {
                   const isOpen = openDocKey === rk;
                   const asImage = doc && isImageUrl(doc.url);
                   return (
-                    <div key={key} style={{ background: '#0a1220', border: `1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                    <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => doc && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: doc ? 'pointer' : 'default' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
                           <div>
-                            <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
+                            <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
                             <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>{sub}</p>
                           </div>
                         </div>
@@ -2475,11 +2529,11 @@ export default function CarDetailPage() {
                   const isOpen = openDocKey === rk;
                   const asImage = isImageUrl(doc.url);
                   return (
-                    <div key={rk} style={{ background: '#0a1220', border: `1px solid ${isOpen ? `${cfg.color}50` : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                    <div key={rk} style={{ background: th.card, border: `1px solid ${isOpen ? `${cfg.color}50` : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                       <div onClick={() => toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <BadgeCheck size={15} style={{ color: cfg.color }} />
-                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{cfg.label}</p>
+                          <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{cfg.label}</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, color: cfg.color }}>✓ Available</span>
@@ -2505,23 +2559,23 @@ export default function CarDetailPage() {
                     </div>
                   );
                 })}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Star size={15} style={{ color: '#fbbf24' }} />
                     <div>
-                      <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>Previous Owners</p>
+                      <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Previous Owners</p>
                       {(car.registration_date || car.local_reg_date) && <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Registered {new Date(car.registration_date || car.local_reg_date).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}</p>}
                     </div>
                   </div>
-                  <span style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>
+                  <span style={{ fontSize: 13, color: th.text, fontWeight: 600 }}>
                     {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners !== 1 ? 's' : ''}` : '—'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Shield size={15} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
                     <div>
-                      <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>Warranty</p>
+                      <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>Warranty</p>
                       <p style={{ fontSize: 11, color: '#334155', margin: '2px 0 0' }}>Included with purchase</p>
                     </div>
                   </div>
@@ -2541,10 +2595,10 @@ export default function CarDetailPage() {
                   if (!PERK_CFG.length) return null;
                   return (
                     <>
-                      <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '2px 0' }} />
+                      <div style={{ height: 1, background: th.inputBg, margin: '2px 0' }} />
                       {PERK_CFG.map(({ key, label, color }) => (
-                        <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10 }}>
-                          <p style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500, margin: 0 }}>{label}</p>
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
+                          <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color }}>✓ Available</span>
                         </div>
                       ))}
@@ -2558,7 +2612,7 @@ export default function CarDetailPage() {
             {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats || car.co2_emissions || car.insurance_group || car.safety_rating) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 20 }}>Performance &amp; Details</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, border: `1px solid ${th.borderSec}`, borderRadius: 12, overflow: 'hidden' }}>
                   {[
                     { label: 'Power', value: car.horsepower ? `${Number(car.horsepower).toLocaleString()} bhp` : null },
                     { label: 'Doors', value: car.doors ? `${car.doors} doors` : null },
@@ -2570,9 +2624,9 @@ export default function CarDetailPage() {
                     { label: 'Ins. Group', value: car.insurance_group ? String(car.insurance_group) : null },
                     { label: 'Safety Rating', value: car.safety_rating ? `${car.safety_rating}★` : null },
                   ].filter(s => s.value).map(({ label, value }) => (
-                    <div key={label} style={{ padding: '14px', background: '#0a1220', borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div key={label} style={{ padding: '14px', background: th.card, borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#334155', fontWeight: 700, marginBottom: 5 }}>{label}</p>
-                      <p style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500, margin: 0 }}>{value}</p>
+                      <p style={{ fontSize: 14, color: th.text, fontWeight: 500, margin: 0 }}>{value}</p>
                     </div>
                   ))}
                 </div>
@@ -2593,10 +2647,10 @@ export default function CarDetailPage() {
                 <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 24 }}>Running Costs</p>
                   {roadTax && (
-                    <div style={{ marginBottom: 24, padding: '16px 18px', background: '#0a1220', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12 }}>
+                    <div style={{ marginBottom: 24, padding: '16px 18px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, color: '#94a3b8' }}>Road Tax (estimated)</span>
-                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>RM {roadTax} / year</span>
+                        <span style={{ fontSize: 13, color: th.textSec }}>Road Tax (estimated)</span>
+                        <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {roadTax} / year</span>
                       </div>
                       <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>Based on {fmt(cc)}cc engine displacement</p>
                     </div>
@@ -2604,8 +2658,8 @@ export default function CarDetailPage() {
                   {co2 && (
                     <div style={{ marginBottom: 24 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, color: '#94a3b8' }}>CO₂ Emissions</span>
-                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>{co2} g/km</span>
+                        <span style={{ fontSize: 13, color: th.textSec }}>CO₂ Emissions</span>
+                        <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>{co2} g/km</span>
                       </div>
                       <div style={{ display: 'flex', gap: 2, height: 10, borderRadius: 6, overflow: 'hidden' }}>
                         {[
@@ -2629,10 +2683,10 @@ export default function CarDetailPage() {
                   {insGrp && (
                     <div style={{ marginBottom: 24 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, color: '#94a3b8' }}>Insurance Group</span>
-                        <span style={{ fontSize: 15, color: 'white', fontWeight: 600 }}>{insGrp} / 26</span>
+                        <span style={{ fontSize: 13, color: th.textSec }}>Insurance Group</span>
+                        <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>{insGrp} / 26</span>
                       </div>
-                      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                      <div style={{ background: th.inputBg, borderRadius: 6, height: 8, overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min(100, (insGrp / 26) * 100)}%`, height: '100%', background: `hsl(${Math.round(120 - (insGrp / 26) * 120)}, 75%, 50%)`, borderRadius: 6 }} />
                       </div>
                       <p style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>
@@ -2640,14 +2694,14 @@ export default function CarDetailPage() {
                       </p>
                     </div>
                   )}
-                  <div style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '18px 20px' }}>
+                  <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, color: '#94a3b8' }}>Range Calculator</span>
+                      <span style={{ fontSize: 13, color: th.textSec }}>Range Calculator</span>
                       <span style={{ fontSize: 10, color: '#334155' }}>RON95 @ RM {petrolPrice}/L</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
-                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: 'white', lineHeight: 1 }}>RM {totalFuelCost}</span>
-                      <span style={{ fontSize: 12, color: '#475569' }}>for {fuelDist} km</span>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', color: th.text, lineHeight: 1 }}>RM {totalFuelCost}</span>
+                      <span style={{ fontSize: 12, color: th.textMuted }}>for {fuelDist} km</span>
                     </div>
                     <input type="range" min={10} max={1000} step={10} value={fuelDist}
                       onChange={e => setFuelDist(Number(e.target.value))}
@@ -2668,14 +2722,14 @@ export default function CarDetailPage() {
             {(car.city || car.state) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Location</p>
-                <div style={{ background: '#0a1220', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div>
-                    <p style={{ fontSize: 16, color: 'white', fontWeight: 600, margin: '0 0 4px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
-                    <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>Malaysia · {dealerName}</p>
+                    <p style={{ fontSize: 16, color: th.text, fontWeight: 600, margin: '0 0 4px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
+                    <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Malaysia · {dealerName}</p>
                   </div>
                   <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#94a3b8', textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: th.textSec, textDecoration: 'none', flexShrink: 0, letterSpacing: '0.03em' }}>
                     <Eye size={13} /> View on Map
                   </a>
                 </div>
@@ -2686,33 +2740,33 @@ export default function CarDetailPage() {
             {/* BOOKING FORM */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }}>
               <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Book a Viewing</p>
-              <div style={{ maxWidth: 480, background: '#0a1625', border: '1px solid rgba(220,38,38,0.1)', borderRadius: 16, padding: 28 }}>
+              <div style={{ maxWidth: 480, background: th.card, border: '1px solid rgba(220,38,38,0.1)', borderRadius: 16, padding: 28 }}>
                 {booked ? (
                   <div style={{ padding: '24px 0', textAlign: 'center' }}>
                     <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 20, color: '#4ade80' }}>✓</div>
-                    <p style={{ fontSize: '15px', color: 'white', marginBottom: 6, fontWeight: 600 }}>Viewing Booked</p>
-                    <p style={{ fontSize: '13px', color: '#475569' }}>We'll reach out on WhatsApp shortly.</p>
+                    <p style={{ fontSize: '15px', color: th.text, marginBottom: 6, fontWeight: 600 }}>Viewing Booked</p>
+                    <p style={{ fontSize: '13px', color: th.textMuted }}>We'll reach out on WhatsApp shortly.</p>
                   </div>
                 ) : (
                   <form onSubmit={handleBook}>
                     <input type="text" placeholder="Your name" required value={form.name}
                       onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                       onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'name')} />
+                      style={inputStyle(focusedField === 'name', th)} />
                     <input type="tel" placeholder="Phone number" required value={form.phone}
                       onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                       onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'phone')} />
+                      style={inputStyle(focusedField === 'phone', th)} />
                     <input type="date" required min={today} value={form.date}
                       onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                       onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'date'), colorScheme: 'dark' }} />
+                      style={{ ...inputStyle(focusedField === 'date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
                     <select value={form.time}
                       onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
                       onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'time'), cursor: 'pointer' }}>
+                      style={{ ...inputStyle(focusedField === 'time', th), cursor: 'pointer' }}>
                       {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                        <option key={t} value={t} style={{ background: '#0d1117' }}>
+                        <option key={t} value={t} style={{ background: th.card }}>
                           {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
                         </option>
                       ))}
@@ -2720,14 +2774,14 @@ export default function CarDetailPage() {
                     <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
                       onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                       onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'notes'), resize: 'vertical', minHeight: 72 }} />
+                      style={{ ...inputStyle(focusedField === 'notes', th), resize: 'vertical', minHeight: 72 }} />
                     <select value={form.state}
                       onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
                       onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'state'), cursor: 'pointer' }}>
-                      <option value="" style={{ background: '#0d1117' }}>Your state (optional)</option>
+                      style={{ ...inputStyle(focusedField === 'state', th), cursor: 'pointer' }}>
+                      <option value="" style={{ background: th.card }}>Your state (optional)</option>
                       {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
-                        <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>
+                        <option key={s} value={s} style={{ background: th.card }}>{s}</option>
                       ))}
                     </select>
                     <button type="submit" disabled={submitting}
@@ -2761,7 +2815,7 @@ export default function CarDetailPage() {
           </div>{/* end left column */}
 
           {/* ── RIGHT SIDEBAR ── */}
-          <div className="cdp-sidebar" style={{ width: 360, flexShrink: 0, position: 'sticky', top: 76, maxHeight: 'calc(100vh - 92px)', overflowY: 'auto', scrollbarWidth: 'none', background: 'linear-gradient(160deg, #09111f 0%, #0a1220 100%)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '28px 24px' }}>
+          <div className="cdp-sidebar" style={{ width: 360, flexShrink: 0, position: 'sticky', top: 76, maxHeight: 'calc(100vh - 92px)', overflowY: 'auto', scrollbarWidth: 'none', background: isXdrive ? '#ffffff' : 'linear-gradient(160deg, #09111f 0%, #0a1220 100%)', border: `1px solid ${isXdrive ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16, padding: '28px 24px' }}>
 
             {/* DEALER TOPBAR */}
             {(() => {
@@ -2772,12 +2826,12 @@ export default function CarDetailPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   {avatarSrc
                     ? <img src={avatarSrc} alt={displayName} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 32, height: 32, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    : <div style={{ width: 32, height: 32, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', border: `1px solid ${th.border}` }}>
                         {displayName[0]?.toUpperCase()}
                       </div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, color: 'white', fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
+                    <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize: 11, color: isAgent ? '#60a5fa' : '#334155' }}>
                       {isAgent ? 'Independent Agent' : (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -2812,9 +2866,9 @@ export default function CarDetailPage() {
                   </a>
                 )}
               </div>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: 'white', lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
               {calcMonthly(car.selling_price) && (
-                <p style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
+                <p style={{ fontSize: 12, color: th.textMuted, marginTop: 4 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
               )}
               {isHot && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
@@ -2833,7 +2887,7 @@ export default function CarDetailPage() {
               {car.warranty_months > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', color: '#4ade80', fontSize: '10px', padding: '3px 10px', borderRadius: '4px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}><ShieldCheck size={11} /> {car.warranty_months}m Warranty</span>}
             </div>
             {car.deposit_amount > 0 && (
-              <p style={{ fontSize: 11, color: '#475569', marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
+              <p style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, textAlign: 'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
 
             {/* CTA BUTTONS */}
@@ -2853,19 +2907,19 @@ export default function CarDetailPage() {
               </button>
               {contactPhone && (
                 <button onClick={handleCall}
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
+                  style={{ flex: 1, background: th.inputBg, border: '1px solid rgba(255,255,255,0.1)', color: th.textSec, borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 13, transition: 'all .2s' }}>
                   <Phone size={13} /> Call
                 </button>
               )}
             </div>
 
             <button onClick={() => setCalcOpen(true)}
-              style={{ width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#475569', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
+              style={{ width: '100%', background: 'none', border: `1px solid ${th.borderSec}`, color: th.textMuted, borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
               <Calculator size={13} /> Financing Calculator
             </button>
             {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 8, background: th.inputBg, border: `1px solid ${th.border}`, color: th.textSec, borderRadius: 10, padding: 10, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none', boxSizing: 'border-box', transition: 'all .2s' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
               </a>
             )}
@@ -2885,8 +2939,8 @@ export default function CarDetailPage() {
                         </div>
                     }
                     <div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: 'white', margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                      {salesmanProfile.job_title && <p style={{ fontSize: 12, color: '#475569', margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
+                      <p style={{ fontSize: 15, fontWeight: 700, color: th.text, margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
+                      {salesmanProfile.job_title && <p style={{ fontSize: 12, color: th.textMuted, margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
                       <p style={{ fontSize: 11, color: '#1e293b', margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
                     </div>
                   </div>
@@ -2902,7 +2956,7 @@ export default function CarDetailPage() {
                     </Link>
                   )}
                   {dealer?.subdomain && !isSubdomain() && (
-                    <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: '#94a3b8', textDecoration: 'none' }}>
+                    <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 12, color: th.textSec, textDecoration: 'none' }}>
                       Go to dealer's page →
                     </a>
                   )}
@@ -2916,14 +2970,14 @@ export default function CarDetailPage() {
         {calcOpen && (
           <div onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
             style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}>
-            <div style={{ width: '100%', maxWidth: 860, background: '#0b1422', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, overflow: 'hidden' }}>
+            <div style={{ width: '100%', maxWidth: 860, background: th.card, border: `1px solid ${th.border}`, borderRadius: 20, overflow: 'hidden' }}>
               <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ color: 'white', fontWeight: 700, fontSize: 14, margin: '0 0 2px', letterSpacing: '0.02em' }}>Financing &amp; Cost Calculator</p>
-                  <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{carTitle}</p>
+                  <p style={{ color: th.text, fontWeight: 700, fontSize: 14, margin: '0 0 2px', letterSpacing: '0.02em' }}>Financing &amp; Cost Calculator</p>
+                  <p style={{ color: th.textMuted, fontSize: 12, margin: 0 }}>{carTitle}</p>
                 </div>
                 <button onClick={() => setCalcOpen(false)}
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: 'all .2s' }}>
+                  style={{ background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: th.textMuted, transition: 'all .2s' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -2999,7 +3053,7 @@ export default function CarDetailPage() {
       {/* ── enquiry modal ── */}
       {showEnquiryModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div style={{ background: '#0b1628', border: '1px solid rgba(220,38,38,0.15)', borderRadius: '20px' }} className="p-6 w-full max-w-sm">
+          <div style={{ background: th.card, border: '1px solid rgba(220,38,38,0.15)', borderRadius: '20px' }} className="p-6 w-full max-w-sm">
             <h3 className="text-white font-semibold text-lg mb-1">Contact Dealer</h3>
             <p className="text-gray-500 text-sm mb-4">Enter your details to continue to WhatsApp</p>
             <input
@@ -3020,9 +3074,9 @@ export default function CarDetailPage() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
               style={{ cursor: 'pointer' }}
             >
-              <option value="" style={{ background: '#0d1117' }}>Your state (optional)</option>
+              <option value="" style={{ background: th.card }}>Your state (optional)</option>
               {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
-                <option key={s} value={s} style={{ background: '#0d1117' }}>{s}</option>
+                <option key={s} value={s} style={{ background: th.card }}>{s}</option>
               ))}
             </select>
             <button
