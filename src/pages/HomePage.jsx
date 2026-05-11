@@ -526,7 +526,7 @@ const HomePage = () => {
     if (bodyType) p.set("body_type", bodyType);
     if (maxPrice) p.set("max_price", maxPrice);
     const q = p.toString();
-    return q ? `/cars?${q}` : "/cars";
+    return q ? `/showroom?${q}` : "/showroom";
   };
 
   const HARDCODED_DEFAULT_WHY = {
@@ -1122,7 +1122,7 @@ const HomePage = () => {
                   </p>
                   <h2 className="sec-title">Hot Deals</h2>
                 </div>
-                <Link to="/cars?hot_deals=true" className="view-all-link">
+                <Link to="/showroom?hot_deals=true" className="view-all-link">
                   View All <ArrowRight size={12} />
                 </Link>
               </div>
@@ -1156,7 +1156,7 @@ const HomePage = () => {
                 <p className="sec-eyebrow">Just Listed</p>
                 <h2 className="sec-title">{t("home.hotDeals.title")}</h2>
               </div>
-              <Link to="/cars" className="view-all-link">
+              <Link to="/showroom" className="view-all-link">
                 All Cars <ArrowRight size={12} />
               </Link>
             </div>
@@ -1170,7 +1170,7 @@ const HomePage = () => {
           </div>
           <div style={{ textAlign: "center" }}>
             <Link
-              to="/cars"
+              to="/showroom"
               className="ghost-outline"
               style={{
                 display: "inline-flex",
@@ -1585,12 +1585,12 @@ const HomePage = () => {
                   {t("home.budget.subtitle")}
                 </p>
                 <Link
-                  to="/calculator"
+                  to="/showroom"
                   className="primary-btn"
                   style={primaryBtn}
                 >
-                  <Calculator size={14} />
-                  {t("home.budget.calcBtn")}
+                  <ArrowRight size={14} />
+                  Browse Cars
                 </Link>
               </div>
               <div
@@ -1820,7 +1820,7 @@ const HomePage = () => {
                 flexWrap: "wrap",
               }}
             >
-              <Link to="/cars" className="primary-btn" style={primaryBtn}>
+              <Link to="/showroom" className="primary-btn" style={primaryBtn}>
                 {ctaPrimaryLabel} <ArrowRight size={14} />
               </Link>
               <a

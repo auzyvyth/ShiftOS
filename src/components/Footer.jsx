@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSiteProfile } from "../hooks/useSiteProfile";
+import { isSubdomain } from "../hooks/useTenant";
 import { supabase } from "../supabaseClient";
 
 // Superadmin profile is the fallback for xdrive.my main domain
@@ -151,13 +152,20 @@ const Footer = () => {
   const hasContact = email || phone || whatsapp;
   const hasSocials = facebook || instagram || tiktok;
 
-  const quickLinks = [
-    { label: "Browse Cars",    to: "/cars" },
-    { label: "Calculator",     to: "/calculator" },
-    { label: "How It Works",   to: "/#how-it-works" },
-    { label: "For Dealers",    to: "/for-dealers" },
-    { label: "Sign In",        to: "/login" },
-  ];
+  const quickLinks = isSubdomain()
+    ? [
+        { label: "All Cars",       to: "/showroom" },
+        { label: "Hot Deals",      to: "/showroom?hot_deals=true" },
+        { label: "How It Works",   to: "/#how-it-works" },
+        { label: "Sign In",        to: "/login" },
+      ]
+    : [
+        { label: "Browse Showroom", to: "/showroom" },
+        { label: "Hot Deals",       to: "/showroom?hot_deals=true" },
+        { label: "How It Works",    to: "/#how-it-works" },
+        { label: "For Dealers",     to: "/login" },
+        { label: "Sign In",         to: "/login" },
+      ];
 
   return (
     <footer className="ftr-root">

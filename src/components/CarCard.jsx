@@ -25,6 +25,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
+  const xdrive = !isSubdomain();
+
   const brand         = car.brand || car.make || 'Unknown';
   const model         = car.model || '';
   const variant       = car.variant || '';
@@ -61,7 +63,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
     ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' :
     ['Manual', 'MT'].includes(transmission) ? 'Manual' : transmission || null;
 
-  // Real DB fields from CarForm
   const colour    = car.colour || null;
   const engineCc  = car.engine_cc ? Number(car.engine_cc).toLocaleString('en-MY') + ' cc' : null;
   const fuelType  = car.fuel_type || null;
@@ -74,13 +75,41 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
     waText
   );
 
-  // 2×2 grid: only real DB fields, show — when missing
   const specCells = [
     { icon: Gauge,    label: 'Mileage', value: formattedMileage || '—' },
     { icon: Calendar, label: 'Year',    value: year ? String(year) : '—' },
     { icon: Fuel,     label: 'Fuel',    value: fuelType || '—' },
     { icon: Settings2, label: 'Gearbox', value: normalTx || '—' },
   ];
+
+  /* ── xdrive.my silver palette ── */
+  const xd = xdrive ? {
+    cardBg:      'linear-gradient(160deg, #FFFFFF 0%, #F1F5F9 100%)',
+    border:      isHot ? '0.5px solid rgba(220,38,38,0.28)' : '1px solid rgba(203,213,225,0.8)',
+    imgBg:       '#E2E8F0',
+    bodyBg:      'transparent',
+    title:       '#0F172A',
+    sub:         '#64748B',
+    priceMain:   isHot ? '#DC2626' : '#0F172A',
+    priceStrike: '#94A3B8',
+    priceSave:   '#059669',
+    monthly:     '#64748B',
+    cellBg:      'rgba(15,23,42,0.04)',
+    cellBorder:  'rgba(203,213,225,0.6)',
+    cellLabel:   '#94A3B8',
+    cellValue:   '#1E293B',
+    divider:     'rgba(203,213,225,0.7)',
+    hoverShadow: '0 12px 36px rgba(15,23,42,0.10)',
+    waBtn:       isSold ? { bg:'rgba(0,0,0,0.04)', border:'1px solid rgba(203,213,225,0.6)', color:'#94A3B8' }
+                        : { bg:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.28)', color:'#16A34A' },
+    noImgIcon:   '#94A3B8',
+    noImgText:   '#94A3B8',
+    conditionPill: {
+      recon: { bg:'rgba(139,92,246,0.08)', color:'#7C3AED', border:'1px solid rgba(139,92,246,0.2)' },
+      new:   { bg:'rgba(16,185,129,0.08)', color:'#059669', border:'1px solid rgba(16,185,129,0.2)' },
+      used:  { bg:'rgba(100,116,139,0.08)', color:'#475569', border:'1px solid rgba(100,116,139,0.2)' },
+    },
+  } : null;
 
   return (
     <>
@@ -98,6 +127,14 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
         .cc-root.hot:hover {
           box-shadow: 0 16px 40px rgba(220,38,38,0.18);
           border-color: rgba(220,38,38,0.4) !important;
+        }
+        .cc-root.xdrive:hover {
+          box-shadow: 0 12px 36px rgba(15,23,42,0.12) !important;
+          border-color: rgba(220,38,38,0.3) !important;
+        }
+        .cc-root.xdrive.hot:hover {
+          box-shadow: 0 12px 36px rgba(220,38,38,0.15) !important;
+          border-color: rgba(220,38,38,0.45) !important;
         }
         .cc-wa:hover {
           background: rgba(37,211,102,0.18) !important;
@@ -124,7 +161,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
       `}</style>
 
       <div
-        className={`cc-root${isHot ? ' hot' : ''}`}
+        className={`cc-root${isHot ? ' hot' : ''}${xdrive ? ' xdrive' : ''}`}
         onClick={() => {
           if (isSold || !(car.slug || car.id)) return;
           trackEvent(supabase, 'card_click', {
@@ -136,8 +173,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           navigate((isSubdomain() ? '/cars/' : '/showroom/') + (car.slug || car.id));
         }}
         style={{
-          background: 'var(--color-background-primary, #0d1117)',
-          border: isHot
+          background: xdrive ? xd.cardBg : 'var(--color-background-primary, #0d1117)',
+          border: xdrive ? xd.border : isHot
             ? '0.5px solid rgba(220,38,38,0.25)'
             : '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))',
           borderRadius: 'var(--border-radius-lg, 12px)',
@@ -146,16 +183,29 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           fontFamily: 'var(--font-sans, "Outfit", sans-serif)',
           display: 'flex',
           flexDirection: 'column',
+          /* fixed card height — ensures uniform grid on xdrive.my */
+          height: xdrive ? '448px' : undefined,
         }}
       >
         {/* ── Image ── */}
-        <div className="cc-img" style={{ position: 'relative', height: 195, background: '#0e0e14', flexShrink: 0, overflow: 'hidden' }}>
+        <div
+          className="cc-img"
+          style={{
+            position: 'relative',
+            height: 185,
+            flexShrink: 0,
+            overflow: 'hidden',
+            background: xdrive ? xd.imgBg : '#0e0e14',
+          }}
+        >
           {image ? (
             <>
               {!imgLoaded && (
                 <div style={{
                   position: 'absolute', inset: 0,
-                  background: 'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)',
+                  background: xdrive
+                    ? 'linear-gradient(90deg,#E8EDF3 25%,#F1F5F9 50%,#E8EDF3 75%)'
+                    : 'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)',
                   backgroundSize: '200% 100%',
                   animation: 'cc-shimmer 1.5s infinite',
                 }} />
@@ -172,124 +222,161 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                   filter: isSold ? 'grayscale(60%)' : 'none',
                 }}
               />
+              {/* bottom fade — lighter for silver theme */}
               <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-                background: 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 48,
+                background: xdrive
+                  ? 'linear-gradient(to top, rgba(241,245,249,0.5), transparent)'
+                  : 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
                 pointerEvents: 'none',
               }} />
             </>
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2d3748" strokeWidth="1.2">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={xdrive ? xd.noImgIcon : '#2d3748'} strokeWidth="1.2">
                 <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
                 <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
               </svg>
-              <span style={{ fontSize: 10, color: '#374151' }}>No photo</span>
+              <span style={{ fontSize: 10, color: xdrive ? xd.noImgText : '#374151' }}>No photo</span>
             </div>
           )}
-
         </div>
 
         {/* ── Body ── */}
-        <div className="cc-body" style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-
-          {/* Car name */}
+        <div
+          className="cc-body"
+          style={{
+            padding: '11px 13px 13px',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Car name — always 1 line */}
           <h3 className="cc-name" style={{
-            color: 'var(--color-text-primary, #f3f4f6)',
-            fontSize: 15, fontWeight: 500, lineHeight: 1.3,
-            whiteSpace: 'normal', wordBreak: 'break-word',
+            color: xdrive ? xd.title : 'var(--color-text-primary, #f3f4f6)',
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             margin: '0 0 2px',
+            flexShrink: 0,
           }}>
             {[year, brand, model, variant].filter(Boolean).join(' ')}
           </h3>
 
-          {/* Sub line: colour · location */}
-          <div className="cc-sub" style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10, overflow: 'hidden' }}>
+          {/* Sub line: colour · location — always 1 line */}
+          <div
+            className="cc-sub"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              marginBottom: 8, overflow: 'hidden', flexShrink: 0,
+              height: 16,
+            }}
+          >
             {colour && (
-              <span style={{ fontSize: 11, color: 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }}>{colour}</span>
+              <span style={{ fontSize: 11, color: xdrive ? xd.sub : 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }}>{colour}</span>
             )}
             {colour && location && (
-              <span className="cc-sub-dot" style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }} />
+              <span className="cc-sub-dot" style={{ width: 3, height: 3, borderRadius: '50%', background: xdrive ? xd.sub : 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }} />
             )}
             {location && (
-              <span className="cc-sub-loc" style={{ fontSize: 11, color: 'var(--color-text-secondary, #6b7280)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
+              <span className="cc-sub-loc" style={{ fontSize: 11, color: xdrive ? xd.sub : 'var(--color-text-secondary, #6b7280)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
             )}
           </div>
 
-          {/* Price */}
-          <div className="cc-pricebox" style={{ marginBottom: 12 }}>
-            {hasDiscount && (
-              <span style={{ color: 'var(--color-text-secondary, #6b7280)', fontSize: 11, textDecoration: 'line-through' }}>
-                RM {originalPrice.toLocaleString('en-MY')}
-              </span>
-            )}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
+          {/* Price — fixed height container */}
+          <div
+            className="cc-pricebox"
+            style={{ marginBottom: 10, flexShrink: 0, height: 52, overflow: 'hidden' }}
+          >
+            {/* Strikethrough — always occupies 1 line height */}
+            <div style={{ height: 16 }}>
+              {hasDiscount && (
+                <span style={{ color: xdrive ? xd.priceStrike : 'var(--color-text-secondary, #6b7280)', fontSize: 11, textDecoration: 'line-through' }}>
+                  RM {originalPrice.toLocaleString('en-MY')}
+                </span>
+              )}
+            </div>
+            {/* Main price + monthly */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
               <span className="cc-price-main" style={{
-                color: isHot ? '#f87171' : 'var(--color-text-primary, #ffffff)',
-                fontSize: 20, fontWeight: 600, lineHeight: 1, letterSpacing: '-0.01em',
+                color: xdrive ? xd.priceMain : (isHot ? '#f87171' : 'var(--color-text-primary, #ffffff)'),
+                fontSize: 19, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.01em', flexShrink: 0,
               }}>
                 {formattedPrice}
               </span>
               {monthly && (
-                <span className="cc-monthly" style={{ color: 'var(--color-text-secondary, #6b7280)', fontSize: 11 }}>
+                <span className="cc-monthly" style={{ color: xdrive ? xd.monthly : 'var(--color-text-secondary, #6b7280)', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   est. RM {monthly.toLocaleString('en-MY')}/mo
                 </span>
               )}
             </div>
-            {isHot && (
-              <span style={{ color: '#34d399', fontSize: 11, fontWeight: 600 }}>
-                Save RM {(originalPrice - price).toLocaleString('en-MY')}
-              </span>
-            )}
+            {/* Save row — always occupies 1 line height */}
+            <div style={{ height: 16 }}>
+              {isHot && (
+                <span style={{ color: xdrive ? xd.priceSave : '#34d399', fontSize: 11, fontWeight: 600 }}>
+                  Save RM {(originalPrice - price).toLocaleString('en-MY')}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* 2×2 specs grid — all real DB fields */}
-          <div className="cc-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+          {/* 2×2 specs grid */}
+          <div className="cc-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 10, flexShrink: 0 }}>
             {specCells.map((cell, i) => (
               <div key={i} className="cc-cell" style={{
-                background: 'var(--color-background-secondary, rgba(255,255,255,0.04))',
+                background: xdrive ? xd.cellBg : 'var(--color-background-secondary, rgba(255,255,255,0.04))',
+                border: xdrive ? `1px solid ${xd.cellBorder}` : 'none',
                 borderRadius: 'var(--border-radius-md, 8px)',
-                padding: '7px 9px',
+                padding: '6px 8px',
                 display: 'flex', alignItems: 'center', gap: 6,
                 minWidth: 0,
               }}>
-                <cell.icon size={13} style={{ color: 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }} />
+                <cell.icon size={12} style={{ color: xdrive ? xd.cellLabel : 'var(--color-text-secondary, #6b7280)', flexShrink: 0 }} />
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <span className="cc-cell-lbl" style={{ display: 'block', fontSize: 10, color: 'var(--color-text-secondary, #6b7280)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{cell.label}</span>
-                  <span className="cc-cell-val" style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary, #f3f4f6)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell.value}</span>
+                  <span className="cc-cell-lbl" style={{ display: 'block', fontSize: 9, color: xdrive ? xd.cellLabel : 'var(--color-text-secondary, #6b7280)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{cell.label}</span>
+                  <span className="cc-cell-val" style={{ display: 'block', fontSize: 11, fontWeight: 600, color: xdrive ? xd.cellValue : 'var(--color-text-primary, #f3f4f6)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell.value}</span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Divider */}
-          <div className="cc-divider" style={{ borderTop: '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))', marginBottom: 10 }} />
+          <div className="cc-divider" style={{ borderTop: `0.5px solid ${xdrive ? xd.divider : 'var(--color-border-tertiary, rgba(255,255,255,0.07))'}`, marginBottom: 9, flexShrink: 0 }} />
 
-          {/* Bottom row: condition + grade (left) | WA icon (right) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto' }}>
-            {/* Left: condition pill + grade — shrinks to content */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5, minWidth: 0 }}>
-              {car.condition && (
-                <span style={{
-                  display: 'inline-block',
-                  alignSelf: 'flex-start',
-                  fontSize: 10, fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  ...(car.condition === 'recon'
-                    ? { background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }
+          {/* Bottom row — fixed height */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto', height: 36, overflow: 'hidden' }}>
+            {/* Left: condition pill + grade */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, overflow: 'hidden' }}>
+              {car.condition && (() => {
+                const pill = xdrive
+                  ? (xd.conditionPill[car.condition] || xd.conditionPill.used)
+                  : (car.condition === 'recon'
+                    ? { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }
                     : car.condition === 'new'
-                    ? { background: 'rgba(16,185,129,0.12)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)' }
-                    : { background: 'rgba(107,114,128,0.12)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.25)' }),
-                }}>
-                  {{ used: 'Used', recon: 'Recon', new: 'New' }[car.condition] || car.condition}
-                </span>
-              )}
+                    ? { bg: 'rgba(16,185,129,0.12)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)' }
+                    : { bg: 'rgba(107,114,128,0.12)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.25)' });
+                return (
+                  <span style={{
+                    display: 'inline-block', flexShrink: 0,
+                    fontSize: 10, fontWeight: 700,
+                    padding: '2px 8px', borderRadius: 20,
+                    background: pill.bg, color: pill.color, border: pill.border,
+                  }}>
+                    {{ used: 'Used', recon: 'Recon', new: 'New' }[car.condition] || car.condition}
+                  </span>
+                );
+              })()}
               {hasGrade && <GradeBadge auctionGrade={auctionGrade} interiorGrade={interiorGrade} size="sm" />}
-              {!car.condition && !hasGrade && <span style={{ fontSize: 10, color: 'var(--color-text-secondary, #6b7280)' }}>—</span>}
+              {!car.condition && !hasGrade && <span style={{ fontSize: 10, color: xdrive ? xd.sub : 'var(--color-text-secondary, #6b7280)' }}>—</span>}
             </div>
 
-            {/* Right: WA icon-only button */}
+            {/* Right: WA icon button */}
             <a
               href={whatsappUrl}
               target="_blank"
@@ -317,18 +404,18 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
               style={{
                 flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 40, height: 40,
-                background: isSold ? 'rgba(255,255,255,0.03)' : 'rgba(37,211,102,0.08)',
-                border: isSold
+                width: 36, height: 36,
+                background: xdrive ? xd.waBtn.bg : (isSold ? 'rgba(255,255,255,0.03)' : 'rgba(37,211,102,0.08)'),
+                border: xdrive ? xd.waBtn.border : (isSold
                   ? '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.06))'
-                  : '1px solid rgba(37,211,102,0.2)',
-                color: isSold ? 'var(--color-text-secondary, #6b7280)' : '#25D366',
+                  : '1px solid rgba(37,211,102,0.2)'),
+                color: xdrive ? xd.waBtn.color : (isSold ? 'var(--color-text-secondary, #6b7280)' : '#25D366'),
                 borderRadius: 'var(--border-radius-md, 10px)',
                 textDecoration: 'none', transition: 'all 0.18s',
                 pointerEvents: isSold ? 'none' : 'auto',
               }}
             >
-              <MessageCircle size={16} />
+              <MessageCircle size={15} />
             </a>
           </div>
         </div>

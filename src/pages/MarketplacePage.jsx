@@ -1087,7 +1087,7 @@ export default function MarketplacePage() {
                 { number:'100%', label:'listings require full documentation' },
                 { number:'Zero', label:'phantom listings or fake prices' },
               ].map((s,i) => (
-                <div key={s.number} className="mp-trust-item" style={{ padding:'0 28px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                <div key={s.label} className="mp-trust-item" style={{ padding:'0 28px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
                   <div style={{ fontSize:'20px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'3px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
                   <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
                 </div>
