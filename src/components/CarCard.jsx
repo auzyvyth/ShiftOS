@@ -84,30 +84,29 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
 
   /* ── xdrive.my silver palette ── */
   const xd = xdrive ? {
-    cardBg:      'linear-gradient(160deg, #FFFFFF 0%, #F1F5F9 100%)',
-    border:      isHot ? '0.5px solid rgba(220,38,38,0.28)' : '1px solid rgba(203,213,225,0.8)',
-    imgBg:       '#E2E8F0',
-    bodyBg:      'transparent',
+    cardBg:      '#FFFFFF',
+    cardShadow:  '0 1px 4px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04)',
+    border:      isHot ? '1px solid rgba(220,38,38,0.3)' : '1px solid #DDE3EC',
+    imgBg:       '#EBF0F6',
     title:       '#0F172A',
     sub:         '#64748B',
     priceMain:   isHot ? '#DC2626' : '#0F172A',
     priceStrike: '#94A3B8',
     priceSave:   '#059669',
     monthly:     '#64748B',
-    cellBg:      'rgba(15,23,42,0.04)',
-    cellBorder:  'rgba(203,213,225,0.6)',
+    cellBg:      '#F1F5F9',
+    cellBorder:  '#E2E8F0',
     cellLabel:   '#94A3B8',
     cellValue:   '#1E293B',
-    divider:     'rgba(203,213,225,0.7)',
-    hoverShadow: '0 12px 36px rgba(15,23,42,0.10)',
-    waBtn:       isSold ? { bg:'rgba(0,0,0,0.04)', border:'1px solid rgba(203,213,225,0.6)', color:'#94A3B8' }
-                        : { bg:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.28)', color:'#16A34A' },
+    divider:     '#E2E8F0',
+    waBtn:       isSold ? { bg:'#F1F5F9', border:'1px solid #E2E8F0', color:'#94A3B8' }
+                        : { bg:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.3)', color:'#15803D' },
     noImgIcon:   '#94A3B8',
     noImgText:   '#94A3B8',
     conditionPill: {
-      recon: { bg:'rgba(139,92,246,0.08)', color:'#7C3AED', border:'1px solid rgba(139,92,246,0.2)' },
-      new:   { bg:'rgba(16,185,129,0.08)', color:'#059669', border:'1px solid rgba(16,185,129,0.2)' },
-      used:  { bg:'rgba(100,116,139,0.08)', color:'#475569', border:'1px solid rgba(100,116,139,0.2)' },
+      recon: { bg:'#EDE9FE', color:'#6D28D9', border:'1px solid #DDD6FE' },
+      new:   { bg:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0' },
+      used:  { bg:'#F1F5F9', color:'#475569', border:'1px solid #CBD5E1' },
     },
   } : null;
 
@@ -129,12 +128,13 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           border-color: rgba(220,38,38,0.4) !important;
         }
         .cc-root.xdrive:hover {
-          box-shadow: 0 12px 36px rgba(15,23,42,0.12) !important;
-          border-color: rgba(220,38,38,0.3) !important;
+          box-shadow: 0 8px 28px rgba(15,23,42,0.13) !important;
+          border-color: #DC2626 !important;
+          transform: translateY(-3px);
         }
         .cc-root.xdrive.hot:hover {
-          box-shadow: 0 12px 36px rgba(220,38,38,0.15) !important;
-          border-color: rgba(220,38,38,0.45) !important;
+          box-shadow: 0 8px 28px rgba(220,38,38,0.18) !important;
+          border-color: #DC2626 !important;
         }
         .cc-wa:hover {
           background: rgba(37,211,102,0.18) !important;
@@ -177,14 +177,15 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           border: xdrive ? xd.border : isHot
             ? '0.5px solid rgba(220,38,38,0.25)'
             : '0.5px solid var(--color-border-tertiary, rgba(255,255,255,0.07))',
-          borderRadius: 'var(--border-radius-lg, 12px)',
+          borderRadius: xdrive ? '14px' : 'var(--border-radius-lg, 12px)',
           overflow: 'hidden',
           cursor: isSold ? 'default' : 'pointer',
           fontFamily: 'var(--font-sans, "Outfit", sans-serif)',
           display: 'flex',
           flexDirection: 'column',
+          boxShadow: xdrive ? xd.cardShadow : undefined,
           /* fixed card height — ensures uniform grid on xdrive.my */
-          height: xdrive ? '448px' : undefined,
+          height: xdrive ? '456px' : undefined,
         }}
       >
         {/* ── Image ── */}
@@ -204,7 +205,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                 <div style={{
                   position: 'absolute', inset: 0,
                   background: xdrive
-                    ? 'linear-gradient(90deg,#E8EDF3 25%,#F1F5F9 50%,#E8EDF3 75%)'
+                    ? 'linear-gradient(90deg,#E2E8F0 25%,#EBF0F6 50%,#E2E8F0 75%)'
                     : 'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)',
                   backgroundSize: '200% 100%',
                   animation: 'cc-shimmer 1.5s infinite',
@@ -226,7 +227,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
               <div style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0, height: 48,
                 background: xdrive
-                  ? 'linear-gradient(to top, rgba(241,245,249,0.5), transparent)'
+                  ? 'linear-gradient(to top, rgba(235,240,246,0.6), transparent)'
                   : 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
                 pointerEvents: 'none',
               }} />
@@ -292,35 +293,35 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           {/* Price — fixed height container */}
           <div
             className="cc-pricebox"
-            style={{ marginBottom: 10, flexShrink: 0, height: 52, overflow: 'hidden' }}
+            style={{ marginBottom: 9, flexShrink: 0, height: 62, overflow: 'hidden' }}
           >
-            {/* Strikethrough — always occupies 1 line height */}
-            <div style={{ height: 16 }}>
+            {/* Strikethrough — reserve 1 line always */}
+            <div style={{ height: 15 }}>
               {hasDiscount && (
                 <span style={{ color: xdrive ? xd.priceStrike : 'var(--color-text-secondary, #6b7280)', fontSize: 11, textDecoration: 'line-through' }}>
                   RM {originalPrice.toLocaleString('en-MY')}
                 </span>
               )}
             </div>
-            {/* Main price + monthly */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
+            {/* Main price — own line */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
               <span className="cc-price-main" style={{
                 color: xdrive ? xd.priceMain : (isHot ? '#f87171' : 'var(--color-text-primary, #ffffff)'),
-                fontSize: 19, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.01em', flexShrink: 0,
+                fontSize: 20, fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em',
               }}>
                 {formattedPrice}
               </span>
-              {monthly && (
-                <span className="cc-monthly" style={{ color: xdrive ? xd.monthly : 'var(--color-text-secondary, #6b7280)', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  est. RM {monthly.toLocaleString('en-MY')}/mo
-                </span>
-              )}
             </div>
-            {/* Save row — always occupies 1 line height */}
-            <div style={{ height: 16 }}>
-              {isHot && (
-                <span style={{ color: xdrive ? xd.priceSave : '#34d399', fontSize: 11, fontWeight: 600 }}>
-                  Save RM {(originalPrice - price).toLocaleString('en-MY')}
+            {/* Monthly estimate — own line, never truncated */}
+            <div style={{ height: 17 }}>
+              {monthly && (
+                <span className="cc-monthly" style={{ color: xdrive ? xd.monthly : 'var(--color-text-secondary, #6b7280)', fontSize: 11 }}>
+                  est. RM {monthly.toLocaleString('en-MY')}/mo
+                  {isHot && (
+                    <span style={{ color: xdrive ? xd.priceSave : '#34d399', fontWeight: 600, marginLeft: 6 }}>
+                      · Save RM {(originalPrice - price).toLocaleString('en-MY')}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
