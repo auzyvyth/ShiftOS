@@ -1359,7 +1359,7 @@ export default function CarDetailPage() {
             </div>
           )}
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.26em', color:'#dc2626', fontWeight:700, marginBottom:4 }}>{car.brand}</p>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color:'white', lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color: th.text, lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
             {car.model}{car.variant ? ' '+car.variant : ''}
           </h1>
           <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
@@ -1375,7 +1375,7 @@ export default function CarDetailPage() {
             </a>
           )}
           <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color:'white', lineHeight:1, margin:0 }}>
+            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color: th.text, lineHeight:1, margin:0 }}>
               {fmtPrice(car.selling_price)}
             </p>
             {calcMonthly(car.selling_price) && (
@@ -1395,7 +1395,7 @@ export default function CarDetailPage() {
 
         {/* M3 — Quick stats 2×4 */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
               { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
@@ -1409,9 +1409,9 @@ export default function CarDetailPage() {
               ...(car.doors ? [{ label:'Doors', value:`${car.doors} doors` }] : []),
               ...(car.seats ? [{ label:'Seats', value:`${car.seats} seats` }] : []),
             ].map(({ label, value }) => (
-              <div key={label} style={{ padding:'14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:5 }}>{label}</p>
-                <p style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, margin:0 }}>{value}</p>
+              <div key={label} style={{ padding:'14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
+                <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color: th.textMuted, fontWeight:700, marginBottom:5 }}>{label}</p>
+                <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
               </div>
             ))}
           </div>
@@ -1419,7 +1419,7 @@ export default function CarDetailPage() {
 
         {/* M4 — CTA card */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
-          <div style={{ background:'#0a1625', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
+          <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
             <button
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
@@ -1435,7 +1435,7 @@ export default function CarDetailPage() {
               </button>
               {contactPhone && (
                 <button onClick={handleCall}
-                  style={{ flex:1, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', color:'#94a3b8', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
+                  style={{ flex:1, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
                   <Phone size={13} /> Call
                 </button>
               )}
@@ -1450,16 +1450,16 @@ export default function CarDetailPage() {
               <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
             <button onClick={() => setCalcOpen(true)}
-              style={{ width:'100%', background:'none', border:'1px solid rgba(255,255,255,0.06)', color:'#475569', borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
+              style={{ width:'100%', background:'none', border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
               <Calculator size={13} /> Financing Calculator
             </button>
             {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', color:'#94a3b8', borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, width:'100%', marginTop:8, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", textDecoration:'none', boxSizing:'border-box' }}>
                 <ExternalLink size={13} /> Visit Dealer's Page
               </a>
             )}
-            <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'14px 0' }} />
+            <div style={{ height:1, background: th.border, margin:'14px 0' }} />
             {/* Dealer row */}
             {(() => {
               const isAgent = !!salesmanProfile;
@@ -1474,7 +1474,7 @@ export default function CarDetailPage() {
                       </div>
                   }
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:13, color:'white', fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
+                    <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <p style={{ fontSize:11, color: isAgent ? '#60a5fa' : '#334155' }}>
                       {isAgent ? 'Independent Agent' : (
                         <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
@@ -1496,7 +1496,7 @@ export default function CarDetailPage() {
 
         {/* M5 — Description + tabs + sections */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color:'#334155', fontWeight:700, marginBottom:12 }}>About this car</p>
+          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
           <p style={{ fontSize:14, color:'#64748b', lineHeight:1.9, marginBottom:28 }}>
             {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
@@ -1509,10 +1509,10 @@ export default function CarDetailPage() {
             ];
             return (
               <>
-                <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:`1px solid ${th.border}` }}>
                   {tabs.map(t => (
                     <button key={t.key} onClick={() => setDetailTab(t.key)}
-                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? 'white' : '#334155', padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s', letterSpacing:'0.05em' }}>
+                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'all .2s', letterSpacing:'0.05em' }}>
                       {t.label}
                     </button>
                   ))}
@@ -1538,14 +1538,14 @@ export default function CarDetailPage() {
                       ] : []),
                     ].map(({ key, val }) => (
                       <div key={key} className="cdp-row">
-                        <span style={{ fontSize:'13px', color:'#64748b' }}>{key}</span>
-                        <span style={{ fontSize:'13px', color:'#f1f5f9', textAlign:'right' }}>{val}</span>
+                        <span style={{ fontSize:'13px', color: th.textSec }}>{key}</span>
+                        <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
                       </div>
                     ))}
                     {isRecon && Array.isArray(car.damage_map) && car.damage_map.length > 0 && (
-                      <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color:'#334155', fontWeight:700, marginBottom:14 }}>Condition Map</p>
-                        <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'16px 20px' }}>
+                      <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
+                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Map</p>
+                        <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
                           <DamageMap value={car.damage_map} readOnly />
                         </div>
                       </div>
@@ -1555,14 +1555,14 @@ export default function CarDetailPage() {
                 {detailTab === 'features' && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
                     {parseTags(car.features).map((tag, i) => (
-                      <span key={i} style={{ padding:'5px 12px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', fontSize:'12px', color:'#64748b', background:'rgba(255,255,255,0.02)' }}>{tag}</span>
+                      <span key={i} style={{ padding:'5px 12px', border:`1px solid ${th.border}`, borderRadius:'6px', fontSize:'12px', color: th.textSec, background: th.card2 }}>{tag}</span>
                     ))}
                   </div>
                 )}
                 {detailTab === 'options' && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
                     {parseTags(car.options).map((tag, i) => (
-                      <span key={i} style={{ padding:'5px 12px', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', fontSize:'12px', color:'#64748b', background:'rgba(255,255,255,0.02)' }}>{tag}</span>
+                      <span key={i} style={{ padding:'5px 12px', border:`1px solid ${th.border}`, borderRadius:'6px', fontSize:'12px', color: th.textSec, background: th.card2 }}>{tag}</span>
                     ))}
                   </div>
                 )}
@@ -1571,8 +1571,8 @@ export default function CarDetailPage() {
           })()}
           {/* What's included */}
           {Array.isArray(car.included_services) && car.included_services.length > 0 && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>What's Included</p>
+            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>What's Included</p>
               <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                 {car.included_services.map((svc, i) => {
                   const cfg = getCategoryCfg(svc.category);
@@ -1586,14 +1586,14 @@ export default function CarDetailPage() {
                 })}
               </div>
               {car.included_services_cost > 0 && (
-                <p style={{ fontSize:11, color:'#334155', marginTop:12 }}>Estimated add-on value: <span style={{ color:'#60a5fa', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
+                <p style={{ fontSize:11, color: th.textMuted, marginTop:12 }}>Estimated add-on value: <span style={{ color:'#60a5fa', fontWeight:700 }}>RM {Number(car.included_services_cost).toLocaleString()}</span></p>
               )}
             </div>
           )}
           {/* Video */}
           {car.video_url && getEmbedUrl(car.video_url) && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14, display:'flex', alignItems:'center', gap:7 }}>
+            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14, display:'flex', alignItems:'center', gap:7 }}>
                 <PlayCircle size={13} style={{ color:'#dc2626' }} /> Watch Walkthrough
               </p>
               <div style={{ position:'relative', paddingBottom:'56.25%', height:0, borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,0.07)' }}>
@@ -1603,10 +1603,10 @@ export default function CarDetailPage() {
           )}
 
           {/* Car History */}
-          <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
               <Shield size={13} style={{ color:'#60a5fa' }} />
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700 }}>Car History</p>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700 }}>Car History</p>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
@@ -1620,12 +1620,12 @@ export default function CarDetailPage() {
                 const isOpen = openDocKey === rk;
                 const asImage = isImageUrl(doc?.url);
                 return (
-                  <div key={key} style={{ background:'#0a1220', border:`1px solid ${isOpen && doc ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
+                  <div key={key} style={{ background: th.card, border:`1px solid ${isOpen && doc ? okBorder : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
                     <div onClick={() => doc && toggleDoc(rk)}
                       style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: doc ? 'pointer' : 'default' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{ color: doc ? okColor : '#334155' }}>{icon}</span>
-                        <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                        <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: doc ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${doc ? okBorder : 'rgba(100,116,139,0.15)'}`, color: doc ? okColor : '#475569', whiteSpace:'nowrap' }}>
@@ -1662,9 +1662,9 @@ export default function CarDetailPage() {
                 const isOpen = openDocKey === rk;
                 const asImage = isImageUrl(doc.url);
                 return (
-                  <div key={rk} style={{ background:'#0a1220', border:`1px solid ${isOpen ? cfg.color+'40' : 'rgba(255,255,255,0.05)'}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
+                  <div key={rk} style={{ background: th.card, border:`1px solid ${isOpen ? cfg.color+'40' : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
                     <div onClick={() => toggleDoc(rk)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
-                      <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{cfg.label}</p>
+                      <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{cfg.label}</p>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, color:cfg.color }}>✓ Available</span>
                         <ChevronDown size={12} style={{ color:'#475569', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
@@ -1691,19 +1691,19 @@ export default function CarDetailPage() {
                   </div>
                 );
               })}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <Star size={13} style={{ color:'#fbbf24' }} />
-                  <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>Previous Owners</p>
+                  <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Previous Owners</p>
                 </div>
-                <span style={{ fontSize:12, color:'#e2e8f0', fontWeight:600 }}>
+                <span style={{ fontSize:12, color: th.text, fontWeight:600 }}>
                   {car.previous_owners != null ? `${car.previous_owners} owner${car.previous_owners!==1?'s':''}` : '—'}
                 </span>
               </div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <Shield size={13} style={{ color: car.warranty_months > 0 ? '#34d399' : '#334155' }} />
-                  <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>Warranty</p>
+                  <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Warranty</p>
                 </div>
                 <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: car.warranty_months>0?'rgba(52,211,153,0.1)':'rgba(100,116,139,0.08)', border:`1px solid ${car.warranty_months>0?'rgba(52,211,153,0.3)':'rgba(100,116,139,0.15)'}`, color: car.warranty_months>0?'#34d399':'#475569' }}>
                   {car.warranty_months > 0 ? `${car.warranty_months} months` : 'No Warranty'}
@@ -1723,8 +1723,8 @@ export default function CarDetailPage() {
                   <>
                     <div style={{ height:1, background:'rgba(255,255,255,0.04)', margin:'2px 0' }} />
                     {PC.map(({ key, label, color }) => (
-                      <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:9 }}>
-                        <p style={{ fontSize:12, color:'#cbd5e1', fontWeight:500, margin:0 }}>{label}</p>
+                      <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
+                        <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                         <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color }}>✓ Available</span>
                       </div>
                     ))}
@@ -1736,9 +1736,9 @@ export default function CarDetailPage() {
 
           {/* Performance */}
           {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats) && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>Performance &amp; Details</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
+            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Performance &amp; Details</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
                 {[
                   { label:'Power', value: car.horsepower ? `${car.horsepower} bhp` : null },
                   { label:'Doors', value: car.doors ? `${car.doors} doors` : null },
@@ -1747,9 +1747,9 @@ export default function CarDetailPage() {
                   { label:'Top Speed', value: car.top_speed ? `${car.top_speed} km/h` : null },
                   { label:'Boot Space', value: car.boot_size ? `${car.boot_size}L` : null },
                 ].filter(s => s.value).map(({ label, value }) => (
-                  <div key={label} style={{ padding:'12px 14px', background:'#0a1220', borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                    <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color:'#334155', fontWeight:700, marginBottom:4 }}>{label}</p>
-                    <p style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, margin:0 }}>{value}</p>
+                  <div key={label} style={{ padding:'12px 14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
+                    <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color: th.textMuted, fontWeight:700, marginBottom:4 }}>{label}</p>
+                    <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
                   </div>
                 ))}
               </div>
@@ -1764,19 +1764,19 @@ export default function CarDetailPage() {
             const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
             const totalFuelCost = Math.round(fuelDist * (consumption / 100) * 2.05);
             return (
-              <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:16 }}>Running Costs</p>
+              <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:16 }}>Running Costs</p>
                 {roadTax && (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#0a1220', border:'1px solid rgba(255,255,255,0.05)', borderRadius:10, marginBottom:10 }}>
-                    <span style={{ fontSize:12, color:'#94a3b8' }}>Road Tax (est.)</span>
-                    <span style={{ fontSize:14, color:'white', fontWeight:600 }}>RM {roadTax}/yr</span>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:10, marginBottom:10 }}>
+                    <span style={{ fontSize:12, color: th.textSec }}>Road Tax (est.)</span>
+                    <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {roadTax}/yr</span>
                   </div>
                 )}
                 {car.co2_emissions && (
                   <div style={{ marginBottom:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-                      <span style={{ fontSize:12, color:'#94a3b8' }}>CO₂ Emissions</span>
-                      <span style={{ fontSize:13, color:'white', fontWeight:600 }}>{car.co2_emissions} g/km</span>
+                      <span style={{ fontSize:12, color: th.textSec }}>CO₂ Emissions</span>
+                      <span style={{ fontSize:13, color: th.text, fontWeight:600 }}>{car.co2_emissions} g/km</span>
                     </div>
                     <div style={{ display:'flex', gap:2, height:8, borderRadius:5, overflow:'hidden' }}>
                       {[{limit:100,color:'#22c55e'},{limit:130,color:'#86efac'},{limit:150,color:'#fde047'},{limit:170,color:'#fb923c'},{limit:200,color:'#ef4444'},{limit:999,color:'#991b1b'}].map((band,i)=>{
@@ -1786,20 +1786,20 @@ export default function CarDetailPage() {
                     </div>
                   </div>
                 )}
-                <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:10, padding:'14px 16px' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                    <span style={{ fontSize:12, color:'#94a3b8' }}>Range Calculator</span>
-                    <span style={{ fontSize:10, color:'#334155' }}>RON95 @ RM2.05/L</span>
+                    <span style={{ fontSize:12, color: th.textSec }}>Range Calculator</span>
+                    <span style={{ fontSize:10, color: th.textMuted }}>RON95 @ RM2.05/L</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:12 }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.8rem', color:'white', lineHeight:1 }}>RM {totalFuelCost}</span>
-                    <span style={{ fontSize:12, color:'#475569' }}>for {fuelDist} km</span>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.8rem', color: th.text, lineHeight:1 }}>RM {totalFuelCost}</span>
+                    <span style={{ fontSize:12, color: th.textSec }}>for {fuelDist} km</span>
                   </div>
                   <input type="range" min={10} max={1000} step={10} value={fuelDist}
                     onChange={e => setFuelDist(Number(e.target.value))}
                     style={{ width:'100%', accentColor:'#dc2626', cursor:'pointer' }}
                   />
-                  <p style={{ fontSize:10, color:'#334155', marginTop:6 }}>~{consumption}L/100km estimated</p>
+                  <p style={{ fontSize:10, color: th.textMuted, marginTop:6 }}>~{consumption}L/100km estimated</p>
                 </div>
               </div>
             );
@@ -1807,16 +1807,16 @@ export default function CarDetailPage() {
 
           {/* Location */}
           {(car.city || car.state) && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color:'#334155', fontWeight:700, marginBottom:14 }}>Location</p>
-              <div style={{ background:'#0a1220', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
+              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Location</p>
+              <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:10, padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
                 <div>
-                  <p style={{ fontSize:14, color:'white', fontWeight:600, margin:'0 0 3px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
-                  <p style={{ fontSize:11, color:'#475569', margin:0 }}>Malaysia</p>
+                  <p style={{ fontSize:14, color: th.text, fontWeight:600, margin:'0 0 3px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
+                  <p style={{ fontSize:11, color: th.textSec, margin:0 }}>Malaysia</p>
                 </div>
                 <a href={`https://www.google.com/maps/search/${encodeURIComponent([car.city, car.state, 'Malaysia'].filter(Boolean).join(', '))}`}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ display:'inline-flex', alignItems:'center', gap:5, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:7, padding:'7px 12px', fontSize:11, color:'#94a3b8', textDecoration:'none', flexShrink:0 }}>
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, background: th.card2, border:`1px solid ${th.border}`, borderRadius:7, padding:'7px 12px', fontSize:11, color: th.textSec, textDecoration:'none', flexShrink:0 }}>
                   <Eye size={12} /> View Map
                 </a>
               </div>
@@ -1828,12 +1828,12 @@ export default function CarDetailPage() {
         {/* M6 — Booking form */}
         <div className="cdp-mobile-only" id="booking-form-mobile" style={{ padding:'0 18px', marginBottom:40 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', fontWeight:700, marginBottom:16 }}>Book a Viewing</p>
-          <div style={{ background:'#0a1625', border:'1px solid rgba(220,38,38,0.1)', borderRadius:14, padding:'20px' }}>
+          <div style={{ background: th.card, border:'1px solid rgba(220,38,38,0.1)', borderRadius:14, padding:'20px' }}>
             {booked ? (
               <div style={{ padding:'24px 0', textAlign:'center' }}>
                 <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:20, color:'#4ade80' }}>✓</div>
-                <p style={{ fontSize:'15px', color:'white', marginBottom:6, fontWeight:600 }}>Viewing Booked</p>
-                <p style={{ fontSize:'13px', color:'#475569' }}>We'll reach out on WhatsApp shortly.</p>
+                <p style={{ fontSize:'15px', color: th.text, marginBottom:6, fontWeight:600 }}>Viewing Booked</p>
+                <p style={{ fontSize:'13px', color: th.textSec }}>We'll reach out on WhatsApp shortly.</p>
               </div>
             ) : (
               <form onSubmit={handleBook}>
@@ -1888,7 +1888,7 @@ export default function CarDetailPage() {
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
             <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:32 }}>
-              <div style={{ background:'#0b1422', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
+              <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
                   {salesmanProfile.avatar_url
                     ? <img src={salesmanProfile.avatar_url} alt={salesmanProfile.full_name} style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
@@ -1897,7 +1897,7 @@ export default function CarDetailPage() {
                       </div>
                   }
                   <div>
-                    <p style={{ fontSize:15, fontWeight:700, color:'white', margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
+                    <p style={{ fontSize:15, fontWeight:700, color: th.text, margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
                     {salesmanProfile.job_title && <p style={{ fontSize:12, color:'#475569', margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
                     <p style={{ fontSize:11, color:'#1e293b', margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
                   </div>
@@ -1925,16 +1925,14 @@ export default function CarDetailPage() {
 
         {/* M8 — Similar cars */}
         {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ background:'#F7F6F2', padding:'28px 18px', marginBottom:80 }}>
+          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 18px', marginBottom:80 }}>
             <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', margin:'0 0 4px', fontWeight:700 }}>You might also like</p>
-            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color:'#111827', margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
+            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color: th.text, margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
               More {car.brand}
             </h2>
-            <div style={{ display:'flex', overflowX:'auto', gap:14, scrollSnapType:'x mandatory', scrollbarWidth:'none', WebkitOverflowScrolling:'touch', marginLeft:-18, marginRight:-18, paddingLeft:18, paddingRight:18 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               {similarCars.map(s => (
-                <div key={s.id} style={{ flexShrink:0, width:'72vw', scrollSnapAlign:'start' }}>
-                  <CarCard car={s} ctaContext={ctaCtx} />
-                </div>
+                <CarCard key={s.id} car={s} ctaContext={ctaCtx} />
               ))}
             </div>
           </div>
