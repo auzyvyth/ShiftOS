@@ -221,14 +221,13 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                   filter: isSold ? 'grayscale(60%)' : 'none',
                 }}
               />
-              {/* bottom fade — lighter for silver theme */}
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0, height: 48,
-                background: xdrive
-                  ? 'linear-gradient(to top, rgba(235,240,246,0.6), transparent)'
-                  : 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
-                pointerEvents: 'none',
-              }} />
+              {!xdrive && (
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 48,
+                  background: 'linear-gradient(to top, rgba(13,17,23,0.7), transparent)',
+                  pointerEvents: 'none',
+                }} />
+              )}
             </>
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
