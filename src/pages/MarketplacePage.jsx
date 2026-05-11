@@ -597,6 +597,7 @@ export default function MarketplacePage() {
       minHeight: '100vh',
       background: '#F7F6F2',
       fontFamily: "'Outfit', sans-serif",
+      overflowX: 'hidden',
     },
     hero: {
       background: 'linear-gradient(160deg, #F2F0EC 0%, #EDE9E3 40%, #F2F0EC 100%)',
@@ -993,7 +994,7 @@ export default function MarketplacePage() {
         .mp-adv-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
         /* Responsive */
         @media(max-width:900px){
-          .mp-hero-section { height: auto !important; overflow: visible !important; }
+          .mp-hero-section { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; }
           .mp-hero-two-col { flex-direction: column !important; padding: 32px 20px 20px !important; gap: 24px !important; align-items: flex-start !important; }
           .mp-hero-illus   { display: none !important; }
         }
