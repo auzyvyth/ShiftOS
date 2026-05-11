@@ -10,6 +10,7 @@ import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
+import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const PER_PAGE = 12;
@@ -23,30 +24,6 @@ const FINANCING_TYPES = [
   { value: 'sambung_bayar', label: 'Sambung Bayar' },
 ];
 const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
-const PRICE_STEPS = [
-  { value: '',        label: 'Any' },
-  { value: '10000',   label: 'RM 10k' },
-  { value: '20000',   label: 'RM 20k' },
-  { value: '30000',   label: 'RM 30k' },
-  { value: '40000',   label: 'RM 40k' },
-  { value: '50000',   label: 'RM 50k' },
-  { value: '60000',   label: 'RM 60k' },
-  { value: '70000',   label: 'RM 70k' },
-  { value: '80000',   label: 'RM 80k' },
-  { value: '90000',   label: 'RM 90k' },
-  { value: '100000',  label: 'RM 100k' },
-  { value: '200000',  label: 'RM 200k' },
-  { value: '300000',  label: 'RM 300k' },
-  { value: '400000',  label: 'RM 400k' },
-  { value: '500000',  label: 'RM 500k' },
-  { value: '600000',  label: 'RM 600k' },
-  { value: '700000',  label: 'RM 700k' },
-  { value: '800000',  label: 'RM 800k' },
-  { value: '900000',  label: 'RM 900k' },
-  { value: '1000000', label: 'RM 1M' },
-  { value: '2000000', label: 'RM 2M' },
-  { value: '3000000', label: 'RM 3M' },
-];
 const SORT_OPTIONS = [
   { label: 'Newest First', value: 'newest' },
   { label: 'Price: Low to High', value: 'price_asc' },
@@ -403,56 +380,6 @@ const Pagination = ({ page, totalPages, onPage }) => {
     </div>
   );
 };
-
-/* ── Price Drum (roulette picker) ─────────────────────────────────────────── */
-const DRUM_H = 44;
-
-function PriceDrum({ value, onChange }) {
-  const ref = useRef(null);
-  const timer = useRef(null);
-  const idx = PRICE_STEPS.findIndex(s => s.value === (value || ''));
-  const effectiveIdx = idx === -1 ? 0 : idx;
-
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = effectiveIdx * DRUM_H;
-  }, []); // scroll to position only on mount
-
-  const commit = useCallback(() => {
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      const el = ref.current;
-      if (!el) return;
-      const i = Math.round(el.scrollTop / DRUM_H);
-      const clamped = Math.max(0, Math.min(i, PRICE_STEPS.length - 1));
-      el.scrollTop = clamped * DRUM_H;
-      onChange(PRICE_STEPS[clamped].value);
-    }, 120);
-  }, [onChange]);
-
-  return (
-    <div style={{ position:'relative', height: DRUM_H * 5, borderRadius:10, border:'1px solid rgba(0,0,0,0.09)', overflow:'hidden', background:'#fff' }}>
-      {/* selection band */}
-      <div style={{ position:'absolute', top: DRUM_H*2, left:0, right:0, height: DRUM_H, background:'rgba(220,38,38,0.06)', borderTop:'1.5px solid rgba(220,38,38,0.22)', borderBottom:'1.5px solid rgba(220,38,38,0.22)', pointerEvents:'none', zIndex:2 }}/>
-      {/* top fade */}
-      <div style={{ position:'absolute', top:0, left:0, right:0, height: DRUM_H*2, background:'linear-gradient(to bottom, rgba(255,255,255,0.96) 20%, rgba(255,255,255,0) 100%)', pointerEvents:'none', zIndex:3 }}/>
-      {/* bottom fade */}
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, height: DRUM_H*2, background:'linear-gradient(to top, rgba(255,255,255,0.96) 20%, rgba(255,255,255,0) 100%)', pointerEvents:'none', zIndex:3 }}/>
-      {/* scroll list */}
-      <div ref={ref} onScroll={commit}
-        style={{ height:'100%', overflowY:'scroll', scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}>
-        <div style={{ height: DRUM_H*2 }}/>
-        {PRICE_STEPS.map((s, i) => (
-          <div key={s.value||'any'}
-            onClick={() => { if(ref.current) ref.current.scrollTop = i * DRUM_H; onChange(s.value); }}
-            style={{ height: DRUM_H, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight: s.value===(value||'')?700:400, color: s.value===(value||'')?'#dc2626':'#374151', fontFamily:"'Outfit',sans-serif", cursor:'pointer', userSelect:'none' }}>
-            {s.label}
-          </div>
-        ))}
-        <div style={{ height: DRUM_H*2 }}/>
-      </div>
-    </div>
-  );
-}
 
 /* ── Main Component ─────────────────────────────────────────────────────────── */
 export default function MarketplacePage() {
@@ -914,17 +841,11 @@ export default function MarketplacePage() {
       </FilterGroup>
 
       <FilterGroup title="Price Range">
-        <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-          <div style={{ flex:1 }}>
-            <p style={{ margin:'0 0 5px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Min</p>
-            <PriceDrum value={String(minPrice||'')} onChange={v => setParam('min_price', v)} />
-          </div>
-          <div style={{ paddingTop: DRUM_H*2 + 16, color:'#d1d5db', fontSize:18, lineHeight:1 }}>—</div>
-          <div style={{ flex:1 }}>
-            <p style={{ margin:'0 0 5px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Max</p>
-            <PriceDrum value={String(maxPrice||'')} onChange={v => setParam('max_price', v)} />
-          </div>
-        </div>
+        <PriceDrumPicker
+          minValue={String(minPrice || '')}
+          maxValue={String(maxPrice || '')}
+          onApply={(min, max) => { const n=new URLSearchParams(searchParams); min?n.set('min_price',min):n.delete('min_price'); max?n.set('max_price',max):n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }}
+        />
       </FilterGroup>
 
       <FilterGroup title="Location">

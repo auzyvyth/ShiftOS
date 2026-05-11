@@ -16,6 +16,7 @@ import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { isSubdomain } from '../hooks/useTenant';
 import { getRef } from '../utils/refTracking';
+import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -29,13 +30,6 @@ const FINANCING_TYPES = [
   { value: 'sambung_bayar', label: 'Sambung Bayar' },
 ];
 const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
-const PRICE_OPTIONS = [
-  { label: 'Under RM 30,000',  value: '30000'  },
-  { label: 'Under RM 50,000',  value: '50000'  },
-  { label: 'Under RM 80,000',  value: '80000'  },
-  { label: 'Under RM 120,000', value: '120000' },
-  { label: 'Under RM 200,000', value: '200000' },
-];
 const SORT_OPTIONS = [
   { label: 'Newest First',       value: 'newest'     },
   { label: 'Price: Low to High', value: 'price_asc'  },
@@ -65,7 +59,7 @@ const sanitize = {
   tx:         v => TRANSMISSIONS.includes(v) ? v : null,
   financing:  v => FINANCING_TYPES.map(f => f.value).includes(v) ? v : null,
   state:      v => MY_STATES.includes(v) ? v : null,
-  price:      v => { const n = parseInt(v,10); return [30000,50000,80000,120000,200000].includes(n) ? n : null; },
+  price:      v => { const n = parseInt(v,10); return PRICE_STEPS.some(s => s.value === String(n)) ? n : null; },
   page:       v => { const n = parseInt(v,10); return Number.isFinite(n) && n >= 1 ? n : 1; },
   year:       v => { const n = parseInt(v,10); return Number.isFinite(n) && n >= 1990 && n <= CURRENT_YEAR ? n : null; },
   q:          v => (!v || typeof v !== 'string') ? '' : v.replace(/[%_\\]/g,'').slice(0,60).trim(),
@@ -291,6 +285,7 @@ export default function ShowroomPage() {
   const bodyType    = sanitize.bodyType(searchParams.get('body_type') || '');
   const transmission= sanitize.tx(searchParams.get('transmission') || '');
   const state       = sanitize.state(searchParams.get('state') || '');
+  const minPrice    = sanitize.price(searchParams.get('min_price') || '');
   const maxPrice    = sanitize.price(searchParams.get('max_price') || '');
   const financing   = sanitize.financing(searchParams.get('financing') || '');
   const yearFrom    = sanitize.year(searchParams.get('year_from') || '');
@@ -334,7 +329,7 @@ export default function ShowroomPage() {
   const setPage = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace: true }); };
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
+  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   const fetchCars = useCallback(async () => {
@@ -355,6 +350,7 @@ export default function ShowroomPage() {
       if (brand)      query = query.eq('brand', brand);
       if (bodyType)   query = query.eq('body_type', bodyType);
       if (state)      query = query.eq('state', state);
+      if (minPrice)   query = query.gte('selling_price', minPrice);
       if (maxPrice)   query = query.lte('selling_price', maxPrice);
       if (financing)  query = query.eq('financing_type', financing);
       if (yearFrom)   query = query.gte('year', yearFrom);
@@ -372,7 +368,7 @@ export default function ShowroomPage() {
       setCars(data || []); setTotal(count || 0);
     } catch { setError('Failed to load listings. Please try again.'); }
     finally { setLoading(false); setFetching(false); initialLoad.current = false; }
-  }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
+  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
   useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
@@ -383,7 +379,7 @@ export default function ShowroomPage() {
     bodyType    && { key:'body_type',   label:bodyType },
     transmission&& { key:'transmission',label:transmission },
     state       && { key:'state',       label:state },
-    maxPrice    && { key:'max_price',   label: PRICE_OPTIONS.find(p=>p.value===String(maxPrice))?.label||'' },
+    (minPrice || maxPrice) && { key:'price_range', label: `${minPrice ? PRICE_STEPS.find(s=>s.value===String(minPrice))?.label : 'Any'} – ${maxPrice ? PRICE_STEPS.find(s=>s.value===String(maxPrice))?.label : 'Any'}` },
     financing   && { key:'financing',   label: FINANCING_TYPES.find(f=>f.value===financing)?.label||'' },
     yearFrom    && { key:'year_from',   label:`From ${yearFrom}` },
     yearTo      && { key:'year_to',     label:`To ${yearTo}` },
@@ -428,11 +424,13 @@ export default function ShowroomPage() {
           {BRANDS.map(b=><option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
         </select>
       </FG>
-      <FG title="Budget">
-        <select style={sel} value={maxPrice||''} onChange={e=>setParam('max_price',e.target.value)}>
-          <option value="">Any Budget</option>
-          {PRICE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
-        </select>
+      <FG title="Price Range">
+        <PriceDrumPicker
+          dark={true}
+          minValue={String(minPrice || '')}
+          maxValue={String(maxPrice || '')}
+          onApply={(min, max) => { const n=new URLSearchParams(searchParams); min?n.set('min_price',min):n.delete('min_price'); max?n.set('max_price',max):n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }}
+        />
       </FG>
       <FG title="Location">
         <select style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
@@ -614,7 +612,7 @@ export default function ShowroomPage() {
               {activeChips.map(chip => (
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.25)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px' }}>
                   {chip.label}
-                  <button onClick={()=>chip.key==='hot_deals'?setParam('hot_deals',''):setParam(chip.key,'')} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex' }}><X size={10}/></button>
+                  <button onClick={()=>{ if(chip.key==='price_range'){const n=new URLSearchParams(searchParams);n.delete('min_price');n.delete('max_price');n.delete('page');setSearchParams(n,{replace:true});}else if(chip.key==='hot_deals'){setParam('hot_deals','');}else{setParam(chip.key,'');} }} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex' }}><X size={10}/></button>
                 </span>
               ))}
               {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'DM Sans',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
