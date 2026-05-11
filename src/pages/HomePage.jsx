@@ -15,6 +15,8 @@ import {
   Flame,
   Search,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ArrowRight,
   MapPin,
 } from "lucide-react";
@@ -323,6 +325,130 @@ function SkeletonCard() {
   );
 }
 
+// ── BodyTypeCarousel ─────────────────────────────────────────────────────────
+const CAROUSEL_CARD_W = 264; // px — card slot width inside carousel
+const CAROUSEL_GAP    = 12;  // px — gap between cards
+
+function SkeletonCarouselCard() {
+  return (
+    <div style={{
+      width: CAROUSEL_CARD_W, flexShrink: 0,
+      background: '#16181C', border: '1px solid rgba(255,255,255,0.05)',
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      <div style={{ height: 160, background: 'linear-gradient(90deg,#1a1d23 25%,#22262e 50%,#1a1d23 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite' }} />
+      <div style={{ padding: 12 }}>
+        {[80, 55, 100, 70].map((w, i) => (
+          <div key={i} style={{ height: 9, width: `${w}%`, background: '#22262e', borderRadius: 4, marginBottom: 8, animation: 'shimmer 1.5s infinite' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext }) {
+  const scrollRef = useRef(null);
+  const [canLeft,  setCanLeft]  = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const updateArrows = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  const scroll = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * (CAROUSEL_CARD_W + CAROUSEL_GAP) * 2, behavior: 'smooth' });
+  };
+
+  const isEmpty = !loading && cars.length === 0;
+
+  return (
+    <div style={{ minWidth: 0 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14, paddingRight: 4 }}>
+        <div>
+          <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#F1F5F9', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>{title}</h3>
+        </div>
+        <Link
+          to={`/showroom?body_type=${bodyType}`}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748B', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0, transition: 'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
+          onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+        >
+          View All <ArrowRight size={11} />
+        </Link>
+      </div>
+
+      {/* Carousel track */}
+      <div style={{ position: 'relative' }}>
+        {/* Left arrow */}
+        {canLeft && (
+          <button onClick={() => scroll(-1)} style={{
+            position: 'absolute', left: -16, top: '50%', transform: 'translateY(-50%)',
+            zIndex: 10, width: 32, height: 32, borderRadius: '50%',
+            background: '#1E2430', border: '1px solid rgba(255,255,255,0.1)',
+            color: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#1E2430'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+
+        {/* Scrollable row */}
+        <div
+          ref={scrollRef}
+          onScroll={updateArrows}
+          className="btc-scroll"
+          style={{
+            display: 'flex', gap: CAROUSEL_GAP,
+            overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none',
+            paddingBottom: 6, paddingTop: 2,
+          }}
+        >
+          {loading
+            ? [...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} />)
+            : isEmpty
+            ? (
+              <div style={{ width: '100%', padding: '32px 0', color: '#374151', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>
+                No {title.toLowerCase()} listed yet
+              </div>
+            )
+            : cars.map(car => (
+              <div key={car.id} style={{ width: CAROUSEL_CARD_W, flexShrink: 0 }}>
+                <CarCard car={car} ctaContext={ctaContext} />
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Right arrow */}
+        {canRight && !isEmpty && !loading && (
+          <button onClick={() => scroll(1)} style={{
+            position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)',
+            zIndex: 10, width: 32, height: 32, borderRadius: '50%',
+            background: '#1E2430', border: '1px solid rgba(255,255,255,0.1)',
+            color: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#1E2430'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Style constants ───────────────────────────────────────────────────────────
 const primaryBtn = {
   display: "inline-flex",
@@ -373,6 +499,8 @@ const HomePage = () => {
   const [featured, setFeatured] = useState([]);
   const [hotDeals, setHotDeals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bodyTypeCars, setBodyTypeCars] = useState({ Hatchback: [], Sedan: [], SUV: [], MPV: [] });
+  const [bodyTypeLoading, setBodyTypeLoading] = useState(true);
   const [stock, setStock] = useState(0);
   const [soldCount, setSoldCount] = useState(null);
   const [brand, setBrand] = useState("");
@@ -500,6 +628,29 @@ const HomePage = () => {
       if (soldCh) supabase.removeChannel(soldCh);
     };
   }, [tenant]);
+
+  // Fetch cars by body type — only on xdrive.my main domain
+  useEffect(() => {
+    if (isSubdomain()) return;
+    const types = ['Hatchback', 'Sedan', 'SUV', 'MPV'];
+    Promise.all(
+      types.map(type =>
+        supabase
+          .from('car_listings')
+          .select(CAR_FIELDS)
+          .eq('status', 'available')
+          .eq('body_type', type)
+          .order('created_at', { ascending: false })
+          .limit(10)
+          .then(({ data }) => [type, data || []])
+      )
+    ).then(results => {
+      const map = {};
+      results.forEach(([type, data]) => { map[type] = data; });
+      setBodyTypeCars(map);
+      setBodyTypeLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     async function checkDealerRedirect() {
@@ -1096,6 +1247,65 @@ const HomePage = () => {
                   </span>
                 </Link>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════ BODY TYPE CAROUSELS ══════════ */}
+      {!isSubdomain() && (
+        <section style={{ background: '#0A0D14', padding: '52px 0 56px' }}>
+          <style>{`
+            .btc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px 32px; }
+            .btc-scroll::-webkit-scrollbar { display: none; }
+            @media (max-width: 768px) {
+              .btc-grid { grid-template-columns: 1fr !important; gap: 44px !important; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 36px' }}>
+            {/* Section header */}
+            <div style={{ marginBottom: 36 }}>
+              <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Browse by Category</p>
+              <h2 style={{ margin: 0, fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, color: '#F1F5F9', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>Shop by Body Type</h2>
+            </div>
+
+            <div className="btc-grid">
+              {/* Top-left: Compact / Hatchback */}
+              <BodyTypeCarousel
+                title="Compact Cars"
+                eyebrow="City & Daily Drive"
+                bodyType="Hatchback"
+                cars={bodyTypeCars.Hatchback}
+                loading={bodyTypeLoading}
+                ctaContext={ctaCtx}
+              />
+              {/* Top-right: Sedans */}
+              <BodyTypeCarousel
+                title="Sedans"
+                eyebrow="Executive & Family"
+                bodyType="Sedan"
+                cars={bodyTypeCars.Sedan}
+                loading={bodyTypeLoading}
+                ctaContext={ctaCtx}
+              />
+              {/* Bottom-left: SUVs */}
+              <BodyTypeCarousel
+                title="SUVs"
+                eyebrow="Spacious & Versatile"
+                bodyType="SUV"
+                cars={bodyTypeCars.SUV}
+                loading={bodyTypeLoading}
+                ctaContext={ctaCtx}
+              />
+              {/* Bottom-right: MPVs */}
+              <BodyTypeCarousel
+                title="MPVs"
+                eyebrow="Family People Carriers"
+                bodyType="MPV"
+                cars={bodyTypeCars.MPV}
+                loading={bodyTypeLoading}
+                ctaContext={ctaCtx}
+              />
             </div>
           </div>
         </section>
