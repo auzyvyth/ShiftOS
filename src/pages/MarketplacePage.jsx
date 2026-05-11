@@ -287,6 +287,9 @@ export default function MarketplacePage() {
   const [searchInput, setSearchInput] = useState(q);
   useEffect(() => { setSearchInput(q); }, [q]);
 
+  const [heroQ,      setHeroQ]      = useState('');
+  const [heroBudget, setHeroBudget] = useState('');
+
   /* Data state */
   const [cars, setCars]           = useState([]);
   const [totalCount, setTotal]    = useState(0);
@@ -811,7 +814,12 @@ export default function MarketplacePage() {
         .mp-feat-card:hover { transform:translateY(-5px); border-color:rgba(220,38,38,0.4) !important; box-shadow:0 16px 40px rgba(0,0,0,0.14); }
         .mp-feat-img  { transition:transform 0.45s ease; width:100%; height:100%; object-fit:cover; display:block; }
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
-        /* Search bar */
+        /* Hero search */
+        .mp-hero-search { transition:border-color 0.2s,box-shadow 0.2s; }
+        .mp-hero-search:focus-within { border-color:rgba(255,255,255,0.25) !important; box-shadow:0 0 0 3px rgba(255,255,255,0.06); }
+        .mp-hero-search-btn:hover { background:rgba(230,230,230,1) !important; }
+        .mp-hero-chip:hover { color:rgba(255,255,255,0.9) !important; border-color:rgba(255,255,255,0.2) !important; }
+        /* Listings search bar */
         .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
         .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
         .mp-search-btn:hover { background:#b91c1c !important; }
@@ -821,6 +829,17 @@ export default function MarketplacePage() {
           .mp-search-outer   { flex-direction:column !important; border-radius:16px !important; }
           .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; padding:12px 18px !important; }
           .mp-search-btn     { padding:14px !important; justify-content:center; border-radius:0 0 14px 14px !important; }
+          .mp-hero-search    { flex-direction:column !important; border-radius:14px !important; }
+          .mp-hero-input-wrap { border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.08) !important; }
+          .mp-hero-budget-wrap { border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.08) !important; }
+          .mp-hero-search-btn { padding:15px !important; justify-content:center !important; }
+          .mp-hero-illus  { display:none !important; }
+          .mp-trust-grid  { grid-template-columns:1fr 1fr !important; gap:28px 0 !important; }
+          .mp-trust-item  { border-right:none !important; padding:0 !important; }
+        }
+        @media(min-width:769px) and (max-width:1024px){
+          .mp-hero-float  { display:none !important; }
+          .mp-hero-illus  { transform:scale(0.85); transform-origin:right center; }
         }
         @media(max-width:480px){
           .mp-featured-strip { grid-template-columns:1fr !important; }
@@ -855,169 +874,151 @@ export default function MarketplacePage() {
       </div>
 
       <div style={S.page}>
-        {/* ── Hero — Premium ── */}
-        <section style={{ background:'#F2F0EB', position:'relative', overflow:'hidden' }}>
+        {/* ── Hero ── */}
+        <section style={{ background:'#08090f', position:'relative', overflow:'hidden' }}>
 
-          {/* Background layers */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
-          <div style={{ position:'absolute', top:'-250px', left:'50%', transform:'translateX(-50%)', width:'1100px', height:'900px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.09) 0%,transparent 58%)', pointerEvents:'none', zIndex:0 }}/>
-          <div style={{ position:'absolute', top:0, right:'-100px', width:'600px', height:'600px', background:'radial-gradient(circle,rgba(220,38,38,0.04) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
+          {/* BG grid */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
+          {/* Red glow */}
+          <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
-          {/* ── Centred copy + search ── */}
-          <div style={{ maxWidth:'900px', margin:'0 auto', padding:'112px 24px 72px', textAlign:'center', position:'relative', zIndex:1 }}>
+          {/* ── Centred copy ── */}
+          <div style={{ maxWidth:'860px', margin:'0 auto', padding:'100px 24px 64px', textAlign:'center', position:'relative', zIndex:1 }}>
 
             {/* Trust pill */}
-            <div className="mp-anim-fade" style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.08)', border:'0.5px solid rgba(220,38,38,0.25)', color:'#dc2626', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
-                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.18)" stroke="#dc2626" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M9 12l2 2 4-4" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               Malaysia's first fully-verified used car marketplace
             </div>
 
             {/* Headline */}
-            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.01em' }}>
-              <span className="mp-anim-fade mp-anim-d1" style={{ display:'block', fontSize:'clamp(52px,7vw,96px)', color:'#111827' }}>
-                Buy used cars.
-              </span>
-              <span className="mp-anim-fade mp-anim-d2" style={{ display:'block', fontSize:'clamp(52px,7vw,96px)', color:'rgba(17,24,39,0.32)' }}>
-                Without the bullshit.
-              </span>
+            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.03em', fontSize:'clamp(52px,7vw,96px)' }}>
+              <span style={{ display:'block', color:'#ffffff' }}>Buy used cars.</span>
+              <span style={{ display:'block', color:'rgba(255,255,255,0.35)' }}>Without the bullshit.</span>
             </h1>
 
-            {/* Subtitle */}
-            <p className="mp-anim-fade mp-anim-d2" style={{ fontSize:'15px', color:'#6b7280', maxWidth:'460px', margin:'0 auto 44px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
+            {/* Subheadline */}
+            <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.5)', maxWidth:'440px', margin:'0 auto 40px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
               Every listing on xdrive.my is from a verified dealer — complete with documents, real photos, and a track record. No phantom listings. No Mudah-style scams.
             </p>
 
-            {/* ── Inline search bar ── */}
-            <div className="mp-search-outer mp-anim-fade mp-anim-d3" style={{ display:'flex', alignItems:'stretch', background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'18px', overflow:'hidden', maxWidth:'840px', margin:'0 auto 36px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)' }}>
-              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(0,0,0,0.07)', textAlign:'left' }}>
-                <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
-                <select value={brand||''} onChange={e=>setParam('brand',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:brand?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
-                  <option value="">Any Brand</option>
-                  {BRANDS.map(b=><option key={b} value={b} style={{ background:'#fff' }}>{b}</option>)}
-                </select>
+            {/* ── Search bar ── */}
+            <form
+              onSubmit={e => { e.preventDefault(); const p = new URLSearchParams(); if (heroQ) p.set('q', heroQ); if (heroBudget) p.set('budget', heroBudget); navigate(`/showroom${p.toString() ? `?${p}` : ''}`); }}
+              style={{ maxWidth:'680px', margin:'0 auto 24px' }}
+            >
+              <div className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', overflow:'hidden' }}>
+                <div className="mp-hero-input-wrap" style={{ flex:1, display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', minWidth:0 }}>
+                  <input
+                    type="text"
+                    value={heroQ}
+                    onChange={e=>setHeroQ(e.target.value)}
+                    placeholder="Search by make, model, or registration..."
+                    style={{ width:'100%', border:'none', outline:'none', padding:'17px 20px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
+                  />
+                </div>
+                <div className="mp-hero-budget-wrap" style={{ position:'relative', display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                  <select
+                    value={heroBudget}
+                    onChange={e=>setHeroBudget(e.target.value)}
+                    style={{ border:'none', outline:'none', padding:'17px 32px 17px 18px', fontSize:'14px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none', whiteSpace:'nowrap' }}
+                  >
+                    <option value="" style={{ background:'#0d1117' }}>Any budget</option>
+                    <option value="under100k" style={{ background:'#0d1117' }}>Under RM 100k</option>
+                    <option value="100k-300k" style={{ background:'#0d1117' }}>RM 100k–300k</option>
+                    <option value="above300k" style={{ background:'#0d1117' }}>RM 300k+</option>
+                  </select>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <button
+                  type="submit"
+                  className="mp-hero-search-btn"
+                  style={{ background:'#ffffff', color:'#0d0d10', border:'none', padding:'0 28px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, whiteSpace:'nowrap', borderRadius:'0 10px 10px 0' }}
+                >
+                  <Search size={15}/> Search
+                </button>
               </div>
-              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', borderRight:'1px solid rgba(0,0,0,0.07)', textAlign:'left' }}>
-                <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Location</p>
-                <select value={state||''} onChange={e=>setParam('state',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:state?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
-                  <option value="">All States</option>
-                  {MY_STATES.map(s=><option key={s} value={s} style={{ background:'#fff' }}>{s}</option>)}
-                </select>
-              </div>
-              <div className="mp-search-field" style={{ flex:1, padding:'18px 22px', textAlign:'left' }}>
-                <p style={{ fontSize:'9px', fontWeight:'800', color:'#ef4444', letterSpacing:'0.14em', textTransform:'uppercase', margin:'0 0 5px', fontFamily:"'Outfit',sans-serif" }}>Budget</p>
-                <select value={maxPrice||''} onChange={e=>setParam('max_price',e.target.value)} style={{ width:'100%', background:'transparent', border:'none', color:maxPrice?'#111827':'#9ca3af', fontSize:'14px', fontWeight:'600', fontFamily:"'Outfit',sans-serif", appearance:'none', cursor:'pointer', outline:'none', padding:0 }}>
-                  <option value="">Any Budget</option>
-                  {PRICE_OPTIONS.map(o=><option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
-                </select>
-              </div>
-              <button
-                className="mp-search-btn"
-                onClick={()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth',block:'start'})}
-                style={{ background:'#dc2626', color:'#fff', border:'none', padding:'0 36px', fontSize:'15px', fontWeight:'800', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, whiteSpace:'nowrap', letterSpacing:'0.01em', transition:'background 0.15s' }}
-              >
-                <Search size={16}/> Search
-              </button>
-            </div>
+            </form>
 
-            {/* Quick links */}
-            <div className="mp-anim-fade mp-anim-d3" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', flexWrap:'wrap' }}>
-              <button
-                onClick={()=>{ setParam('hot_deals','true'); setTimeout(()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth'}),80); }}
-                style={{ display:'flex', alignItems:'center', gap:'6px', background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.22)', color:'#fb923c', fontSize:'13px', fontWeight:'700', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background 0.15s', whiteSpace:'nowrap' }}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(251,146,60,0.15)'}
-                onMouseLeave={e=>e.currentTarget.style.background='rgba(251,146,60,0.08)'}
-              >
-                <Flame size={13}/> Hot Deals {stats.hotDeals ? `(${stats.hotDeals}+)` : ''}
-              </button>
-              <div style={{ width:'1px', height:'18px', background:'rgba(0,0,0,0.1)', margin:'0 4px' }}/>
-              {[['Verified Dealers'],['14 States Covered'],['Free to Browse']].map(([t])=>(
-                <span key={t} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'13px', color:'#4b5563', fontFamily:"'Outfit',sans-serif", fontWeight:'500', whiteSpace:'nowrap' }}>
-                  <span style={{ color:'#22c55e', fontWeight:'900', fontSize:'14px' }}>&#10003;</span> {t}
-                </span>
+            {/* ── Quick chips ── */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', flexWrap:'wrap' }}>
+              <span style={{ fontSize:'13px', color:'rgba(255,255,255,0.32)', fontWeight:'500', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>Popular:</span>
+              {['Honda Civic FL5','Toyota Alphard','BMW M5','Porsche 911','Mercedes GLC','Toyota Vellfire'].map(chip => (
+                <button
+                  key={chip}
+                  className="mp-hero-chip"
+                  onClick={() => navigate(`/showroom?q=${encodeURIComponent(chip)}`)}
+                  style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'100px', padding:'6px 14px', fontSize:'13px', fontWeight:'500', color:'rgba(255,255,255,0.55)', cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
+                >
+                  {chip}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* ── Featured listings strip ── */}
-          <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 24px 48px', position:'relative', zIndex:1 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <div style={{ width:'3px', height:'16px', background:'#dc2626', borderRadius:'2px' }}/>
-                <span style={{ fontSize:'11px', fontWeight:'800', color:'#6b7280', letterSpacing:'0.14em', textTransform:'uppercase', fontFamily:"'Outfit',sans-serif" }}>
-                  {brand||state ? 'Matching Listings' : 'Featured Listings'}
-                </span>
-              </div>
-              <button
-                onClick={()=>document.getElementById('mp-results')?.scrollIntoView({behavior:'smooth'})}
-                style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'#6b7280', fontWeight:'700', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'3px', transition:'color 0.15s' }}
-                onMouseEnter={e=>e.currentTarget.style.color='#111827'}
-                onMouseLeave={e=>e.currentTarget.style.color='#6b7280'}
-              >
-                View all {!loading&&totalCount?`${totalCount.toLocaleString()} `:''}cars <ChevronRight size={13}/>
-              </button>
-            </div>
+          {/* ── Car illustration area ── */}
+          <div className="mp-hero-illus" style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 24px 72px', position:'relative', zIndex:1 }}>
+            <div style={{ position:'relative', maxWidth:'580px', marginLeft:'auto' }}>
 
-            <div className="mp-featured-strip" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'14px' }}>
-              {(loading&&cars.length===0 ? Array.from({length:4}) : cars.slice(0,4)).map((car,i)=>(
-                car ? (
-                  <a key={car.id} href={`/showroom/${car.slug||car.id}`} className="mp-feat-card mp-card-slide" style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', overflow:'hidden', textDecoration:'none', display:'block', animationDelay:`${0.32+i*0.1}s`, boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
-                    <div style={{ height:'170px', background:'#f0eeea', position:'relative', overflow:'hidden' }}>
-                      {Array.isArray(car.images)&&car.images[0]
-                        ? <img src={car.images[0]} alt="" className="mp-feat-img" loading="lazy"/>
-                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}><Car size={32} color="#d1cfc9"/></div>
-                      }
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 13px 10px', background:'linear-gradient(to top,rgba(0,0,0,0.92) 30%,transparent)', pointerEvents:'none' }}>
-                        <div style={{ fontSize:'16px', fontWeight:'900', color:'#fff', letterSpacing:'-0.02em', fontFamily:"'DM Sans',sans-serif" }}>
-                          {car.selling_price ? `RM ${car.selling_price.toLocaleString('en-MY')}` : 'P.O.R'}
-                        </div>
-                      </div>
-                      {car.condition && car.condition!=='used' && (
-                        <div style={{ position:'absolute', top:'9px', right:'9px', fontSize:'9px', fontWeight:'800', padding:'3px 8px', borderRadius:'6px', letterSpacing:'0.06em', textTransform:'uppercase', fontFamily:"'Outfit',sans-serif", ...(car.condition==='new'?{background:'rgba(16,185,129,0.18)',color:'#34d399',border:'1px solid rgba(16,185,129,0.3)'}:{background:'rgba(139,92,246,0.18)',color:'#a78bfa',border:'1px solid rgba(139,92,246,0.3)'}) }}>
-                          {car.condition}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ padding:'12px 14px 14px' }}>
-                      <p style={{ margin:'0 0 5px', fontSize:'13px', fontWeight:'700', color:'#111827', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:"'DM Sans',sans-serif" }}>
-                        {[car.year,car.brand,car.model].filter(Boolean).join(' ')}
-                      </p>
-                      <p style={{ margin:0, fontSize:'11px', color:'#6b7280', fontFamily:"'DM Sans',sans-serif", overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
-                        {[car.mileage?Number(car.mileage).toLocaleString('en-MY')+' km':null, car.transmission, car.state].filter(Boolean).join(' · ')||' '}
-                      </p>
-                    </div>
-                  </a>
-                ) : (
-                  <div key={i} className="mp-card-slide" style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', overflow:'hidden', animationDelay:`${0.32+i*0.1}s`, boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <div style={{ height:'170px', background:'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize:'200% 100%', animation:'mp-shimmer 1.5s infinite' }}/>
-                    <div style={{ padding:'12px 14px' }}>
-                      <div style={{ height:'12px', width:'72%', background:'#e8e6e0', borderRadius:'4px', marginBottom:'8px', animation:'mp-shimmer 1.5s infinite' }}/>
-                      <div style={{ height:'10px', width:'48%', background:'#e8e6e0', borderRadius:'4px', animation:'mp-shimmer 1.5s infinite' }}/>
-                    </div>
+              {/* Placeholder — TODO: replace with actual car render */}
+              <div style={{ height:'320px', background:'rgba(255,255,255,0.02)', border:'1.5px dashed rgba(255,255,255,0.07)', borderRadius:'16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.18)', fontFamily:"'Outfit',sans-serif" }}>TODO: replace with actual car render</span>
+              </div>
+
+              {/* Gradient fade — left edge */}
+              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, #08090f 0%, transparent 35%)', pointerEvents:'none', borderRadius:'16px' }}/>
+              {/* Gradient fade — bottom edge */}
+              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #08090f 0%, transparent 45%)', pointerEvents:'none', borderRadius:'16px' }}/>
+
+              {/* Float card 1 — "every listing includes" — top-right */}
+              <div className="mp-hero-float" style={{ position:'absolute', top:-16, right:0, background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.10)', borderRadius:'12px', padding:'14px 16px', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', minWidth:'196px' }}>
+                <p style={{ fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.09em', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>every listing includes</p>
+                {[
+                  { label:'Full ownership docs',   dot:'#22c55e' },
+                  { label:'Service history',        dot:'#3b82f6' },
+                  { label:'Verified dealer badge',  dot:'#f59e0b' },
+                ].map(({ label, dot }) => (
+                  <div key={label} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'7px' }}>
+                    <div style={{ width:8, height:8, borderRadius:'50%', background:dot, flexShrink:0 }}/>
+                    <span style={{ fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
                   </div>
-                )
-              ))}
+                ))}
+              </div>
+
+              {/* Float card 2 — "just listed" — bottom-right */}
+              <Link to="/listing/sample" style={{ textDecoration:'none' }}>
+                <div className="mp-hero-float" style={{ position:'absolute', bottom:24, right:0, background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.10)', borderRadius:'12px', padding:'13px 15px', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', minWidth:'172px' }}>
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'3px 8px', marginBottom:'9px' }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#dc2626' }}/>
+                    <span style={{ fontSize:'9px', fontWeight:'700', color:'#f87171', letterSpacing:'0.06em', textTransform:'uppercase' }}>Just listed</span>
+                  </div>
+                  <p style={{ margin:'0 0 5px', fontSize:'14px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>2021 Honda Civic 1.5T</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:'4px', marginBottom:'8px' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                    <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.42)', fontFamily:"'Outfit',sans-serif" }}>Kuala Lumpur</span>
+                  </div>
+                  <p style={{ margin:0, fontSize:'15px', fontWeight:'700', color:'#dc2626', fontFamily:"'Outfit',sans-serif" }}>RM 128,000</p>
+                </div>
+              </Link>
             </div>
           </div>
 
-          {/* ── Stats bar ── */}
-          <div style={{ borderTop:'1px solid rgba(0,0,0,0.06)', background:'rgba(255,255,255,0.65)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'22px 24px', position:'relative', zIndex:1 }}>
-            <div className="mp-hero-stats" style={{ maxWidth:'1360px', margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'center', gap:0 }}>
+          {/* ── Trust strip ── */}
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', padding:'28px 24px' }}>
+            <div className="mp-trust-grid" style={{ maxWidth:'1360px', margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
               {[
-                { value:stats.listings!=null?`${stats.listings.toLocaleString()}+`:'--', label:'Cars Listed',      red:false },
-                { value:stats.dealers!=null?String(stats.dealers):'--',                  label:'Verified Dealers', red:false },
-                { value:'14',                                                              label:'States Covered',  red:false },
-                { value:stats.hotDeals!=null?`${stats.hotDeals}+`:'--',                  label:'Hot Deals',        red:true  },
-              ].map((s,i,arr)=>(
-                <React.Fragment key={s.label}>
-                  <div className="mp-hero-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'0 52px', textAlign:'center' }}>
-                    <div style={{ fontSize:'32px', fontWeight:'800', color:s.red?'#dc2626':'#111827', lineHeight:1, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em' }}>{s.value}</div>
-                    <div style={{ fontSize:'10px', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
-                  </div>
-                  {i<arr.length-1 && <div style={{ width:'1px', height:'34px', background:'rgba(0,0,0,0.1)', flexShrink:0 }}/>}
-                </React.Fragment>
+                { number:'2,400+', label:'verified cars listed today' },        // TODO: replace with live Supabase count
+                { number:'180+',   label:'certified dealers across Malaysia' }, // TODO: replace with live Supabase count
+                { number:'100%',   label:'listings require full documentation' },// TODO: replace with live Supabase count
+                { number:'Zero',   label:'phantom listings or fake prices' },   // TODO: replace with live Supabase count
+              ].map((s,i) => (
+                <div key={s.number} className="mp-trust-item" style={{ padding:'0 32px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                  <div style={{ fontSize:'24px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'5px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
+                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                </div>
               ))}
             </div>
           </div>
