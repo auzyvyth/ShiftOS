@@ -23,12 +23,29 @@ const FINANCING_TYPES = [
   { value: 'sambung_bayar', label: 'Sambung Bayar' },
 ];
 const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
-const PRICE_OPTIONS = [
-  { label: 'Under RM 30,000', value: '30000' },
-  { label: 'Under RM 50,000', value: '50000' },
-  { label: 'Under RM 80,000', value: '80000' },
-  { label: 'Under RM 120,000', value: '120000' },
-  { label: 'Under RM 200,000', value: '200000' },
+const PRICE_STEPS = [
+  { value: '',        label: 'Any' },
+  { value: '10000',   label: 'RM 10k' },
+  { value: '20000',   label: 'RM 20k' },
+  { value: '30000',   label: 'RM 30k' },
+  { value: '40000',   label: 'RM 40k' },
+  { value: '50000',   label: 'RM 50k' },
+  { value: '60000',   label: 'RM 60k' },
+  { value: '70000',   label: 'RM 70k' },
+  { value: '80000',   label: 'RM 80k' },
+  { value: '90000',   label: 'RM 90k' },
+  { value: '100000',  label: 'RM 100k' },
+  { value: '200000',  label: 'RM 200k' },
+  { value: '300000',  label: 'RM 300k' },
+  { value: '400000',  label: 'RM 400k' },
+  { value: '500000',  label: 'RM 500k' },
+  { value: '600000',  label: 'RM 600k' },
+  { value: '700000',  label: 'RM 700k' },
+  { value: '800000',  label: 'RM 800k' },
+  { value: '900000',  label: 'RM 900k' },
+  { value: '1000000', label: 'RM 1M' },
+  { value: '2000000', label: 'RM 2M' },
+  { value: '3000000', label: 'RM 3M' },
 ];
 const SORT_OPTIONS = [
   { label: 'Newest First', value: 'newest' },
@@ -81,7 +98,7 @@ function sanitizeState(val) {
 }
 function sanitizePrice(val) {
   const n = parseInt(val, 10);
-  const allowed = [30000, 50000, 80000, 120000, 200000];
+  const allowed = PRICE_STEPS.filter(s => s.value).map(s => parseInt(s.value, 10));
   return allowed.includes(n) ? n : null;
 }
 function sanitizePage(val) {
@@ -387,6 +404,56 @@ const Pagination = ({ page, totalPages, onPage }) => {
   );
 };
 
+/* ── Price Drum (roulette picker) ─────────────────────────────────────────── */
+const DRUM_H = 44;
+
+function PriceDrum({ value, onChange }) {
+  const ref = useRef(null);
+  const timer = useRef(null);
+  const idx = PRICE_STEPS.findIndex(s => s.value === (value || ''));
+  const effectiveIdx = idx === -1 ? 0 : idx;
+
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = effectiveIdx * DRUM_H;
+  }, []); // scroll to position only on mount
+
+  const commit = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      const i = Math.round(el.scrollTop / DRUM_H);
+      const clamped = Math.max(0, Math.min(i, PRICE_STEPS.length - 1));
+      el.scrollTop = clamped * DRUM_H;
+      onChange(PRICE_STEPS[clamped].value);
+    }, 120);
+  }, [onChange]);
+
+  return (
+    <div style={{ position:'relative', height: DRUM_H * 5, borderRadius:10, border:'1px solid rgba(0,0,0,0.09)', overflow:'hidden', background:'#fff' }}>
+      {/* selection band */}
+      <div style={{ position:'absolute', top: DRUM_H*2, left:0, right:0, height: DRUM_H, background:'rgba(220,38,38,0.06)', borderTop:'1.5px solid rgba(220,38,38,0.22)', borderBottom:'1.5px solid rgba(220,38,38,0.22)', pointerEvents:'none', zIndex:2 }}/>
+      {/* top fade */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height: DRUM_H*2, background:'linear-gradient(to bottom, rgba(255,255,255,0.96) 20%, rgba(255,255,255,0) 100%)', pointerEvents:'none', zIndex:3 }}/>
+      {/* bottom fade */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height: DRUM_H*2, background:'linear-gradient(to top, rgba(255,255,255,0.96) 20%, rgba(255,255,255,0) 100%)', pointerEvents:'none', zIndex:3 }}/>
+      {/* scroll list */}
+      <div ref={ref} onScroll={commit}
+        style={{ height:'100%', overflowY:'scroll', scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}>
+        <div style={{ height: DRUM_H*2 }}/>
+        {PRICE_STEPS.map((s, i) => (
+          <div key={s.value||'any'}
+            onClick={() => { if(ref.current) ref.current.scrollTop = i * DRUM_H; onChange(s.value); }}
+            style={{ height: DRUM_H, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight: s.value===(value||'')?700:400, color: s.value===(value||'')?'#dc2626':'#374151', fontFamily:"'Outfit',sans-serif", cursor:'pointer', userSelect:'none' }}>
+            {s.label}
+          </div>
+        ))}
+        <div style={{ height: DRUM_H*2 }}/>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Component ─────────────────────────────────────────────────────────── */
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -399,6 +466,7 @@ export default function MarketplacePage() {
   const bodyType     = sanitizeBodyType(searchParams.get('body_type') || '');
   const transmission = sanitizeTransmission(searchParams.get('transmission') || '');
   const state        = sanitizeState(searchParams.get('state') || '');
+  const minPrice     = sanitizePrice(searchParams.get('min_price') || '');
   const maxPrice     = sanitizePrice(searchParams.get('max_price') || '');
   const financing    = sanitizeFinancing(searchParams.get('financing') || '');
   const yearFrom     = sanitizeYear(searchParams.get('year_from') || '');
@@ -520,6 +588,7 @@ export default function MarketplacePage() {
       if (brand)        query = query.eq('brand', brand);
       if (bodyType)     query = query.eq('body_type', bodyType);
       if (state)        query = query.eq('state', state);
+      if (minPrice)     query = query.gte('selling_price', minPrice);
       if (maxPrice)     query = query.lte('selling_price', maxPrice);
       if (financing)    query = query.eq('financing_type', financing);
       if (yearFrom)     query = query.gte('year', yearFrom);
@@ -572,7 +641,7 @@ export default function MarketplacePage() {
 
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
+  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* ── Active filter chips ── */
@@ -582,7 +651,7 @@ export default function MarketplacePage() {
     bodyType     && { key: 'body_type',    label: bodyType },
     transmission && { key: 'transmission', label: transmission },
     state        && { key: 'state',        label: state },
-    maxPrice     && { key: 'max_price',    label: PRICE_OPTIONS.find(p => p.value === String(maxPrice))?.label || '' },
+    (minPrice || maxPrice) && { key: 'price_range', label: `${minPrice ? PRICE_STEPS.find(s=>s.value===String(minPrice))?.label : 'Any'} – ${maxPrice ? PRICE_STEPS.find(s=>s.value===String(maxPrice))?.label : 'Any'}` },
     financing    && { key: 'financing',    label: FINANCING_TYPES.find(f => f.value === financing)?.label || '' },
     yearFrom     && { key: 'year_from',    label: `From ${yearFrom}` },
     yearTo       && { key: 'year_to',      label: `To ${yearTo}` },
@@ -844,11 +913,18 @@ export default function MarketplacePage() {
         </select>
       </FilterGroup>
 
-      <FilterGroup title="Budget">
-        <select className="mp-select" style={S.select} value={maxPrice || ''} onChange={e => setParam('max_price', e.target.value)}>
-          <option value="">Any Budget</option>
-          {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
-        </select>
+      <FilterGroup title="Price Range">
+        <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+          <div style={{ flex:1 }}>
+            <p style={{ margin:'0 0 5px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Min</p>
+            <PriceDrum value={String(minPrice||'')} onChange={v => setParam('min_price', v)} />
+          </div>
+          <div style={{ paddingTop: DRUM_H*2 + 16, color:'#d1d5db', fontSize:18, lineHeight:1 }}>—</div>
+          <div style={{ flex:1 }}>
+            <p style={{ margin:'0 0 5px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Max</p>
+            <PriceDrum value={String(maxPrice||'')} onChange={v => setParam('max_price', v)} />
+          </div>
+        </div>
       </FilterGroup>
 
       <FilterGroup title="Location">
@@ -1213,7 +1289,7 @@ export default function MarketplacePage() {
                       <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
                         style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                         <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                        {PRICE_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                        {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
                       </select>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                     </div>
@@ -1343,7 +1419,11 @@ export default function MarketplacePage() {
                   {activeChips.map(chip => (
                     <span key={chip.key} style={S.chip}>
                       {chip.label}
-                      <button className="mp-chip-x" style={S.chipX} onClick={() => chip.key === 'hot_deals' ? setParam('hot_deals', '') : setParam(chip.key, '')} aria-label={`Remove ${chip.label} filter`}>
+                      <button className="mp-chip-x" style={S.chipX} onClick={() => {
+                        if (chip.key === 'hot_deals') setParam('hot_deals', '');
+                        else if (chip.key === 'price_range') { setParam('min_price', ''); setParam('max_price', ''); }
+                        else setParam(chip.key, '');
+                      }} aria-label={`Remove ${chip.label} filter`}>
                         <X size={12} />
                       </button>
                     </span>
