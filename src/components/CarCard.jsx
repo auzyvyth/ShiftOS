@@ -184,8 +184,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
           display: 'flex',
           flexDirection: 'column',
           boxShadow: xdrive ? xd.cardShadow : undefined,
-          /* fixed card height — ensures uniform grid on xdrive.my */
-          height: xdrive ? '456px' : undefined,
         }}
       >
         {/* ── Image ── */}
