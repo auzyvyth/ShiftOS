@@ -143,20 +143,22 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
 
         @media (max-width: 520px) {
           .cc-img         { height: auto !important; aspect-ratio: 16/9 !important; }
-          .cc-body        { padding: 10px !important; }
-          .cc-name        { font-size: 13px !important; margin-bottom: 2px !important; }
-          .cc-sub         { margin-bottom: 8px !important; }
+          .cc-body        { padding: 8px 10px 10px !important; }
+          .cc-name        { font-size: 12px !important; margin-bottom: 1px !important; }
+          .cc-sub         { height: auto !important; margin-bottom: 4px !important; font-size: 10px !important; }
           .cc-sub-loc     { display: none !important; }
           .cc-sub-dot     { display: none !important; }
-          .cc-price-main  { font-size: 17px !important; }
+          .cc-price-main  { font-size: 15px !important; }
           .cc-monthly     { display: none !important; }
-          .cc-pricebox    { margin-bottom: 10px !important; }
-          .cc-grid        { gap: 4px !important; margin-bottom: 10px !important; }
-          .cc-cell        { padding: 5px 7px !important; gap: 5px !important; }
-          .cc-cell-lbl    { font-size: 9px !important; }
-          .cc-cell-val    { font-size: 11px !important; }
-          .cc-divider     { margin-bottom: 8px !important; }
-          .cc-wa          { width: 34px !important; height: 34px !important; }
+          .cc-pricebox    { height: auto !important; margin-bottom: 6px !important; }
+          .cc-pricebox > div:first-child { height: auto !important; min-height: 0 !important; }
+          .cc-pricebox > div:last-child  { display: none !important; }
+          .cc-grid        { gap: 3px !important; margin-bottom: 6px !important; }
+          .cc-cell        { padding: 4px 6px !important; gap: 4px !important; }
+          .cc-cell-lbl    { font-size: 8px !important; }
+          .cc-cell-val    { font-size: 10px !important; }
+          .cc-divider     { margin-bottom: 6px !important; }
+          .cc-wa          { width: 30px !important; height: 30px !important; }
         }
       `}</style>
 
