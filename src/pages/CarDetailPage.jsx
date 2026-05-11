@@ -436,33 +436,40 @@ export default function CarDetailPage() {
           .then(() => {});
       }
 
-      if (carData.dealer_id) {
+      {
         const simFields =
           "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
-        const { data: simBrand } = await supabase
-          .from("car_listings")
-          .select(simFields)
-          .eq("dealer_id", carData.dealer_id)
-          .eq("brand", carData.brand)
-          .neq("status", "sold")
-          .neq("id", carData.id)
-          .order("created_at", { ascending: false })
-          .limit(6);
-        if ((simBrand || []).length >= 3) {
-          setSimilarCars(simBrand);
-        } else {
-          const { data: simAny } = await supabase
+
+        /* Same dealer + same brand first */
+        let similar = [];
+        if (carData.dealer_id) {
+          const { data } = await supabase
             .from("car_listings")
             .select(simFields)
             .eq("dealer_id", carData.dealer_id)
-            .neq("status", "sold")
+            .eq("brand", carData.brand)
+            .eq("status", "available")
             .neq("id", carData.id)
             .order("created_at", { ascending: false })
             .limit(6);
-          const a = simBrand || [],
-            b = simAny || [];
-          setSimilarCars(b.length > a.length ? b : a);
+          similar = data || [];
         }
+
+        /* Not enough? supplement with same brand from any dealer */
+        if (similar.length < 3) {
+          const seen = new Set([carData.id, ...similar.map(c => c.id)]);
+          const { data } = await supabase
+            .from("car_listings")
+            .select(simFields)
+            .eq("brand", carData.brand)
+            .eq("status", "available")
+            .neq("id", carData.id)
+            .order("created_at", { ascending: false })
+            .limit(9);
+          similar = [...similar, ...(data || []).filter(c => !seen.has(c.id))].slice(0, 6);
+        }
+
+        setSimilarCars(similar);
       }
       setLoading(false);
     }
@@ -1863,9 +1870,9 @@ export default function CarDetailPage() {
 
         {/* M8 — Similar cars */}
         {similarCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:80 }}>
-            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#1e293b', margin:'0 0 6px', fontWeight:700 }}>You might also like</p>
-            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color:'white', margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
+          <div className="cdp-mobile-only" style={{ background:'#F7F6F2', padding:'28px 18px', marginBottom:80 }}>
+            <p style={{ fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', margin:'0 0 4px', fontWeight:700 }}>You might also like</p>
+            <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.2rem', letterSpacing:'0.06em', color:'#111827', margin:'0 0 20px', borderLeft:'3px solid #dc2626', paddingLeft:'12px' }}>
               More {car.brand}
             </h2>
             <div style={{ display:'flex', overflowX:'auto', gap:14, scrollSnapType:'x mandatory', scrollbarWidth:'none', WebkitOverflowScrolling:'touch', marginLeft:-18, marginRight:-18, paddingLeft:18, paddingRight:18 }}>
@@ -2734,13 +2741,11 @@ export default function CarDetailPage() {
 
             {/* SIMILAR CARS */}
             {similarCars.length > 0 && (
-              <div style={{ marginTop: 64 }}>
-                <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#1e293b', margin: '0 0 6px', fontWeight: 700 }}>You might also like</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-                  <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: 'white', margin: 0, flexShrink: 0, borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
-                    More {car.brand}
-                  </h2>
-                </div>
+              <div style={{ marginTop: 64, background: '#F7F6F2', borderRadius: 16, padding: '32px 28px' }}>
+                <p style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#dc2626', margin: '0 0 4px', fontWeight: 700 }}>You might also like</p>
+                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '0.06em', color: '#111827', margin: '0 0 28px', borderLeft: '3px solid #dc2626', paddingLeft: '14px' }}>
+                  More {car.brand}
+                </h2>
                 <div className="cdp-similar-grid">
                   {similarCars.map(s => <CarCard key={s.id} car={s} ctaContext={ctaCtx} />)}
                 </div>
