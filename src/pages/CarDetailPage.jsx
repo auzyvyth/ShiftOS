@@ -720,7 +720,7 @@ export default function CarDetailPage() {
           fontFamily: "'DM Sans',sans-serif",
         }}
       >
-        <p style={{ fontSize: 15, color: "#475569", marginBottom: 20 }}>
+        <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
           This listing is no longer available.
         </p>
         <Link
@@ -864,7 +864,7 @@ export default function CarDetailPage() {
         .cdp-mosaic-grid {
           display: grid; grid-template-columns: 1.65fr 1fr; grid-template-rows: 1fr 1fr;
           gap: 3px; background: #000;
-          height: 72vh; min-height: 480px; max-height: 820px;
+          height: 58vh; min-height: 400px; max-height: 660px;
         }
         .cdp-mosaic-cell { overflow: hidden; position: relative; cursor: zoom-in; transition: filter 0.3s; }
         .cdp-mosaic-cell:hover { filter: brightness(1.08); }
@@ -1090,7 +1090,7 @@ export default function CarDetailPage() {
                     fontSize: 10,
                     textTransform: "uppercase",
                     letterSpacing: "0.24em",
-                    color: "rgba(255,255,255,0.5)",
+                    color: "rgba(255,255,255,0.6)",
                     marginBottom: 4,
                     fontWeight: 700,
                   }}
@@ -1101,10 +1101,11 @@ export default function CarDetailPage() {
                   style={{
                     fontFamily: "'Bebas Neue',sans-serif",
                     fontSize: "clamp(1.8rem,3vw,2.8rem)",
-                    color: th.text,
+                    color: "#ffffff",
                     lineHeight: 1,
                     letterSpacing: "0.04em",
                     margin: 0,
+                    textShadow: "0 2px 12px rgba(0,0,0,0.4)",
                   }}
                 >
                   {car.model}
@@ -1308,7 +1309,7 @@ export default function CarDetailPage() {
             ══════════════════════════════════════════ */}
 
         {/* M1 — Swipeable image */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,62vw,420px)', overflow:'hidden', background:'#080f18' }}
+        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(200px,50vw,360px)', overflow:'hidden', background:'#080f18' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
@@ -1972,7 +1973,7 @@ export default function CarDetailPage() {
             <p
               style={{
                 fontSize: 13,
-                color: "#475569",
+                color: th.textMuted,
                 letterSpacing: "0.05em",
                 marginBottom: 20,
               }}
@@ -2111,7 +2112,7 @@ export default function CarDetailPage() {
                   <p
                     style={{
                       fontSize: 15,
-                      color: "#e2e8f0",
+                      color: th.text,
                       fontWeight: 500,
                       margin: 0,
                     }}
@@ -2138,7 +2139,7 @@ export default function CarDetailPage() {
             <p
               style={{
                 fontSize: 14,
-                color: "#64748b",
+                color: th.textMuted,
                 lineHeight: 2,
                 marginBottom: 40,
               }}
@@ -2293,7 +2294,7 @@ export default function CarDetailPage() {
                           : []),
                       ].map(({ key, val }) => (
                         <div key={key} className="cdp-row">
-                          <span style={{ fontSize: "13px", color: "#64748b" }}>
+                          <span style={{ fontSize: "13px", color: th.textMuted }}>
                             {key}
                           </span>
                           <span
@@ -2356,7 +2357,7 @@ export default function CarDetailPage() {
                             border: "1px solid rgba(255,255,255,0.08)",
                             borderRadius: "6px",
                             fontSize: "12px",
-                            color: "#64748b",
+                            color: th.textMuted,
                             background: "rgba(255,255,255,0.02)",
                           }}
                         >
@@ -2376,7 +2377,7 @@ export default function CarDetailPage() {
                             border: "1px solid rgba(255,255,255,0.08)",
                             borderRadius: "6px",
                             fontSize: "12px",
-                            color: "#64748b",
+                            color: th.textMuted,
                             background: "rgba(255,255,255,0.02)",
                           }}
                         >
