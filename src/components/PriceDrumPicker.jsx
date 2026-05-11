@@ -29,18 +29,43 @@ export const PRICE_STEPS = [
 const DRUM_H = 44;
 
 function PriceDrum({ value, onChange }) {
-  const ref    = useRef(null);
-  const timer  = useRef(null);
-  const isProg = useRef(false);
-  const idx    = PRICE_STEPS.findIndex(s => s.value === (value || ''));
+  const ref      = useRef(null);
+  const timer    = useRef(null);
+  const isProg   = useRef(false);
+  const wheelAcc = useRef(0);
+  const wheelTimer = useRef(null);
+  const idx      = PRICE_STEPS.findIndex(s => s.value === (value || ''));
 
-  // Scroll to initial position on mount — dropdown remounts on open so this is always fresh
+  // Scroll to initial position on mount — dropdown remounts on open so always fresh
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     isProg.current = true;
     el.scrollTop = (idx === -1 ? 0 : idx) * DRUM_H;
   }, []); // eslint-disable-line
+
+  // Intercept wheel/trackpad: accumulate delta, snap by 1 row per gesture tick
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onWheel = e => {
+      e.preventDefault();
+      wheelAcc.current += e.deltaY;
+      clearTimeout(wheelTimer.current);
+      wheelTimer.current = setTimeout(() => {
+        const steps = Math.round(wheelAcc.current / DRUM_H);
+        wheelAcc.current = 0;
+        if (steps === 0) return;
+        const curI = Math.round(el.scrollTop / DRUM_H);
+        const nextI = Math.max(0, Math.min(curI + steps, PRICE_STEPS.length - 1));
+        isProg.current = true;
+        el.scrollTop = nextI * DRUM_H;
+        onChange(PRICE_STEPS[nextI].value);
+      }, 50);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [onChange]); // eslint-disable-line
 
   const handleScroll = useCallback(() => {
     // Skip scroll events triggered by our own programmatic scrollTop writes
@@ -71,7 +96,7 @@ function PriceDrum({ value, onChange }) {
         <div style={{ height:DRUM_H*2 }}/>
         {PRICE_STEPS.map((s, i) => (
           <div key={s.value || 'any'}
-            onClick={() => { isProg.current = true; if (ref.current) ref.current.scrollTop = i * DRUM_H; onChange(s.value); }}
+            onClick={() => { isProg.current = true; if (ref.current) ref.current.scrollTo({ top: i * DRUM_H, behavior:'smooth' }); onChange(s.value); }}
             style={{ height:DRUM_H, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:s.value===(value||'')?700:400, color:s.value===(value||'')?'#dc2626':'#374151', fontFamily:"'Outfit',sans-serif", cursor:'pointer', userSelect:'none', transition:'color 0.1s, font-weight 0.1s' }}>
             {s.label}
           </div>

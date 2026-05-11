@@ -544,7 +544,7 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, brand, bodyType, state, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
+  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
 
   useEffect(() => {
     fetchCars();
