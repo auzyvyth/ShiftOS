@@ -836,10 +836,7 @@ export default function MarketplacePage() {
           .mp-hero-illus  { display:none !important; }
           .mp-trust-grid  { grid-template-columns:1fr 1fr !important; gap:28px 0 !important; }
           .mp-trust-item  { border-right:none !important; padding:0 !important; }
-        }
-        @media(min-width:769px) and (max-width:1024px){
-          .mp-hero-float  { display:none !important; }
-          .mp-hero-illus  { transform:scale(0.85); transform-origin:right center; }
+          .mp-hero-two-col { padding:60px 24px 48px !important; flex-direction:column !important; gap:0 !important; }
         }
         @media(max-width:480px){
           .mp-featured-strip { grid-template-columns:1fr !important; }
@@ -882,127 +879,133 @@ export default function MarketplacePage() {
           {/* Red glow */}
           <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
-          {/* ── Centred copy ── */}
-          <div style={{ maxWidth:'860px', margin:'0 auto', padding:'100px 24px 64px', textAlign:'center', position:'relative', zIndex:1 }}>
+          {/* ── Two-column hero ── */}
+          <div className="mp-hero-two-col" style={{ maxWidth:'1280px', margin:'0 auto', padding:'96px 40px 72px', display:'flex', alignItems:'center', gap:'72px', position:'relative', zIndex:1 }}>
 
-            {/* Trust pill */}
-            <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
-                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Malaysia's first fully-verified used car marketplace
-            </div>
+            {/* LEFT: copy + search */}
+            <div style={{ flex:'1 1 0', minWidth:0 }}>
 
-            {/* Headline */}
-            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.03em', fontSize:'clamp(52px,7vw,96px)' }}>
-              <span style={{ display:'block', color:'#ffffff' }}>Buy used cars.</span>
-              <span style={{ display:'block', color:'rgba(255,255,255,0.35)' }}>Without the bullshit.</span>
-            </h1>
+              {/* Trust pill */}
+              <div style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'7px 16px', borderRadius:'100px', marginBottom:'28px', fontFamily:"'Outfit',sans-serif" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
+                  <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Malaysia's first fully-verified used car marketplace
+              </div>
 
-            {/* Subheadline */}
-            <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.5)', maxWidth:'440px', margin:'0 auto 40px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
-              Every listing on xdrive.my is from a verified dealer — complete with documents, real photos, and a track record. No phantom listings. No Mudah-style scams.
-            </p>
+              {/* Headline */}
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 20px', lineHeight:'0.95', letterSpacing:'-0.03em', fontSize:'clamp(52px,6vw,96px)', textAlign:'left' }}>
+                <span style={{ display:'block', color:'#ffffff' }}>Buy used cars.</span>
+                <span style={{ display:'block', color:'rgba(255,255,255,0.32)' }}>Without the bullshit.</span>
+              </h1>
 
-            {/* ── Search bar ── */}
-            <form
-              onSubmit={e => { e.preventDefault(); const p = new URLSearchParams(); if (heroQ) p.set('q', heroQ); if (heroBudget) p.set('budget', heroBudget); navigate(`/showroom${p.toString() ? `?${p}` : ''}`); }}
-              style={{ maxWidth:'680px', margin:'0 auto 24px' }}
-            >
-              <div className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', overflow:'hidden' }}>
-                <div className="mp-hero-input-wrap" style={{ flex:1, display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', minWidth:0 }}>
-                  <input
-                    type="text"
-                    value={heroQ}
-                    onChange={e=>setHeroQ(e.target.value)}
-                    placeholder="Search by make, model, or registration..."
-                    style={{ width:'100%', border:'none', outline:'none', padding:'17px 20px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
-                  />
-                </div>
-                <div className="mp-hero-budget-wrap" style={{ position:'relative', display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
-                  <select
-                    value={heroBudget}
-                    onChange={e=>setHeroBudget(e.target.value)}
-                    style={{ border:'none', outline:'none', padding:'17px 32px 17px 18px', fontSize:'14px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none', whiteSpace:'nowrap' }}
+              {/* Subheadline */}
+              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.48)', maxWidth:'420px', margin:'0 0 40px', lineHeight:'1.75', fontFamily:"'Outfit',sans-serif", fontWeight:'400', textAlign:'left' }}>
+                Every listing on xdrive.my is from a verified dealer — complete with documents, real photos, and a track record. No phantom listings. No Mudah-style scams.
+              </p>
+
+              {/* ── Search bar ── */}
+              <form
+                onSubmit={e => { e.preventDefault(); const p = new URLSearchParams(); if (heroQ) p.set('q', heroQ); if (heroBudget) p.set('budget', heroBudget); navigate(`/showroom${p.toString() ? `?${p}` : ''}`); }}
+              >
+                <div className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', overflow:'hidden', maxWidth:'560px' }}>
+                  <div className="mp-hero-input-wrap" style={{ flex:1, display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', minWidth:0 }}>
+                    <input
+                      type="text"
+                      value={heroQ}
+                      onChange={e=>setHeroQ(e.target.value)}
+                      placeholder="Search by make, model, or registration..."
+                      style={{ width:'100%', border:'none', outline:'none', padding:'17px 20px', fontSize:'14px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}
+                    />
+                  </div>
+                  <div className="mp-hero-budget-wrap" style={{ position:'relative', display:'flex', alignItems:'center', borderRight:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                    <select
+                      value={heroBudget}
+                      onChange={e=>setHeroBudget(e.target.value)}
+                      style={{ border:'none', outline:'none', padding:'17px 32px 17px 18px', fontSize:'14px', color:heroBudget?'#fff':'rgba(255,255,255,0.42)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none', whiteSpace:'nowrap' }}
+                    >
+                      <option value="" style={{ background:'#0d1117' }}>Any budget</option>
+                      <option value="under100k" style={{ background:'#0d1117' }}>Under RM 100k</option>
+                      <option value="100k-300k" style={{ background:'#0d1117' }}>RM 100k–300k</option>
+                      <option value="above300k" style={{ background:'#0d1117' }}>RM 300k+</option>
+                    </select>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <button
+                    type="submit"
+                    className="mp-hero-search-btn"
+                    style={{ background:'#ffffff', color:'#0d0d10', border:'none', padding:'0 24px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, whiteSpace:'nowrap', borderRadius:'0 10px 10px 0' }}
                   >
-                    <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                    <option value="under100k" style={{ background:'#0d1117' }}>Under RM 100k</option>
-                    <option value="100k-300k" style={{ background:'#0d1117' }}>RM 100k–300k</option>
-                    <option value="above300k" style={{ background:'#0d1117' }}>RM 300k+</option>
-                  </select>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:10, pointerEvents:'none', flexShrink:0 }}><path d="M6 9l6 6 6-6"/></svg>
+                    <Search size={15}/> Search
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  className="mp-hero-search-btn"
-                  style={{ background:'#ffffff', color:'#0d0d10', border:'none', padding:'0 28px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'8px', flexShrink:0, whiteSpace:'nowrap', borderRadius:'0 10px 10px 0' }}
-                >
-                  <Search size={15}/> Search
-                </button>
-              </div>
-            </form>
-
-            {/* ── Quick chips ── */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', flexWrap:'wrap' }}>
-              <span style={{ fontSize:'13px', color:'rgba(255,255,255,0.32)', fontWeight:'500', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>Popular:</span>
-              {['Honda Civic FL5','Toyota Alphard','BMW M5','Porsche 911','Mercedes GLC','Toyota Vellfire'].map(chip => (
-                <button
-                  key={chip}
-                  className="mp-hero-chip"
-                  onClick={() => navigate(`/showroom?q=${encodeURIComponent(chip)}`)}
-                  style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'100px', padding:'6px 14px', fontSize:'13px', fontWeight:'500', color:'rgba(255,255,255,0.55)', cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}
-                >
-                  {chip}
-                </button>
-              ))}
+              </form>
             </div>
-          </div>
 
-          {/* ── Car illustration area ── */}
-          <div className="mp-hero-illus" style={{ maxWidth:'1360px', margin:'0 auto', padding:'0 24px 72px', position:'relative', zIndex:1 }}>
-            <div style={{ position:'relative', maxWidth:'580px', marginLeft:'auto' }}>
+            {/* RIGHT: "every listing includes" card */}
+            <div className="mp-hero-illus" style={{ flexShrink:0, width:'340px' }}>
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'20px', padding:'28px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                {/* Card header */}
+                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'24px' }}>
+                  <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={{ margin:0, fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
+                    <p style={{ margin:0, fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
+                  </div>
+                </div>
 
-              {/* Placeholder — TODO: replace with actual car render */}
-              <div style={{ height:'320px', background:'rgba(255,255,255,0.02)', border:'1.5px dashed rgba(255,255,255,0.07)', borderRadius:'16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.18)', fontFamily:"'Outfit',sans-serif" }}>TODO: replace with actual car render</span>
-              </div>
-
-              {/* Gradient fade — left edge */}
-              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, #08090f 0%, transparent 35%)', pointerEvents:'none', borderRadius:'16px' }}/>
-              {/* Gradient fade — bottom edge */}
-              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #08090f 0%, transparent 45%)', pointerEvents:'none', borderRadius:'16px' }}/>
-
-              {/* Float card 1 — "every listing includes" — top-right */}
-              <div className="mp-hero-float" style={{ position:'absolute', top:-16, right:0, background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.10)', borderRadius:'12px', padding:'14px 16px', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', minWidth:'196px' }}>
-                <p style={{ fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.09em', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>every listing includes</p>
+                {/* Items */}
                 {[
-                  { label:'Full ownership docs',   dot:'#22c55e' },
-                  { label:'Service history',        dot:'#3b82f6' },
-                  { label:'Verified dealer badge',  dot:'#f59e0b' },
-                ].map(({ label, dot }) => (
-                  <div key={label} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'7px' }}>
-                    <div style={{ width:8, height:8, borderRadius:'50%', background:dot, flexShrink:0 }}/>
-                    <span style={{ fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
+                  {
+                    label: 'Full ownership docs',
+                    desc:  'Grant, roadtax & insurance verified',
+                    iconBg: 'rgba(34,197,94,0.15)',
+                    iconBorder: 'rgba(34,197,94,0.25)',
+                    iconColor: '#4ade80',
+                    icon: <path d="M9 12h6M9 16h6M5 8h14M5 4h14v16H5V4z" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>,
+                  },
+                  {
+                    label: 'Service history',
+                    desc:  'Complete maintenance records included',
+                    iconBg: 'rgba(59,130,246,0.15)',
+                    iconBorder: 'rgba(59,130,246,0.25)',
+                    iconColor: '#60a5fa',
+                    icon: <><path d="M12 8v4l3 3" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#60a5fa" strokeWidth="1.5"/></>,
+                  },
+                  {
+                    label: 'Verified dealer badge',
+                    desc:  'All dealers certified and background-checked',
+                    iconBg: 'rgba(245,158,11,0.15)',
+                    iconBorder: 'rgba(245,158,11,0.25)',
+                    iconColor: '#fbbf24',
+                    icon: <><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></>,
+                  },
+                ].map(({ label, desc, iconBg, iconBorder, iconColor, icon }) => (
+                  <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'14px', marginBottom:'18px' }}>
+                    <div style={{ width:'38px', height:'38px', borderRadius:'10px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">{icon}</svg>
+                    </div>
+                    <div style={{ paddingTop:'1px' }}>
+                      <p style={{ margin:'0 0 3px', fontSize:'14px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
+                      <p style={{ margin:0, fontSize:'12px', color:'rgba(255,255,255,0.38)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.5' }}>{desc}</p>
+                    </div>
                   </div>
                 ))}
-              </div>
 
-              {/* Float card 2 — "just listed" — bottom-right */}
-              <Link to="/listing/sample" style={{ textDecoration:'none' }}>
-                <div className="mp-hero-float" style={{ position:'absolute', bottom:24, right:0, background:'rgba(255,255,255,0.04)', border:'0.5px solid rgba(255,255,255,0.10)', borderRadius:'12px', padding:'13px 15px', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', minWidth:'172px' }}>
-                  <div style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'3px 8px', marginBottom:'9px' }}>
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#dc2626' }}/>
-                    <span style={{ fontSize:'9px', fontWeight:'700', color:'#f87171', letterSpacing:'0.06em', textTransform:'uppercase' }}>Just listed</span>
-                  </div>
-                  <p style={{ margin:'0 0 5px', fontSize:'14px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>2021 Honda Civic 1.5T</p>
-                  <div style={{ display:'flex', alignItems:'center', gap:'4px', marginBottom:'8px' }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-                    <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.42)', fontFamily:"'Outfit',sans-serif" }}>Kuala Lumpur</span>
-                  </div>
-                  <p style={{ margin:0, fontSize:'15px', fontWeight:'700', color:'#dc2626', fontFamily:"'Outfit',sans-serif" }}>RM 128,000</p>
+                {/* Footer CTA */}
+                <div style={{ marginTop:'20px', paddingTop:'18px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+                  <a href="/showroom" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'rgba(255,255,255,0.55)', fontSize:'13px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}>
+                    <span>Browse verified listings</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </a>
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
 
@@ -1010,10 +1013,10 @@ export default function MarketplacePage() {
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', padding:'28px 24px' }}>
             <div className="mp-trust-grid" style={{ maxWidth:'1360px', margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
               {[
-                { number:'2,400+', label:'verified cars listed today' },        // TODO: replace with live Supabase count
-                { number:'180+',   label:'certified dealers across Malaysia' }, // TODO: replace with live Supabase count
-                { number:'100%',   label:'listings require full documentation' },// TODO: replace with live Supabase count
-                { number:'Zero',   label:'phantom listings or fake prices' },   // TODO: replace with live Supabase count
+                { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'verified cars listed today' },
+                { number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'certified dealers across Malaysia' },
+                { number:'100%', label:'listings require full documentation' },
+                { number:'Zero', label:'phantom listings or fake prices' },
               ].map((s,i) => (
                 <div key={s.number} className="mp-trust-item" style={{ padding:'0 32px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
                   <div style={{ fontSize:'24px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'5px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
