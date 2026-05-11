@@ -345,7 +345,13 @@ export default function ShowroomPage() {
       let query = supabase.from('car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
         .eq('status','available');
-      if (q)          query = query.or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`);
+      if (q) {
+        const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+        tokens.forEach(t => {
+          const s = t.replace(/[%_\\]/g, '');
+          if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
+        });
+      }
       if (brand)      query = query.eq('brand', brand);
       if (bodyType)   query = query.eq('body_type', bodyType);
       if (state)      query = query.eq('state', state);
