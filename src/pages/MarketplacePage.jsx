@@ -11,6 +11,7 @@ import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
+import { CAR_DATA } from '../components/CarForm';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const PER_PAGE = 12;
@@ -98,6 +99,7 @@ function sanitizeMileageMax(val) {
 function sanitizeFuelType(val) { return FUEL_TYPES.includes(val) ? val : null; }
 function sanitizeColour(val)   { return COLOURS.includes(val) ? val : null; }
 function sanitizeSellerType(val) { return ['dealer','agent'].includes(val) ? val : null; }
+function sanitizeStr(val) { return (!val || typeof val !== 'string') ? '' : val.replace(/[%_\\]/g,'').slice(0,80).trim(); }
 
 /* MarketplaceHeader imported from ../components/MarketplaceHeader */
 
@@ -315,6 +317,8 @@ export default function MarketplacePage() {
   const fuelType     = sanitizeFuelType(searchParams.get('fuel_type') || '');
   const colour       = sanitizeColour(searchParams.get('colour') || '');
   const sellerType   = sanitizeSellerType(searchParams.get('seller_type') || '');
+  const model        = sanitizeStr(searchParams.get('model') || '');
+  const variant      = sanitizeStr(searchParams.get('variant') || '');
   const sort         = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
 
   const [searchInput, setSearchInput] = useState(q);
@@ -332,6 +336,8 @@ export default function MarketplacePage() {
   const [advMileageMax,  setAdvMileageMax]  = useState('');
   const [advTransmission,setAdvTransmission]= useState('');
   const [advFinancing,   setAdvFinancing]   = useState('');
+  const [advModel,       setAdvModel]       = useState('');
+  const [advVariant,     setAdvVariant]     = useState('');
 
   /* Data state */
   const [cars, setCars]           = useState([]);
@@ -436,6 +442,8 @@ export default function MarketplacePage() {
       if (fuelType)   query = query.eq('fuel_type', fuelType);
       if (colour)     query = query.ilike('colour', `%${colour}%`);
       if (sellerType) query = query.filter('profiles!car_listings_dealer_id_fkey.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
+      if (model)      query = query.eq('model', model);
+      if (variant)    query = query.ilike('variant', `%${variant}%`);
 
       if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
       else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
@@ -457,12 +465,12 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [loadPage, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort]);
+  }, [loadPage, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort]);
 
   /* Reset to page 1 whenever filter params change from outside (URL navigation) */
   useEffect(() => {
     setLoadPage(1);
-  }, [brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort]); // eslint-disable-line
+  }, [brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort]); // eslint-disable-line
 
   useEffect(() => {
     fetchCars();
@@ -479,7 +487,7 @@ export default function MarketplacePage() {
 
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); setLoadPage(1); };
 
-  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals || fuelType || colour || sellerType;
+  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals || fuelType || colour || sellerType || model || variant;
   /* ── Active filter chips ── */
   const activeChips = [
     q            && { key: 'q',            label: `"${q}"` },
@@ -497,6 +505,8 @@ export default function MarketplacePage() {
     fuelType     && { key: 'fuel_type',   label: fuelType },
     colour       && { key: 'colour',      label: colour },
     sellerType   && { key: 'seller_type', label: sellerType === 'agent' ? 'Agent' : 'Dealer' },
+    model        && { key: 'model',       label: model },
+    variant      && { key: 'variant',     label: `Variant: ${variant}` },
   ].filter(Boolean);
 
   /* ── Styles ── */
@@ -873,8 +883,31 @@ export default function MarketplacePage() {
 
               {/* 2-col selects */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                {/* Brand — clears model on change */}
+                <div>
+                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
+                  <div style={{ position:'relative' }}>
+                    <select value={advBrand} onChange={e=>{ setAdvBrand(e.target.value); setAdvModel(''); }}
+                      style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: advBrand?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
+                      <option value="" style={{ background:'#0d1117' }}>All Brands</option>
+                      {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
+                    </select>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                </div>
+                {/* Model — dynamic based on advBrand */}
+                <div>
+                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Model</p>
+                  <div style={{ position:'relative' }}>
+                    <select value={advModel} onChange={e=>setAdvModel(e.target.value)} disabled={!advBrand}
+                      style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: advModel?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor: advBrand?'pointer':'not-allowed', outline:'none', fontFamily:"'Outfit',sans-serif", opacity: advBrand?1:0.4 }}>
+                      <option value="" style={{ background:'#0d1117' }}>{advBrand ? 'All Models' : 'Select brand first'}</option>
+                      {(CAR_DATA[advBrand]||[]).map(m => <option key={m} value={m} style={{ background:'#0d1117' }}>{m}</option>)}
+                    </select>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                </div>
                 {[
-                  { label:'Brand', val:advBrand, set:setAdvBrand, opts:BRANDS.map(b=>({v:b,l:b})), placeholder:'All Brands' },
                   { label:'Body Type', val:advBodyType, set:setAdvBodyType, opts:BODY_TYPES.map(b=>({v:b,l:b})), placeholder:'All Types' },
                   { label:'State', val:advState, set:setAdvState, opts:MY_STATES.map(s=>({v:s,l:s})), placeholder:'All States' },
                   { label:'Max Mileage', val:advMileageMax, set:setAdvMileageMax, opts:MILEAGE_OPTIONS.map(o=>({v:o.value,l:o.label})), placeholder:'Any km' },
@@ -894,12 +927,20 @@ export default function MarketplacePage() {
                   </div>
                 ))}
               </div>
+              {/* Variant — shown only when model is selected */}
+              {advModel && (
+                <div style={{ marginTop:'10px' }}>
+                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Variant</p>
+                  <input type="text" value={advVariant} onChange={e=>setAdvVariant(e.target.value)} placeholder="e.g. 1.5 G"
+                    style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 11px', color:'#fff', fontSize:'12px', outline:'none', fontFamily:"'Outfit',sans-serif", boxSizing:'border-box' }}/>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
             <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'8px', position:'sticky', bottom:0, background:'#0c0f16' }}>
               <button type="button"
-                onClick={() => { setAdvBrand(''); setAdvBodyType(''); setAdvCondition(''); setAdvState(''); setAdvYearFrom(''); setAdvYearTo(''); setAdvMileageMax(''); setAdvTransmission(''); setAdvFinancing(''); }}
+                onClick={() => { setAdvBrand(''); setAdvBodyType(''); setAdvCondition(''); setAdvState(''); setAdvYearFrom(''); setAdvYearTo(''); setAdvMileageMax(''); setAdvTransmission(''); setAdvFinancing(''); setAdvModel(''); setAdvVariant(''); }}
                 style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', color:'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                 Clear all
               </button>
@@ -916,6 +957,8 @@ export default function MarketplacePage() {
                 if (advMileageMax)   p.set('mileage_max', advMileageMax);
                 if (advTransmission) p.set('transmission', advTransmission);
                 if (advFinancing)    p.set('financing', advFinancing);
+                if (advModel)        p.set('model', advModel);
+                if (advVariant)      p.set('variant', advVariant);
                 setAdvancedOpen(false);
                 navigate(`/showroom${p.toString() ? '?' + p : ''}`);
               }}
@@ -1005,6 +1048,8 @@ export default function MarketplacePage() {
                   if (advMileageMax)   p.set('mileage_max', advMileageMax);
                   if (advTransmission) p.set('transmission', advTransmission);
                   if (advFinancing)    p.set('financing', advFinancing);
+                  if (advModel)        p.set('model', advModel);
+                  if (advVariant)      p.set('variant', advVariant);
                   navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
                 }}>
                   <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden', marginBottom:'8px' }}>

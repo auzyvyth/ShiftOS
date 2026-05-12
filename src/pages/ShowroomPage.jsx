@@ -17,6 +17,7 @@ import { trackEvent } from '../utils/analytics';
 import { isSubdomain } from '../hooks/useTenant';
 import { getRef } from '../utils/refTracking';
 import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
+import { CAR_DATA } from '../components/CarForm';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -71,6 +72,7 @@ const sanitize = {
   fuelType:   v => FUEL_TYPES.includes(v) ? v : null,
   colour:     v => COLOURS.includes(v) ? v : null,
   sellerType: v => ['dealer','agent'].includes(v) ? v : null,
+  str:        v => (!v || typeof v !== 'string') ? '' : v.replace(/[%_\\]/g,'').slice(0,80).trim(),
 };
 
 /* ── Pagination ──────────────────────────────────────────────────────────── */
@@ -303,11 +305,15 @@ export default function ShowroomPage() {
   const fuelType    = sanitize.fuelType(searchParams.get('fuel_type') || '');
   const colour      = sanitize.colour(searchParams.get('colour') || '');
   const sellerType  = sanitize.sellerType(searchParams.get('seller_type') || '');
+  const model       = sanitize.str(searchParams.get('model') || '');
+  const variant     = sanitize.str(searchParams.get('variant') || '');
   const sort        = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
   const page        = sanitize.page(searchParams.get('page') || '1');
 
   const [searchInput, setSearchInput] = useState(q);
   useEffect(() => setSearchInput(q), [q]);
+  const [variantInput, setVariantInput] = useState(variant);
+  useEffect(() => setVariantInput(variant), [variant]);
 
   const [cars, setCars]               = useState([]);
   const [totalCount, setTotal]        = useState(0);
@@ -338,7 +344,7 @@ export default function ShowroomPage() {
   const setPage = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace: true }); };
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals || fuelType || colour || sellerType;
+  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals || fuelType || colour || sellerType || model || variant;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   const fetchCars = useCallback(async () => {
@@ -371,6 +377,8 @@ export default function ShowroomPage() {
       if (fuelType)   query = query.eq('fuel_type', fuelType);
       if (colour)     query = query.ilike('colour', `%${colour}%`);
       if (sellerType) query = query.filter('profiles!car_listings_dealer_id_fkey.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
+      if (model)      query = query.eq('model', model);
+      if (variant)    query = query.ilike('variant', `%${variant}%`);
       if (sort==='price_asc')  query = query.order('selling_price', { ascending:true });
       else if (sort==='price_desc') query = query.order('selling_price', { ascending:false });
       else query = query.order('created_at', { ascending:false });
@@ -380,7 +388,7 @@ export default function ShowroomPage() {
       setCars(data || []); setTotal(count || 0);
     } catch { setError('Failed to load listings. Please try again.'); }
     finally { setLoading(false); setFetching(false); initialLoad.current = false; }
-  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort]);
+  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort]);
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
   useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
@@ -401,6 +409,8 @@ export default function ShowroomPage() {
     fuelType    && { key:'fuel_type',   label:fuelType },
     colour      && { key:'colour',      label:colour },
     sellerType  && { key:'seller_type', label:sellerType === 'agent' ? 'Agent' : 'Dealer' },
+    model       && { key:'model',       label:model },
+    variant     && { key:'variant',     label:`Variant: ${variant}` },
   ].filter(Boolean);
 
   /* shared filter panel */
@@ -434,11 +444,36 @@ export default function ShowroomPage() {
         </button>
       </FG>
       <FG title="Brand">
-        <select style={sel} value={brand||''} onChange={e=>setParam('brand',e.target.value)}>
+        <select style={sel} value={brand||''} onChange={e=>{
+          const n=new URLSearchParams(searchParams);
+          e.target.value?n.set('brand',e.target.value):n.delete('brand');
+          n.delete('model'); n.delete('page');
+          setSearchParams(n,{replace:true});
+        }}>
           <option value="">All Brands</option>
           {BRANDS.map(b=><option key={b} value={b}>{b}</option>)}
         </select>
       </FG>
+      <FG title="Model">
+        <select style={{ ...sel, opacity: brand?1:0.45 }} value={model||''} onChange={e=>setParam('model',e.target.value)} disabled={!brand}>
+          <option value="">{brand ? 'All Models' : 'Select brand first'}</option>
+          {(CAR_DATA[brand]||[]).map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+      </FG>
+      {model && (
+        <FG title="Variant">
+          <form onSubmit={e=>{e.preventDefault();setParam('variant',variantInput.trim());}}>
+            <input
+              type="text"
+              placeholder="e.g. 1.5 G"
+              value={variantInput}
+              onChange={e=>setVariantInput(e.target.value)}
+              onBlur={()=>setParam('variant',variantInput.trim())}
+              style={{ ...sel, padding:'10px 14px', width:'100%', boxSizing:'border-box' }}
+            />
+          </form>
+        </FG>
+      )}
       <FG title="Price Range">
         <PriceDrumPicker
           dark={false}
@@ -642,7 +677,7 @@ export default function ShowroomPage() {
               {activeChips.map(chip => (
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.25)', color:'#f87171', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px' }}>
                   {chip.label}
-                  <button onClick={()=>{ if(chip.key==='price_range'){const n=new URLSearchParams(searchParams);n.delete('min_price');n.delete('max_price');n.delete('page');setSearchParams(n,{replace:true});}else if(chip.key==='hot_deals'){setParam('hot_deals','');}else{setParam(chip.key,'');} }} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex' }}><X size={10}/></button>
+                  <button onClick={()=>{ if(chip.key==='price_range'){const n=new URLSearchParams(searchParams);n.delete('min_price');n.delete('max_price');n.delete('page');setSearchParams(n,{replace:true});}else if(chip.key==='hot_deals'){setParam('hot_deals','');}else if(chip.key==='brand'){const n=new URLSearchParams(searchParams);n.delete('brand');n.delete('model');n.delete('page');setSearchParams(n,{replace:true});}else{setParam(chip.key,'');} }} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex' }}><X size={10}/></button>
                 </span>
               ))}
               {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
