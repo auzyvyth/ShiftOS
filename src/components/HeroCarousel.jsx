@@ -15,6 +15,11 @@ import { supabase } from "../supabaseClient";
 import useTenant, { isSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
 import { getRef } from "../utils/refTracking";
+import { PRICE_STEPS } from "./PriceDrumPicker";
+
+const HC_BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
+const HC_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
+const HC_CONDITIONS = [{val:'new',label:'New'},{val:'used',label:'Used'},{val:'recon',label:'Recon'}];
 
 const HC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -434,68 +439,93 @@ const HC_CSS = `
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 
-  /* ── Hero search bar — sits above eyebrow on the left ── */
+  /* ── Hero search card — sits above eyebrow on the left ── */
   .hc-search-bar {
     width: 100%;
-    max-width: 520px;
+    max-width: 600px;
     margin-bottom: 20px;
   }
-  .hc-search-form {
-    position: relative;
-    display: flex;
-    align-items: center;
+  .hc-sc-card {
+    background: rgba(9,9,14,0.58);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
   }
-  .hc-search-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgba(255,255,255,0.4);
-    pointer-events: none;
-    width: 16px; height: 16px;
-    flex-shrink: 0;
+  .hc-sc-title {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.28);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin: 0 0 10px; font-family: 'Outfit', sans-serif;
   }
-  .hc-search-input {
-    width: 100%;
-    background: rgba(9,9,14,0.45);
-    backdrop-filter: blur(32px) saturate(180%) brightness(1.08);
-    -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.08);
-    border: 1px solid rgba(255,255,255,0.11);
-    border-radius: 14px;
-    color: white;
-    font-size: 15px;
-    font-weight: 500;
-    padding: 15px 56px 15px 46px;
+  .hc-sc-fields {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px; margin-bottom: 8px;
+  }
+  .hc-sc-sel, .hc-sc-inp {
+    width: 100%; box-sizing: border-box;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9px;
+    padding: 9px 8px;
+    color: rgba(255,255,255,0.65);
+    font-size: 12px; font-family: 'Outfit', sans-serif;
     outline: none;
+  }
+  .hc-sc-sel { appearance: none; cursor: pointer; }
+  .hc-sc-sel:focus, .hc-sc-inp:focus { border-color: rgba(255,255,255,0.22); color: white; }
+  .hc-sc-inp::placeholder { color: rgba(255,255,255,0.28); }
+  .hc-sc-row2 { display: flex; gap: 6px; }
+  .hc-sc-q {
+    flex: 1; min-width: 0;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9px;
+    padding: 10px 12px;
+    color: white; font-size: 13px;
+    font-family: 'Outfit', sans-serif; outline: none;
+  }
+  .hc-sc-q::placeholder { color: rgba(255,255,255,0.3); }
+  .hc-sc-submit {
+    background: #dc2626; border: none; border-radius: 9px;
+    padding: 0 18px; color: white;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
     font-family: 'Outfit', sans-serif;
-    transition: border-color 0.22s, background 0.22s;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), 0 8px 32px rgba(0,0,0,0.4);
+    white-space: nowrap; flex-shrink: 0;
+    transition: background 0.2s;
+    box-shadow: 0 2px 12px rgba(220,38,38,0.35);
   }
-  .hc-search-input::placeholder { color: rgba(255,255,255,0.28); }
-  .hc-search-input:focus {
-    border-color: rgba(255,255,255,0.2);
-    background: rgba(9,9,14,0.62);
+  .hc-sc-submit:hover { background: #b91c1c; }
+  .hc-sc-adv {
+    font-size: 11px; color: rgba(255,255,255,0.3);
+    background: none; border: none; padding: 7px 0 0;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+    font-weight: 500; display: block;
+    text-decoration: none; transition: color 0.2s;
   }
-  .hc-search-btn {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    background: #dc2626;
-    border: none;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s, transform 0.15s;
-    flex-shrink: 0;
-    box-shadow: 0 2px 12px rgba(220,38,38,0.4);
+  .hc-sc-adv:hover { color: rgba(255,255,255,0.6); }
+  /* Mobile: collapse fields to 2-col, hide model */
+  .hc-sc-model { display: block; }
+  @media (max-width:768px) {
+    .hc-search-bar { max-width: 100%; }
+    .hc-sc-fields { grid-template-columns: 1fr 1fr; }
+    .hc-sc-model { display: none !important; }
+    .hc-sc-card { padding: 11px 13px; }
+    .hc-sc-title { margin-bottom: 8px; }
+    .hc-sc-sel, .hc-sc-inp { font-size: 11px; padding: 8px 7px; }
+    .hc-sc-q { font-size: 12px; padding: 9px 10px; }
+    .hc-sc-submit { padding: 0 14px; font-size: 12px; }
   }
-  .hc-search-btn:hover { background: #b91c1c; transform: translateY(-50%) scale(1.06); }
-  .hc-search-btn svg { color: white; width: 15px; height: 15px; }
+  @media (max-width:480px) {
+    .hc-sc-card { padding: 9px 11px; }
+  }
 
   /* ════════════════
-     LARGE ≥1440px — content stays at 1280px, just scale elements slightly
+     LARGE ≥1440px
   ════════════════ */
   @media (min-width:1440px) {
     .hc-glass-card { max-height: clamp(340px, 36vh, 460px); border-radius: 22px; }
@@ -505,7 +535,7 @@ const HC_CSS = `
   }
 
   /* ════════════════
-     XL ≥1920px — bigger type & card within the same 1280px container
+     XL ≥1920px
   ════════════════ */
   @media (min-width:1920px) {
     .hc-glass-card { max-height: 480px; border-radius: 24px; }
@@ -519,11 +549,7 @@ const HC_CSS = `
     .hc-price-section { margin-bottom: 28px; }
     .hc-ctas { gap: 14px; }
     .hc-enquire, .hc-view { font-size: 15px; padding: 13px 28px; }
-    .hc-search-bar { max-width: 560px; margin-bottom: 26px; }
-    .hc-search-input { font-size: 16px; padding: 16px 58px 16px 50px; }
-    .hc-search-icon { width: 18px; height: 18px; left: 18px; }
-    .hc-search-btn { width: 44px; height: 44px; right: 8px; }
-    .hc-search-btn svg { width: 15px; height: 15px; }
+    .hc-search-bar { max-width: 640px; margin-bottom: 26px; }
     .hc-eyebrow-label { font-size: 11px; }
     .hc-counter { left: 48px; bottom: 56px; font-size: 11px; padding: 5px 14px; }
     .hc-dots { bottom: 56px; }
@@ -532,31 +558,21 @@ const HC_CSS = `
   /* Tablet ≤1024px */
   @media (max-width:1024px) {
     .hc-content-row { gap: 36px; }
-    .hc-search-input { font-size: 14px; padding: 13px 50px 13px 42px; }
-    .hc-search-btn { width: 34px; height: 34px; border-radius: 8px; }
-    .hc-search-btn svg { width: 13px; height: 13px; }
   }
 
-  /* Mobile ≤768px — restore absolute bar, dissolve content-row wrapper */
+  /* Mobile ≤768px */
   @media (max-width:768px) {
     .hc-search-bar {
       position: absolute;
-      top: 84px;
+      top: 72px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 0 20px;
+      padding: 0 16px;
       max-width: 100%;
       align-self: auto;
+      width: 100%;
     }
     .hc-content-row { display: contents; }
-    .hc-search-input {
-      font-size: 13px;
-      padding: 11px 44px 11px 36px;
-      border-radius: 12px;
-    }
-    .hc-search-icon { left: 12px; width: 14px; height: 14px; }
-    .hc-search-btn { width: 30px; height: 30px; right: 6px; border-radius: 8px; }
-    .hc-search-btn svg { width: 12px; height: 12px; }
   }
 `;
 
@@ -581,7 +597,12 @@ export default function HeroCarousel({ siteName, waNumber }) {
   const [animKey, setAnimKey] = useState(0);
   const [progress, setProgress] = useState(0);
   const [imgLoaded, setImgLoaded] = useState({});
-  const [heroSearch, setHeroSearch] = useState(''); // track which images loaded
+  const [heroSearch, setHeroSearch] = useState('');
+  const [heroCondition, setHeroCondition] = useState('');
+  const [heroBrand, setHeroBrand] = useState('');
+  const [heroModel, setHeroModel] = useState('');
+  const [heroState, setHeroState] = useState('');
+  const [heroMaxPrice, setHeroMaxPrice] = useState('');
 
   const hoverPaused = useRef(false);
   const manualPaused = useRef(false);
@@ -970,27 +991,69 @@ export default function HeroCarousel({ siteName, waNumber }) {
             <div className="hc-content-row">
               {/* 1. Title */}
               <div className="hc-text">
-                {/* Search bar — above eyebrow on desktop, absolute on mobile */}
+                {/* Search card — above eyebrow on desktop, absolute on mobile */}
                 <div className="hc-search-bar">
                   <form
-                    className="hc-search-form"
                     onSubmit={(e) => {
                       e.preventDefault();
-                      const q = heroSearch.trim();
-                      if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
+                      const p = new URLSearchParams();
+                      const qParts = [heroModel.trim(), heroSearch.trim()].filter(Boolean).join(' ');
+                      if (qParts)        p.set('q', qParts);
+                      if (heroCondition) p.set('condition', heroCondition);
+                      if (heroBrand)     p.set('brand', heroBrand);
+                      if (heroState)     p.set('state', heroState);
+                      if (heroMaxPrice)  p.set('max_price', heroMaxPrice);
+                      const dest = isSubdomain() ? '/cars' : '/showroom';
+                      navigate(`${dest}${p.toString() ? '?' + p : ''}`);
                     }}
                   >
-                    <Search className="hc-search-icon" />
-                    <input
-                      className="hc-search-input"
-                      type="text"
-                      placeholder="Search brand or model…"
-                      value={heroSearch}
-                      onChange={(e) => setHeroSearch(e.target.value)}
-                    />
-                    <button type="submit" className="hc-search-btn" aria-label="Search">
-                      <ArrowRight />
-                    </button>
+                    <div className="hc-sc-card">
+                      <p className="hc-sc-title">Find new &amp; used cars for sale</p>
+
+                      {/* Row 1: filter dropdowns */}
+                      <div className="hc-sc-fields">
+                        <select className="hc-sc-sel" value={heroCondition} onChange={e => setHeroCondition(e.target.value)}>
+                          <option value="">All Condition</option>
+                          {HC_CONDITIONS.map(c => <option key={c.val} value={c.val}>{c.label}</option>)}
+                        </select>
+                        <select className="hc-sc-sel" value={heroBrand} onChange={e => setHeroBrand(e.target.value)}>
+                          <option value="">Brand</option>
+                          {HC_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                        <div className="hc-sc-model">
+                          <input className="hc-sc-inp" type="text" placeholder="Model" value={heroModel} onChange={e => setHeroModel(e.target.value)}/>
+                        </div>
+                        <select className="hc-sc-sel" value={heroState} onChange={e => setHeroState(e.target.value)}>
+                          <option value="">All State</option>
+                          {HC_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <select className="hc-sc-sel" value={heroMaxPrice} onChange={e => setHeroMaxPrice(e.target.value)}>
+                          <option value="">Price</option>
+                          {PRICE_STEPS.filter(s => s.value).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Row 2: keyword search + submit */}
+                      <div className="hc-sc-row2">
+                        <input
+                          className="hc-sc-q"
+                          type="text"
+                          placeholder="What car are you looking for?"
+                          value={heroSearch}
+                          onChange={e => setHeroSearch(e.target.value)}
+                        />
+                        <button type="submit" className="hc-sc-submit">
+                          <Search size={13}/> Search
+                        </button>
+                      </div>
+
+                      <Link
+                        to={isSubdomain() ? '/cars' : '/showroom'}
+                        className="hc-sc-adv"
+                      >
+                        Advanced search »
+                      </Link>
+                    </div>
                   </form>
                 </div>
                 <div key={`c-${animKey}`} className="hc-anim">

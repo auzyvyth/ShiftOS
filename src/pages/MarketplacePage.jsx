@@ -1087,9 +1087,24 @@ export default function MarketplacePage() {
                 style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', color:'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                 Clear all
               </button>
-              <button type="button" onClick={() => setAdvancedOpen(false)}
-                style={{ flex:2, background:'#dc2626', border:'none', color:'white', fontSize:'12px', fontWeight:'700', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-                Apply Filters
+              <button type="button" onClick={() => {
+                const p = new URLSearchParams();
+                if (heroQ)           p.set('q', heroQ);
+                if (heroBudget)      p.set('max_price', heroBudget);
+                if (advBrand)        p.set('brand', advBrand);
+                if (advBodyType)     p.set('body_type', advBodyType);
+                if (advCondition)    p.set('condition', advCondition);
+                if (advState)        p.set('state', advState);
+                if (advYearFrom)     p.set('year_from', advYearFrom);
+                if (advYearTo)       p.set('year_to', advYearTo);
+                if (advMileageMax)   p.set('mileage_max', advMileageMax);
+                if (advTransmission) p.set('transmission', advTransmission);
+                if (advFinancing)    p.set('financing', advFinancing);
+                setAdvancedOpen(false);
+                navigate(`/showroom${p.toString() ? '?' + p : ''}`);
+              }}
+                style={{ flex:2, background:'#dc2626', border:'none', color:'white', fontSize:'12px', fontWeight:'700', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
+                <Search size={12}/> Search
               </button>
             </div>
           </div>
