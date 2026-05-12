@@ -991,8 +991,8 @@ export default function HeroCarousel({ siteName, waNumber }) {
             <div className="hc-content-row">
               {/* 1. Title */}
               <div className="hc-text">
-                {/* Search card — above eyebrow on desktop, absolute on mobile */}
-                <div className="hc-search-bar">
+                {/* Search card — above eyebrow on desktop, absolute on mobile — hidden on subdomain */}
+                {!isSubdomain() && <div className="hc-search-bar">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -1055,7 +1055,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                       </Link>
                     </div>
                   </form>
-                </div>
+                </div>}
                 <div key={`c-${animKey}`} className="hc-anim">
                   <div className="hc-eyebrow">
                     <div className="hc-eyebrow-dot" />
