@@ -778,6 +778,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
+  const [priceHint, setPriceHint] = useState(null);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
@@ -965,6 +966,25 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     if (km < 100000 || age < 9) return "3.5";
     return "3";
   }, [form.mileage, form.year]);
+
+  // Fetch market price hint whenever brand+model change
+  useEffect(() => {
+    if (!form.brand || !form.model) { setPriceHint(null); return; }
+    let cancelled = false;
+    supabase.rpc('get_price_range', {
+      p_brand: form.brand,
+      p_model: form.model,
+      p_variant: form.variant || null,
+      p_year_from: null,
+      p_year_to: null,
+    }).then(({ data }) => {
+      if (cancelled) return;
+      const row = data?.[0];
+      if (row && row.sample_count > 0) setPriceHint(row);
+      else setPriceHint(null);
+    });
+    return () => { cancelled = true; };
+  }, [form.brand, form.model, form.variant]);
 
   // Discount preview calculations
   const originalPriceVal = form.originalPrice
@@ -1928,6 +1948,30 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 className={`${inputCls} pl-12`}
               />
             </div>
+            {priceHint && (() => {
+              const fmt = n => `RM ${Math.round(n / 1000)}k`;
+              const params = new URLSearchParams();
+              if (form.brand)   params.set('brand', form.brand);
+              if (form.model)   params.set('model', form.model);
+              if (form.variant) params.set('variant', form.variant);
+              const href = `/showroom?${params.toString()}`;
+              return (
+                <p className="text-xs text-gray-500 mt-2">
+                  {priceHint.sample_count} similar listing{priceHint.sample_count !== 1 ? 's' : ''} on the marketplace
+                  {' '}· avg {fmt(priceHint.avg_price)}
+                  {' '}· range {fmt(priceHint.min_price)}–{fmt(priceHint.max_price)}
+                  {' '}·{' '}
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-400 underline underline-offset-2 hover:text-red-300"
+                  >
+                    View all →
+                  </a>
+                </p>
+              );
+            })()}
           </Field>
           <Field
             label="Original Price (RM)"
