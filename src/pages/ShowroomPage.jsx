@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'; // useRef kept for initialLoad
 import { useSearchParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { useSavedCars } from '../hooks/useSavedCars';
 import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
 import {
   X, ChevronLeft, ChevronRight, RotateCcw, Car,
   SlidersHorizontal, Flame, ArrowLeftRight,
-  Gauge, Settings2, MessageCircle, Fuel, Calendar, Users,
+  Gauge, Settings2, MessageCircle, Fuel, Calendar, Users, Heart,
 } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
@@ -121,6 +122,7 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const { isSaved, toggleSave } = useSavedCars();
 
   const brand        = car.brand || 'Unknown';
   const model        = car.model || '';
@@ -267,18 +269,29 @@ const ShowroomCard = ({ car, ctaContext, inCompare = false, compareFull = false,
           </p>
         )}
 
-        {/* Row 5: WA button — full width */}
-        <a
-          href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-          onClick={e => {
-            e.stopPropagation();
-            supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
-            trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
-          }}
-          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', width:'100%', padding:'7px 0', background: isSold?'rgba(0,0,0,0.03)':'rgba(37,211,102,0.08)', border: isSold?'1px solid rgba(0,0,0,0.07)':'1px solid rgba(37,211,102,0.25)', color: isSold?'#9ca3af':'#16a34a', borderRadius:'8px', textDecoration:'none', fontSize:'12px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s', pointerEvents: isSold?'none':'auto', boxSizing:'border-box', flexShrink:0 }}
-        >
-          <MessageCircle size={13}/> WhatsApp
-        </a>
+        {/* Row 5: WA + Heart buttons */}
+        <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
+          <a
+            href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+            onClick={e => {
+              e.stopPropagation();
+              supabase.from('whatsapp_enquiries').insert({ dealer_id:car.dealer_id||null, listing_id:car.id||null, buyer_name:null, buyer_phone:null, buyer_message:waText, source:'showroom_card', status:'new', ref_slug:getRef()||null }).then(()=>{});
+              trackEvent(supabase, 'whatsapp_click', { car_id:car.id, car_name:`${year} ${brand} ${model}`, dealer_id:car.dealer_id||null, metadata:{source:'showroom_card'} });
+            }}
+            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'7px 0', background: isSold?'rgba(0,0,0,0.03)':'rgba(37,211,102,0.08)', border: isSold?'1px solid rgba(0,0,0,0.07)':'1px solid rgba(37,211,102,0.25)', color: isSold?'#9ca3af':'#16a34a', borderRadius:'8px', textDecoration:'none', fontSize:'12px', fontWeight:'700', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s', pointerEvents: isSold?'none':'auto', boxSizing:'border-box' }}
+          >
+            <MessageCircle size={13}/> WhatsApp
+          </a>
+          {!isSold && (
+            <button
+              onClick={e=>{ e.stopPropagation(); toggleSave(car.id); }}
+              title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
+              style={{ width:'36px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'8px', border: isSaved(car.id)?'1px solid rgba(220,38,38,0.35)':'1px solid rgba(0,0,0,0.1)', background: isSaved(car.id)?'rgba(220,38,38,0.08)':'rgba(0,0,0,0.03)', cursor:'pointer', transition:'all 0.15s', color: isSaved(car.id)?'#dc2626':'#9ca3af' }}
+            >
+              <Heart size={14} fill={isSaved(car.id)?'#dc2626':'none'} stroke="currentColor" strokeWidth={2}/>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
