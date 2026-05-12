@@ -19,6 +19,7 @@ import { getRef } from '../utils/refTracking';
 import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
 import { CAR_DATA } from '../components/CarForm';
 import SearchAutocomplete from '../components/SearchAutocomplete';
+import PriceAlertButton from '../components/PriceAlertButton';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -684,6 +685,20 @@ export default function ShowroomPage() {
               ))}
               {hasFilters && <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Outfit',sans-serif" }}><RotateCcw size={11} style={{ marginRight:3 }}/>Clear all</button>}
             </div>
+            <PriceAlertButton
+              hasFilters={hasFilters}
+              filters={{
+                brand:     brand     || null,
+                model:     model     || null,
+                variant:   variant   || null,
+                bodyType:  bodyType  || null,
+                state:     state     || null,
+                condition: condition || null,
+                maxPrice:  maxPrice  || null,
+                minYear:   yearFrom  || null,
+                maxYear:   yearTo    || null,
+              }}
+            />
           </div>
 
           <div className="sr-layout" style={{ display:'flex', gap:'24px', alignItems:'flex-start' }}>

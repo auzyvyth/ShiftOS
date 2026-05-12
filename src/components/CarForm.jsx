@@ -1949,27 +1949,57 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </div>
             {priceHint && (() => {
-              const fmt = n => `RM ${Math.round(n / 1000)}k`;
+              const min    = Number(priceHint.min_price);
+              const avg    = Number(priceHint.avg_price);
+              const max    = Number(priceHint.max_price);
+              const days   = Number(priceHint.avg_days_to_sell);
+              const minYr  = priceHint.min_year;
+              const maxYr  = priceHint.max_year;
+              const avgPct = max > min ? Math.round(((avg - min) / (max - min)) * 100) : 50;
+              const fmt    = n => `RM ${(n / 1000).toFixed(0)}k`;
               const params = new URLSearchParams();
               if (form.brand)   params.set('brand', form.brand);
               if (form.model)   params.set('model', form.model);
               if (form.variant) params.set('variant', form.variant);
-              const href = `/showroom?${params.toString()}`;
+              const yearLabel = minYr && maxYr
+                ? minYr === maxYr ? ` · ${minYr}` : ` · ${minYr}–${maxYr}`
+                : '';
               return (
-                <p className="text-xs text-gray-500 mt-2">
-                  {priceHint.sample_count} similar listing{priceHint.sample_count !== 1 ? 's' : ''} on the marketplace
-                  {' '}· avg {fmt(priceHint.avg_price)}
-                  {' '}· range {fmt(priceHint.min_price)}–{fmt(priceHint.max_price)}
-                  {' '}·{' '}
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-400 underline underline-offset-2 hover:text-red-300"
-                  >
-                    View all →
-                  </a>
-                </p>
+                <div className="mt-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/50 space-y-2">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">
+                      {priceHint.sample_count} listing{priceHint.sample_count !== 1 ? 's' : ''}
+                      {yearLabel}
+                      {days > 0 && <span className="ml-1 text-gray-500">· ~{days}d to sell</span>}
+                    </span>
+                    <a
+                      href={`/showroom?${params.toString()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      View all →
+                    </a>
+                  </div>
+                  {/* Price bar */}
+                  <div className="relative h-1.5 bg-gray-700 rounded-full">
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: 'linear-gradient(to right, rgba(250,204,21,0.35), rgba(220,38,38,0.35))' }}
+                    />
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-red-400 rounded-full border-2 border-gray-900 z-10 shadow"
+                      style={{ left: `calc(${avgPct}% - 6px)` }}
+                    />
+                  </div>
+                  {/* Labels */}
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Min {fmt(min)}</span>
+                    <span className="text-white font-semibold">Avg {fmt(avg)}</span>
+                    <span className="text-gray-500">Max {fmt(max)}</span>
+                  </div>
+                </div>
               );
             })()}
           </Field>
