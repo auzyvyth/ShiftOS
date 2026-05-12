@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Flame, Menu, Phone } from 'lucide-react';
+import { X, Flame, Menu, Phone, Heart } from 'lucide-react';
+import { useSavedCars } from '../hooks/useSavedCars';
+import SavedCarsPanel from './SavedCarsPanel';
 
 export default function MarketplaceHeader() {
   const [scrolled, setScrolled]      = useState(false);
   const [menuOpen, setMenuOpen]      = useState(false);
   const [conditionOpen, setCondOpen] = useState(false);
+  const [savedOpen, setSavedOpen]    = useState(false);
+  const { savedIds }                 = useSavedCars();
   const menuRef = useRef(null);
   const { pathname, search } = useLocation();
   const sp = new URLSearchParams(search);
@@ -93,6 +97,30 @@ export default function MarketplaceHeader() {
                 <a href="/showroom?condition=recon" className="mh-dropdown-item">🔁 Recon / Import</a>
               </div>
             </div>
+            <button
+              onClick={() => setSavedOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: savedIds.size > 0 ? '#f87171' : '#9ca3af',
+                fontSize: 14, fontWeight: 500,
+                fontFamily: "'Outfit',sans-serif", position: 'relative',
+                padding: '6px 2px', transition: 'color 0.15s',
+              }}
+            >
+              <Heart size={14} fill={savedIds.size > 0 ? '#f87171' : 'none'} stroke="currentColor" strokeWidth={2} />
+              Saved
+              {savedIds.size > 0 && (
+                <span style={{
+                  position: 'absolute', top: -2, right: -8,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 9, fontWeight: 800, borderRadius: 20,
+                  padding: '1px 5px', fontFamily: "'Outfit',sans-serif", lineHeight: 1.4,
+                }}>
+                  {savedIds.size}
+                </span>
+              )}
+            </button>
           </nav>
 
           <div style={{ display:'flex', alignItems:'center', gap:'12px', flexShrink:0 }}>
@@ -119,10 +147,19 @@ export default function MarketplaceHeader() {
               ))}
             </div>
           )}
+          <button
+            className="mh-mobile-link"
+            style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, width:'100%', padding:'11px 0', color: savedIds.size > 0 ? '#f87171' : '#9ca3af', fontSize:15, fontWeight:500, fontFamily:"'Outfit',sans-serif" }}
+            onClick={() => { setMenuOpen(false); setSavedOpen(true); }}
+          >
+            <Heart size={15} fill={savedIds.size > 0 ? '#f87171' : 'none'} stroke="currentColor" />
+            Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
+          </button>
           <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> +60 17-415 5191</a>
           <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
         </div>
       </header>
+      <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />
     </>
   );
 }

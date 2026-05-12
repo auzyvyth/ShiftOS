@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gauge, Settings2, MessageCircle, Fuel, Calendar } from 'lucide-react';
+import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
+import { useSavedCars } from '../hooks/useSavedCars';
 
 const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
@@ -24,6 +25,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const { isSaved, toggleSave } = useSavedCars();
 
   const xdrive = !isSubdomain();
 
@@ -239,6 +241,35 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
               </svg>
               <span style={{ fontSize: 10, color: xdrive ? xd.noImgText : '#374151' }}>No photo</span>
             </div>
+          )}
+          {/* Heart / save button */}
+          {!isSold && (
+            <button
+              onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
+              title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
+              style={{
+                position: 'absolute', top: 8, right: 8, zIndex: 10,
+                width: 32, height: 32, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isSaved(car.id)
+                  ? 'rgba(220,38,38,0.92)'
+                  : 'rgba(0,0,0,0.38)',
+                backdropFilter: 'blur(4px)',
+                border: isSaved(car.id)
+                  ? '1.5px solid rgba(220,38,38,0.6)'
+                  : '1.5px solid rgba(255,255,255,0.15)',
+                cursor: 'pointer',
+                transition: 'all 0.18s',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <Heart
+                size={14}
+                fill={isSaved(car.id) ? '#fff' : 'none'}
+                stroke={isSaved(car.id) ? '#fff' : 'rgba(255,255,255,0.85)'}
+                strokeWidth={2}
+              />
+            </button>
           )}
         </div>
 
