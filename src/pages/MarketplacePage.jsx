@@ -12,6 +12,7 @@ import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import { CAR_DATA } from '../components/CarForm';
+import SearchAutocomplete from '../components/SearchAutocomplete';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const PER_PAGE = 12;
@@ -1052,10 +1053,21 @@ export default function MarketplacePage() {
                   if (advVariant)      p.set('variant', advVariant);
                   navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
                 }}>
-                  <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden', marginBottom:'8px' }}>
-                    <Search size={13} style={{ flexShrink:0, margin:'0 0 0 13px', color:'rgba(255,255,255,0.32)' }}/>
-                    <input type="text" value={heroQ} onChange={e=>setHeroQ(e.target.value)} placeholder="Make, model, or registration..."
-                      style={{ flex:1, border:'none', outline:'none', padding:'12px 12px', fontSize:'13px', color:'#fff', background:'transparent', fontFamily:"'Outfit',sans-serif" }}/>
+                  <div style={{ marginBottom:'8px' }}>
+                    <SearchAutocomplete
+                      dark
+                      value={heroQ}
+                      onChange={setHeroQ}
+                      placeholder="Make, model, or variant…"
+                      onSelect={({ brand: b, model: m, variant: v }) => {
+                        if (b) setAdvBrand(b);
+                        if (m) setAdvModel(m);
+                        if (v) setAdvVariant(v);
+                        setHeroQ('');
+                      }}
+                      onSubmit={val => setHeroQ(val)}
+                      inputStyle={{ padding: '12px 12px', fontSize: '13px' }}
+                    />
                   </div>
 
                   <div style={{ display:'flex', gap:'8px', marginBottom:'10px' }}>

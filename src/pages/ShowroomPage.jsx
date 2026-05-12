@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
 import {
   X, ChevronLeft, ChevronRight, RotateCcw, Car,
-  SlidersHorizontal, Search, Flame, ArrowLeftRight,
+  SlidersHorizontal, Flame, ArrowLeftRight,
   Gauge, Settings2, MessageCircle, Fuel, Calendar, Users,
 } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
@@ -18,6 +18,7 @@ import { isSubdomain } from '../hooks/useTenant';
 import { getRef } from '../utils/refTracking';
 import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
 import { CAR_DATA } from '../components/CarForm';
+import SearchAutocomplete from '../components/SearchAutocomplete';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -621,16 +622,25 @@ export default function ShowroomPage() {
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 24px' }}>
             <div className="sr-topbar" style={{ display:'flex', gap:'10px', alignItems:'center' }}>
               {/* Search */}
-              <form onSubmit={e=>{ e.preventDefault(); const sq=sanitize.q(searchInput); navigate(sq?`/showroom?q=${encodeURIComponent(sq)}`:'/showroom'); }} style={{ position:'relative', flex:1, minWidth:'180px' }}>
-                <Search size={13} style={{ position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af', pointerEvents:'none' }}/>
-                <input
-                  type="search"
-                  placeholder="Search brand, model, year…"
-                  value={searchInput}
-                  onChange={e=>setSearchInput(e.target.value)}
-                  style={{ width:'100%', paddingLeft:'32px', paddingRight:'10px', paddingTop:'7px', paddingBottom:'7px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', color:'#111827', fontSize:'13px', fontFamily:"'Outfit',sans-serif", outline:'none', boxSizing:'border-box' }}
-                />
-              </form>
+              <SearchAutocomplete
+                value={searchInput}
+                onChange={setSearchInput}
+                placeholder="Search brand, model, variant…"
+                wrapStyle={{ flex: 1, minWidth: '180px' }}
+                onSelect={({ brand: b, model: m, variant: v }) => {
+                  setSearchInput('');
+                  const n = new URLSearchParams(searchParams);
+                  b ? n.set('brand', b) : n.delete('brand');
+                  m ? n.set('model', m) : n.delete('model');
+                  v ? n.set('variant', v) : n.delete('variant');
+                  n.delete('q'); n.delete('page');
+                  setSearchParams(n, { replace: true });
+                }}
+                onSubmit={val => {
+                  const sq = sanitize.q(val);
+                  navigate(sq ? `/showroom?q=${encodeURIComponent(sq)}` : '/showroom');
+                }}
+              />
               {/* Sort */}
               <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', padding:'7px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>
                 {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
