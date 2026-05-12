@@ -249,6 +249,9 @@ export default function RevOpsPage({ userId }) {
   const [trafficData, setTrafficData] = useState(null);
   const [trafficLoading, setTrafficLoading] = useState(true);
 
+  const [velocityData, setVelocityData]     = useState(null);
+  const [velocityLoading, setVelocityLoading] = useState(true);
+
   // ── Alerts ───────────────────────────────────────────────────────────────
   const [alerts, setAlerts] = useState([]);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -537,6 +540,17 @@ export default function RevOpsPage({ userId }) {
       setTrafficLoading(false);
     };
     fetch();
+  }, [userId]);
+
+  // ── Section 6: Market Velocity ───────────────────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    setVelocityLoading(true);
+    supabase.rpc('get_market_velocity', { p_dealer_id: userId })
+      .then(({ data, error }) => {
+        if (!error) setVelocityData(data || []);
+        setVelocityLoading(false);
+      });
   }, [userId]);
 
   // ── Alerts ───────────────────────────────────────────────────────────────
@@ -1280,6 +1294,58 @@ export default function RevOpsPage({ userId }) {
               </p>
             )}
           </>
+        )}
+      </SectionCard>
+
+      {/* ── Section 6: Market Velocity ───────────────────────────────────── */}
+      <SectionCard title="Market Velocity" loading={velocityLoading} skeletonRows={4}>
+        {velocityData && velocityData.length === 0 && (
+          <p style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', padding: '16px 0' }}>
+            No stock units found. Add stock to see market demand signals.
+          </p>
+        )}
+        {velocityData && velocityData.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: "'Outfit',sans-serif" }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['Model', 'In Stock', 'Market Active', 'Sold 30d', 'Avg Days to Sell', 'Sell-through'].map(h => (
+                    <th key={h} style={{ padding: '6px 10px', textAlign: h === 'Model' ? 'left' : 'right', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', fontSize: 10, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {velocityData.map((row, i) => {
+                  const rate = Number(row.sell_through_rate);
+                  const rateCol = rate >= 60 ? '#4ade80' : rate >= 30 ? '#facc15' : '#f87171';
+                  const avgDays = Number(row.avg_days_to_sell);
+                  const daysCol = avgDays > 0 && avgDays <= 30 ? '#4ade80' : avgDays <= 60 ? '#facc15' : '#f87171';
+                  return (
+                    <tr key={`${row.brand}-${row.model}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '10px 10px', color: '#fff' }}>
+                        <span style={{ fontWeight: 700 }}>{row.brand}</span>
+                        <span style={{ color: '#9ca3af', marginLeft: 5 }}>{row.model}</span>
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#e5e7eb', fontWeight: 600 }}>{row.dealer_stock}</td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#9ca3af' }}>{row.market_active}</td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#9ca3af' }}>{row.sold_last_30d}</td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: avgDays > 0 ? daysCol : '#4b5563', fontWeight: 600 }}>
+                        {avgDays > 0 ? `${avgDays}d` : '—'}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right' }}>
+                        <span style={{ color: rate > 0 ? rateCol : '#4b5563', fontWeight: 700 }}>
+                          {rate > 0 ? `${rate}%` : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p style={{ fontSize: 10, color: '#4b5563', marginTop: 10, fontFamily: "'Outfit',sans-serif" }}>
+              Market data is platform-wide · Sell-through = sold ÷ (sold + active) · Avg days excludes unsold units
+            </p>
+          </div>
         )}
       </SectionCard>
 
