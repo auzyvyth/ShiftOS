@@ -46,6 +46,9 @@ const CONDITION_OPTIONS = [
   { value: 'new',   label: 'New'           },
   { value: 'recon', label: 'Recon / Import'},
 ];
+const FUEL_TYPES   = ['Petrol','Diesel','Electric','Hybrid','Mild Hybrid'];
+const COLOURS      = ['White','Black','Silver','Grey','Red','Blue','Brown','Green','Orange','Yellow','Gold','Maroon'];
+const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:'Agent' }];
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
 
@@ -65,6 +68,9 @@ const sanitize = {
   q:          v => (!v || typeof v !== 'string') ? '' : v.replace(/[%_\\]/g,'').slice(0,60).trim(),
   condition:  v => CONDITION_OPTIONS.map(c => c.value).includes(v) ? v : null,
   mileage:    v => { const n = parseInt(v,10); return [20000,50000,80000,150000].includes(n) ? n : null; },
+  fuelType:   v => FUEL_TYPES.includes(v) ? v : null,
+  colour:     v => COLOURS.includes(v) ? v : null,
+  sellerType: v => ['dealer','agent'].includes(v) ? v : null,
 };
 
 /* ── Pagination ──────────────────────────────────────────────────────────── */
@@ -294,6 +300,9 @@ export default function ShowroomPage() {
   const condition   = sanitize.condition(searchParams.get('condition') || '');
   const mileageMax  = sanitize.mileage(searchParams.get('mileage_max') || '');
   const hotDeals    = searchParams.get('hot_deals') === 'true';
+  const fuelType    = sanitize.fuelType(searchParams.get('fuel_type') || '');
+  const colour      = sanitize.colour(searchParams.get('colour') || '');
+  const sellerType  = sanitize.sellerType(searchParams.get('seller_type') || '');
   const sort        = ['newest','price_asc','price_desc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
   const page        = sanitize.page(searchParams.get('page') || '1');
 
@@ -329,7 +338,7 @@ export default function ShowroomPage() {
   const setPage = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace: true }); };
   const resetAll = () => { setSearchInput(''); setSearchParams({}, { replace: true }); };
 
-  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals;
+  const hasFilters = brand || bodyType || transmission || state || minPrice || maxPrice || financing || yearFrom || yearTo || q || condition || mileageMax || hotDeals || fuelType || colour || sellerType;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   const fetchCars = useCallback(async () => {
@@ -359,6 +368,9 @@ export default function ShowroomPage() {
       if (hotDeals)   query = query.not('original_price','is',null).gt('original_price',0);
       if (condition)  query = query.eq('condition', condition);
       if (transmission) query = query.in('transmission', transmission==='Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT']);
+      if (fuelType)   query = query.eq('fuel_type', fuelType);
+      if (colour)     query = query.ilike('colour', `%${colour}%`);
+      if (sellerType) query = query.filter('profiles!car_listings_dealer_id_fkey.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
       if (sort==='price_asc')  query = query.order('selling_price', { ascending:true });
       else if (sort==='price_desc') query = query.order('selling_price', { ascending:false });
       else query = query.order('created_at', { ascending:false });
@@ -368,7 +380,7 @@ export default function ShowroomPage() {
       setCars(data || []); setTotal(count || 0);
     } catch { setError('Failed to load listings. Please try again.'); }
     finally { setLoading(false); setFetching(false); initialLoad.current = false; }
-  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, sort]);
+  }, [page, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort]);
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
   useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
@@ -386,6 +398,9 @@ export default function ShowroomPage() {
     condition   && { key:'condition',   label: CONDITION_OPTIONS.find(c=>c.value===condition)?.label||condition },
     mileageMax  && { key:'mileage_max', label: MILEAGE_OPTIONS.find(m=>m.value===String(mileageMax))?.label||'' },
     hotDeals    && { key:'hot_deals',   label:'🔥 Hot Deals' },
+    fuelType    && { key:'fuel_type',   label:fuelType },
+    colour      && { key:'colour',      label:colour },
+    sellerType  && { key:'seller_type', label:sellerType === 'agent' ? 'Agent' : 'Dealer' },
   ].filter(Boolean);
 
   /* shared filter panel */
@@ -474,6 +489,21 @@ export default function ShowroomPage() {
       <FG title="Payment">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
           {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(financing===ft.value)} onClick={()=>setParam('financing',financing===ft.value?'':ft.value)}>{ft.label}</button>)}
+        </div>
+      </FG>
+      <FG title="Fuel Type">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {FUEL_TYPES.map(ft=><button key={ft} style={pill(fuelType===ft)} onClick={()=>setParam('fuel_type',fuelType===ft?'':ft)}>{ft}</button>)}
+        </div>
+      </FG>
+      <FG title="Colour">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {COLOURS.map(c=><button key={c} style={pill(colour===c)} onClick={()=>setParam('colour',colour===c?'':c)}>{c}</button>)}
+        </div>
+      </FG>
+      <FG title="Seller">
+        <div style={{ display:'flex', gap:'6px' }}>
+          {SELLER_TYPES.map(st=><button key={st.value} style={pill(sellerType===st.value)} onClick={()=>setParam('seller_type',sellerType===st.value?'':st.value)}>{st.label}</button>)}
         </div>
       </FG>
     </div>
