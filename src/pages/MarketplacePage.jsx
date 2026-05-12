@@ -1273,11 +1273,27 @@ export default function MarketplacePage() {
                 </div>
               )}
 
-              {/* See more */}
+              {/* See more → Showroom */}
               {!loading && !error && cars.length < totalCount && (
                 <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
                   <button
-                    onClick={() => setLoadPage(p => p + 1)}
+                    onClick={() => {
+                      const p = new URLSearchParams();
+                      if (brand)       p.set('brand', brand);
+                      if (model)       p.set('model', model);
+                      if (variant)     p.set('variant', variant);
+                      if (bodyType)    p.set('bodyType', bodyType);
+                      if (state)       p.set('state', state);
+                      if (minPrice)    p.set('minPrice', minPrice);
+                      if (maxPrice)    p.set('maxPrice', maxPrice);
+                      if (transmission)p.set('transmission', transmission);
+                      if (condition)   p.set('condition', condition);
+                      if (fuelType)    p.set('fuelType', fuelType);
+                      if (colour)      p.set('colour', colour);
+                      if (sellerType)  p.set('sellerType', sellerType);
+                      if (q)           p.set('q', q);
+                      navigate(`/showroom?${p.toString()}`);
+                    }}
                     style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.12)', color:'#111827', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 2px 8px rgba(0,0,0,0.06)', transition:'all 0.15s' }}
                     onMouseEnter={e=>{ e.currentTarget.style.background='#dc2626'; e.currentTarget.style.color='#fff'; e.currentTarget.style.borderColor='#dc2626'; }}
                     onMouseLeave={e=>{ e.currentTarget.style.background='#ffffff'; e.currentTarget.style.color='#111827'; e.currentTarget.style.borderColor='rgba(0,0,0,0.12)'; }}
