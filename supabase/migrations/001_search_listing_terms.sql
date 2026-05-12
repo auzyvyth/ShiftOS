@@ -1,7 +1,7 @@
 -- ============================================================
--- Feature 1: Smart search autocomplete
--- Returns distinct brand/model/variant combos from live inventory
--- matching the user's typed text in any of those three fields.
+-- Feature 1: Smart search autocomplete  (v2 — normalized grouping)
+-- Returns distinct brand/model/variant combos from live inventory.
+-- NULL and empty-string variants are unified; whitespace is trimmed.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION search_listing_terms(
@@ -22,7 +22,8 @@ AS $$
   SELECT
     brand,
     model,
-    variant,
+    -- Return NULL when variant is blank so the frontend shows nothing
+    NULLIF(TRIM(COALESCE(variant, '')), '') AS variant,
     COUNT(*) AS listing_count
   FROM car_listings
   WHERE
@@ -38,12 +39,11 @@ AS $$
       OR (brand || ' ' || COALESCE(model, '') || ' ' || COALESCE(variant, ''))
            ILIKE '%' || TRIM(search_text) || '%'
     )
-  GROUP BY brand, model, variant
+  GROUP BY brand, model, NULLIF(TRIM(COALESCE(variant, '')), '')
   ORDER BY listing_count DESC, brand, model, variant
   LIMIT LEAST(max_results, 20)
 $$;
 
--- Public marketplace can call this (car_listings SELECT is already open)
 GRANT EXECUTE ON FUNCTION search_listing_terms(text, int) TO anon;
 GRANT EXECUTE ON FUNCTION search_listing_terms(text, int) TO authenticated;
 REVOKE EXECUTE ON FUNCTION search_listing_terms(text, int) FROM public;

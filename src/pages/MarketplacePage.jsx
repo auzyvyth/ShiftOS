@@ -1059,12 +1059,7 @@ export default function MarketplacePage() {
                       value={heroQ}
                       onChange={setHeroQ}
                       placeholder="Make, model, or variant…"
-                      onSelect={({ brand: b, model: m, variant: v }) => {
-                        if (b) setAdvBrand(b);
-                        if (m) setAdvModel(m);
-                        if (v) setAdvVariant(v);
-                        setHeroQ('');
-                      }}
+                      navigateTo="/showroom"
                       onSubmit={val => setHeroQ(val)}
                       inputStyle={{ padding: '12px 12px', fontSize: '13px' }}
                     />

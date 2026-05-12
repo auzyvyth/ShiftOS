@@ -627,15 +627,7 @@ export default function ShowroomPage() {
                 onChange={setSearchInput}
                 placeholder="Search brand, model, variant…"
                 wrapStyle={{ flex: 1, minWidth: '180px' }}
-                onSelect={({ brand: b, model: m, variant: v }) => {
-                  setSearchInput('');
-                  const n = new URLSearchParams(searchParams);
-                  b ? n.set('brand', b) : n.delete('brand');
-                  m ? n.set('model', m) : n.delete('model');
-                  v ? n.set('variant', v) : n.delete('variant');
-                  n.delete('q'); n.delete('page');
-                  setSearchParams(n, { replace: true });
-                }}
+                navigateTo="/showroom"
                 onSubmit={val => {
                   const sq = sanitize.q(val);
                   navigate(sq ? `/showroom?q=${encodeURIComponent(sq)}` : '/showroom');
