@@ -324,23 +324,12 @@ export default function SalesmanLite() {
     setStatusMenuCarId(null);
     const prevStatus = car.status;
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
-    // Verify the row is reachable before updating (avoids silent 0-rows on RLS mismatch)
-    const { count } = await supabase
-      .from("car_listings")
-      .select("id", { count: "exact", head: true })
-      .eq("id", car.id)
-      .eq("dealer_id", userId);
-    if (!count) {
-      console.error("updateListingStatus: row not found or dealer_id mismatch");
-      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
-      toast.error("Failed to update status");
-      return;
-    }
-    const { error: statusErr } = await supabase
-      .from("car_listings")
-      .update({ status: newStatus })
-      .eq("id", car.id)
-      .eq("dealer_id", userId);
+    // Use RPC to avoid PostgREST bug with GENERATED ALWAYS columns (gross_profit)
+    const { error: statusErr } = await supabase.rpc("update_listing_status", {
+      p_listing_id: car.id,
+      p_status:     newStatus,
+      p_dealer_id:  userId,
+    });
     if (statusErr) {
       console.error("updateListingStatus:", statusErr);
       setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
