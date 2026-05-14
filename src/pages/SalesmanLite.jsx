@@ -44,6 +44,7 @@ import {
   Search,
   DollarSign,
   Clock,
+  MessageCircle,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -340,6 +341,9 @@ export default function SalesmanLite() {
 
   // delete listing
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  // listing action overflow menu
+  const [actionMenuCarId, setActionMenuCarId] = useState(null);
 
   const handleDeleteListing = async (carId) => {
     const { error } = await supabase
@@ -2258,7 +2262,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         ) : (
           <div
-            onClick={() => setStatusMenuCarId(null)}
+            onClick={() => { setStatusMenuCarId(null); setActionMenuCarId(null); }}
             style={{
               display: "grid",
               gridTemplateColumns: isMobile
@@ -2484,90 +2488,95 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       </div>
                     )}
 
-                    {/* Action buttons — sold shows view-only; reserved hides broadcast */}
-                    {isSold ? (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={openDetail}
-                          style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
-                        >
-                          View Details
-                        </button>
-                        {confirmDeleteId === car.id ? (
-                          <>
-                            <button onClick={() => handleDeleteListing(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontWeight: 700 }}>Confirm</button>
-                            <button onClick={() => setConfirmDeleteId(null)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-                          </>
-                        ) : (
-                          <button onClick={() => setConfirmDeleteId(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", cursor: "pointer" }}>Delete</button>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <button
-                          onClick={() => handleListingCopy(car, "link")}
-                          style={{
-                            fontSize: 10, padding: "4px 8px", borderRadius: 6, textAlign: "center", cursor: "pointer",
-                            background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af",
-                          }}
-                        >
-                          {listingCopied[car.id] === "link" ? "✓ Copied" : "Copy Link"}
-                        </button>
-                        <button
-                          onClick={() => handleListingCopy(car, "wa")}
-                          style={{
-                            fontSize: 10, padding: "4px 8px", borderRadius: 6, textAlign: "center", cursor: "pointer",
-                            background: listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            color: listingCopied[car.id] === "wa" ? "#4ade80" : "#9ca3af",
-                          }}
-                        >
-                          {listingCopied[car.id] === "wa" ? "✓ Copied!" : "WA Caption"}
-                        </button>
-                        <button
-                          onClick={() => { setQuickBriefCar(car); setBriefCopied(false); }}
-                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8", cursor: "pointer", textAlign: "center" }}
-                        >
-                          Brief
-                        </button>
-                        {!isReserved && (
-                          <button
-                            onClick={() => openBroadcast(car)}
-                            style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c", cursor: "pointer", textAlign: "center" }}
-                          >
-                            Broadcast
+                    {/* Action bar */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10, marginTop: 2 }}>
+                      {isSold ? (
+                        <>
+                          <button onClick={openDetail} style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                            View
                           </button>
-                        )}
+                        </>
+                      ) : (
+                        <>
+                          {/* Copy link */}
+                          <button
+                            onClick={() => handleListingCopy(car, "link")}
+                            title="Copy link"
+                            style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link" ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: listingCopied[car.id] === "link" ? "#4ade80" : "#9ca3af" }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            {listingCopied[car.id] === "link" ? "Copied" : "Link"}
+                          </button>
+                          {/* WA */}
+                          <button
+                            onClick={() => handleListingCopy(car, "wa")}
+                            title="Copy WA caption"
+                            style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa" ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", color: listingCopied[car.id] === "wa" ? "#4ade80" : "#6b9" }}
+                          >
+                            <MessageCircle size={11} />
+                            {listingCopied[car.id] === "wa" ? "Copied" : "WA"}
+                          </button>
+                          {/* Edit */}
+                          <button
+                            onClick={() => setEditListing(car)}
+                            style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.18)", color: "#64b4ff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                          >
+                            <Pencil size={10} /> Edit
+                          </button>
+                        </>
+                      )}
+
+                      {/* ··· overflow */}
+                      <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
-                          onClick={() => generateAiCaptions(car)}
-                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer", textAlign: "center" }}
+                          onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
+                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, letterSpacing: 1 }}
                         >
-                          AI Caption
+                          ···
                         </button>
-                        <button
-                          onClick={() => setTiktokListing(car)}
-                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
-                        >
-                          TikTok
-                        </button>
-                        <button
-                          onClick={() => setEditListing(car)}
-                          style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)", color: "#64b4ff", cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}
-                        >
-                          <Pencil size={10} /> Edit
-                        </button>
-                        {confirmDeleteId === car.id ? (
-                          <>
-                            <button onClick={() => handleDeleteListing(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontWeight: 700 }}>Confirm</button>
-                            <button onClick={() => setConfirmDeleteId(null)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-                          </>
-                        ) : (
-                          <button onClick={() => setConfirmDeleteId(car.id)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", cursor: "pointer" }}>Delete</button>
+                        {actionMenuCarId === car.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: "#141a26", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", minWidth: 140, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
+                          >
+                            {!isSold && (
+                              <>
+                                <button onClick={() => { setQuickBriefCar(car); setBriefCopied(false); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 12, textAlign: "left" }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                  Brief
+                                </button>
+                                {!isReserved && (
+                                  <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#fb923c", fontSize: 12, textAlign: "left" }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+                                    Broadcast
+                                  </button>
+                                )}
+                                <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#c084fc", fontSize: 12, textAlign: "left" }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                                  AI Caption
+                                </button>
+                                <button onClick={() => { setTiktokListing(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#f87171", fontSize: 12, textAlign: "left" }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.17 8.17 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/></svg>
+                                  TikTok
+                                </button>
+                                <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                              </>
+                            )}
+                            {confirmDeleteId === car.id ? (
+                              <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
+                                <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: 11, padding: "5px 0", borderRadius: 6, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontWeight: 700 }}>Delete</button>
+                                <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: 11, padding: "5px 0", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(car.id)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 12, textAlign: "left" }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
