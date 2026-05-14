@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import CarForm from "../components/CarForm";
+import { getCategoryCfg } from "../utils/serviceCategories";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
   LogOut,
@@ -546,13 +547,13 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -3191,6 +3192,30 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           {o}
                         </span>
                       ))
+                    )}
+                  </div>
+                )}
+
+                {/* What's Included */}
+                {Array.isArray(car.included_services) && car.included_services.length > 0 && (
+                  <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "#6b7280", fontWeight: 700, marginBottom: 10 }}>What's Included</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                      {car.included_services.map((svc, i) => {
+                        const cfg = getCategoryCfg(svc.category);
+                        const CatIcon = cfg.icon;
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: `${cfg.color}12`, border: `1px solid ${cfg.color}30`, borderRadius: 8, padding: "6px 12px" }}>
+                            <CatIcon size={12} style={{ color: cfg.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: cfg.color, fontWeight: 600 }}>{svc.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {car.included_services_cost > 0 && (
+                      <p style={{ fontSize: 11, color: "#6b7280", marginTop: 10 }}>
+                        Est. add-on value: <span style={{ color: "#60a5fa", fontWeight: 700 }}>RM {Number(car.included_services_cost).toLocaleString("en-MY")}</span>
+                      </p>
                     )}
                   </div>
                 )}
