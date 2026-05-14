@@ -545,16 +545,21 @@ export default function SalesmanLite() {
         setMyListings(merged);
         writeCache(`slite_listings_${uid}`, merged);
         precacheImages(merged);
-        // Commission this month from sold listings
+        // Profit this month from sold listings (salesman-lite owns listings as dealer)
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         supabase
           .from("car_listings")
-          .select("commission_amount, sold_at")
-          .eq("assigned_to", uid)
+          .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at")
+          .eq("dealer_id", uid)
           .eq("status", "sold")
           .gte("sold_at", monthStart)
           .then(({ data: soldThisMonth }) => {
-            const total = (soldThisMonth || []).reduce((s, l) => s + (Number(l.commission_amount) || 0), 0);
+            const total = (soldThisMonth || []).reduce((s, l) => {
+              const gp = l.gross_profit != null
+                ? Number(l.gross_profit)
+                : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
+              return s + gp;
+            }, 0);
             setCommissionData({ total, count: (soldThisMonth || []).length });
           });
       });
@@ -1681,7 +1686,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               <DollarSign size={16} color="#fbbf24" />
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Commission This Month</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Profit This Month</p>
               <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color: "#fbbf24", letterSpacing: "-0.02em" }}>
                 RM {commissionData.total.toLocaleString("en-MY")}
               </p>
