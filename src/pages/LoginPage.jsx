@@ -116,10 +116,6 @@ export default function LoginPage() {
     const role = profile?.role;
 
     if (role === "superadmin" || role === "dealer") {
-      if (profile?.onboarding_complete === false) {
-        window.location.href = "https://xdrive.my/onboarding";
-        return;
-      }
       if (subdomain) {
         const {
           data: { session },
