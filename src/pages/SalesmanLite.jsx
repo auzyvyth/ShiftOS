@@ -579,13 +579,18 @@ export default function SalesmanLite() {
           .eq("status", "sold")
           .gte("sold_at", monthStart)
           .then(({ data: soldThisMonth }) => {
-            const total = (soldThisMonth || []).reduce((s, l) => {
+            const rows = soldThisMonth || [];
+            const revenue  = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
+            const purchase = rows.reduce((s, l) => s + (Number(l.purchase_price) || 0), 0);
+            const recon    = rows.reduce((s, l) => s + (Number(l.recon_cost) || 0), 0);
+            const services = rows.reduce((s, l) => s + (Number(l.included_services_cost) || 0), 0);
+            const profit   = rows.reduce((s, l) => {
               const gp = l.gross_profit != null
                 ? Number(l.gross_profit)
                 : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
               return s + gp;
             }, 0);
-            setCommissionData({ total, count: (soldThisMonth || []).length });
+            setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length });
           });
       });
 
@@ -1704,18 +1709,38 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
-        {/* ── Commission this month ── */}
+        {/* ── This Month Analytics ── */}
         {commissionData.count > 0 && (
-          <div style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.06), rgba(251,191,36,0.02))", border: "1px solid rgba(251,191,36,0.18)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <DollarSign size={16} color="#fbbf24" />
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <DollarSign size={13} color="#fbbf24" />
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.08em" }}>This Month</p>
+              </div>
+              <span style={{ fontSize: 10, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
             </div>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Profit This Month</p>
-              <p style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 800, color: "#fbbf24", letterSpacing: "-0.02em" }}>
+
+            {/* Gross profit — hero */}
+            <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Net Profit</p>
+              <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: commissionData.total >= 0 ? "#4ade80" : "#f87171", letterSpacing: "-0.03em", lineHeight: 1 }}>
                 RM {commissionData.total.toLocaleString("en-MY")}
               </p>
-              <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</p>
+            </div>
+
+            {/* Breakdown grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+              {[
+                { label: "Revenue",  value: commissionData.revenue,  color: "#60a5fa" },
+                { label: "Purchase Cost", value: commissionData.purchase, color: "#f87171" },
+                { label: "Recon Cost",    value: commissionData.recon,    color: "#fb923c" },
+                { label: "Services Cost", value: commissionData.services,  color: "#a78bfa" },
+              ].map(({ label, value, color }, i) => (
+                <div key={label} style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", borderRight: i % 2 === 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color }}>{value > 0 ? `RM ${value.toLocaleString("en-MY")}` : "—"}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
