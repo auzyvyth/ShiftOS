@@ -338,6 +338,26 @@ export default function SalesmanLite() {
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
   };
 
+  // delete listing
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handleDeleteListing = async (carId) => {
+    const { error } = await supabase
+      .from("car_listings")
+      .delete()
+      .eq("id", carId)
+      .eq("dealer_id", userId);
+    if (error) {
+      console.error("handleDeleteListing:", error);
+      toast.error("Failed to delete listing");
+      return;
+    }
+    setMyListings((p) => p.filter((c) => c.id !== carId));
+    writeCache(`slite_listings_${userId}`, myListings.filter((c) => c.id !== carId));
+    setConfirmDeleteId(null);
+    toast.success("Listing deleted");
+  };
+
   // quick brief
   const [quickBriefCar, setQuickBriefCar] = useState(null);
   const [briefCopied, setBriefCopied] = useState(false);
@@ -2473,6 +2493,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         >
                           View Details
                         </button>
+                        {confirmDeleteId === car.id ? (
+                          <>
+                            <button onClick={() => handleDeleteListing(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontWeight: 700 }}>Confirm</button>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                          </>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", cursor: "pointer" }}>Delete</button>
+                        )}
                       </div>
                     ) : (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -2530,6 +2558,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         >
                           <Pencil size={10} /> Edit
                         </button>
+                        {confirmDeleteId === car.id ? (
+                          <>
+                            <button onClick={() => handleDeleteListing(car.id)} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer", fontWeight: 700 }}>Confirm</button>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                          </>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(car.id)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", cursor: "pointer" }}>Delete</button>
+                        )}
                       </div>
                     )}
                   </div>
