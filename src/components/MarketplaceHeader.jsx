@@ -56,6 +56,8 @@ export default function MarketplaceHeader() {
         .mh-dropdown-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
         .mh-cta { display:flex; align-items:center; gap:7px; background:#dc2626; color:#fff; font-size:14px; font-weight:700; padding:9px 18px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:background 0.15s,transform 0.15s; white-space:nowrap; }
         .mh-cta:hover { background:#b91c1c; transform:translateY(-1px); }
+        .mh-signin { display:flex; align-items:center; gap:7px; background:transparent; border:1px solid rgba(255,255,255,0.15); color:#d1d5db; font-size:14px; font-weight:600; padding:9px 16px; border-radius:9px; text-decoration:none; font-family:'Outfit',sans-serif; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
+        .mh-signin:hover { border-color:rgba(255,255,255,0.35); color:#fff; }
         .mh-hamburger { display:none; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:8px; padding:8px; cursor:pointer; align-items:center; justify-content:center; transition:background 0.15s; }
         .mh-hamburger:hover { background:rgba(255,255,255,0.1); }
         .mh-mobile-nav { display:none; flex-direction:column; gap:2px; padding:12px 20px 16px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(12,12,14,0.97); backdrop-filter:blur(16px); }
@@ -127,6 +129,7 @@ export default function MarketplaceHeader() {
             <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
               <Phone size={13} /> +60 17-415 5191
             </a>
+            <a href="/login" className="mh-signin">Sign In</a>
             <a href="/login" className="mh-cta">List Your Car</a>
             <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -156,6 +159,7 @@ export default function MarketplaceHeader() {
             Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
           </button>
           <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> +60 17-415 5191</a>
+          <a href="/login" className="mh-mobile-link" style={{ color:'#9ca3af', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
           <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
         </div>
       </header>
