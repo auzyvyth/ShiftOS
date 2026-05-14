@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { X, ChevronLeft, ChevronRight, RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight } from 'lucide-react';
+import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import Footer from '@/components/Footer';
 import CarCard from '@/components/CarCard';
@@ -11,251 +11,38 @@ import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
-import { CAR_DATA } from '../components/CarForm';
 import SearchAutocomplete from '../components/SearchAutocomplete';
+import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
+import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
+import {
+  BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, SORT_OPTIONS,
+  YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
+  CAR_FIELDS, DEALER_JOIN,
+  dedupe, sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
+  sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
+  sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
+} from '../config/marketplaceConfig';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 const PER_PAGE = 12;
 
-const BRANDS = ['Perodua','Proton','Honda','Toyota','Mazda','BMW','Mercedes-Benz','Hyundai','Nissan','Mitsubishi','Kia','Volvo'];
-const BODY_TYPES = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
-const TRANSMISSIONS = ['Auto','Manual'];
-const FINANCING_TYPES = [
-  { value: 'loan',          label: 'Loan' },
-  { value: 'cash',          label: 'Cash Only' },
-  { value: 'sambung_bayar', label: 'Sambung Bayar' },
-];
-const MY_STATES = ['Kuala Lumpur','Selangor','Johor','Penang','Perak','Kedah','Pahang','Negeri Sembilan','Melaka','Sabah','Sarawak','Terengganu','Kelantan','Perlis'];
-const SORT_OPTIONS = [
-  { label: 'Newest First', value: 'newest' },
-  { label: 'Price: Low to High', value: 'price_asc' },
-  { label: 'Price: High to Low', value: 'price_desc' },
-];
-
-const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
-
-const MILEAGE_OPTIONS = [
-  { label: 'Under 20,000 km',  value: '20000' },
-  { label: 'Under 50,000 km',  value: '50000' },
-  { label: 'Under 80,000 km',  value: '80000' },
-  { label: 'Under 150,000 km', value: '150000' },
-];
-const CONDITION_OPTIONS = [
-  { value: 'used',  label: 'Used' },
-  { value: 'new',   label: 'New' },
-  { value: 'recon', label: 'Recon / Import' },
-];
-const FUEL_TYPES   = ['Petrol','Diesel','Electric','Hybrid','Mild Hybrid'];
-const COLOURS      = ['White','Black','Silver','Grey','Red','Blue','Brown','Green','Orange','Yellow','Gold','Maroon'];
-
-const CAR_FIELDS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
-const DEALER_JOIN = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
-
-/* ── Helpers ────────────────────────────────────────────────────────────────── */
-function dedupe(arr) {
-  const seen = new Set();
-  return arr.filter(c => {
-    if (seen.has(c.id)) return false;
-    seen.add(c.id);
-    return true;
-  });
-}
-
-function sanitizeBrand(val) {
-  return BRANDS.includes(val) ? val : null;
-}
-function sanitizeBodyType(val) {
-  return BODY_TYPES.includes(val) ? val : null;
-}
-function sanitizeTransmission(val) {
-  return TRANSMISSIONS.includes(val) ? val : null;
-}
-function sanitizeFinancing(val) {
-  return FINANCING_TYPES.map(f => f.value).includes(val) ? val : null;
-}
-function sanitizeState(val) {
-  return MY_STATES.includes(val) ? val : null;
-}
+/* sanitizePrice depends on PRICE_STEPS from PriceDrumPicker so lives here */
 function sanitizePrice(val) {
   const n = parseInt(val, 10);
   const allowed = PRICE_STEPS.filter(s => s.value).map(s => parseInt(s.value, 10));
   return allowed.includes(n) ? n : null;
 }
-function sanitizeYear(val) {
-  const n = parseInt(val, 10);
-  return Number.isFinite(n) && n >= 1990 && n <= CURRENT_YEAR ? n : null;
-}
-function sanitizeQ(val) {
-  if (!val || typeof val !== 'string') return '';
-  return val.replace(/[%_\\]/g, '').slice(0, 60).trim();
-}
-function sanitizeCondition(val) {
-  return CONDITION_OPTIONS.map(c => c.value).includes(val) ? val : null;
-}
-function sanitizeMileageMax(val) {
-  const n = parseInt(val, 10);
-  return [20000, 50000, 80000, 150000].includes(n) ? n : null;
-}
-function sanitizeFuelType(val) { return FUEL_TYPES.includes(val) ? val : null; }
-function sanitizeColour(val)   { return COLOURS.includes(val) ? val : null; }
-function sanitizeSellerType(val) { return ['dealer','agent'].includes(val) ? val : null; }
-function sanitizeStr(val) { return (!val || typeof val !== 'string') ? '' : val.replace(/[%_\\]/g,'').slice(0,80).trim(); }
-
-/* MarketplaceHeader imported from ../components/MarketplaceHeader */
-
-/* ── Carousel constants ─────────────────────────────────────────────────────── */
-const CAROUSEL_GAP = 12;
-
-/* ── Skeleton Carousel Card ─────────────────────────────────────────────────── */
-const SkeletonCarouselCard = ({ width }) => (
-  <div style={{
-    width, flexShrink: 0,
-    background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)',
-    borderRadius: 14, overflow: 'hidden',
-  }}>
-    <div style={{ height: 160, background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize: '200% 100%', animation: 'mp-shimmer 1.5s infinite' }} />
-    <div style={{ padding: 12 }}>
-      {[80, 55, 100, 70].map((w, i) => (
-        <div key={i} style={{ height: 9, width: `${w}%`, background: '#e8e6e0', borderRadius: 4, marginBottom: 8, animation: 'mp-shimmer 1.5s infinite' }} />
-      ))}
-    </div>
-  </div>
-);
-
-/* ── Body Type Carousel ─────────────────────────────────────────────────────── */
-function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext }) {
-  const scrollRef = useRef(null);
-  const clipRef   = useRef(null);
-  const [canLeft,  setCanLeft]  = useState(false);
-  const [canRight, setCanRight] = useState(true);
-  const [cardW, setCardW] = useState(280);
-
-  /* Dynamically size cards so exactly 2 fill the clip container */
-  useEffect(() => {
-    const el = clipRef.current;
-    if (!el) return;
-    const calc = () => setCardW(Math.floor((el.offsetWidth - CAROUSEL_GAP) / 2));
-    calc();
-    const ro = new ResizeObserver(calc);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const updateArrows = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanLeft(el.scrollLeft > 4);
-    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  };
-
-  const scroll = (dir) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * (cardW + CAROUSEL_GAP) * 2, behavior: 'smooth' });
-  };
-
-  const isEmpty = !loading && cars.length === 0;
-
-  return (
-    <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14, paddingRight: 4 }}>
-        <div>
-          <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>{title}</h3>
-        </div>
-        <Link
-          to={`/showroom?body_type=${bodyType}`}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#9ca3af', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0, transition: 'color 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
-          onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}
-        >
-          View All <ArrowRight size={11} />
-        </Link>
-      </div>
-
-      <div style={{ position: 'relative' }}>
-        {canLeft && (
-          <button onClick={() => scroll(-1)} style={{
-            position: 'absolute', left: -16, top: '50%', transform: 'translateY(-50%)',
-            zIndex: 10, width: 32, height: 32, borderRadius: '50%',
-            background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
-            color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = '#374151'; }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-
-        {/* overflow:hidden clips the track to exactly 2 cards wide */}
-        <div ref={clipRef} style={{ overflow: 'hidden' }}>
-          <div
-            ref={scrollRef}
-            onScroll={updateArrows}
-            className="btc-scroll"
-            style={{ display: 'flex', gap: CAROUSEL_GAP, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 6, paddingTop: 2 }}
-          >
-            {loading
-              ? [...Array(4)].map((_, i) => <SkeletonCarouselCard key={i} width={cardW} />)
-              : isEmpty
-              ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
-              : cars.map(car => (
-                <div key={car.id} style={{ width: cardW, flexShrink: 0 }}>
-                  <CarCard car={car} ctaContext={ctaContext} />
-                </div>
-              ))
-            }
-          </div>
-        </div>
-
-        {canRight && !isEmpty && !loading && (
-          <button onClick={() => scroll(1)} style={{
-            position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)',
-            zIndex: 10, width: 32, height: 32, borderRadius: '50%',
-            background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
-            color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = '#374151'; }}
-          >
-            <ChevronRight size={16} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ── Skeleton Card ──────────────────────────────────────────────────────────── */
 const SkeletonCard = () => (
   <div style={{
-    background: '#ffffff',
-    border: '1px solid rgba(0,0,0,0.07)',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)',
+    borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   }}>
-    <div style={{
-      height: '200px',
-      background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)',
-      backgroundSize: '200% 100%',
-      animation: 'mp-shimmer 1.5s infinite',
-    }} />
+    <div style={{ height: '200px', background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize: '200% 100%', animation: 'mp-shimmer 1.5s infinite' }} />
     <div style={{ padding: '16px' }}>
       {[80,55,95,70].map((w, i) => (
-        <div key={i} style={{
-          height: '12px',
-          width: `${w}%`,
-          background: '#e8e6e0',
-          borderRadius: '6px',
-          marginBottom: '10px',
-          animation: 'mp-shimmer 1.5s infinite',
-          animationDelay: `${i * 0.1}s`,
-        }} />
+        <div key={i} style={{ height: '12px', width: `${w}%`, background: '#e8e6e0', borderRadius: '6px', marginBottom: '10px', animation: 'mp-shimmer 1.5s infinite', animationDelay: `${i * 0.1}s` }} />
       ))}
     </div>
   </div>
@@ -263,33 +50,13 @@ const SkeletonCard = () => (
 
 /* ── Stat Item ──────────────────────────────────────────────────────────────── */
 const StatItem = ({ icon: Icon, value, label, color }) => (
-  <div style={{
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '20px 28px',
-    background: '#ffffff',
-    border: '1px solid rgba(0,0,0,0.08)',
-    borderRadius: '14px',
-    flex: '1',
-    minWidth: '160px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  }}>
-    <div style={{
-      width: '44px',
-      height: '44px',
-      borderRadius: '12px',
-      background: color || 'rgba(220,38,38,0.12)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    }}>
+  <div style={{ display:'flex', alignItems:'center', gap:'14px', padding:'20px 28px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', flex:'1', minWidth:'160px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+    <div style={{ width:'44px', height:'44px', borderRadius:'12px', background: color || 'rgba(220,38,38,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
       <Icon size={20} color={color ? '#fff' : '#dc2626'} />
     </div>
     <div>
-      <div style={{ fontSize: '22px', fontWeight: '700', color: '#111827', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>{label}</div>
+      <div style={{ fontSize:'22px', fontWeight:'700', color:'#111827', lineHeight:1.1 }}>{value}</div>
+      <div style={{ fontSize:'13px', color:'#6b7280', marginTop:'2px' }}>{label}</div>
     </div>
   </div>
 );
@@ -325,20 +92,9 @@ export default function MarketplacePage() {
   const [searchInput, setSearchInput] = useState(q);
   useEffect(() => { setSearchInput(q); }, [q]);
 
-  const [heroQ,      setHeroQ]      = useState('');
-  const [heroBudget, setHeroBudget] = useState('');
+  const [heroQ,        setHeroQ]        = useState('');
+  const [heroBudget,   setHeroBudget]   = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advBrand,       setAdvBrand]       = useState('');
-  const [advBodyType,    setAdvBodyType]    = useState('');
-  const [advCondition,   setAdvCondition]   = useState('');
-  const [advState,       setAdvState]       = useState('');
-  const [advYearFrom,    setAdvYearFrom]    = useState('');
-  const [advYearTo,      setAdvYearTo]      = useState('');
-  const [advMileageMax,  setAdvMileageMax]  = useState('');
-  const [advTransmission,setAdvTransmission]= useState('');
-  const [advFinancing,   setAdvFinancing]   = useState('');
-  const [advModel,       setAdvModel]       = useState('');
-  const [advVariant,     setAdvVariant]     = useState('');
 
   /* Data state */
   const [cars, setCars]           = useState([]);
@@ -840,136 +596,13 @@ export default function MarketplacePage() {
 
       <MarketplaceHeader />
 
-      {/* ── Advanced Search Modal ── */}
-      {advancedOpen && (
-        <>
-          <div onClick={() => setAdvancedOpen(false)} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}/>
-          <div className="mp-adv-modal" style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:201, width:'min(500px,92vw)', maxHeight:'min(580px,85vh)', overflowY:'auto', background:'#0c0f16', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px', fontFamily:"'Outfit',sans-serif", boxShadow:'0 24px 80px rgba(0,0,0,0.7)' }}>
-
-            {/* Header */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.07)', position:'sticky', top:0, background:'#0c0f16', zIndex:1 }}>
-              <div>
-                <p style={{ margin:0, fontSize:'14px', fontWeight:'700', color:'#fff', fontFamily:"'Outfit',sans-serif" }}>Advanced Search</p>
-                <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.32)', marginTop:'1px', fontFamily:"'Outfit',sans-serif" }}>Narrow down your perfect car</p>
-              </div>
-              <button onClick={() => setAdvancedOpen(false)} style={{ background:'rgba(255,255,255,0.07)', border:'none', color:'rgba(255,255,255,0.55)', width:'30px', height:'30px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                <X size={13}/>
-              </button>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding:'16px 20px' }}>
-
-              {/* Inline label + pills rows */}
-              {[
-                { key:'condition', label:'Condition', options: CONDITION_OPTIONS.map(c => ({ val:c.value, label:c.label })), get: advCondition, set: setAdvCondition },
-                { key:'transmission', label:'Transmission', options: TRANSMISSIONS.map(t => ({ val:t, label:t })), get: advTransmission, set: setAdvTransmission },
-                { key:'financing', label:'Payment', options: FINANCING_TYPES.map(f => ({ val:f.value, label:f.label })), get: advFinancing, set: setAdvFinancing },
-              ].map(row => (
-                <div key={row.key} style={{ display:'grid', gridTemplateColumns:'90px 1fr', alignItems:'center', gap:'10px', marginBottom:'10px', minHeight:'32px' }}>
-                  <span style={{ fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{row.label}</span>
-                  <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
-                    {row.options.map(o => (
-                      <button key={o.val} type="button" onClick={() => row.set(row.get === o.val ? '' : o.val)}
-                        style={{ padding:'5px 11px', borderRadius:'50px', border:`1px solid ${row.get===o.val?'rgba(220,38,38,0.55)':'rgba(255,255,255,0.1)'}`, background: row.get===o.val?'rgba(220,38,38,0.18)':'transparent', color: row.get===o.val?'#f87171':'rgba(255,255,255,0.48)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}>
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {/* Divider */}
-              <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', margin:'8px 0 14px' }}/>
-
-              {/* 2-col selects */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-                {/* Brand — clears model on change */}
-                <div>
-                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Brand</p>
-                  <div style={{ position:'relative' }}>
-                    <select value={advBrand} onChange={e=>{ setAdvBrand(e.target.value); setAdvModel(''); }}
-                      style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: advBrand?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                      <option value="" style={{ background:'#0d1117' }}>All Brands</option>
-                      {BRANDS.map(b => <option key={b} value={b} style={{ background:'#0d1117' }}>{b}</option>)}
-                    </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                  </div>
-                </div>
-                {/* Model — dynamic based on advBrand */}
-                <div>
-                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Model</p>
-                  <div style={{ position:'relative' }}>
-                    <select value={advModel} onChange={e=>setAdvModel(e.target.value)} disabled={!advBrand}
-                      style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: advModel?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor: advBrand?'pointer':'not-allowed', outline:'none', fontFamily:"'Outfit',sans-serif", opacity: advBrand?1:0.4 }}>
-                      <option value="" style={{ background:'#0d1117' }}>{advBrand ? 'All Models' : 'Select brand first'}</option>
-                      {(CAR_DATA[advBrand]||[]).map(m => <option key={m} value={m} style={{ background:'#0d1117' }}>{m}</option>)}
-                    </select>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                  </div>
-                </div>
-                {[
-                  { label:'Body Type', val:advBodyType, set:setAdvBodyType, opts:BODY_TYPES.map(b=>({v:b,l:b})), placeholder:'All Types' },
-                  { label:'State', val:advState, set:setAdvState, opts:MY_STATES.map(s=>({v:s,l:s})), placeholder:'All States' },
-                  { label:'Max Mileage', val:advMileageMax, set:setAdvMileageMax, opts:MILEAGE_OPTIONS.map(o=>({v:o.value,l:o.label})), placeholder:'Any km' },
-                  { label:'Year From', val:advYearFrom, set:setAdvYearFrom, opts:YEARS.map(y=>({v:y,l:y})), placeholder:'From' },
-                  { label:'Year To', val:advYearTo, set:setAdvYearTo, opts:YEARS.map(y=>({v:y,l:y})), placeholder:'To' },
-                ].map(({ label, val, set, opts, placeholder }) => (
-                  <div key={label}>
-                    <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
-                    <div style={{ position:'relative' }}>
-                      <select value={val} onChange={e=>set(e.target.value)}
-                        style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 26px 9px 11px', color: val?'#fff':'rgba(255,255,255,0.38)', fontSize:'12px', appearance:'none', cursor:'pointer', outline:'none', fontFamily:"'Outfit',sans-serif" }}>
-                        <option value="" style={{ background:'#0d1117' }}>{placeholder}</option>
-                        {opts.map(o => <option key={o.v} value={o.v} style={{ background:'#0d1117' }}>{o.l}</option>)}
-                      </select>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {/* Variant — shown only when model is selected */}
-              {advModel && (
-                <div style={{ marginTop:'10px' }}>
-                  <p style={{ margin:'0 0 5px', fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.28)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:"'Outfit',sans-serif" }}>Variant</p>
-                  <input type="text" value={advVariant} onChange={e=>setAdvVariant(e.target.value)} placeholder="e.g. 1.5 G"
-                    style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', padding:'9px 11px', color:'#fff', fontSize:'12px', outline:'none', fontFamily:"'Outfit',sans-serif", boxSizing:'border-box' }}/>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', gap:'8px', position:'sticky', bottom:0, background:'#0c0f16' }}>
-              <button type="button"
-                onClick={() => { setAdvBrand(''); setAdvBodyType(''); setAdvCondition(''); setAdvState(''); setAdvYearFrom(''); setAdvYearTo(''); setAdvMileageMax(''); setAdvTransmission(''); setAdvFinancing(''); setAdvModel(''); setAdvVariant(''); }}
-                style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', color:'rgba(255,255,255,0.5)', fontSize:'12px', fontWeight:'600', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-                Clear all
-              </button>
-              <button type="button" onClick={() => {
-                const p = new URLSearchParams();
-                if (heroQ)           p.set('q', heroQ);
-                if (heroBudget)      p.set('max_price', heroBudget);
-                if (advBrand)        p.set('brand', advBrand);
-                if (advBodyType)     p.set('body_type', advBodyType);
-                if (advCondition)    p.set('condition', advCondition);
-                if (advState)        p.set('state', advState);
-                if (advYearFrom)     p.set('year_from', advYearFrom);
-                if (advYearTo)       p.set('year_to', advYearTo);
-                if (advMileageMax)   p.set('mileage_max', advMileageMax);
-                if (advTransmission) p.set('transmission', advTransmission);
-                if (advFinancing)    p.set('financing', advFinancing);
-                if (advModel)        p.set('model', advModel);
-                if (advVariant)      p.set('variant', advVariant);
-                setAdvancedOpen(false);
-                navigate(`/showroom${p.toString() ? '?' + p : ''}`);
-              }}
-                style={{ flex:2, background:'#dc2626', border:'none', color:'white', fontSize:'12px', fontWeight:'700', borderRadius:'10px', padding:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
-                <Search size={12}/> Search
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <AdvancedSearchModal
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        heroQ={heroQ}
+        heroBudget={heroBudget}
+        onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
+      />
 
       <div style={S.page}>
         {/* ── Hero ── */}
@@ -1038,19 +671,8 @@ export default function MarketplacePage() {
                 <form onSubmit={e => {
                   e.preventDefault();
                   const p = new URLSearchParams();
-                  if (heroQ)           p.set('q', heroQ);
-                  if (heroBudget)      p.set('max_price', heroBudget);
-                  if (advBrand)        p.set('brand', advBrand);
-                  if (advBodyType)     p.set('body_type', advBodyType);
-                  if (advCondition)    p.set('condition', advCondition);
-                  if (advState)        p.set('state', advState);
-                  if (advYearFrom)     p.set('year_from', advYearFrom);
-                  if (advYearTo)       p.set('year_to', advYearTo);
-                  if (advMileageMax)   p.set('mileage_max', advMileageMax);
-                  if (advTransmission) p.set('transmission', advTransmission);
-                  if (advFinancing)    p.set('financing', advFinancing);
-                  if (advModel)        p.set('model', advModel);
-                  if (advVariant)      p.set('variant', advVariant);
+                  if (heroQ)      p.set('q', heroQ);
+                  if (heroBudget) p.set('max_price', heroBudget);
                   navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
                 }}>
                   <div style={{ marginBottom:'8px' }}>
@@ -1086,11 +708,6 @@ export default function MarketplacePage() {
                     style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.38)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:0 }}>
                     <SlidersHorizontal size={11}/>
                     Advanced search
-                    {[advBrand,advBodyType,advCondition,advState,advYearFrom,advYearTo,advMileageMax,advTransmission,advFinancing].filter(Boolean).length > 0 && (
-                      <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 5px', borderRadius:'10px' }}>
-                        {[advBrand,advBodyType,advCondition,advState,advYearFrom,advYearTo,advMileageMax,advTransmission,advFinancing].filter(Boolean).length}
-                      </span>
-                    )}
                   </button>
                 </form>
               </div>

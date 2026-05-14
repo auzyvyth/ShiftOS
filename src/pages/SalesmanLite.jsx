@@ -1620,7 +1620,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
     const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
     const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
-    return { totalViews, totalWATaps, overallCVR, bestCVRStat };
+    const storeVisits = new Set(analyticsEvents.filter((e) => e.event_type === "store_visit").map((e) => e.session_id || e.car_id)).size;
+    const pageViews = analyticsEvents.filter((e) => e.event_type === "page_view").length;
+    return { totalViews, totalWATaps, overallCVR, bestCVRStat, storeVisits, pageViews };
   }, [analyticsEvents, listingStats]);
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
@@ -1639,7 +1641,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     }).length;
     const newEnqCount = enquiries.filter((e) => e.status === "new").length;
 
-    const { totalViews, totalWATaps, overallCVR, bestCVRStat } = dashboardCVR;
+    const { totalViews, totalWATaps, overallCVR, bestCVRStat, storeVisits, pageViews } = dashboardCVR;
     const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
 
@@ -2065,6 +2067,18 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               { label: "Views", value: totalViews, color: "#f87171", sub: "link + card + detail" },
               { label: "WA Taps", value: totalWATaps, color: "#4ade80", sub: "whatsapp + calls" },
               { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", color: overallCVR !== null ? cvrColor(parseFloat(overallCVR)) : "#374151", sub: bestCVRStat ? `best: ${perfCarName(bestCVRStat.car)}` : "no data yet" },
+            ].map(({ label, value, color, sub }) => (
+              <div key={label} style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+                <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+                <p style={{ margin: "0 0 4px", fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
+                <p style={{ margin: 0, fontSize: 9, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 8 }}>
+            {[
+              { label: "Store Visits", value: storeVisits, color: "#60a5fa", sub: "via your referral link" },
+              { label: "Page Views", value: pageViews, color: "#c084fc", sub: "pages viewed via your link" },
             ].map(({ label, value, color, sub }) => (
               <div key={label} style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
                 <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
