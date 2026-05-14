@@ -77,6 +77,11 @@ export default function SalesmanProfilePage() {
       <Helmet>
         <title>{profile.full_name} · Car Agent on XDrive</title>
         <meta name="description" content={profile.about_text || `Browse cars from ${profile.full_name} on XDrive. ${availableCount} cars available.`} />
+        <meta property="og:title" content={`${profile.full_name} · Car Agent on XDrive`} />
+        <meta property="og:description" content={`${availableCount} car${availableCount !== 1 ? 's' : ''} available · Chat on WhatsApp`} />
+        <meta property="og:image" content={profile.avatar_url || '/og-default.png'} />
+        <meta property="og:type" content="profile" />
+        <meta name="twitter:card" content="summary" />
       </Helmet>
 
       <style>{`
@@ -265,8 +270,8 @@ export default function SalesmanProfilePage() {
 
         {/* ── Footer ── */}
         <div style={{ marginTop: 60, borderTop: '1px solid rgba(255,255,255,0.04)', padding: '20px 0', textAlign: 'center' }}>
-          <Link to="/showroom" style={{ fontSize: 12, color: '#1e293b', textDecoration: 'none' }}>
-            Powered by <span style={{ color: '#dc2626', fontWeight: 600 }}>XDrive</span>
+          <Link to="/showroom" style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>
+            Powered by <span style={{ color: '#dc2626', fontWeight: 600 }}>ShiftOS</span>
           </Link>
         </div>
       </div>
