@@ -288,26 +288,25 @@ export default function RevOpsPage({ userId }) {
         .eq("dealer_id", userId)
         .not("stage", "in", "(closed_won,closed_lost)");
 
-      const revMTD = (soldThisMonth || []).reduce(
-        (s, r) => s + (Number(r.sold_price) || 0),
-        0,
-      );
-      const gpMTD = (soldThisMonth || []).reduce((s, r) => {
-        // Use stored gross_profit if available, otherwise compute including services cost
-        const gp =
-          r.gross_profit != null
-            ? Number(r.gross_profit)
-            : (Number(r.sold_price) || 0) -
-              (Number(r.purchase_price) || 0) -
-              (Number(r.recon_cost) || 0) -
-              (Number(r.included_services_cost) || 0);
+      const rows = soldThisMonth || [];
+      const revMTD        = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
+      const purchaseMTD   = rows.reduce((s, r) => s + (Number(r.purchase_price) || 0), 0);
+      const reconMTD      = rows.reduce((s, r) => s + (Number(r.recon_cost) || 0), 0);
+      const servicesMTD   = rows.reduce((s, r) => s + (Number(r.included_services_cost) || 0), 0);
+      const gpMTD = rows.reduce((s, r) => {
+        const gp = r.gross_profit != null
+          ? Number(r.gross_profit)
+          : (Number(r.sold_price) || 0) - (Number(r.purchase_price) || 0) - (Number(r.recon_cost) || 0) - (Number(r.included_services_cost) || 0);
         return s + gp;
       }, 0);
-      const unitsSoldMTD = (soldThisMonth || []).length;
+      const unitsSoldMTD = rows.length;
 
       setRevData({
         revMTD,
         gpMTD,
+        purchaseMTD,
+        reconMTD,
+        servicesMTD,
         activeLeads: activeLeads ?? 0,
         unitsSoldMTD,
         activeCount: activeCount ?? 0,
@@ -666,7 +665,10 @@ export default function RevOpsPage({ userId }) {
               [],
               ['REVENUE'],
               ['Revenue MTD', revData?.revMTD ?? ''],
-              ['GP MTD', revData?.gpMTD ?? ''],
+              ['Gross Profit MTD', revData?.gpMTD ?? ''],
+              ['Purchase Cost MTD', revData?.purchaseMTD ?? ''],
+              ['Recon Cost MTD', revData?.reconMTD ?? ''],
+              ['Services Cost MTD', revData?.servicesMTD ?? ''],
               ['Units Sold MTD', revData?.unitsSoldMTD ?? ''],
               ['Avg GP/Unit', revData?.avgGPPerUnit ?? ''],
               [],
@@ -732,7 +734,7 @@ export default function RevOpsPage({ userId }) {
             accentColor="#4ade80"
           />
           <MetricCard
-            label="Gross Profit This Month"
+            label="Gross Profit"
             value={revData ? fmtRM(revData.gpMTD) : null}
             loading={revLoading}
             icon={TrendingUp}
@@ -748,15 +750,39 @@ export default function RevOpsPage({ userId }) {
           />
           <MetricCard
             label="Stock Turn (30d)"
-            value={
-              revData
-                ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
-                : null
-            }
+            value={revData ? `${revData.unitsSoldMTD} / ${revData.activeCount}` : null}
             sub="units sold / active"
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"
+          />
+        </div>
+
+        {/* Cost breakdown row */}
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <MetricCard
+            label="Purchase Cost"
+            value={revData ? fmtRM(revData.purchaseMTD) : null}
+            sub="Total paid for stock"
+            loading={revLoading}
+            icon={DollarSign}
+            accentColor="#f87171"
+          />
+          <MetricCard
+            label="Recon Cost"
+            value={revData ? fmtRM(revData.reconMTD) : null}
+            sub="Repair & prep spend"
+            loading={revLoading}
+            icon={Package}
+            accentColor="#fb923c"
+          />
+          <MetricCard
+            label="Services Cost"
+            value={revData ? fmtRM(revData.servicesMTD) : null}
+            sub="Included add-ons cost"
+            loading={revLoading}
+            icon={TrendingUp}
+            accentColor="#fbbf24"
           />
         </div>
       </div>
