@@ -324,14 +324,25 @@ export default function SalesmanLite() {
     setStatusMenuCarId(null);
     const prevStatus = car.status;
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
-    const { data: updatedRows, error: statusErr } = await supabase
+    // Verify the row is reachable before updating (avoids silent 0-rows on RLS mismatch)
+    const { count } = await supabase
+      .from("car_listings")
+      .select("id", { count: "exact", head: true })
+      .eq("id", car.id)
+      .eq("dealer_id", userId);
+    if (!count) {
+      console.error("updateListingStatus: row not found or dealer_id mismatch");
+      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
+      toast.error("Failed to update status");
+      return;
+    }
+    const { error: statusErr } = await supabase
       .from("car_listings")
       .update({ status: newStatus })
       .eq("id", car.id)
-      .eq("dealer_id", userId)
-      .select("id");
-    if (statusErr || !updatedRows?.length) {
-      console.error("updateListingStatus:", statusErr ?? "0 rows updated — RLS or dealer_id mismatch");
+      .eq("dealer_id", userId);
+    if (statusErr) {
+      console.error("updateListingStatus:", statusErr);
       setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
       toast.error("Failed to update status");
       return;
