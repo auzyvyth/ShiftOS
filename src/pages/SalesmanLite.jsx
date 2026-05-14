@@ -324,9 +324,14 @@ export default function SalesmanLite() {
     setStatusMenuCarId(null);
     const prevStatus = car.status;
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
-    const { error: statusErr } = await supabase.from("car_listings").update({ status: newStatus }).eq("id", car.id);
-    if (statusErr) {
-      console.error("updateListingStatus:", statusErr);
+    const { data: updatedRows, error: statusErr } = await supabase
+      .from("car_listings")
+      .update({ status: newStatus })
+      .eq("id", car.id)
+      .eq("dealer_id", userId)
+      .select("id");
+    if (statusErr || !updatedRows?.length) {
+      console.error("updateListingStatus:", statusErr ?? "0 rows updated — RLS or dealer_id mismatch");
       setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus } : c));
       toast.error("Failed to update status");
       return;
