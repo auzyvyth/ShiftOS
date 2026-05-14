@@ -242,6 +242,19 @@ export default function SalesmanLite() {
   // Commission
   const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
 
+  // Goal panel
+  const goalKey = `slite_goal_${userId || "x"}`;
+  const [goal, setGoal] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(goalKey)) || { target: 0, focusCarId: null }; } catch { return { target: 0, focusCarId: null }; }
+  });
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalDraft, setGoalDraft] = useState(0);
+  const saveGoal = (patch) => {
+    const next = { ...goal, ...patch };
+    setGoal(next);
+    localStorage.setItem(goalKey, JSON.stringify(next));
+  };
+
   // settings
   const [settingsForm, setSettingsForm] = useState({
     full_name: "",
@@ -1744,6 +1757,134 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
           </div>
         )}
+
+        {/* ── Goal Panel ── */}
+        {(() => {
+          const soldThisMonth = myListings.filter(c => {
+            if (c.status !== "sold" || !c.sold_at) return false;
+            const d = new Date(c.sold_at);
+            const now = new Date();
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+          }).length;
+          const available = myListings.filter(c => c.status === "available");
+          const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
+          const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
+          const focusCar = goal.focusCarId
+            ? myListings.find(c => c.id === goal.focusCarId && c.status === "available")
+            : null;
+          const autoFocus = !focusCar && available.length > 0
+            ? available.reduce((best, c) => {
+                const s = listingStats[c.id] || {};
+                const score = (s.views || 0) * 2 + (s.enquiries || 0) * 5;
+                const bestScore = (listingStats[best?.id]?.views || 0) * 2 + (listingStats[best?.id]?.enquiries || 0) * 5;
+                return score > bestScore ? c : best;
+              }, available[0])
+            : null;
+          const highlighted = focusCar || autoFocus;
+
+          return (
+            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <TrendingUp size={13} color="#60a5fa" />
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.08em" }}>Monthly Goal</p>
+                </div>
+                <span style={{ fontSize: 10, color: "#4b5563" }}>{daysLeft}d left</span>
+              </div>
+
+              {/* Target + progress */}
+              <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                {goalEditing ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>Target:</span>
+                    <input
+                      type="number" min="1" max="99"
+                      value={goalDraft}
+                      onChange={e => setGoalDraft(Number(e.target.value))}
+                      style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+                      autoFocus
+                    />
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>cars</span>
+                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Set</button>
+                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  </div>
+                ) : goal.target > 0 ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 8 }}>
+                      <span style={{ fontSize: 28, fontWeight: 800, color: pct >= 100 ? "#4ade80" : "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{soldThisMonth}</span>
+                      <span style={{ fontSize: 16, color: "#4b5563", fontWeight: 600 }}>/ {goal.target}</span>
+                      <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>cars sold</span>
+                      <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ marginLeft: "auto", fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#4b5563", cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: pct >= 100 ? "#4ade80" : pct >= 60 ? "#60a5fa" : "#dc2626", transition: "width 0.4s ease" }} />
+                    </div>
+                    {pct >= 100 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#4ade80", fontWeight: 600 }}>🎉 Goal smashed! Set a new one.</p>}
+                    {pct < 100 && goal.target > 0 && (
+                      <p style={{ margin: "6px 0 0", fontSize: 10, color: "#4b5563" }}>
+                        {goal.target - soldThisMonth} more to go · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day needed` : "last day!"}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <button onClick={() => { setGoalDraft(5); setGoalEditing(true); }} style={{ width: "100%", padding: "10px", borderRadius: 8, background: "rgba(220,38,38,0.07)", border: "1px dashed rgba(220,38,38,0.25)", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    + Set a monthly target
+                  </button>
+                )}
+              </div>
+
+              {/* Focus car */}
+              {highlighted && (
+                <div style={{ padding: "10px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>
+                      {focusCar ? "📌 Focus Car" : "⚡ Push This"}
+                    </p>
+                    {focusCar && (
+                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {highlighted.images?.[0] ? (
+                      <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 52, height: 40, borderRadius: 6, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={18} color="#374151" /></div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[highlighted.year, highlighted.brand, highlighted.model].filter(Boolean).join(" ")}
+                      </p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#60a5fa", fontWeight: 700 }}>
+                        {highlighted.selling_price ? `RM ${Number(highlighted.selling_price).toLocaleString("en-MY")}` : "—"}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>WA</button>
+                      {focusCar ? null : (
+                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pin a different car */}
+                  {available.length > 1 && (
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ margin: "0 0 5px", fontSize: 10, color: "#374151" }}>Pin a different car:</p>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {available.filter(c => c.id !== highlighted.id).slice(0, 4).map(c => (
+                          <button key={c.id} onClick={() => saveGoal({ focusCarId: c.id })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {c.brand} {c.model}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Marketplace Pulse ── */}
         {myListings.filter(c => c.status === "available").length > 0 && (
