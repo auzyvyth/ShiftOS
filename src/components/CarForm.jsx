@@ -1305,6 +1305,36 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     setUploading(true);
     try {
       const imageUrls = await uploadImages();
+
+      // Normalize variant text → canonical form via Claude Haiku
+      let canonicalVariant = null;
+      if (form.variant?.trim() && form.brand && form.model) {
+        try {
+          const { data: aiData } = await supabase.functions.invoke('ai-proxy', {
+            body: {
+              prompt: `You are normalizing car variant names for a database. Be concise and consistent.
+
+Car: ${form.brand} ${form.model}
+Raw variant text: "${form.variant.trim()}"
+
+Return ONLY the canonical short variant name. Rules:
+- Remove year prefixes (2020, 2021, etc.)
+- Remove the brand or model name if repeated in the variant
+- Keep the trim code and level (e.g. "FL5 Type R", "1.5 TC-P", "GR Sport", "2.0E", "Executive")
+- Title Case
+- Max 40 characters
+- If the text has no meaningful variant info beyond what brand/model already says, return empty string
+
+Reply with just the variant name or empty string. No explanation.`,
+            },
+          });
+          const normalized = aiData?.reply?.trim().slice(0, 40);
+          if (normalized) canonicalVariant = normalized;
+        } catch {
+          // Non-fatal — listing saves fine without canonical_variant
+        }
+      }
+
       const servicesCost = (form.included_services || []).reduce(
         (sum, s) => sum + (s.cost || 0),
         0,
@@ -1313,6 +1343,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         brand: form.brand,
         model: form.model,
         variant: form.variant,
+        canonical_variant: canonicalVariant,
         state: form.state,
         city: form.city,
         mileage,
