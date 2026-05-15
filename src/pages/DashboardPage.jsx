@@ -5660,7 +5660,11 @@ export default function DashboardPage() {
   };
 
   const filteredListings = useMemo(() => {
-    let result = listings.filter((l) => (l.status || "active") === statusFilter);
+    let result = listings.filter((l) =>
+      statusFilter === 'active'
+        ? ['active', 'available'].includes(l.status || 'active')
+        : (l.status || 'active') === statusFilter
+    );
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase();
     return result.filter((l) =>
