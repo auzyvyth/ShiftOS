@@ -97,14 +97,14 @@ const InputBase = ({ prefix, suffix, ...props }) => (
     <input
       {...props}
       style={{
-        width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 600, outline: 'none',
+        width: '100%', background: 'var(--fc-input-bg)', border: '1px solid var(--fc-input-border)',
+        borderRadius: 10, color: 'var(--fc-input-color)', fontSize: 14, fontWeight: 600, outline: 'none',
         padding: prefix ? '10px 12px 10px 32px' : suffix ? '10px 32px 10px 12px' : '10px 12px',
         fontFamily: "'DM Sans',sans-serif", transition: 'border-color 0.15s',
         ...props.style,
       }}
       onFocus={e => { e.target.style.borderColor = 'rgba(220,38,38,0.5)'; }}
-      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+      onBlur={e => { e.target.style.borderColor = 'var(--fc-input-border)'; }}
     />
     {suffix && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', fontSize: 12, pointerEvents: 'none' }}>{suffix}</span>}
   </div>
@@ -115,8 +115,8 @@ const SelectBase = ({ children, ...props }) => (
     <select
       {...props}
       style={{
-        width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 600, outline: 'none',
+        width: '100%', background: 'var(--fc-input-bg)', border: '1px solid var(--fc-input-border)',
+        borderRadius: 10, color: 'var(--fc-input-color)', fontSize: 14, fontWeight: 600, outline: 'none',
         padding: '10px 32px 10px 12px', appearance: 'none', cursor: 'pointer',
         fontFamily: "'DM Sans',sans-serif",
       }}
@@ -133,11 +133,11 @@ const ResultRow = ({ label, value, highlight, muted, borderTop }) => (
     padding: highlight ? '10px 12px' : '8px 0',
     background: highlight ? 'rgba(220,38,38,0.08)' : 'transparent',
     borderRadius: highlight ? 8 : 0,
-    borderTop: borderTop ? '1px solid rgba(255,255,255,0.07)' : 'none',
+    borderTop: borderTop ? '1px solid var(--fc-divider)' : 'none',
     marginTop: borderTop ? 8 : 0,
   }}>
     <span style={{ color: muted ? '#6b7280' : '#9ca3af', fontSize: 13 }}>{label}</span>
-    <span style={{ color: highlight ? '#f87171' : muted ? '#6b7280' : 'white', fontWeight: highlight ? 700 : 600, fontSize: highlight ? 15 : 14 }}>
+    <span style={{ color: highlight ? 'var(--fc-highlight)' : muted ? '#6b7280' : 'var(--fc-result-value)', fontWeight: highlight ? 700 : 600, fontSize: highlight ? 15 : 14 }}>
       {value}
     </span>
   </div>
@@ -321,7 +321,7 @@ const generateQuotationPDF = async ({ dealer, salesman, carDetails, calc, fmt })
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null, carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '' }) => {
+const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType = null, carName: carNameProp = '', carYear: carYearProp = '', carColor: carColorProp = '', light = false }) => {
   const { t } = useTranslation();
 
   // Financing inputs
@@ -377,6 +377,49 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
 
   const reset = () => { setCarPrice(initialPrice); setDpPct(10); setLoanTerm(7); setIntRate(3.5); setRtCc(engineCc ? String(engineCc) : ''); setRtBody(bodyType || 'Sedan'); setInsSum(initialPrice); setInsNcd(55); };
 
+  // Light vs dark palette
+  const c = light ? {
+    cardBg:        'white',
+    cardBorder:    '1px solid #DDE3EC',
+    inputBg:       'white',
+    inputBorder:   '1px solid #DDE3EC',
+    inputColor:    '#111827',
+    inputFocusBorder: 'rgba(220,38,38,0.5)',
+    inputBlurBorder:  '#DDE3EC',
+    sectionTitle:  '#111827',
+    resultValue:   '#111827',
+    resultHighlight: '#dc2626',
+    divider:       '#e5e7eb',
+    monthly:       '#111827',
+    pillBg:        '#f3f4f6',
+    pillBorder:    '#DDE3EC',
+    pillColor:     '#4b5563',
+    browseBg:      '#f3f4f6',
+    browseBorder:  '#e5e7eb',
+    browseColor:   '#374151',
+    selectOption:  '#ffffff',
+  } : {
+    cardBg:        'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))',
+    cardBorder:    '1px solid rgba(255,255,255,0.07)',
+    inputBg:       'rgba(255,255,255,0.04)',
+    inputBorder:   '1px solid rgba(255,255,255,0.08)',
+    inputColor:    'white',
+    inputFocusBorder: 'rgba(220,38,38,0.5)',
+    inputBlurBorder:  'rgba(255,255,255,0.08)',
+    sectionTitle:  'white',
+    resultValue:   'white',
+    resultHighlight: '#f87171',
+    divider:       'rgba(255,255,255,0.07)',
+    monthly:       'white',
+    pillBg:        'rgba(255,255,255,0.04)',
+    pillBorder:    'rgba(255,255,255,0.08)',
+    pillColor:     '#9ca3af',
+    browseBg:      'rgba(255,255,255,0.04)',
+    browseBorder:  'rgba(255,255,255,0.08)',
+    browseColor:   '#9ca3af',
+    selectOption:  '#0d1117',
+  };
+
   const handleDownloadPDF = async () => {
     setPdfLoading(true);
     try {
@@ -420,8 +463,8 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const preApprovedLink = 'https://wa.me/60174155191?text=' + encodeURIComponent("Hi! I'm interested in getting pre-approved for car financing. Can you help?");
 
   const card = {
-    background: 'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))',
-    border: '1px solid rgba(255,255,255,0.07)',
+    background: c.cardBg,
+    border: c.cardBorder,
     borderRadius: 14,
     padding: '20px 22px',
   };
@@ -429,30 +472,38 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
   const sectionTitle = (label) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
       <div style={{ width: 3, height: 16, background: '#dc2626', borderRadius: 2, flexShrink: 0 }} />
-      <p style={{ color: 'white', fontSize: 13, fontWeight: 700, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{label}</p>
+      <p style={{ color: c.sectionTitle, fontSize: 13, fontWeight: 700, margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{label}</p>
     </div>
   );
 
   return (
     <>
       <style>{`
-        .calc-input::placeholder { color: #374151; }
+        .calc-input::placeholder { color: #9ca3af; }
         .calc-input::-webkit-inner-spin-button,
         .calc-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#9ca3af; font-family:'DM Sans',sans-serif; }
-        .calc-pill:hover { border-color:rgba(220,38,38,0.35); color:white; }
-        .calc-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:#f87171; }
-        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#9ca3af; font-family:'DM Sans',sans-serif; }
+        .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:'DM Sans',sans-serif; }
+        .calc-pill:hover { border-color:rgba(220,38,38,0.35); color:${light ? '#dc2626' : 'white'}; }
+        .calc-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
+        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:'DM Sans',sans-serif; }
         .calc-body-pill:hover { border-color:rgba(220,38,38,0.35); }
-        .calc-body-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:#f87171; }
-        select.calc-select option { background:#0d1117; color:white; }
+        .calc-body-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
+        select.calc-select option { background:${c.selectOption}; color:${light ? '#111827' : 'white'}; }
         @media(max-width:768px) {
           .calc-layout { flex-direction: column !important; }
           .calc-results { position: static !important; width: 100% !important; margin: 0 auto !important; }
         }
       `}</style>
 
-      <div style={{ fontFamily: "'DM Sans',sans-serif", maxWidth: 1024, margin: '0 auto' }}>
+      <div style={{
+        fontFamily: "'DM Sans',sans-serif", maxWidth: 1024, margin: '0 auto',
+        '--fc-input-bg': c.inputBg,
+        '--fc-input-border': light ? '#DDE3EC' : 'rgba(255,255,255,0.08)',
+        '--fc-input-color': c.inputColor,
+        '--fc-result-value': c.resultValue,
+        '--fc-divider': c.divider,
+        '--fc-highlight': c.resultHighlight,
+      }}>
 
         {/* ── Two-column layout ── */}
         <div className="calc-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -680,10 +731,10 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
 
           {/* ══ RIGHT: Results ════════════════════════════════════════════════ */}
           <div className="calc-results" style={{ width: 300, flexShrink: 0, position: 'sticky', top: 88 }}>
-            <div style={{ ...card, border: '1px solid rgba(220,38,38,0.18)' }}>
+            <div style={{ ...card, border: `1px solid ${light ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}` }}>
 
               {/* Monthly installment hero */}
-              <div style={{ textAlign: 'center', padding: '16px 0 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 14 }}>
+              <div style={{ textAlign: 'center', padding: '16px 0 18px', borderBottom: `1px solid ${c.divider}`, marginBottom: 14 }}>
                 <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 6px' }}>Monthly Installment</p>
                 <motion.div
                   key={isValid ? fmt(monthly, 2) : 'invalid'}
@@ -691,7 +742,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 >
-                  <p style={{ color: isValid ? 'white' : '#374151', fontSize: 38, fontWeight: 800, margin: 0, lineHeight: 1 }}>
+                  <p style={{ color: isValid ? c.monthly : '#9ca3af', fontSize: 38, fontWeight: 800, margin: 0, lineHeight: 1 }}>
                     {isValid ? <>
                       <span style={{ fontSize: 16, color: '#9ca3af', fontWeight: 600, marginRight: 3 }}>RM</span>
                       {fmt(monthly, 0)}
@@ -711,7 +762,7 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
               </div>
 
               {/* Road tax + insurance */}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12, marginBottom: 14 }}>
+              <div style={{ borderTop: `1px solid ${c.divider}`, paddingTop: 12, marginBottom: 14 }}>
                 <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>On-Road Costs</p>
                 <ResultRow
                   label={rtCc ? `Road Tax — ${Number(rtCc).toLocaleString()}cc` : 'Road Tax (annual)'}
@@ -764,11 +815,11 @@ const FinancingCalculator = ({ initialPrice = 85000, engineCc = null, bodyType =
                   <MessageCircle size={14} /> Get Pre-Approved
                 </a>
 
-                <Link to={`/cars?max_price=${Math.round(carPrice)}`}
+                <Link to={`/showroom?max_price=${Math.round(carPrice)}`}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 10, color: '#9ca3af', fontSize: 13, fontWeight: 600,
+                    background: c.browseBg, border: `1px solid ${c.browseBorder}`,
+                    borderRadius: 10, color: c.browseColor, fontSize: 13, fontWeight: 600,
                     padding: '11px', textDecoration: 'none', transition: 'all 0.2s',
                     fontFamily: "'DM Sans',sans-serif",
                   }}

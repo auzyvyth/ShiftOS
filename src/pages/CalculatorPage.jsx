@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import MarketplaceHeader from '@/components/MarketplaceHeader';
+import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import CalculatorInfoSection from '@/components/CalculatorInfoSection';
@@ -32,9 +32,9 @@ const CalculatorPage = () => {
         <meta name="description" content={t('calculator.header.subtitle')} />
       </Helmet>
 
-      <Header />
+      <MarketplaceHeader />
 
-      <main style={{ paddingTop: 72, background: '#060910', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
           {/* Page header */}
@@ -50,7 +50,7 @@ const CalculatorPage = () => {
                 Financing Tools
               </span>
             </div>
-            <h1 style={{ color: 'white', fontSize: 'clamp(1.5rem,4vw,2rem)', fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
+            <h1 style={{ color: '#111827', fontSize: 'clamp(1.5rem,4vw,2rem)', fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
               {t('calculator.header.title')}
             </h1>
             <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
@@ -69,6 +69,7 @@ const CalculatorPage = () => {
               engineCc={engineCcParam}
               bodyType={bodyTypeParam}
               key={`${initialPrice}-${engineCcParam || ''}-${bodyTypeParam || ''}`}
+              light
             />
           </motion.div>
 
@@ -86,7 +87,7 @@ const CalculatorPage = () => {
         </div>
       </main>
 
-      <Footer />
+      <MarketplaceFooter />
       <StickyWhatsAppButton />
     </>
   );

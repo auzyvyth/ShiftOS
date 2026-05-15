@@ -31,6 +31,7 @@ import ComparePage from "./pages/ComparePage";
 import SavedCarsPage from "./pages/SavedCarsPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ShowroomPage from "./pages/ShowroomPage";
+import GuidesPage from "./pages/GuidesPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
@@ -61,6 +62,8 @@ function App() {
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/saved" element={<SavedCarsPage />} />
+        <Route path="/guides/:slug" element={<GuidesPage />} />
+        <Route path="/guides" element={<GuidesPage />} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
