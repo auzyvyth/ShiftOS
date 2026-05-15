@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
 import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
-import Footer from '@/components/Footer';
+import MarketplaceFooter from '../components/MarketplaceFooter';
 import CarCard from '@/components/CarCard';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import { useCTAContext } from '../hooks/useCTAContext';
@@ -1042,7 +1042,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      <Footer />
+      <MarketplaceFooter />
     </>
   );
 }
