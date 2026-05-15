@@ -5671,6 +5671,7 @@ export default function DashboardPage() {
       (l.brand || "").toLowerCase().includes(q) ||
       (l.model || "").toLowerCase().includes(q) ||
       (l.variant || "").toLowerCase().includes(q) ||
+      (l.vin || "").toLowerCase().includes(q) ||
       (l.vin_number || "").toLowerCase().includes(q)
     );
   }, [listings, searchQuery, statusFilter]);
@@ -6497,6 +6498,7 @@ export default function DashboardPage() {
                                   <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, fontWeight: 600 }}>{l.brand}</p>
                                   <p style={{ fontSize: 14, color: '#f9fafb', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0' }}>{l.model}</p>
                                   {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{l.variant}</p>}
+                                  {(l.vin || l.vin_number) && <p style={{ fontSize: 10, color: '#374151', margin: '3px 0 0', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</p>}
                                 </td>
                                 {/* Price */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
@@ -6593,6 +6595,7 @@ export default function DashboardPage() {
                             </div>
                             {/* Meta row — indented under image */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
+                              {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               <AgeBadge createdAt={l.created_at} />
