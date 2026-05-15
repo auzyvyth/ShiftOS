@@ -276,7 +276,6 @@ export default function ImportStockPage() {
           fuel_type:      r.fuel_type || null,
           engine_cc:      r.engine_cc ? Number(r.engine_cc) : null,
           condition:      r.condition || null,
-          description:    r.description || null,
           state:          r.state || null,
           is_recon:       (r.condition || '').toLowerCase() === 'recon',
           auction_grade:  r.auction_grade || null,
