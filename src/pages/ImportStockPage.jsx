@@ -154,6 +154,7 @@ export default function ImportStockPage() {
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
+  const [analyseError, setAnalyseError] = useState("");
 
   const handleSample = () => {
     setRows(SAMPLE_ROWS);
@@ -162,6 +163,7 @@ export default function ImportStockPage() {
 
   const handleStep1 = async ({ file, sheetsUrl }) => {
     setLoading(true);
+    setAnalyseError("");
     try {
       const messages = await buildClaudeMessages(file, sheetsUrl);
       const parsed = await callClaude(messages);
@@ -170,7 +172,7 @@ export default function ImportStockPage() {
       setRows(parsed);
       setStep(2);
     } catch (e) {
-      alert(`Analysis failed: ${e.message}`);
+      setAnalyseError(e.message || "Unknown error");
     }
     setLoading(false);
   };
@@ -284,7 +286,17 @@ export default function ImportStockPage() {
             border: "1px solid rgba(255,255,255,0.07)",
           }}
         >
-          {step === 1 && <Step1Upload onNext={handleStep1} onSample={handleSample} loading={loading} />}
+          {step === 1 && (
+            <>
+              {analyseError && (
+                <div className="mb-4 rounded-xl px-4 py-3 text-sm text-red-400 break-all" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                  <p className="font-bold mb-1">Analysis failed</p>
+                  <p>{analyseError}</p>
+                </div>
+              )}
+              <Step1Upload onNext={handleStep1} onSample={handleSample} loading={loading} />
+            </>
+          )}
           {step === 2 && (
             <Step2Preview
               rows={rows}
