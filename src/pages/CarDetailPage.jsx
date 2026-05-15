@@ -539,9 +539,22 @@ export default function CarDetailPage() {
       setSlideDir("next");
       setSlideKey((k) => k + 1);
       setActiveIdx((i) => (i + 1) % imgs.length);
-    }, 2000);
+    }, 5000);
     return () => clearInterval(autoRef.current);
   }, [car]);
+
+  // Preload next 2 images so the slide never shows an unloaded frame
+  const preloadedSet = useRef(new Set());
+  useEffect(() => {
+    const imgs = car?.images;
+    if (!imgs?.length) return;
+    [(activeIdx + 1) % imgs.length, (activeIdx + 2) % imgs.length].forEach((i) => {
+      if (preloadedSet.current.has(i)) return;
+      preloadedSet.current.add(i);
+      const img = new Image();
+      img.src = imgs[i];
+    });
+  }, [activeIdx, car]);
 
   useEffect(() => {
     if (!heroRef.current) return;
