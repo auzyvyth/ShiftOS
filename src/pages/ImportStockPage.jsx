@@ -10,11 +10,15 @@ import Step3Import from "../components/ImportStockPage/Step3Import";
 const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","description":""}
+{"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","description":""}
 Map any column names you find to the closest matching field.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
-Condition must be "Used" or "New".
+Condition must be "Used", "New", or "Recon".
+auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". Null if not found.
+interior_grade: "A","B","C","D". Null if not found.
+import_country: country of origin e.g. "Japan","UK". Null if not found.
+state: Malaysian state where the car is located e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
 Null for any field you cannot find.`;
 
 async function extractSheetId(url) {
@@ -97,7 +101,7 @@ async function callClaude(messages) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages,
     }),
@@ -156,22 +160,36 @@ export default function ImportStockPage() {
       if (!user) throw new Error("Not authenticated");
 
       const now = new Date().toISOString();
-      const records = rows.map((r) => ({
-        brand: r.brand || null,
-        model: r.model || null,
-        year: r.year ? Number(r.year) : null,
-        selling_price: r.price ? Number(r.price) : null,
-        mileage: r.mileage ? Number(r.mileage) : null,
-        color: r.color || null,
-        transmission: r.transmission || null,
-        fuel_type: r.fuel_type || null,
-        engine_cc: r.engine_cc ? Number(r.engine_cc) : null,
-        condition: r.condition || null,
-        description: r.description || null,
-        dealer_id: user.id,
-        status: "active",
-        created_at: now,
-      }));
+      const records = rows.map((r) => {
+        const slugBase = [r.year, r.brand, r.model, r.variant]
+          .filter(Boolean).join('-')
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        const slug = slugBase + '-' + Math.random().toString(36).slice(2, 7);
+        return {
+          slug,
+          brand:          r.brand || null,
+          model:          r.model || null,
+          variant:        r.variant || null,
+          year:           r.year ? Number(r.year) : null,
+          selling_price:  r.price ? Number(r.price) : null,
+          mileage:        r.mileage ? Number(r.mileage) : null,
+          colour:         r.color || null,
+          transmission:   r.transmission || null,
+          fuel_type:      r.fuel_type || null,
+          engine_cc:      r.engine_cc ? Number(r.engine_cc) : null,
+          condition:      r.condition || null,
+          description:    r.description || null,
+          state:          r.state || null,
+          is_recon:       (r.condition || '').toLowerCase() === 'recon',
+          auction_grade:  r.auction_grade || null,
+          interior_grade: r.interior_grade || null,
+          import_country: r.import_country || null,
+          dealer_id:      user.id,
+          status:         "available",
+          created_at:     now,
+        };
+      });
 
       const { error } = await supabase.from("car_listings").insert(records);
       if (error) throw error;

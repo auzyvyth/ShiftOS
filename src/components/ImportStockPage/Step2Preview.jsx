@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Trash2, ChevronRight } from 'lucide-react';
 
-const FIELDS = ['brand','model','year','price','mileage','color','transmission','fuel_type','engine_cc','condition'];
+const FIELDS = [
+  'brand','model','variant','year','price','mileage','color',
+  'transmission','fuel_type','engine_cc','condition',
+  'state','auction_grade','interior_grade','import_country',
+];
 
 export default function Step2Preview({ rows: initial, onBack, onNext }) {
   const [rows, setRows] = useState(initial);
@@ -24,7 +28,18 @@ export default function Step2Preview({ rows: initial, onBack, onNext }) {
             {rows.length} {rows.length === 1 ? 'car' : 'cars'} ready to import
           </span>
         </div>
-        <p className="text-xs text-gray-600">Click any cell to edit · Delete rows with <Trash2 className="w-3 h-3 inline mx-0.5" /></p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setRows(r => r.map(row => ({ ...row, condition: 'Recon' })))}
+            className="text-xs font-bold px-2.5 py-1 rounded-full transition-colors"
+            style={{ background: 'rgba(220,38,38,0.12)', color: '#f87171', border: '1px solid rgba(220,38,38,0.25)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.22)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.12)'; }}
+          >
+            Mark all Recon
+          </button>
+          <p className="text-xs text-gray-600">Click any cell to edit · Delete rows with <Trash2 className="w-3 h-3 inline mx-0.5" /></p>
+        </div>
       </div>
 
       {/* Table */}

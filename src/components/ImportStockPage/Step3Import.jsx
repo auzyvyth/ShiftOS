@@ -13,7 +13,7 @@ export default function Step3Import({ rows, importing, imported, error, onImport
         </div>
         <div>
           <p className="text-xl font-bold text-white">{imported} {imported === 1 ? 'car' : 'cars'} imported</p>
-          <p className="text-sm text-gray-500 mt-1">All listings are now live in your dashboard</p>
+          <p className="text-sm text-gray-500 mt-1">All listings are live on the marketplace. Add photos from Dashboard → Listings to improve visibility.</p>
         </div>
         <button
           onClick={onDone}
