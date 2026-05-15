@@ -764,24 +764,27 @@ export default function MarketplacePage() {
           <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
-                { label: 'All',          to: '/showroom',                            initials: 'ALL', color: '#DC2626' },
-                { label: 'Perodua',      to: '/showroom?brand=Perodua',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
-                { label: 'Proton',       to: '/showroom?brand=Proton',       logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg',           invert: true },
-                { label: 'Toyota',       to: '/showroom?brand=Toyota',       logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg',                 invert: true },
-                { label: 'Honda',        to: '/showroom?brand=Honda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-                { label: 'Nissan',       to: '/showroom?brand=Nissan',       logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg',            invert: true },
-                { label: 'Mazda',        to: '/showroom?brand=Mazda',        logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg',             invert: true },
-                { label: 'Mitsubishi',   to: '/showroom?brand=Mitsubishi',   logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
-                { label: 'BMW',          to: '/showroom?brand=BMW',          logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
-                { label: 'Mercedes',     to: '/showroom?brand=Mercedes-Benz',logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg',    invert: true },
-                { label: 'Hyundai',      to: '/showroom?brand=Hyundai',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg',  invert: true },
-              ].map(({ label, to, logo, initials, color, invert }) => {
-                const isActive = brand && label !== 'All' && searchParams.get('brand') === label;
+                { label: 'All',        brandVal: '',              initials: 'ALL', color: '#DC2626' },
+                { label: 'Perodua',    brandVal: 'Perodua',    logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
+                { label: 'Proton',     brandVal: 'Proton',     logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg' },
+                { label: 'Toyota',     brandVal: 'Toyota',     logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg' },
+                { label: 'Honda',      brandVal: 'Honda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
+                { label: 'Nissan',     brandVal: 'Nissan',     logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg' },
+                { label: 'Mazda',      brandVal: 'Mazda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg' },
+                { label: 'Mitsubishi', brandVal: 'Mitsubishi', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
+                { label: 'BMW',        brandVal: 'BMW',        logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
+                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg' },
+                { label: 'Hyundai',    brandVal: 'Hyundai',    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg' },
+              ].map(({ label, brandVal, logo, initials, color }) => {
+                const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
                 return (
-                  <a
+                  <button
                     key={label}
-                    href={to}
-                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
+                    onClick={() => {
+                      setParam('brand', brandVal);
+                      document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                   >
                     <div style={{
                       width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
@@ -794,12 +797,12 @@ export default function MarketplacePage() {
                     onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.08)' : '#ffffff'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
                       {logo ? (
-                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'none' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
                       ) : null}
                       <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
                     </div>
                     <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#6b7280', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
-                  </a>
+                  </button>
                 );
               })}
             </div>
