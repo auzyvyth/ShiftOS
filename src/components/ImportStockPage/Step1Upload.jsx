@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Link, FileSpreadsheet, FileText, X } from 'lucide-react';
+import { Upload, Link, FileSpreadsheet, FileText, X, Sparkles } from 'lucide-react';
 
-export default function Step1Upload({ onNext, onSample, loading }) {
+export default function Step1Upload({ onNext, onSample, loading, progress = 0, progressMsg = '' }) {
   const [file, setFile] = useState(null);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [drag, setDrag] = useState(false);
@@ -25,8 +25,34 @@ export default function Step1Upload({ onNext, onSample, loading }) {
   };
 
   const canProceed = !!file || sheetsUrl.trim().length > 0;
-
   const FileIcon = file?.name.endsWith('.pdf') ? FileText : FileSpreadsheet;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-5 py-10">
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}
+        >
+          <Sparkles className="w-7 h-7 text-red-500 animate-pulse" />
+        </div>
+
+        <div className="w-full space-y-2">
+          <div className="flex justify-between items-center">
+            <p className="text-sm font-semibold text-white">{progressMsg || 'Analysing…'}</p>
+            <p className="text-xs font-bold tabular-nums" style={{ color: '#ef4444' }}>{progress}%</p>
+          </div>
+          <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'rgba(255,255,255,0.07)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #dc2626, #ef4444)' }}
+            />
+          </div>
+          <p className="text-xs text-gray-600">This takes 1–2 minutes for large files — hang tight</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -94,10 +120,7 @@ export default function Step1Upload({ onNext, onSample, loading }) {
           value={sheetsUrl}
           onChange={(e) => { setSheetsUrl(e.target.value); setFile(null); }}
           className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none transition-all"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
           onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(220,38,38,0.5)')}
           onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
         />
@@ -109,17 +132,16 @@ export default function Step1Upload({ onNext, onSample, loading }) {
         disabled={!canProceed || loading}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all"
         style={{
-          background: canProceed && !loading ? '#dc2626' : 'rgba(255,255,255,0.05)',
-          color: canProceed && !loading ? '#fff' : '#4b5563',
-          cursor: canProceed && !loading ? 'pointer' : 'not-allowed',
+          background: canProceed ? '#dc2626' : 'rgba(255,255,255,0.05)',
+          color: canProceed ? '#fff' : '#4b5563',
+          cursor: canProceed ? 'pointer' : 'not-allowed',
         }}
       >
-        {loading ? 'Analysing with AI…' : 'Analyse & Preview →'}
+        Analyse & Preview →
       </button>
 
       <button
         onClick={onSample}
-        disabled={loading}
         className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
         style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: '#4b5563' }}
         onMouseEnter={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }}

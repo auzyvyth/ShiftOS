@@ -120,7 +120,9 @@ async function buildClaudeMessages(file, sheetsUrl) {
   throw new Error("Unsupported file type");
 }
 
-async function callClaude(messages) {
+async function callClaude(messages, onProgress) {
+  onProgress?.(4, 0, "Connecting to AI...");
+
   const res = await fetch(AI_PROXY, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -137,18 +139,21 @@ async function callClaude(messages) {
     throw new Error(err?.error?.message || err?.error || `API error ${res.status}`);
   }
 
-  // Consume SSE stream and accumulate text_delta events
+  onProgress?.(8, 0, "AI is reading your file...");
+
+  // Consume SSE stream, accumulate text_delta events, report live progress
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let buffer = "";
+  const ESTIMATED_CHARS = 20000; // ~200 cars of JSON
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
-    buffer = lines.pop(); // keep incomplete line
+    buffer = lines.pop();
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue;
       const raw = line.slice(6).trim();
@@ -157,16 +162,19 @@ async function callClaude(messages) {
         const evt = JSON.parse(raw);
         if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
           text += evt.delta.text;
+          const cars = (text.match(/"brand":/g) || []).length;
+          const pct = 8 + Math.min(82, (text.length / ESTIMATED_CHARS) * 82);
+          const msg = cars > 0 ? `Extracting listings… ${cars} found` : "Extracting listings…";
+          onProgress?.(Math.round(pct), cars, msg);
         }
-        if (evt.type === "error") {
-          throw new Error(evt.error?.message || "Anthropic stream error");
-        }
+        if (evt.type === "error") throw new Error(evt.error?.message || "Anthropic stream error");
       } catch (e) {
         if (e.message.includes("Anthropic")) throw e;
       }
     }
   }
 
+  onProgress?.(93, 0, "Parsing results…");
   try {
     return JSON.parse(text);
   } catch {
@@ -180,6 +188,8 @@ export default function ImportStockPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState("");
   const [rows, setRows] = useState([]);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(null);
@@ -193,14 +203,20 @@ export default function ImportStockPage() {
 
   const handleStep1 = async ({ file, sheetsUrl }) => {
     setLoading(true);
+    setProgress(2);
+    setProgressMsg("Preparing file…");
     setAnalyseError("");
     try {
       const messages = await buildClaudeMessages(file, sheetsUrl);
-      const parsed = await callClaude(messages);
+      const parsed = await callClaude(messages, (pct, _cars, msg) => {
+        setProgress(pct);
+        setProgressMsg(msg);
+      });
       if (!Array.isArray(parsed))
         throw new Error("Unexpected response format from AI");
-      setRows(parsed);
-      setStep(2);
+      setProgress(100);
+      setProgressMsg(`${parsed.length} cars extracted!`);
+      setTimeout(() => { setRows(parsed); setStep(2); }, 400);
     } catch (e) {
       setAnalyseError(e.message || "Unknown error");
     }
@@ -324,7 +340,7 @@ export default function ImportStockPage() {
                   <p>{analyseError}</p>
                 </div>
               )}
-              <Step1Upload onNext={handleStep1} onSample={handleSample} loading={loading} />
+              <Step1Upload onNext={handleStep1} onSample={handleSample} loading={loading} progress={progress} progressMsg={progressMsg} />
             </>
           )}
           {step === 2 && (
