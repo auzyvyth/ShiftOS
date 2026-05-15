@@ -11,12 +11,12 @@ import Step3Import from "../components/ImportStockPage/Step3Import";
 const AI_PROXY = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/ai/messages`
   : '/api/ai-messages';
-const MAX_CARS = 200;
+const MAX_CARS = 100;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":null,"description":null}
 Map any column names you find to the closest matching field.
-HARD LIMIT: Extract a maximum of 200 listings. Once you have written 200 objects, immediately close the array with ] and stop.
+HARD LIMIT: Extract a maximum of 100 listings. Once you have written 100 objects, immediately close the array with ] and stop.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
 For price: use the ADS PRICE column (the final selling/advertised price to the customer). Null if not found.
