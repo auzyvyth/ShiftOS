@@ -19,8 +19,8 @@ Map any column names you find to the closest matching field.
 HARD LIMIT: Extract a maximum of 100 listings. Once you have written 100 objects, immediately close the array with ] and stop.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
-For price: use the ADS PRICE column (the final selling/advertised price to the customer). Null if not found.
-For base_price: use the BASE PRICE column (the dealer cost / purchase price). Null if not found.
+For price: use the ADS PRICE column if present; also accept PRICE, SELLING PRICE, UNIT PRICE, ADVERTISED PRICE, or any column clearly representing the selling price to customers. If multiple price columns exist, prefer the higher/advertised one. Null only if no price is found at all.
+For base_price: use the BASE PRICE column if present; also accept COST, COST PRICE, PURCHASE PRICE, DEALER PRICE, IMPORT PRICE, or any column representing the dealer's cost or purchase price. Null only if no cost price is found at all.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
 For image_url: look for any column containing a URL. Extract it exactly. Null if not found.
 Transmission must be "Auto" or "Manual".

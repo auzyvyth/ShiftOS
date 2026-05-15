@@ -1832,7 +1832,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
         .from("car_listings")
         .select("id")
         .eq("dealer_id", dealerId)
-        .in("status", ["active", "reserved", "sold"]),
+        .in("status", ["active", "available", "reserved", "sold"]),
     ]).then(([eventsRes, listingsRes]) => {
       const directEvents = eventsRes.data || [];
       const dealerCarIds = new Set((listingsRes.data || []).map(l => l.id));
@@ -1922,7 +1922,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
 
   const total = listings.length;
   const active = listings.filter(
-    (l) => (l.status || "active") === "active",
+    (l) => ['active', 'available'].includes(l.status || 'active'),
   ).length;
   const sold = listings.filter((l) => l.status === "sold").length;
   const hot = listings.filter((l) => {
@@ -1937,7 +1937,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
     : 0;
   const stale = listings.filter(
     (l) =>
-      getListingAge(l.created_at) >= 30 && (l.status || "active") === "active",
+      getListingAge(l.created_at) >= 30 && ['active', 'available'].includes(l.status || 'active'),
   );
 
   const ctx = () => {
@@ -6406,7 +6406,7 @@ export default function DashboardPage() {
                   {/* ── Status filter tabs ── */}
                   <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginTop: 14 }}>
                     {[
-                      { key: 'active',   label: 'Active',   count: listings.filter(l => (l.status || 'active') === 'active').length },
+                      { key: 'active',   label: 'Active',   count: listings.filter(l => ['active', 'available'].includes(l.status || 'active')).length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
                       { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
                     ].map(({ key, label, count }) => (
