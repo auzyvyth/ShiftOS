@@ -10,12 +10,13 @@ import Step3Import from "../components/ImportStockPage/Step3Import";
 const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","description":""}
+{"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":"","description":""}
 Map any column names you find to the closest matching field.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
 For price: use the ADS PRICE column if present (the final selling/advertised price), NOT the BASE PRICE or cost price.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
+For image_url: look for any column containing a URL (http/https link, Google Drive link, Dropbox link, or any web URL). Extract the full URL exactly as written. Null if not found.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
 Condition must be "Used", "New", or "Recon".
@@ -31,6 +32,16 @@ const SAMPLE_ROWS = [
   { brand:'Toyota', model:'Vellfire', variant:'2.5 Z-G', year:2020, price:320000, mileage:24000, color:'White Pearl', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
   { brand:'Nissan', model:'X-Trail', variant:'2.0 4WD', year:2022, price:110000, mileage:15000, color:'Brilliant Silver', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Penang', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
 ];
+
+function driveToDirectUrl(url) {
+  if (!url) return null;
+  // https://drive.google.com/file/d/FILE_ID/view... → direct embeddable URL
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  // already a direct/image URL — return as-is
+  if (url.startsWith('http')) return url;
+  return null;
+}
 
 async function extractSheetId(url) {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -201,6 +212,7 @@ export default function ImportStockPage() {
           auction_grade:  r.auction_grade || null,
           interior_grade: r.interior_grade || null,
           import_country: r.import_country || null,
+          images:         r.image_url ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
           dealer_id:      user.id,
           status:         "available",
           created_at:     now,
