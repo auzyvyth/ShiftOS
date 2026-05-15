@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   MessageCircle,
   Shield,
@@ -626,6 +626,11 @@ const HomePage = () => {
   const ctaSubtitle = ctaData.subtitle;
   const ctaPrimaryLabel = ctaData.primary_label;
   const ctaSecondaryLabel = ctaData.secondary_label;
+
+  // Main domain (xdrive.my) with no subdomain → show public marketplace
+  if (!isSubdomain() && tenant === null) {
+    return <Navigate to="/marketplace" replace />;
+  }
 
   if (isSubdomain() && tenant === null && tenant !== undefined) {
     return (
