@@ -22,7 +22,7 @@ SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock 
 For price: use the ADS PRICE column if present; also accept PRICE, SELLING PRICE, UNIT PRICE, ADVERTISED PRICE, or any column clearly representing the selling price to customers. If multiple price columns exist, prefer the higher/advertised one. Null only if no price is found at all.
 For base_price: use the BASE PRICE column if present; also accept COST, COST PRICE, PURCHASE PRICE, DEALER PRICE, IMPORT PRICE, or any column representing the dealer's cost or purchase price. Null only if no cost price is found at all.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
-For vin: look for any column labeled VIN, CHASSIS, CHASSIS NO, FRAME NO, or any alphanumeric code that looks like a vehicle chassis/VIN (typically 8–17 characters, letters and digits). Extract it exactly as shown. Null if not found.
+For vin: look for any column labeled VIN, CHASSIS, CHASSIS NO, FRAME NO, or any code that looks like a Japanese chassis/frame number. Japanese chassis numbers follow patterns like "FL5-1234567", "ZN6-1234567", "GR3-1234567" — a 2–4 letter model code, a dash, then digits. Extract the full value including the dash, exactly as shown. Null if not found.
 For image_url: look for any column containing a URL. Extract it exactly. Null if not found.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
