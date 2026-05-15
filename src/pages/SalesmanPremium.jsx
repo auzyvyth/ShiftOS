@@ -5457,15 +5457,23 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const totalWA = analyticsEvents.filter((e) => e.event_type === "whatsapp_click").length;
     const cvr = totalViews > 0 ? ((totalWA / totalViews) * 100).toFixed(1) : "0";
     const enqCount = enquiries.length;
+    const storeVisits = new Set(
+      analyticsEvents
+        .filter((e) => e.event_type === "store_visit")
+        .map((e) => e.session_id || e.car_id),
+    ).size;
+    const pageViews = analyticsEvents.filter((e) => e.event_type === "page_view").length;
     return (
       <div>
         <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Analytics (30d)</p>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
           {[
             { label: "Listing Views", value: totalViews, color: "#93c5fd" },
             { label: "WA Taps", value: totalWA, color: "#4ade80" },
             { label: "CVR", value: `${cvr}%`, color: cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171" },
             { label: "Enquiries", value: enqCount, color: "#c084fc" },
+            { label: "Store Visits", value: storeVisits, color: "#c084fc" },
+            { label: "Page Views", value: pageViews, color: "#fb923c" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "14px 16px" }}>
               <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>

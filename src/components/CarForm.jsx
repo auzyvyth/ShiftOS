@@ -77,7 +77,7 @@ const initialListing = {
   deposit_amount: "",
 };
 
-const CAR_DATA = {
+export const CAR_DATA = {
   Perodua: [
     "Myvi",
     "Axia",

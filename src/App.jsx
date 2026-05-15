@@ -29,6 +29,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ImportStockPage from "./pages/ImportStockPage";
 import ComparePage from "./pages/ComparePage";
 import SavedCarsPage from "./pages/SavedCarsPage";
+import MarketplacePage from "./pages/MarketplacePage";
+import ShowroomPage from "./pages/ShowroomPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
@@ -51,6 +53,8 @@ function App() {
       <Routes>
         {/* Public — XDrive */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/showroom" element={<ShowroomPage />} />
         <Route path="/cars" element={<CarsPage />} />
         <Route path="/cars/:slug" element={<CarDetailPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />

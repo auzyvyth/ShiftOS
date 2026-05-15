@@ -1134,6 +1134,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
     const perfCarName = (car) =>
       [car.year, car.brand, car.model].filter(Boolean).join(" ");
+    const storeVisits = new Set(
+      analyticsEvents
+        .filter((e) => e.event_type === "store_visit")
+        .map((e) => e.session_id || e.car_id),
+    ).size;
+    const pageViews = analyticsEvents.filter(
+      (e) => e.event_type === "page_view",
+    ).length;
 
     return (
       <div>
@@ -1335,6 +1343,78 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   —
                 </p>
               )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 11,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                Store Visits
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 26,
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  letterSpacing: "1px",
+                  color: "#c084fc",
+                }}
+              >
+                {storeVisits}
+              </p>
+            </div>
+            <div
+              style={{
+                background: "#0d1117",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 11,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                Page Views
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 26,
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  letterSpacing: "1px",
+                  color: "#fb923c",
+                }}
+              >
+                {pageViews}
+              </p>
             </div>
           </div>
 

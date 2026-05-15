@@ -559,8 +559,8 @@ const HC_CSS = `
   }
 `;
 
-const INTERVAL_MS = 4000;
-const TOUCH_PAUSE = 10000;
+const INTERVAL_MS = 7000;
+const TOUCH_PAUSE = 25000;
 
 // Format price as RM 265,000
 function formatPrice(val) {
@@ -615,16 +615,18 @@ export default function HeroCarousel({ siteName, waNumber }) {
     fetchSlides();
   }, [tenant]);
 
-  // Preload ALL slide images on mount so they're cached
+  // Preload only active + next slide to avoid bandwidth waste
   useEffect(() => {
     if (!slides.length) return;
-    slides.forEach((s, i) => {
-      if (!s.image_url) return;
+    const toPreload = [idx, (idx + 1) % slides.length];
+    toPreload.forEach((i) => {
+      const s = slides[i];
+      if (!s?.image_url || imgLoaded[i]) return;
       const img = new Image();
       img.src = s.image_url;
       img.onload = () => setImgLoaded((prev) => ({ ...prev, [i]: true }));
     });
-  }, [slides]);
+  }, [slides, idx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const triggerManualPause = useCallback(() => {
     manualPaused.current = true;
