@@ -13,21 +13,22 @@ const AI_PROXY = import.meta.env.VITE_API_URL
   : '/api/ai-messages';
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":"","description":""}
+{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":null,"description":null}
 Map any column names you find to the closest matching field.
+CRITICAL: Extract EVERY single row. Do not stop early. Include all cars until the end of the data.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
 For price: use the ADS PRICE column (the final selling/advertised price to the customer). Null if not found.
 For base_price: use the BASE PRICE column (the dealer cost / purchase price). Null if not found.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
-For image_url: look for any column containing a URL (http/https link, Google Drive link, Dropbox link, or any web URL). Extract the full URL exactly as written. Null if not found.
+For image_url: look for any column containing a URL. Extract it exactly. Null if not found.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
 Condition must be "Used", "New", or "Recon".
 auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". Null if not found.
 interior_grade: "A","B","C","D". Null if not found.
-state: Malaysian state where the car is located e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
-Null for any field you cannot find.`;
+state: Malaysian state e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
+Always use null (not empty string) for missing fields. Keep all text values short. Set description to null always.`;
 
 const SAMPLE_ROWS = [
   { brand:'Toyota', model:'Alphard', variant:'2.5 SC', year:2022, price:280000, base_price:210000, mileage:18000, color:'Pearl White', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
@@ -128,7 +129,7 @@ async function callClaude(messages, onProgress) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 32000,
+      max_tokens: 64000,
       betas: ["output-128k-2025-02-19"],
       system: SYSTEM_PROMPT,
       messages,
