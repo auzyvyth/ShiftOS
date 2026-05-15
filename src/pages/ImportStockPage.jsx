@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../supabaseClient";
 import StepIndicator from "../components/ImportStockPage/StepIndicator";
 import Step1Upload from "../components/ImportStockPage/Step1Upload";
@@ -95,24 +96,23 @@ async function buildClaudeMessages(file, sheetsUrl) {
   }
 
   if (ext === "pdf") {
-    const b64 = await readFileAsBase64(file);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.mjs",
+      import.meta.url
+    ).toString();
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let fullText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item) => item.str).join(" ");
+      fullText += `\n--- Page ${i} ---\n${pageText}`;
+    }
     return [
       {
         role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: b64,
-            },
-          },
-          {
-            type: "text",
-            text: "Extract all car listings from this PDF document.",
-          },
-        ],
+        content: `Here is the car listing PDF extracted as text:\n\n${fullText}`,
       },
     ];
   }
