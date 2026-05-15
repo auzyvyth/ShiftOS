@@ -136,8 +136,37 @@ async function callClaude(messages) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error?.message || err?.error || `API error ${res.status}`);
   }
-  const data = await res.json();
-  const text = data?.content?.[0]?.text ?? "";
+
+  // Consume SSE stream and accumulate text_delta events
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop(); // keep incomplete line
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(raw);
+        if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+          text += evt.delta.text;
+        }
+        if (evt.type === "error") {
+          throw new Error(evt.error?.message || "Anthropic stream error");
+        }
+      } catch (e) {
+        if (e.message.includes("Anthropic")) throw e;
+      }
+    }
+  }
+
   try {
     return JSON.parse(text);
   } catch {
