@@ -34,8 +34,9 @@ export default async function handler(req) {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        ...(body.betas ? { "anthropic-beta": body.betas.join(",") } : {}),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, betas: undefined }),
     });
 
     const data = await resp.json();

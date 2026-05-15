@@ -126,7 +126,8 @@ async function callClaude(messages) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 16384,
+      max_tokens: 32000,
+      betas: ["output-128k-2025-02-19"],
       system: SYSTEM_PROMPT,
       messages,
     }),
