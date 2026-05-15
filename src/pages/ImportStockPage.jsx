@@ -12,12 +12,15 @@ const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership 
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","description":""}
 Map any column names you find to the closest matching field.
+SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
+SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
+For price: use the ADS PRICE column if present (the final selling/advertised price), NOT the BASE PRICE or cost price.
+For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
 Condition must be "Used", "New", or "Recon".
 auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". Null if not found.
 interior_grade: "A","B","C","D". Null if not found.
-import_country: country of origin e.g. "Japan","UK". Null if not found.
 state: Malaysian state where the car is located e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
 Null for any field you cannot find.`;
 
@@ -109,7 +112,7 @@ async function callClaude(messages) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
+      max_tokens: 16384,
       system: SYSTEM_PROMPT,
       messages,
     }),
