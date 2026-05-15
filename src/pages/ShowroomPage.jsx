@@ -369,7 +369,7 @@ export default function ShowroomPage() {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
       let query = supabase.from('car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
-        .eq('status','available');
+        .eq('status','active');
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
         tokens.forEach(t => {
