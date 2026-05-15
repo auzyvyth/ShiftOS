@@ -94,6 +94,7 @@ export default function MarketplacePage() {
 
   const [heroQ,        setHeroQ]        = useState('');
   const [heroBudget,   setHeroBudget]   = useState('');
+  const [heroState,    setHeroState]    = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   /* Data state */
@@ -700,6 +701,7 @@ export default function MarketplacePage() {
                   const p = new URLSearchParams();
                   if (heroQ)      p.set('q', heroQ);
                   if (heroBudget) p.set('max_price', heroBudget);
+                  if (heroState)  p.set('state', heroState);
                   navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
                 }}>
                   <div style={{ marginBottom:'8px' }}>
@@ -714,7 +716,8 @@ export default function MarketplacePage() {
                     />
                   </div>
 
-                  <div style={{ display:'flex', gap:'8px', marginBottom:'10px' }}>
+                  {/* Budget + State row */}
+                  <div style={{ display:'flex', gap:'8px', marginBottom:'8px' }}>
                     <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
                       <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
                         style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
@@ -723,16 +726,33 @@ export default function MarketplacePage() {
                       </select>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                     </div>
-                    <button type="submit"
-                      style={{ background:'#dc2626', color:'#fff', border:'none', padding:'0 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', flexShrink:0, borderRadius:'10px' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
-                      onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                    ><Search size={13}/> Search</button>
+                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                      <select value={heroState} onChange={e=>setHeroState(e.target.value)}
+                        style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                        <option value="" style={{ background:'#0d1117' }}>Any state</option>
+                        {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                      </select>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
                   </div>
+
+                  {/* Find Cars button — full width */}
+                  <button type="submit"
+                    style={{ width:'100%', background:'#dc2626', color:'#fff', border:'none', padding:'11px', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px', marginBottom:'8px' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                    onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
+                  ><Search size={13}/> Find Cars</button>
+
+                  {/* Hot deals shortcut */}
+                  <button type="button"
+                    onClick={() => { setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); }}
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.45)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:'0 0 4px', width:'100%' }}>
+                    🔥 Browse hot deals →
+                  </button>
 
                   {/* Advanced search trigger → opens modal */}
                   <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.38)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:0 }}>
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.28)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:0 }}>
                     <SlidersHorizontal size={11}/>
                     Advanced search
                   </button>
@@ -805,6 +825,54 @@ export default function MarketplacePage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Quick-filter strip ── */}
+        <section style={{ background: '#F7F6F2', padding: '0 20px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', flexWrap: 'wrap' }}>
+              {[
+                { groupLabel: 'Condition', pills: [
+                  { label: 'Used',          paramKey: 'condition', paramVal: 'used' },
+                  { label: 'Recon / Import',paramKey: 'condition', paramVal: 'recon' },
+                  { label: 'New',           paramKey: 'condition', paramVal: 'new' },
+                ]},
+                { groupLabel: 'Body Type', pills: [
+                  { label: 'Sedan',     paramKey: 'body_type', paramVal: 'Sedan' },
+                  { label: 'SUV',       paramKey: 'body_type', paramVal: 'SUV' },
+                  { label: 'Hatchback', paramKey: 'body_type', paramVal: 'Hatchback' },
+                  { label: 'MPV',       paramKey: 'body_type', paramVal: 'MPV' },
+                ]},
+                { groupLabel: 'Gearbox', pills: [
+                  { label: 'Auto',   paramKey: 'transmission', paramVal: 'Auto' },
+                  { label: 'Manual', paramKey: 'transmission', paramVal: 'Manual' },
+                ]},
+              ].map(({ groupLabel, pills }) => (
+                <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
+                  {pills.map(({ label, paramKey, paramVal }) => {
+                    const isActive = searchParams.get(paramKey) === paramVal;
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => {
+                          setParam(paramKey, isActive ? '' : paramVal);
+                          document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                        style={{
+                          padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                          fontFamily: "'Outfit',sans-serif", cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                          background: isActive ? 'rgba(220,38,38,0.1)' : 'rgba(0,0,0,0.05)',
+                          color: isActive ? '#dc2626' : '#374151',
+                          outline: isActive ? '1.5px solid rgba(220,38,38,0.4)' : '1.5px solid transparent',
+                        }}
+                      >{label}</button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </section>
