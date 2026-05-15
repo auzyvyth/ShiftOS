@@ -70,6 +70,11 @@ Never use session.user.id / user.id in queries — always derive via getDealerId
 Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
   Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
 
+## Git
+- ALWAYS push to both branches after every commit:
+  git push origin main && git push origin main:Shiftos --force
+- Vercel deploys from Shiftos branch
+
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
 - Always read the target file first before editing
