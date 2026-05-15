@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import CarCard from '@/components/CarCard';
+import CarCardMarket from '@/components/CarCardMarket';
 
 const CAROUSEL_GAP = 12;
 
@@ -98,7 +98,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
               ? <div style={{ width: '100%', padding: '32px 0', color: '#9ca3af', fontSize: 13, fontFamily: "'Outfit',sans-serif", textAlign: 'center' }}>No {title.toLowerCase()} listed yet</div>
               : cars.map(car => (
                 <div key={car.id} style={{ width: cardW, flexShrink: 0 }}>
-                  <CarCard car={car} ctaContext={ctaContext} />
+                  <CarCardMarket car={car} />
                 </div>
               ))
             }

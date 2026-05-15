@@ -807,16 +807,16 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Body Type Carousels — lazy loaded ── */}
-        <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '52px 0 56px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '32px 0 40px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <style>{`
-            .btc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px 32px; }
+            .btc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 28px; }
             .btc-scroll::-webkit-scrollbar { display: none; }
             @media (max-width: 768px) {
-              .btc-grid { grid-template-columns: 1fr !important; gap: 44px !important; }
+              .btc-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
             }
           `}</style>
           <div style={{ maxWidth: 1360, margin: '0 auto', padding: '0 36px' }}>
-            <div style={{ marginBottom: 36 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Browse by Category</p>
               <h2 style={{ margin: 0, fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>Shop by Body Type</h2>
             </div>
@@ -824,7 +824,7 @@ export default function MarketplacePage() {
               <BodyTypeCarousel title="Compact Cars"  eyebrow="City & Daily Drive"       bodyType="Hatchback" cars={bodyTypeCars.Hatchback} loading={bodyTypeLoading} ctaContext={ctaCtx} />
               <BodyTypeCarousel title="Sedans"         eyebrow="Executive & Family"       bodyType="Sedan"     cars={bodyTypeCars.Sedan}    loading={bodyTypeLoading} ctaContext={ctaCtx} />
               {/* Thin divider between rows */}
-              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(0,0,0,0.09)', margin: '8px 0' }} />
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(0,0,0,0.09)', margin: '4px 0' }} />
               <BodyTypeCarousel title="SUVs"           eyebrow="Spacious & Versatile"     bodyType="SUV"       cars={bodyTypeCars.SUV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
               <BodyTypeCarousel title="MPVs"           eyebrow="Family People Carriers"   bodyType="MPV"       cars={bodyTypeCars.MPV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
             </div>
