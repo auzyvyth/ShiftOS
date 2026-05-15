@@ -129,7 +129,7 @@ async function callClaude(messages, onProgress) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 64000,
+      max_tokens: 128000,
       betas: ["output-128k-2025-02-19"],
       system: SYSTEM_PROMPT,
       messages,
@@ -142,12 +142,13 @@ async function callClaude(messages, onProgress) {
 
   onProgress?.(8, 0, "AI is reading your file...");
 
-  // Consume SSE stream, accumulate text_delta events, report live progress
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let buffer = "";
-  const ESTIMATED_CHARS = 20000; // ~200 cars of JSON
+  let inputTokens = 0;
+  let outputTokens = 0;
+  const ESTIMATED_CHARS = 25000;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -161,6 +162,12 @@ async function callClaude(messages, onProgress) {
       if (!raw || raw === "[DONE]") continue;
       try {
         const evt = JSON.parse(raw);
+        if (evt.type === "message_start") {
+          inputTokens = evt.message?.usage?.input_tokens || 0;
+        }
+        if (evt.type === "message_delta") {
+          outputTokens = evt.usage?.output_tokens || 0;
+        }
         if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
           text += evt.delta.text;
           const cars = (text.match(/"brand":/g) || []).length;
@@ -177,10 +184,11 @@ async function callClaude(messages, onProgress) {
 
   onProgress?.(93, 0, "Parsing results…");
   try {
-    return JSON.parse(text);
+    const result = JSON.parse(text);
+    return { result, inputTokens, outputTokens };
   } catch {
     const match = text.match(/\[[\s\S]*\]/);
-    if (match) return JSON.parse(match[0]);
+    if (match) return { result: JSON.parse(match[0]), inputTokens, outputTokens };
     throw new Error("Could not parse JSON from response");
   }
 }
@@ -192,6 +200,7 @@ export default function ImportStockPage() {
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState("");
   const [rows, setRows] = useState([]);
+  const [usage, setUsage] = useState(null);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
@@ -199,6 +208,7 @@ export default function ImportStockPage() {
 
   const handleSample = () => {
     setRows(SAMPLE_ROWS);
+    setUsage(null);
     setStep(2);
   };
 
@@ -209,15 +219,16 @@ export default function ImportStockPage() {
     setAnalyseError("");
     try {
       const messages = await buildClaudeMessages(file, sheetsUrl);
-      const parsed = await callClaude(messages, (pct, _cars, msg) => {
+      const { result, inputTokens, outputTokens } = await callClaude(messages, (pct, _cars, msg) => {
         setProgress(pct);
         setProgressMsg(msg);
       });
-      if (!Array.isArray(parsed))
+      if (!Array.isArray(result))
         throw new Error("Unexpected response format from AI");
       setProgress(100);
-      setProgressMsg(`${parsed.length} cars extracted!`);
-      setTimeout(() => { setRows(parsed); setStep(2); }, 400);
+      setProgressMsg(`${result.length} cars extracted!`);
+      setUsage({ inputTokens, outputTokens });
+      setTimeout(() => { setRows(result); setStep(2); }, 400);
     } catch (e) {
       setAnalyseError(e.message || "Unknown error");
     }
@@ -347,6 +358,7 @@ export default function ImportStockPage() {
           {step === 2 && (
             <Step2Preview
               rows={rows}
+              usage={usage}
               onBack={() => setStep(1)}
               onNext={handleStep2}
             />

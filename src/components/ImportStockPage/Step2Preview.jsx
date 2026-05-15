@@ -7,7 +7,24 @@ const FIELDS = [
   'state','auction_grade','interior_grade','import_country',
 ];
 
-export default function Step2Preview({ rows: initial, onBack, onNext }) {
+function fmt(n) { return n?.toLocaleString() ?? '—'; }
+
+function UsageBar({ usage }) {
+  if (!usage) return null;
+  const { inputTokens, outputTokens } = usage;
+  const total = inputTokens + outputTokens;
+  const cost = ((inputTokens / 1_000_000) * 3 + (outputTokens / 1_000_000) * 15).toFixed(4);
+  return (
+    <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: '#6b7280' }}>
+      <span>In: <b className="text-gray-400">{fmt(inputTokens)}</b></span>
+      <span>Out: <b className="text-gray-400">{fmt(outputTokens)}</b></span>
+      <span>Total: <b className="text-gray-400">{fmt(total)}</b></span>
+      <span style={{ color: '#4ade80' }}>~${cost} used</span>
+    </div>
+  );
+}
+
+export default function Step2Preview({ rows: initial, usage, onBack, onNext }) {
   const [rows, setRows] = useState(initial);
 
   const update = (i, field, val) =>
@@ -41,6 +58,8 @@ export default function Step2Preview({ rows: initial, onBack, onNext }) {
           <p className="text-xs text-gray-600">Click any cell to edit · Delete rows with <Trash2 className="w-3 h-3 inline mx-0.5" /></p>
         </div>
       </div>
+
+      <UsageBar usage={usage} />
 
       {/* Table */}
       <div className="rounded-xl overflow-auto" style={{ border: '1px solid rgba(255,255,255,0.07)', maxHeight: 420 }}>
