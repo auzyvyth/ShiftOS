@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Trash2, ChevronRight } from 'lucide-react';
 
 const FIELDS = [
-  'brand','model','variant','year','price','mileage','color',
+  'brand','model','variant','year','price','base_price','mileage','color',
   'transmission','fuel_type','engine_cc','condition',
   'state','auction_grade','interior_grade','import_country',
 ];

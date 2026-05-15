@@ -7,14 +7,17 @@ import Step1Upload from "../components/ImportStockPage/Step1Upload";
 import Step2Preview from "../components/ImportStockPage/Step2Preview";
 import Step3Import from "../components/ImportStockPage/Step3Import";
 
-const AI_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/messages`;
+const AI_PROXY = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/ai/messages`
+  : '/api/ai-messages';
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":"","description":""}
+{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":"","description":""}
 Map any column names you find to the closest matching field.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
-For price: use the ADS PRICE column if present (the final selling/advertised price), NOT the BASE PRICE or cost price.
+For price: use the ADS PRICE column (the final selling/advertised price to the customer). Null if not found.
+For base_price: use the BASE PRICE column (the dealer cost / purchase price). Null if not found.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
 For image_url: look for any column containing a URL (http/https link, Google Drive link, Dropbox link, or any web URL). Extract the full URL exactly as written. Null if not found.
 Transmission must be "Auto" or "Manual".
@@ -26,11 +29,11 @@ state: Malaysian state where the car is located e.g. "Selangor","Kuala Lumpur","
 Null for any field you cannot find.`;
 
 const SAMPLE_ROWS = [
-  { brand:'Toyota', model:'Alphard', variant:'2.5 SC', year:2022, price:280000, mileage:18000, color:'Pearl White', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
-  { brand:'Honda', model:'Vezel', variant:'1.5 RS e:HEV', year:2023, price:155000, mileage:9000, color:'Platinum White', transmission:'Auto', fuel_type:'Hybrid', engine_cc:1496, condition:'Recon', state:'Kuala Lumpur', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
-  { brand:'Mazda', model:'CX-5', variant:'2.0 SkyActiv', year:2021, price:125000, mileage:32000, color:'Soul Red Crystal', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Johor', auction_grade:'3.5', interior_grade:'B', import_country:'Japan', description:'' },
-  { brand:'Toyota', model:'Vellfire', variant:'2.5 Z-G', year:2020, price:320000, mileage:24000, color:'White Pearl', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
-  { brand:'Nissan', model:'X-Trail', variant:'2.0 4WD', year:2022, price:110000, mileage:15000, color:'Brilliant Silver', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Penang', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Toyota', model:'Alphard', variant:'2.5 SC', year:2022, price:280000, base_price:210000, mileage:18000, color:'Pearl White', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Honda', model:'Vezel', variant:'1.5 RS e:HEV', year:2023, price:155000, base_price:118000, mileage:9000, color:'Platinum White', transmission:'Auto', fuel_type:'Hybrid', engine_cc:1496, condition:'Recon', state:'Kuala Lumpur', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Mazda', model:'CX-5', variant:'2.0 SkyActiv', year:2021, price:125000, base_price:95000, mileage:32000, color:'Soul Red Crystal', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Johor', auction_grade:'3.5', interior_grade:'B', import_country:'Japan', description:'' },
+  { brand:'Toyota', model:'Vellfire', variant:'2.5 Z-G', year:2020, price:320000, base_price:245000, mileage:24000, color:'White Pearl', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Nissan', model:'X-Trail', variant:'2.0 4WD', year:2022, price:110000, base_price:84000, mileage:15000, color:'Brilliant Silver', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Penang', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
 ];
 
 function driveToDirectUrl(url) {
@@ -219,9 +222,39 @@ export default function ImportStockPage() {
         };
       });
 
-      const { error } = await supabase.from("car_listings").insert(records);
+      // Insert into car_listings and get back IDs for stock_units linkage
+      const { data: inserted, error } = await supabase
+        .from("car_listings")
+        .insert(records)
+        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade');
       if (error) throw error;
-      setImported(records.length);
+
+      // Mirror into stock_units (dealer cost view)
+      const stockRows = inserted.map((listing, i) => ({
+        dealer_id:      user.id,
+        listing_id:     listing.id,
+        brand:          listing.brand,
+        model:          listing.model,
+        variant:        listing.variant,
+        year:           listing.year,
+        colour:         listing.colour,
+        transmission:   listing.transmission,
+        fuel_type:      listing.fuel_type,
+        engine_cc:      listing.engine_cc,
+        mileage:        listing.mileage,
+        is_recon:       listing.is_recon,
+        import_country: listing.import_country,
+        auction_grade:  listing.auction_grade,
+        interior_grade: listing.interior_grade,
+        purchase_price: rows[i]?.base_price ? Number(rows[i].base_price) : null,
+        asking_price:   listing.selling_price,
+        status:         'available',
+        created_at:     now,
+      }));
+      const { error: stockError } = await supabase.from("stock_units").insert(stockRows);
+      if (stockError) console.warn('stock_units insert partial failure:', stockError.message);
+
+      setImported(inserted.length);
     } catch (e) {
       setImportError(e.message || "Import failed");
     }
