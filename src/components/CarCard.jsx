@@ -136,6 +136,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,#111827 25%,#1f2937 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'shimmer 1.5s infinite' }}/>
               )}
               <img src={image} alt={`${year} ${brand} ${model}`}
+                loading="lazy"
                 onError={() => setImgError(true)}
                 onLoad={() => setImgLoaded(true)}
                 style={{ width:'100%', height:'100%', objectFit:'cover', opacity: imgLoaded ? 1 : 0, transition:'opacity 0.3s ease', filter: isSold ? 'grayscale(70%)' : 'none' }}

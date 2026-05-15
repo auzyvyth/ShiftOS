@@ -103,9 +103,15 @@ export default function MarketplacePage() {
   const [error, setError]         = useState(null);
   const [loadPage, setLoadPage]   = useState(1);
 
-  /* Body-type carousels */
+  /* Body-type carousels — lazy loaded when section enters viewport */
   const [bodyTypeCars, setBodyTypeCars] = useState({ Hatchback: [], Sedan: [], SUV: [], MPV: [] });
-  const [bodyTypeLoading, setBodyTypeLoading] = useState(true);
+  const [bodyTypeLoading, setBodyTypeLoading] = useState(false);
+  const carouselSectionRef = useRef(null);
+  const carouselFetched = useRef(false);
+
+  /* Sentinel for auto-load */
+  const sentinelRef = useRef(null);
+  const MAX_AUTO_PAGES = 3;
 
   /* Stats (fetched once) */
   const [stats, setStats] = useState({ listings: null, dealers: null, hotDeals: null });
@@ -139,26 +145,35 @@ export default function MarketplacePage() {
     fetchStats();
   }, []);
 
-  /* ── Fetch body type carousels ── */
+  /* ── Fetch body type carousels — only when section enters viewport ── */
   useEffect(() => {
-    const types = ['Hatchback', 'Sedan', 'SUV', 'MPV'];
-    Promise.all(
-      types.map(type =>
-        supabase
-          .from('car_listings')
-          .select(CAR_FIELDS)
-          .eq('status', 'available')
-          .eq('body_type', type)
-          .order('created_at', { ascending: false })
-          .limit(10)
-          .then(({ data }) => [type, data || []])
-      )
-    ).then(results => {
-      const map = {};
-      results.forEach(([type, data]) => { map[type] = data; });
-      setBodyTypeCars(map);
-      setBodyTypeLoading(false);
-    });
+    const el = carouselSectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || carouselFetched.current) return;
+      carouselFetched.current = true;
+      setBodyTypeLoading(true);
+      const types = ['Hatchback', 'Sedan', 'SUV', 'MPV'];
+      Promise.all(
+        types.map(type =>
+          supabase
+            .from('car_listings')
+            .select(CAR_FIELDS)
+            .eq('status', 'available')
+            .eq('body_type', type)
+            .order('created_at', { ascending: false })
+            .limit(10)
+            .then(({ data }) => [type, data || []])
+        )
+      ).then(results => {
+        const map = {};
+        results.forEach(([type, data]) => { map[type] = data; });
+        setBodyTypeCars(map);
+        setBodyTypeLoading(false);
+      });
+    }, { rootMargin: '200px' });
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
   /* ── Fetch cars (server-side, load-more) ── */
@@ -232,6 +247,18 @@ export default function MarketplacePage() {
   useEffect(() => {
     fetchCars();
   }, [fetchCars]);
+
+  /* ── Sentinel: auto-load next page when bottom of grid enters viewport ── */
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    if (loading || cars.length >= totalCount || loadPage >= MAX_AUTO_PAGES) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setLoadPage(p => p + 1);
+    }, { rootMargin: '120px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading, cars.length, totalCount, loadPage]);
 
   /* ── Filter helpers ── */
   const setParam = (key, value) => {
@@ -779,8 +806,8 @@ export default function MarketplacePage() {
           </div>
         </section>
 
-        {/* ── Body Type Carousels ── */}
-        <section style={{ background: '#EDEAE3', padding: '52px 0 56px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        {/* ── Body Type Carousels — lazy loaded ── */}
+        <section ref={carouselSectionRef} style={{ background: '#EDEAE3', padding: '52px 0 56px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <style>{`
             .btc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px 32px; }
             .btc-scroll::-webkit-scrollbar { display: none; }
@@ -897,34 +924,46 @@ export default function MarketplacePage() {
                 </div>
               )}
 
-              {/* See more → Showroom */}
-              {!loading && !error && cars.length < totalCount && (
+              {/* Sentinel — invisible trigger for auto-load */}
+              {!loading && !error && cars.length < totalCount && loadPage < MAX_AUTO_PAGES && (
+                <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
+              )}
+
+              {/* Loading indicator for auto-load */}
+              {loading && loadPage > 1 && (
+                <div style={{ textAlign:'center', padding:'24px 0', fontFamily:"'Outfit',sans-serif", fontSize:'13px', color:'#9ca3af' }}>
+                  Loading more…
+                </div>
+              )}
+
+              {/* Browse all → Showroom (shown when auto-load cap reached or no more) */}
+              {!loading && !error && cars.length < totalCount && loadPage >= MAX_AUTO_PAGES && (
                 <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
                   <button
                     onClick={() => {
                       const p = new URLSearchParams();
-                      if (brand)       p.set('brand', brand);
-                      if (model)       p.set('model', model);
-                      if (variant)     p.set('variant', variant);
-                      if (bodyType)    p.set('bodyType', bodyType);
-                      if (state)       p.set('state', state);
-                      if (minPrice)    p.set('minPrice', minPrice);
-                      if (maxPrice)    p.set('maxPrice', maxPrice);
-                      if (transmission)p.set('transmission', transmission);
-                      if (condition)   p.set('condition', condition);
-                      if (fuelType)    p.set('fuelType', fuelType);
-                      if (colour)      p.set('colour', colour);
-                      if (sellerType)  p.set('sellerType', sellerType);
-                      if (q)           p.set('q', q);
+                      if (brand)        p.set('brand', brand);
+                      if (model)        p.set('model', model);
+                      if (variant)      p.set('variant', variant);
+                      if (bodyType)     p.set('body_type', bodyType);
+                      if (state)        p.set('state', state);
+                      if (minPrice)     p.set('min_price', minPrice);
+                      if (maxPrice)     p.set('max_price', maxPrice);
+                      if (transmission) p.set('transmission', transmission);
+                      if (condition)    p.set('condition', condition);
+                      if (fuelType)     p.set('fuel_type', fuelType);
+                      if (colour)       p.set('colour', colour);
+                      if (sellerType)   p.set('seller_type', sellerType);
+                      if (q)            p.set('q', q);
                       navigate(`/showroom?${p.toString()}`);
                     }}
-                    style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.12)', color:'#111827', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 2px 8px rgba(0,0,0,0.06)', transition:'all 0.15s' }}
-                    onMouseEnter={e=>{ e.currentTarget.style.background='#dc2626'; e.currentTarget.style.color='#fff'; e.currentTarget.style.borderColor='#dc2626'; }}
-                    onMouseLeave={e=>{ e.currentTarget.style.background='#ffffff'; e.currentTarget.style.color='#111827'; e.currentTarget.style.borderColor='rgba(0,0,0,0.12)'; }}
+                    style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                    onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                   >
-                    See more <ArrowRight size={14}/>
+                    Browse all {totalCount.toLocaleString()} cars <ArrowRight size={14}/>
                   </button>
-                  <p style={{ marginTop:'10px', color:'#9ca3af', fontSize:'12px', fontFamily:"'Outfit',sans-serif" }}>{cars.length.toLocaleString()} of {totalCount.toLocaleString()} cars</p>
+                  <p style={{ marginTop:'10px', color:'#9ca3af', fontSize:'12px', fontFamily:"'Outfit',sans-serif" }}>Showing {cars.length} of {totalCount.toLocaleString()}</p>
                 </div>
               )}
             </div>
