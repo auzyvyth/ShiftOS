@@ -14,7 +14,7 @@ const AI_PROXY = import.meta.env.VITE_API_URL
 const MAX_CARS = 100;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":null,"description":null}
+{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"image_url":null,"description":null}
 Map any column names you find to the closest matching field.
 HARD LIMIT: Extract a maximum of 100 listings. Once you have written 100 objects, immediately close the array with ] and stop.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
@@ -22,6 +22,7 @@ SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock 
 For price: use the ADS PRICE column if present; also accept PRICE, SELLING PRICE, UNIT PRICE, ADVERTISED PRICE, or any column clearly representing the selling price to customers. If multiple price columns exist, prefer the higher/advertised one. Null only if no price is found at all.
 For base_price: use the BASE PRICE column if present; also accept COST, COST PRICE, PURCHASE PRICE, DEALER PRICE, IMPORT PRICE, or any column representing the dealer's cost or purchase price. Null only if no cost price is found at all.
 For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
+For vin: look for any column labeled VIN, CHASSIS, CHASSIS NO, FRAME NO, or any alphanumeric code that looks like a vehicle chassis/VIN (typically 8–17 characters, letters and digits). Extract it exactly as shown. Null if not found.
 For image_url: look for any column containing a URL. Extract it exactly. Null if not found.
 Transmission must be "Auto" or "Manual".
 Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
@@ -281,6 +282,7 @@ export default function ImportStockPage() {
           auction_grade:  r.auction_grade || null,
           interior_grade: r.interior_grade || null,
           import_country: r.import_country || null,
+          vin:            r.vin || null,
           images:         r.image_url ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
           dealer_id:      user.id,
           status:         "available",
@@ -292,7 +294,7 @@ export default function ImportStockPage() {
       const { data: inserted, error } = await supabase
         .from("car_listings")
         .insert(records)
-        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade');
+        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade, vin');
       if (error) throw error;
 
       // Mirror into stock_units (dealer cost view)
@@ -312,6 +314,7 @@ export default function ImportStockPage() {
         import_country: listing.import_country,
         auction_grade:  listing.auction_grade,
         interior_grade: listing.interior_grade,
+        vin:            listing.vin,
         purchase_price: rows[i]?.base_price ? Number(rows[i].base_price) : null,
         asking_price:   listing.selling_price,
         status:         'available',
