@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import CarFormLite from "../components/CarFormLite";
+import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import {
@@ -189,6 +190,7 @@ export default function SalesmanPremium() {
   const [myListings, setMyListings] = useState([]);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showFastForm, setShowFastForm] = useState(false);
 
   // leads
   const [leads, setLeads] = useState([]);
@@ -1889,25 +1891,34 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           >
             My Listings ({myListings.length})
           </p>
-          <button
-            onClick={() => setShowAddForm((v) => !v)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#1d4ed8",
-              border: "none",
-              borderRadius: 8,
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 600,
-              padding: "7px 12px",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={13} /> {showAddForm ? "Cancel" : "Add Listing"}
-          </button>
+          <div style={{ display: "flex", gap: 7 }}>
+            <button
+              onClick={() => { setShowFastForm(v => !v); setShowAddForm(false); }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: showFastForm ? "rgba(220,38,38,0.15)" : "#dc2626", border: showFastForm ? "1px solid rgba(220,38,38,0.4)" : "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
+            >
+              ⚡ {showFastForm ? "Cancel" : "Fast"}
+            </button>
+            <button
+              onClick={() => { setShowAddForm(v => !v); setShowFastForm(false); }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: showAddForm ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
+            >
+              <Plus size={13} /> {showAddForm ? "Cancel" : "Full Form"}
+            </button>
+          </div>
         </div>
+
+        {showFastForm && (
+          <div style={{ marginBottom: 24, background: "#0d1117", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: 16 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 12, fontWeight: 700, color: "#fca5a5" }}>⚡ Fast List — 2 steps, live in 30 seconds</p>
+            <CarFormFast
+              onCreate={(car) => {
+                setMyListings((p) => [car, ...p]);
+                setShowFastForm(false);
+                toast.success("Listed! Add more details anytime.");
+              }}
+            />
+          </div>
+        )}
 
         {showAddForm && (
           <div
@@ -1929,7 +1940,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
-        {myListings.length > 0 && !showAddForm && (
+        {myListings.length > 0 && !showAddForm && !(showFastForm) && (
           <>
             {/* Summary strip */}
             <div

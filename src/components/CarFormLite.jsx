@@ -90,7 +90,7 @@ export default function CarFormLite({ onCreate }) {
         .insert([{
           dealer_id: profile.id,
           assigned_to: profile.id,
-          status: "active",
+          status: "available",
           images: urls,
           brand: f.brand,
           model: f.model,

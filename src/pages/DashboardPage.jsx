@@ -11,6 +11,7 @@ import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import CarForm from "../components/CarForm";
+import CarFormFast from "../components/CarFormFast";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import FinancingCalculator from "../components/FinancingCalculator";
 import LeadsPage from "./LeadsPage";
@@ -5361,6 +5362,7 @@ export default function DashboardPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listings");
+  const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tiktokListing, setTiktokListing] = useState(null);
@@ -6384,13 +6386,19 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <button
+                        onClick={() => setShowFastModal(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        ⚡ Fast
+                      </button>
+                      <button
                         onClick={() => setActiveTab("add")}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
                       >
                         <PlusCircle style={{ width: 14, height: 14 }} />
-                        Add
+                        Full Form
                       </button>
                     </div>
                   </div>
@@ -6790,6 +6798,27 @@ export default function DashboardPage() {
                 </span>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Fast List modal ── */}
+      {showFastModal && (
+        <div onClick={() => setShowFastModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', fontFamily: "'DM Sans',sans-serif" }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#4b5563' }}>2 steps — live in 30 seconds</p>
+              </div>
+              <button onClick={() => setShowFastModal(false)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 8, color: '#6b7280', width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <CarFormFast
+              onCreate={(car) => {
+                setShowFastModal(false);
+                toast.success("Listed! Add more details anytime.");
+              }}
+            />
           </div>
         </div>
       )}
