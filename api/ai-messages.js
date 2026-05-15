@@ -1,43 +1,52 @@
-/* eslint-env node */
-// Vercel serverless function — proxies to Anthropic Messages API
-// Handles large base64 PDF payloads (up to 20mb)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '20mb',
-    },
-  },
-};
+// Vercel Edge Function — Anthropic Messages API proxy
+export const config = { runtime: "edge" };
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+export default async function handler(req) {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Server missing ANTHROPIC_API_KEY' });
+    return new Response(JSON.stringify({ error: "Server missing ANTHROPIC_API_KEY" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
 
-    const text = await resp.text();
-    try {
-      return res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      return res.status(resp.status).json({ raw: text });
-    }
+    const data = await resp.json();
+    return new Response(JSON.stringify(data), {
+      status: resp.status,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (err) {
-    console.error('[ai-messages] proxy error', err);
-    return res.status(500).json({ error: 'Anthropic proxy failed: ' + err.message });
+    return new Response(JSON.stringify({ error: "Anthropic proxy failed: " + err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

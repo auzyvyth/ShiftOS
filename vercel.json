@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/ai-messages.js": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/robots.txt", "destination": "/api/robots" },
