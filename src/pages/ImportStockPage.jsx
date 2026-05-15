@@ -14,7 +14,7 @@ const AI_PROXY = import.meta.env.VITE_API_URL
 const MAX_CARS = 50;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"registration_date":null,"options":null,"image_url":null}
+{"brand":"","model":"","variant":"","year":null,"price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"registration_date":null,"options":null,"image_url":null}
 HARD LIMIT: Extract a maximum of 50 listings. Once you have written 50 objects, immediately close the array with ] and stop.
 SKIP any row where the REMARKS column contains "SOLD" or "PRESERVED" — do not include those units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock.
@@ -23,8 +23,7 @@ For model: MODEL column.
 For variant: SPEC column (the trim/spec level).
 For year: YEAR column (manufacture year).
 For registration_date: combine the YEAR + MONTH + DATE columns into "YYYY-MM-DD" format. If DATE is missing use "YYYY-MM". This is the car's original registration date in its country of origin.
-For price: ADS PRICE column (the dealer's advertised selling price to customers). Null if blank.
-For base_price: BASE PRICE column (the dealer's purchase/cost price). Null if blank.
+For price: ADS PRICE column (the dealer's advertised price). Null if blank.
 For mileage: MILEAGE column. Extract as a plain number (no units).
 For color: COLOUR column.
 For vin: CHASSIS column. Can be a standard 17-char VIN (e.g. WBAHF12090WW43378) or a Japanese short chassis code (e.g. FL5-1234567, LA805S-0089301, GR3-1234567). Extract exactly as shown including any dashes. Null if not found.
@@ -277,7 +276,7 @@ export default function ImportStockPage() {
           model:          r.model || null,
           variant:        r.variant || null,
           year:           r.year ? Number(r.year) : null,
-          selling_price:  r.price ? Number(r.price) : null,
+          selling_price:  null,
           mileage:        r.mileage ? Number(r.mileage) : null,
           colour:         r.color || null,
           transmission:   r.transmission || null,
@@ -324,7 +323,7 @@ export default function ImportStockPage() {
         auction_grade:  listing.auction_grade,
         interior_grade: listing.interior_grade,
         vin:            listing.vin,
-        purchase_price: rows[i]?.base_price ? Number(rows[i].base_price) : null,
+        purchase_price: rows[i]?.price ? Number(rows[i].price) : null,
         asking_price:   listing.selling_price,
         status:         'available',
         created_at:     now,
