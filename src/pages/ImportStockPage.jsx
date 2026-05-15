@@ -11,11 +11,12 @@ import Step3Import from "../components/ImportStockPage/Step3Import";
 const AI_PROXY = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/ai/messages`
   : '/api/ai-messages';
+const MAX_CARS = 200;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
-Extract all car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
+Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
 {"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","image_url":null,"description":null}
 Map any column names you find to the closest matching field.
-CRITICAL: Extract EVERY single row. Do not stop early. Include all cars until the end of the data.
+HARD LIMIT: Extract a maximum of 200 listings. Once you have written 200 objects, immediately close the array with ] and stop.
 SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
 SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
 For price: use the ADS PRICE column (the final selling/advertised price to the customer). Null if not found.
@@ -128,8 +129,8 @@ async function callClaude(messages, onProgress) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 128000,
+      model: "claude-3-7-sonnet-20250219",
+      max_tokens: 20000,
       betas: ["output-128k-2025-02-19"],
       system: SYSTEM_PROMPT,
       messages,
@@ -171,9 +172,16 @@ async function callClaude(messages, onProgress) {
         if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
           text += evt.delta.text;
           const cars = (text.match(/"brand":/g) || []).length;
-          const pct = 8 + Math.min(82, (text.length / ESTIMATED_CHARS) * 82);
-          const msg = cars > 0 ? `Extracting listings… ${cars} found` : "Extracting listings…";
+          const pct = 8 + Math.min(82, (cars / MAX_CARS) * 82);
+          const msg = cars > 0 ? `Extracting listings… ${cars} / ${MAX_CARS}` : "Extracting listings…";
           onProgress?.(Math.round(pct), cars, msg);
+          // Hard stop at limit — close the array and bail
+          if (cars >= MAX_CARS) {
+            reader.cancel();
+            const lastClose = text.lastIndexOf('}');
+            if (lastClose !== -1) text = text.slice(0, lastClose + 1) + ']';
+            break;
+          }
         }
         if (evt.type === "error") throw new Error(evt.error?.message || "Anthropic stream error");
       } catch (e) {
