@@ -21,6 +21,14 @@ import_country: country of origin e.g. "Japan","UK". Null if not found.
 state: Malaysian state where the car is located e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
 Null for any field you cannot find.`;
 
+const SAMPLE_ROWS = [
+  { brand:'Toyota', model:'Alphard', variant:'2.5 SC', year:2022, price:280000, mileage:18000, color:'Pearl White', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Honda', model:'Vezel', variant:'1.5 RS e:HEV', year:2023, price:155000, mileage:9000, color:'Platinum White', transmission:'Auto', fuel_type:'Hybrid', engine_cc:1496, condition:'Recon', state:'Kuala Lumpur', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Mazda', model:'CX-5', variant:'2.0 SkyActiv', year:2021, price:125000, mileage:32000, color:'Soul Red Crystal', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Johor', auction_grade:'3.5', interior_grade:'B', import_country:'Japan', description:'' },
+  { brand:'Toyota', model:'Vellfire', variant:'2.5 Z-G', year:2020, price:320000, mileage:24000, color:'White Pearl', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4', interior_grade:'A', import_country:'Japan', description:'' },
+  { brand:'Nissan', model:'X-Trail', variant:'2.0 4WD', year:2022, price:110000, mileage:15000, color:'Brilliant Silver', transmission:'Auto', fuel_type:'Petrol', engine_cc:1997, condition:'Recon', state:'Penang', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
+];
+
 async function extractSheetId(url) {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   return m ? m[1] : null;
@@ -130,6 +138,11 @@ export default function ImportStockPage() {
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState("");
 
+  const handleSample = () => {
+    setRows(SAMPLE_ROWS);
+    setStep(2);
+  };
+
   const handleStep1 = async ({ file, sheetsUrl }) => {
     setLoading(true);
     try {
@@ -223,7 +236,7 @@ export default function ImportStockPage() {
             border: "1px solid rgba(255,255,255,0.07)",
           }}
         >
-          {step === 1 && <Step1Upload onNext={handleStep1} loading={loading} />}
+          {step === 1 && <Step1Upload onNext={handleStep1} onSample={handleSample} loading={loading} />}
           {step === 2 && (
             <Step2Preview
               rows={rows}

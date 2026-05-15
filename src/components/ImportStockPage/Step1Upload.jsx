@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, Link, FileSpreadsheet, FileText, X } from 'lucide-react';
 
-export default function Step1Upload({ onNext, loading }) {
+export default function Step1Upload({ onNext, onSample, loading }) {
   const [file, setFile] = useState(null);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [drag, setDrag] = useState(false);
@@ -115,6 +115,17 @@ export default function Step1Upload({ onNext, loading }) {
         }}
       >
         {loading ? 'Analysing with AI…' : 'Analyse & Preview →'}
+      </button>
+
+      <button
+        onClick={onSample}
+        disabled={loading}
+        className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
+        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: '#4b5563' }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = '#4b5563'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
+      >
+        Load sample data (no token)
       </button>
     </div>
   );
