@@ -129,9 +129,8 @@ async function callClaude(messages, onProgress) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-3-7-sonnet-20250219",
-      max_tokens: 20000,
-      betas: ["output-128k-2025-02-19"],
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages,
     }),
