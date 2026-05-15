@@ -14,23 +14,30 @@ const AI_PROXY = import.meta.env.VITE_API_URL
 const MAX_CARS = 50;
 const SYSTEM_PROMPT = `You are a data extraction assistant for a car dealership platform.
 Extract car listings from the provided data and return ONLY a JSON array. No markdown, no explanation. Each object must follow this exact schema:
-{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"image_url":null,"description":null}
-Map any column names you find to the closest matching field.
+{"brand":"","model":"","variant":"","year":null,"price":null,"base_price":null,"mileage":null,"color":"","transmission":"","fuel_type":"","engine_cc":null,"condition":"","state":"","auction_grade":"","interior_grade":"","import_country":"","vin":null,"registration_date":null,"options":null,"image_url":null}
 HARD LIMIT: Extract a maximum of 50 listings. Once you have written 50 objects, immediately close the array with ] and stop.
-SKIP any row where the REMARKS column contains "SOLD" — do not include sold units.
-SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock (ARR = "Y" or blank).
-For price: use the ADS PRICE column if present; also accept PRICE, SELLING PRICE, UNIT PRICE, ADVERTISED PRICE, or any column clearly representing the selling price to customers. If multiple price columns exist, prefer the higher/advertised one. Null only if no price is found at all.
-For base_price: use the BASE PRICE column if present; also accept COST, COST PRICE, PURCHASE PRICE, DEALER PRICE, IMPORT PRICE, or any column representing the dealer's cost or purchase price. Null only if no cost price is found at all.
-For import_country: use the C.O. column — "JP" or "JPN" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
-For vin: look for any column labeled VIN, CHASSIS, CHASSIS NO, FRAME NO, or any code that looks like a Japanese chassis/frame number. Japanese chassis numbers follow patterns like "FL5-1234567", "ZN6-1234567", "GR3-1234567" — a 2–4 letter model code, a dash, then digits. Extract the full value including the dash, exactly as shown. Null if not found.
-For image_url: look for any column containing a URL. Extract it exactly. Null if not found.
-Transmission must be "Auto" or "Manual".
-Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric".
-Condition must be "Used", "New", or "Recon".
+SKIP any row where the REMARKS column contains "SOLD" or "PRESERVED" — do not include those units.
+SKIP any row where the ARR column is "ETA DELAY" — only include arrived stock.
+For brand: BRAND column.
+For model: MODEL column.
+For variant: SPEC column (the trim/spec level).
+For year: YEAR column (manufacture year).
+For registration_date: combine the YEAR + MONTH + DATE columns into "YYYY-MM-DD" format. If DATE is missing use "YYYY-MM". This is the car's original registration date in its country of origin.
+For price: ADS PRICE column (the dealer's advertised selling price to customers). Null if blank.
+For base_price: BASE PRICE column (the dealer's purchase/cost price). Null if blank.
+For mileage: MILEAGE column. Extract as a plain number (no units).
+For color: COLOUR column.
+For vin: CHASSIS column. Can be a standard 17-char VIN (e.g. WBAHF12090WW43378) or a Japanese short chassis code (e.g. FL5-1234567, LA805S-0089301, GR3-1234567). Extract exactly as shown including any dashes. Null if not found.
+For options: OPTIONS column. Copy the full text exactly (comma-separated list of features). Null if blank.
+For import_country: C.O. column — "JP" = "Japan", "UK" = "UK", "MY" = "Malaysia". Null if not found.
+For image_url: look for any column containing a full HTTP URL. Null if not found.
+Transmission must be "Auto" or "Manual". Infer from options/spec if not explicit.
+Fuel type must be "Petrol", "Diesel", "Hybrid", or "Electric". Infer from model name if not explicit.
+Condition must be "Recon" for Japanese imports, "Used" for local used, "New" for brand new.
 auction_grade: exterior grade e.g. "4.5","4","3.5","3","R","S". Null if not found.
 interior_grade: "A","B","C","D". Null if not found.
-state: Malaysian state e.g. "Selangor","Kuala Lumpur","Johor". Null if not found.
-Always use null (not empty string) for missing fields. Keep all text values short. Set description to null always.`;
+state: Malaysian state if mentioned. Null if not found.
+Always use null (not empty string) for missing numeric or unknown fields.`;
 
 const SAMPLE_ROWS = [
   { brand:'Toyota', model:'Alphard', variant:'2.5 SC', year:2022, price:280000, base_price:210000, mileage:18000, color:'Pearl White', transmission:'Auto', fuel_type:'Petrol', engine_cc:2494, condition:'Recon', state:'Selangor', auction_grade:'4.5', interior_grade:'A', import_country:'Japan', description:'' },
@@ -281,12 +288,14 @@ export default function ImportStockPage() {
           is_recon:       (r.condition || '').toLowerCase() === 'recon',
           auction_grade:  r.auction_grade || null,
           interior_grade: r.interior_grade || null,
-          import_country: r.import_country || null,
-          vin:            r.vin || null,
-          images:         r.image_url ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
-          dealer_id:      user.id,
-          status:         "available",
-          created_at:     now,
+          import_country:    r.import_country || null,
+          vin:               r.vin || null,
+          registration_date: r.registration_date || null,
+          options:           r.options || null,
+          images:            r.image_url ? [driveToDirectUrl(r.image_url)].filter(Boolean) : null,
+          dealer_id:         user.id,
+          status:            "available",
+          created_at:        now,
         };
       });
 
@@ -294,7 +303,7 @@ export default function ImportStockPage() {
       const { data: inserted, error } = await supabase
         .from("car_listings")
         .insert(records)
-        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade, vin');
+        .select('id, brand, model, variant, year, selling_price, mileage, colour, transmission, fuel_type, engine_cc, is_recon, import_country, auction_grade, interior_grade, vin, registration_date, options');
       if (error) throw error;
 
       // Mirror into stock_units (dealer cost view)

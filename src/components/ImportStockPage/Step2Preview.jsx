@@ -4,7 +4,7 @@ import { Trash2, ChevronRight } from 'lucide-react';
 const FIELDS = [
   'brand','model','variant','year','price','base_price','mileage','color',
   'transmission','fuel_type','engine_cc','condition',
-  'state','auction_grade','interior_grade','import_country','vin',
+  'state','auction_grade','interior_grade','import_country','vin','registration_date','options',
 ];
 
 function fmt(n) { return n?.toLocaleString() ?? '—'; }
