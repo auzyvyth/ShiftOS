@@ -754,12 +754,19 @@ function VideoPreview({ url }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const cfDraftKey = (uid) => `carform_draft_${uid}`;
+const cfSaveDraft = (uid, form, step) => { try { localStorage.setItem(cfDraftKey(uid), JSON.stringify({ form, step, savedAt: Date.now() })); } catch (_) {} };
+const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
+const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); } catch (_) {} };
+
 export default function CarForm({ onCreate, listing, onUpdate }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
 
   const [form, setForm] = useState(initialListing);
   const [step, setStep] = useState(1);
+  const [draftBanner, setDraftBanner] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previews, setPreviews] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -771,6 +778,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
   const formRef = useRef(null);
+
+  // ── Draft save (new listings only, not edits) ────────────────────────────
+  useEffect(() => {
+    if (!profile?.id || listing) return;
+    const draft = cfLoadDraft(profile.id);
+    if (draft) setDraftBanner(true);
+  }, [profile?.id, listing]);
+
+  useEffect(() => {
+    if (!profile?.id || listing) return;
+    const t = setTimeout(() => cfSaveDraft(profile.id, form, step), 800);
+    return () => clearTimeout(t);
+  }, [form, step, profile?.id, listing]);
 
   // ── Documents state ──────────────────────────────────────────────────────
   const [docTypeInput, setDocTypeInput] = useState("puspakom");
@@ -1392,6 +1412,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           if (error) throw error;
           savedListing = data;
         }
+        cfClearDraft(profile?.id);
         onCreate(savedListing);
         // Sync services to linked stock_unit (if one is auto-created)
         if (savedListing?.id) {
@@ -1432,6 +1453,16 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         backgroundSize: "24px 24px",
       }}
     >
+      {/* Draft resume banner */}
+      {draftBanner && !listing && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
+          <span style={{ fontSize: 13 }}>📝</span>
+          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
+          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); setStep(d.step || 1); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
+          <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="mb-8">
         <div className="relative h-1 bg-gray-800 rounded-full mb-6">
@@ -1603,22 +1634,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     cc
                   </button>
                 ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      `/calculator?carPrice=${encodeURIComponent(form.sellingPrice || "")}&engineCc=${encodeURIComponent(form.engineCc || "")}&bodyType=${encodeURIComponent(form.bodyType || "")}`,
-                    )
-                  }
-                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  Estimate Road Tax
-                </button>
-                <p className="text-xs text-gray-400">
-                  Opens calculator with current CC & body type
-                </p>
               </div>
             </div>
           </Field>

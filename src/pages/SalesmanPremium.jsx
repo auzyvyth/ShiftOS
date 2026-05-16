@@ -3,7 +3,6 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
-import CarFormLite from "../components/CarFormLite";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -1930,7 +1929,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               padding: 16,
             }}
           >
-            <CarFormLite
+            <CarForm
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);
