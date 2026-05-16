@@ -2287,10 +2287,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const stats = carStatsMap[car.id] ?? {};
       const views = stats.views || 0;
       const enqs = stats.enquiries || 0;
+      const daily = stats.daily || [0,0,0,0,0,0,0];
       const cvr = views > 0 ? (enqs / views) * 100 : null;
       const isHot = cvr !== null && cvr > 6 && views > 3;
       const isStale = views > 10 && (cvr === null || cvr === 0);
-      return { car, views, enqs, cvr, isHot, isStale };
+      return { car, views, enqs, daily, cvr, isHot, isStale };
     });
 
     const hotCount = enriched.filter((e) => e.isHot).length;
@@ -2573,7 +2574,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               gap: 14,
             }}
           >
-            {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
+            {sorted.map(({ car, views, enqs, daily, cvr, isHot, isStale }) => {
               const isSold     = car.status === "sold";
               const isReserved = car.status === "reserved";
               const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
@@ -2802,7 +2803,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
                     {/* 7-day sparkline */}
                     {!isSold && (() => {
-                      const daily = stats.daily || [0,0,0,0,0,0,0];
                       const total = daily.reduce((s, v) => s + v, 0);
                       if (total === 0) return null;
                       const peak = Math.max(...daily, 1);
