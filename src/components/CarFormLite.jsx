@@ -31,24 +31,73 @@ const SEL = { ...FIELD, appearance: "none", WebkitAppearance: "none", cursor: "p
 const LBL = { fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 };
 const ERR = { fontSize: 11, color: "#f87171", marginTop: 4 };
 
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const draftKey = (uid) => `slite_draft_${uid}`;
+
+const saveDraft = (uid, f, step) => {
+  try {
+    localStorage.setItem(draftKey(uid), JSON.stringify({ f, step, savedAt: Date.now() }));
+  } catch (_) {}
+};
+const clearDraft = (uid) => { try { localStorage.removeItem(draftKey(uid)); } catch (_) {} };
+const loadDraft = (uid) => {
+  try {
+    const raw = localStorage.getItem(draftKey(uid));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (Date.now() - d.savedAt > DRAFT_TTL_MS) { clearDraft(uid); return null; }
+    return d;
+  } catch (_) { return null; }
+};
+
 export default function CarFormLite({ onCreate }) {
   const { profile } = useProfile();
 
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [draftBanner, setDraftBanner] = useState(false);
 
   const [images, setImages] = useState([]);       // File objects
   const [previews, setPreviews] = useState([]);   // object URLs
 
-  const [f, setF] = useState({
+  const BLANK_F = {
     brand: "", model: "", variant: "", year: String(new Date().getFullYear()),
     colour: "", condition: "used", transmission: "Auto", fuel_type: "Petrol",
     body_type: "Sedan", mileage: "", selling_price: "", state: "", city: "",
     description: "",
-  });
+  };
+
+  const [f, setF] = useState(BLANK_F);
+
+  // Load draft on mount
+  useEffect(() => {
+    if (!profile?.id) return;
+    const draft = loadDraft(profile.id);
+    if (draft) setDraftBanner(true);
+  }, [profile?.id]);
+
+  const resumeDraft = () => {
+    const draft = loadDraft(profile.id);
+    if (!draft) return;
+    setF(draft.f);
+    setStep(draft.step || 1);
+    setDraftBanner(false);
+  };
+
+  const discardDraft = () => {
+    clearDraft(profile.id);
+    setDraftBanner(false);
+  };
 
   const inp = useRef(null);
+  // Save draft on every field change (debounced via useEffect)
+  useEffect(() => {
+    if (!profile?.id) return;
+    const t = setTimeout(() => saveDraft(profile.id, f, step), 600);
+    return () => clearTimeout(t);
+  }, [f, step, profile?.id]);
+
   const upd = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
 
   const addImages = (files) => {
@@ -112,6 +161,7 @@ export default function CarFormLite({ onCreate }) {
 
       if (insErr) throw insErr;
       previews.forEach(p => URL.revokeObjectURL(p));
+      clearDraft(profile.id);
       onCreate(data);
     } catch (e) {
       setError(e.message || "Something went wrong.");
@@ -124,6 +174,15 @@ export default function CarFormLite({ onCreate }) {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: "#e5e7eb" }}>
+      {/* Draft resume banner */}
+      {draftBanner && (
+        <div style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 9, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13 }}>📝</span>
+          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
+          <button onClick={resumeDraft} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
+          <button onClick={discardDraft} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+        </div>
+      )}
       {/* Step bar */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {STEPS.map((s, i) => (

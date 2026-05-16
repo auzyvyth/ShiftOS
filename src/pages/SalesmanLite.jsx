@@ -326,6 +326,10 @@ export default function SalesmanLite() {
   const [aiCaptionTab, setAiCaptionTab] = useState("wa");
   const [captionCopied, setCaptionCopied] = useState(false);
 
+  // boost placeholder
+  const [boostCarId, setBoostCarId] = useState(null);
+  const [boostWaitlisted, setBoostWaitlisted] = useState(false);
+
   // merge
   const [mergeCode, setMergeCode] = useState("");
   const [mergeStatus, setMergeStatus] = useState("idle");
@@ -1625,6 +1629,37 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
+  // ── Listing completeness score ──────────────────────────────────────────
+  const listingScore = (car) => {
+    const checks = [
+      { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: `${Math.max(0, 3 - (car.images?.length || 0))} more photo${Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""}` },
+      { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: "add a photo" },
+      { pts: 15, ok: !!car.selling_price, hint: "set a price" },
+      { pts: 10, ok: !!car.mileage, hint: "add mileage" },
+      { pts: 10, ok: !!car.colour, hint: "add colour" },
+      { pts: 10, ok: !!car.variant, hint: "add variant" },
+      { pts: 10, ok: !!car.state, hint: "add location" },
+      { pts: 5,  ok: !!car.condition, hint: "add condition" },
+    ];
+    const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
+    const total   = checks.reduce((s, c) => s + c.pts, 0);
+    const missing = checks.filter(c => !c.ok).map(c => c.hint);
+    return { pct: Math.round((earned / total) * 100), missing };
+  };
+
+  // ── Profile completeness score ───────────────────────────────────────────
+  const profileScore = () => {
+    const checks = [
+      { pts: 25, ok: !!(avatarUrl), label: "Add a profile photo", field: "avatar" },
+      { pts: 25, ok: !!(profile?.whatsapp_number), label: "Add your WhatsApp number", field: "whatsapp_number" },
+      { pts: 20, ok: !!(profile?.full_name), label: "Add your name", field: "full_name" },
+      { pts: 15, ok: !!(profile?.about_text), label: "Write a short bio", field: "about_text" },
+      { pts: 15, ok: !!(profile?.instagram || profile?.tiktok), label: "Link Instagram or TikTok", field: "instagram" },
+    ];
+    const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
+    return { pct: earned, missing: checks.filter(c => !c.ok) };
+  };
+
   const renderDashboard = () => {
     const activeLeads = leads.filter(
       (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -2012,6 +2047,52 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
+        {/* ── Share My Store card ── */}
+        {profile?.slug && (
+          <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: "0 0 1px", fontSize: 11, fontWeight: 700, color: "#10b981" }}>Your Store is Live</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug} · {myListings.filter(c => c.status === "available").length} listing{myListings.filter(c => c.status === "available").length !== 1 ? "s" : ""}</p>
+            </div>
+            <button
+              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+              style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
+            >Copy</button>
+            <button
+              onClick={() => { const msg = encodeURIComponent(`Hi! Check out my car listings on XDrive 🚗\nhttps://xdrive.my/s/${profile.slug}`); window.open(`https://wa.me/?text=${msg}`, "_blank"); }}
+              style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
+            >WA</button>
+          </div>
+        )}
+
+        {/* ── Profile completeness nudge ── */}
+        {(() => {
+          const { pct, missing } = profileScore();
+          if (pct >= 80) return null;
+          const barColor = pct >= 60 ? "#fbbf24" : "#f87171";
+          return (
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>Complete your profile</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: barColor }}>{pct}%</span>
+              </div>
+              <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 10 }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s" }} />
+              </div>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563" }}>Buyers trust complete profiles. Missing:</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {missing.map(({ label, field }) => (
+                  <button key={field} onClick={() => setActiveTab("settings")}
+                    style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
+                    + {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── KPI strip ── */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
           {kpis.map(({ label, value, color, bg, border, icon, warn }) => (
@@ -2144,6 +2225,39 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           );
         })()}
 
+        {/* ── Weekly digest ── */}
+        {(() => {
+          const now = new Date();
+          const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0);
+          const prevStart = new Date(weekStart); prevStart.setDate(prevStart.getDate() - 7);
+          const weekViews = Object.values(carStatsMap).reduce((s, st) => s + (st.views || 0), 0);
+          const newLeads = leads.filter(l => new Date(l.created_at) >= weekStart).length;
+          const dealsWon = leads.filter(l => (l.stage === "won" || l.stage === "closed_won") && new Date(l.updated_at) >= weekStart).length;
+          const bestEntry = Object.entries(carStatsMap).sort((a,b) => (b[1].views||0) - (a[1].views||0))[0];
+          const bestCar = bestEntry ? myListings.find(c => c.id === bestEntry[0]) : null;
+          const weekLabel = `${weekStart.toLocaleDateString("en-MY",{day:"numeric",month:"short"})}–${now.toLocaleDateString("en-MY",{day:"numeric",month:"short"})}`;
+          return (
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#e5e7eb" }}>This Week · {weekLabel}</p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0 }}>
+                {[
+                  { label: "Views", value: weekViews, color: "#60a5fa" },
+                  { label: "New Leads", value: newLeads, color: "#a78bfa" },
+                  { label: "Won", value: dealsWon, color: "#4ade80" },
+                  { label: "Best Car", value: bestCar ? bestCar.model : "—", color: "#fbbf24", small: true },
+                ].map(({ label, value, color, small }, i) => (
+                  <div key={label} style={{ padding: "10px 14px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: small ? 11 : 20, fontWeight: 700, color, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Upgrade nudge ── */}
         <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.12)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
@@ -2257,6 +2371,19 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </button>
           </div>
         )}
+
+        {/* Listing quality banner */}
+        {!showAddForm && myListings.filter(c => c.status === "available").length > 0 && (() => {
+          const scores = myListings.filter(c => c.status === "available").map(c => listingScore(c).pct);
+          const avg = Math.round(scores.reduce((s, p) => s + p, 0) / scores.length);
+          if (avg >= 80) return null;
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: 9, background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.15)" }}>
+              <span style={{ fontSize: 13 }}>📊</span>
+              <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", flex: 1 }}>Your listings average <strong style={{ color: "#fbbf24" }}>{avg}% quality</strong>. Complete listings get 3× more views.</p>
+            </div>
+          );
+        })()}
 
         {showAddForm && (
           <div
@@ -2611,6 +2738,27 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       ].filter(Boolean).join(" · ")}
                     </p>
 
+                    {/* Listing completeness bar */}
+                    {!isSold && (() => {
+                      const { pct, missing } = listingScore(car);
+                      if (pct >= 90) return null;
+                      const barColor = pct >= 70 ? "#fbbf24" : "#f87171";
+                      return (
+                        <div style={{ marginBottom: 8 }} title={missing.length ? `Improve: ${missing.join(", ")}` : ""}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                            <span style={{ fontSize: 9, color: "#4b5563" }}>Listing quality</span>
+                            <span style={{ fontSize: 9, color: barColor, fontWeight: 600 }}>{pct}%</span>
+                          </div>
+                          <div style={{ height: 3, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99 }} />
+                          </div>
+                          {missing.length > 0 && (
+                            <p style={{ margin: "3px 0 0", fontSize: 9, color: "#374151" }}>+ {missing[0]}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* CVR bar — hidden for sold */}
                     {!isSold && (
                       <div
@@ -2683,6 +2831,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                           >
                             <MessageCircle size={11} />
                             {listingCopied[car.id] === "wa" ? "Copied" : "WA"}
+                          </button>
+                          {/* Boost */}
+                          <button
+                            onClick={() => { setBoostCarId(car.id); setBoostWaitlisted(false); }}
+                            title="Boost listing"
+                            style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(168,85,247,0.06)", border: "1px dashed rgba(168,85,247,0.25)", color: "#a78bfa", cursor: "pointer", opacity: 0.75, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}
+                          >
+                            ⚡ Boost
                           </button>
                           {/* Edit */}
                           <button
@@ -7000,6 +7156,41 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         </div>
       )}
+
+      {/* ── Boost modal ── */}
+      {boostCarId && (() => {
+        const car = myListings.find(c => c.id === boostCarId);
+        const name = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "this listing";
+        return (
+          <div onClick={() => setBoostCarId(null)} style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", fontFamily: "'DM Sans',sans-serif" }}>
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>⚡</div>
+                <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e5e7eb" }}>Boost this listing</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>Pin <strong style={{ color: "#c4b5fd" }}>{name}</strong> to the top of XDrive search for 7 days and get up to 5× more views.</p>
+              </div>
+              <div style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>⚡ Coming soon — Premium feature</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Join the waitlist and we'll notify you when Boost launches.</p>
+              </div>
+              {boostWaitlisted ? (
+                <p style={{ textAlign: "center", fontSize: 13, color: "#4ade80", fontWeight: 600, margin: "0 0 12px" }}>✓ You're on the waitlist!</p>
+              ) : (
+                <button
+                  onClick={() => {
+                    const msg = encodeURIComponent(`Hi! I want to join the Boost waitlist for my XDrive listing: ${name}`);
+                    const waNum = "60123456789";
+                    window.open(`https://wa.me/${waNum}?text=${msg}`, "_blank");
+                    setBoostWaitlisted(true);
+                  }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 9, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.35)", color: "#c4b5fd", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 10, fontFamily: "inherit" }}
+                >Join Waitlist →</button>
+              )}
+              <button onClick={() => setBoostCarId(null)} style={{ width: "100%", padding: "8px", borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.07)", color: "#4b5563", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Maybe later</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {tiktokListing && (
         <div
