@@ -243,16 +243,13 @@ export default function SalesmanLite() {
   const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
 
   // Goal panel
-  const goalKey = `slite_goal_${userId || "x"}`;
-  const [goal, setGoal] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(goalKey)) || { target: 0, focusCarId: null }; } catch { return { target: 0, focusCarId: null }; }
-  });
+  const [goal, setGoal] = useState({ target: 0, focusCarId: null });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
-    localStorage.setItem(goalKey, JSON.stringify(next));
+    if (userId) localStorage.setItem(`slite_goal_${userId}`, JSON.stringify(next));
   };
 
   // settings
@@ -859,6 +856,14 @@ export default function SalesmanLite() {
     const t = setTimeout(measure, 60);
     return () => clearTimeout(t);
   }, [tourStep]);
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`slite_goal_${userId}`));
+      if (saved) setGoal(saved);
+    } catch {}
+  }, [userId]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -1721,6 +1726,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
+        {/* ── KPI strip ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
+          {kpis.map(({ label, value, color, bg, border, icon, warn }) => (
+            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 14px 12px", position: "relative", overflow: "hidden" }}>
+              {warn && value > 0 && (
+                <span style={{ position: "absolute", top: 10, right: 10, width: 6, height: 6, borderRadius: "50%", background: "#fb923c", boxShadow: "0 0 0 3px rgba(251,146,60,0.2)" }} />
+              )}
+              <p style={{ margin: "0 0 6px", fontSize: 18 }}>{icon}</p>
+              <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 10, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+            </div>
+          ))}
+        </div>
+
         {/* ── Today's Agenda ── */}
         {hasAgenda && (
           <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
@@ -1760,6 +1779,37 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>WA</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Follow-up needed ── */}
+        {staleLeads.length > 0 && (
+          <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(251,146,60,0.1)" }}>
+              <AlertCircle size={13} style={{ color: "#fb923c", flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c" }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {staleLeads.map((lead, i) => {
+                const car = lead.car_listings;
+                return (
+                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+                      {(lead.buyer_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{car ? `${car.brand} ${car.model}` : "no car"} · {timeAgo(lead.updated_at)}</p>
+                    </div>
+                    {lead.phone && (
+                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+                        WA
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1879,14 +1929,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* Focus car */}
               {highlighted && (
                 <div style={{ padding: "10px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                     <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>
-                      {focusCar ? "📌 Focus Car" : "⚡ Push This"}
+                      {focusCar ? "📌 Pinned — share this car to close faster" : "⚡ Best car to push right now"}
                     </p>
                     {focusCar && (
                       <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
                     )}
                   </div>
+                  <p style={{ margin: "0 0 8px", fontSize: 9, color: "#374151" }}>
+                    {focusCar ? "Tap WA to share this listing with interested buyers." : "Auto-selected based on views & enquiries. Pin a car to keep focus on it."}
+                  </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {highlighted.images?.[0] ? (
                       <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
@@ -2054,24 +2107,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
-        {/* ── Share My Store card ── */}
-        {profile?.slug && (
-          <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: "0 0 1px", fontSize: 11, fontWeight: 700, color: "#10b981" }}>Your Store is Live</p>
-              <p style={{ margin: 0, fontSize: 11, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug} · {myListings.filter(c => c.status === "available").length} listing{myListings.filter(c => c.status === "available").length !== 1 ? "s" : ""}</p>
-            </div>
-            <button
-              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
-              style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
-            >Copy</button>
-            <button
-              onClick={() => { const msg = encodeURIComponent(`Hi! Check out my car listings on XDrive 🚗\nhttps://xdrive.my/s/${profile.slug}`); window.open(`https://wa.me/?text=${msg}`, "_blank"); }}
-              style={{ fontSize: 11, padding: "5px 10px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}
-            >WA</button>
-          </div>
-        )}
 
         {/* ── Profile completeness nudge ── */}
         {(() => {
@@ -2099,51 +2134,6 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
           );
         })()}
-
-        {/* ── KPI strip ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
-          {kpis.map(({ label, value, color, bg, border, icon, warn }) => (
-            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 14px 12px", position: "relative", overflow: "hidden" }}>
-              {warn && value > 0 && (
-                <span style={{ position: "absolute", top: 10, right: 10, width: 6, height: 6, borderRadius: "50%", background: "#fb923c", boxShadow: "0 0 0 3px rgba(251,146,60,0.2)" }} />
-              )}
-              <p style={{ margin: "0 0 6px", fontSize: 18 }}>{icon}</p>
-              <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
-              <p style={{ margin: "4px 0 0", fontSize: 10, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Stale nudges ── */}
-        {staleLeads.length > 0 && (
-          <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(251,146,60,0.1)" }}>
-              <AlertCircle size={13} style={{ color: "#fb923c", flexShrink: 0 }} />
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c" }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {staleLeads.map((lead, i) => {
-                const car = lead.car_listings;
-                return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
-                      {(lead.buyer_name || "?")[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{car ? `${car.brand} ${car.model}` : "no car"} · {timeAgo(lead.updated_at)}</p>
-                    </div>
-                    {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                        WA
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Performance ── */}
         <div>
@@ -3915,7 +3905,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const currentProgressIdx = progressStages.indexOf(normalizedStage);
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
       const nextStage = LEAD_STAGES.filter(
-        (s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost",
+        (s) => s !== "lost" && s !== "closed_won" && s !== "closed_lost",
       ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
       const heat = getHeatScore(lead);
       const isConfirmingDelete = deleteConfirmId === lead.id;
@@ -3969,10 +3959,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
 
             {/* Progress bar — 7 segments */}
-            <div style={{ display: "flex", gap: 3, marginBottom: followUpOverdue ? 8 : 12 }}>
-              {progressStages.map((s, i) => (
-                <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "#9ca3af" : i === currentProgressIdx ? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
-              ))}
+            <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
+              <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                {progressStages.map((s, i) => (
+                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "#9ca3af" : i === currentProgressIdx ? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+                ))}
+              </div>
+              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
+                Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
+              </p>
             </div>
 
             {/* Follow-up warning */}
