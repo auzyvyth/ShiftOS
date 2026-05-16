@@ -823,7 +823,7 @@ export default function SalesmanPremium() {
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+    const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
       const price = Number(car.selling_price || 0);
@@ -897,7 +897,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const price = car.selling_price
       ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
       : null;
-    const link = car.slug ? `https://xdrive.my/cars/${car.slug}` : null;
+    const link = car.slug ? `https://xdrive.my/showroom/${car.slug}` : null;
     const msg = [
       `Hi! 👋 Tengok ni — ${name} dah ada dalam lineup kita!`,
       price ? `💰 Harga: ${price}` : null,
