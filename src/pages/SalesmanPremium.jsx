@@ -3201,7 +3201,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                             : "#fbbf24",
                     }}
                   >
-                    {car.status || "active"}
+                    {car.status || "available"}
                   </span>
                 </div>
               </div>

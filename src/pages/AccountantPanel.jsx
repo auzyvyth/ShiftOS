@@ -1024,7 +1024,7 @@ export default function AccountantPanel() {
         .from("car_listings")
         .select("id,brand,model,year,selling_price,condition,created_at,status")
         .eq("dealer_id", dealerId)
-        .in("status", ["active", "reserved"])
+        .in("status", ["available", "reserved"])
         .order("created_at", { ascending: true }),
       supabase
         .from("stock_units")

@@ -1361,7 +1361,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         if (draftId) {
           const { data, error } = await supabase
             .from("car_listings")
-            .update({ ...payload, status: "active" })
+            .update({ ...payload, status: "available" })
             .eq("id", draftId)
             .select()
             .single();
@@ -1380,7 +1380,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               {
                 dealer_id: dealerId,
                 ...payload,
-                status: "active",
+                status: "available",
                 // salesman_lite owns and sells their own listings
                 ...(profile?.role === "salesman"
                   ? { assigned_to: profile.id }

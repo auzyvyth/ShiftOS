@@ -293,7 +293,7 @@ export default function SalesmanLite() {
 
   // listings sort/filter
   const [sortBy, setSortBy] = useState("newest");
-  const [filterStatus, setFilterStatus] = useState("active");
+  const [filterStatus, setFilterStatus] = useState("available");
 
   // per-listing analytics (carStatsMap)
   const [carStatsMap, setCarStatsMap] = useState({});
@@ -1658,7 +1658,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
     const kpis = [
       { label: "Pipeline", value: activeLeads.length, color: "#f87171", bg: "rgba(220,38,38,0.05)", border: "rgba(220,38,38,0.14)", accent: "#f87171", icon: "👤" },
-      { label: "Listings", value: myListings.filter(c => ["active","available"].includes(c.status)).length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
+      { label: "Listings", value: myListings.filter(c => c.status === "available").length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
       { label: "Follow-ups", value: staleLeads.length, color: staleLeads.length > 0 ? "#fb923c" : "#374151", bg: staleLeads.length > 0 ? "rgba(251,146,60,0.07)" : "rgba(255,255,255,0.02)", border: staleLeads.length > 0 ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.06)", accent: "#fb923c", icon: "⏰", warn: staleLeads.length > 0 },
       { label: "Today", value: todayAppts, color: "#c084fc", bg: "rgba(192,132,252,0.06)", border: "rgba(192,132,252,0.15)", accent: "#c084fc", icon: "📅" },
       { label: "Closed", value: wonLeads.length, color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.15)", accent: "#fbbf24", icon: "🏆" },
@@ -1766,11 +1766,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             const now = new Date();
             return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
           }).length;
-          const available = myListings.filter(c => ["active","available"].includes(c.status));
+          const available = myListings.filter(c => c.status === "available");
           const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
           const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
           const focusCar = goal.focusCarId
-            ? myListings.find(c => c.id === goal.focusCarId && ["active","available"].includes(c.status))
+            ? myListings.find(c => c.id === goal.focusCarId && c.status === "available")
             : null;
           const autoFocus = !focusCar && available.length > 0
             ? available.reduce((best, c) => {
@@ -1887,7 +1887,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         })()}
 
         {/* ── Marketplace Pulse ── */}
-        {myListings.filter(c => ["active","available"].includes(c.status)).length > 0 && (
+        {myListings.filter(c => c.status === "available").length > 0 && (
           <div style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.22)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "live-glow 2s ease-in-out infinite" }} />
@@ -1906,7 +1906,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </div>
               <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
               <div>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => ["active","available"].includes(c.status)).length}</p>
+                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => c.status === "available").length}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Live listings</p>
               </div>
             </div>
@@ -2175,11 +2175,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const hotCount = enriched.filter((e) => e.isHot).length;
     const staleCount = enriched.filter((e) => e.isStale).length;
     const activeCount = myListings.filter(
-      (c) => ["active","available"].includes(c.status),
+      (c) => c.status === "available",
     ).length;
 
-    const normStatus = (s) => ["active","available"].includes(s) ? "active" : s;
-    const filtered = enriched.filter((e) => normStatus(e.car.status || "active") === filterStatus);
+    const normStatus = (s) => s === "active" ? "available" : s;
+    const filtered = enriched.filter((e) => normStatus(e.car.status || "available") === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
@@ -2243,7 +2243,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         </div>
 
         {/* Store exposure bar */}
-        {!showAddForm && profile?.slug && myListings.filter(c => ["active","available"].includes(c.status)).length > 0 && (
+        {!showAddForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: 8, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.13)" }}>
             <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
             <span style={{ fontSize: 10, color: "#6b7280", flex: 1 }}>
@@ -2290,7 +2290,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               }}
             >
               {[
-                { key: "active", label: "Active",   count: myListings.filter((c) => ["active","available"].includes(c.status || "active")).length },
+                { key: "available", label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
                 { key: "reserved",  label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
                 { key: "sold",      label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
               ].map(({ key, label, count }) => (
@@ -2564,13 +2564,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         <button
                           onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(statusMenuCarId === car.id ? null : car.id); }}
                           className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize cursor-pointer ${
-                            ["active","available"].includes(car.status || "active") ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                            ["available"].includes(car.status || "available") ? "bg-green-500/15 text-green-400 border-green-500/30" :
                             car.status === "reserved" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
                             car.status === "sold" ? "bg-gray-700 text-gray-400 border-gray-600" :
                             "bg-gray-700 text-gray-400 border-gray-600"
                           }`}
                         >
-                          {car.status || "active"} ▾
+                          {car.status || "available"} ▾
                         </button>
                         {statusMenuCarId === car.id && (
                           <div
@@ -2578,17 +2578,17 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                             style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#1e2433", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, overflow: "hidden", minWidth: 110, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
                           >
                             {[
-                              { key: "active", label: "Active",   color: "#4ade80" },
+                              { key: "available", label: "Available", color: "#4ade80" },
                               { key: "reserved",  label: "Reserved",  color: "#fbbf24" },
                               { key: "sold",      label: "Sold",      color: "#9ca3af" },
                             ].map(({ key, label, color }) => (
                               <button
                                 key={key}
                                 onClick={() => updateListingStatus(car, key)}
-                                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", background: normStatus(car.status || "active") === key ? "rgba(255,255,255,0.06)" : "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", background: normStatus(car.status || "available") === key ? "rgba(255,255,255,0.06)" : "none", border: "none", cursor: "pointer", textAlign: "left" }}
                               >
                                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                                <span style={{ fontSize: 12, color: normStatus(car.status || "active") === key ? "#f1f5f9" : "#6b7280", fontWeight: normStatus(car.status || "active") === key ? 600 : 400 }}>{label}</span>
+                                <span style={{ fontSize: 12, color: normStatus(car.status || "available") === key ? "#f1f5f9" : "#6b7280", fontWeight: normStatus(car.status || "available") === key ? 600 : 400 }}>{label}</span>
                               </button>
                             ))}
                           </div>
@@ -3546,14 +3546,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       fontWeight: 600,
                       textTransform: "capitalize",
                       color:
-                        ["active","available"].includes(car.status)
+                        car.status === "available"
                           ? "#4ade80"
                           : car.status === "sold"
                             ? "#9ca3af"
                             : "#fbbf24",
                     }}
                   >
-                    {car.status || "active"}
+                    {car.status || "available"}
                   </span>
                 </div>
               </div>

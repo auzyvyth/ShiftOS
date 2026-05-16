@@ -33,7 +33,7 @@ export default function SalesmanProfilePage() {
         .from('car_listings')
         .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,status')
         .eq('dealer_id', p.id)
-        .eq('status', 'active')
+        .eq('status', 'available')
         .order('created_at', { ascending: false });
 
       setListings(lst || []);

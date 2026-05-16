@@ -254,7 +254,7 @@ const HomePage = () => {
           `${CAR_FIELDS}, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
           { count: "exact" },
         )
-        .eq("status", "active")
+        .eq("status", "available")
         .order("created_at", { ascending: false })
         .limit(30);
 

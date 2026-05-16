@@ -3259,14 +3259,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       fontWeight: 600,
                       textTransform: "capitalize",
                       color:
-                        car.status === "active"
+                        car.status === "available"
                           ? "#4ade80"
                           : car.status === "sold"
                             ? "#9ca3af"
                             : "#fbbf24",
                     }}
                   >
-                    {car.status || "active"}
+                    {car.status || "available"}
                   </span>
                 </div>
               </div>
