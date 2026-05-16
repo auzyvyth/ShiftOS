@@ -14,6 +14,7 @@ import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
+import SkeletonCard from '../components/ui/SkeletonCard';
 import {
   BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, SORT_OPTIONS,
   YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
@@ -32,34 +33,6 @@ function sanitizePrice(val) {
   const allowed = PRICE_STEPS.filter(s => s.value).map(s => parseInt(s.value, 10));
   return allowed.includes(n) ? n : null;
 }
-
-/* ── Skeleton Card ──────────────────────────────────────────────────────────── */
-const SkeletonCard = () => (
-  <div style={{
-    background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)',
-    borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  }}>
-    <div style={{ height: '200px', background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize: '200% 100%', animation: 'mp-shimmer 1.5s infinite' }} />
-    <div style={{ padding: '16px' }}>
-      {[80,55,95,70].map((w, i) => (
-        <div key={i} style={{ height: '12px', width: `${w}%`, background: '#e8e6e0', borderRadius: '6px', marginBottom: '10px', animation: 'mp-shimmer 1.5s infinite', animationDelay: `${i * 0.1}s` }} />
-      ))}
-    </div>
-  </div>
-);
-
-/* ── Stat Item ──────────────────────────────────────────────────────────────── */
-const StatItem = ({ icon: Icon, value, label, color }) => (
-  <div style={{ display:'flex', alignItems:'center', gap:'14px', padding:'20px 28px', background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'14px', flex:'1', minWidth:'160px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-    <div style={{ width:'44px', height:'44px', borderRadius:'12px', background: color || 'rgba(220,38,38,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-      <Icon size={20} color={color ? '#fff' : '#dc2626'} />
-    </div>
-    <div>
-      <div style={{ fontSize:'22px', fontWeight:'700', color:'#111827', lineHeight:1.1 }}>{value}</div>
-      <div style={{ fontSize:'13px', color:'#6b7280', marginTop:'2px' }}>{label}</div>
-    </div>
-  </div>
-);
 
 /* ── Main Component ─────────────────────────────────────────────────────────── */
 export default function MarketplacePage() {
@@ -953,7 +926,7 @@ export default function MarketplacePage() {
               {!error && (
                 <div style={S.carsGrid}>
                   {loading
-                    ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)
+                    ? Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} variant="light" />)
                     : cars.length === 0
                       ? (
                         <div style={S.emptyState}>

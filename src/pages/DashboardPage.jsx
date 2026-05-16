@@ -4622,7 +4622,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }
   }, [showGen]);
 
-  const calcMonthly = (amount, rate, months) => {
+  // Generic document form calculator — not the same as the standard car estimate in utils/financing.js.
+  // This one accepts user-specified rate and tenure from form inputs.
+  const calcLoanPayment = (amount, rate, months) => {
     const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
     if (!a || !r || !m) return '';
     return ((a + a * (r / 100) * (m / 12)) / m).toFixed(2);
@@ -4632,7 +4634,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     setGenForm(p => {
       const next = { ...p, [field]: value };
       if (['loan_amount', 'interest_rate', 'loan_tenure_months'].includes(field)) {
-        next.monthly_payment = calcMonthly(
+        next.monthly_payment = calcLoanPayment(
           field === 'loan_amount' ? value : next.loan_amount,
           field === 'interest_rate' ? value : next.interest_rate,
           field === 'loan_tenure_months' ? value : next.loan_tenure_months,

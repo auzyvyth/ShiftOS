@@ -42,6 +42,7 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
+import { calcMonthly } from "../utils/financing";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -53,11 +54,6 @@ const fmtFinancing = (car) => {
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
 
-/* 90% loan, 3.5% flat p.a., 7-year tenure */
-const calcMonthly = (price) => {
-  if (!price || price <= 0) return null;
-  return Math.round((price * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12));
-};
 
 const isImageUrl = (url) =>
   /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");

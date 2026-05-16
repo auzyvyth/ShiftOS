@@ -8,11 +8,7 @@ import { trackEvent } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import { useSavedCars } from '../hooks/useSavedCars';
-
-const calcMonthly = (price) => {
-  if (!price || price <= 0) return null;
-  return Math.round((price * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12));
-};
+import { calcMonthly } from '../utils/financing';
 
 const getAgeDays = (createdAt) => {
   if (!createdAt) return null;
