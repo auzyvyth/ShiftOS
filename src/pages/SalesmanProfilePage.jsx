@@ -29,12 +29,28 @@ export default function SalesmanProfilePage() {
 
       setProfile(p);
 
-      const { data: lst } = await supabase
-        .from('car_listings')
-        .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,status')
-        .eq('dealer_id', p.id)
-        .eq('status', 'available')
-        .order('created_at', { ascending: false });
+      // salesman_lite own their listings (dealer_id = p.id)
+      // regular salesmen are assigned listings (assigned_to = p.id)
+      const [ownedRes, assignedRes] = await Promise.all([
+        supabase
+          .from('car_listings')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,status')
+          .eq('dealer_id', p.id)
+          .eq('status', 'available')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('car_listings')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,status')
+          .eq('assigned_to', p.id)
+          .eq('status', 'available')
+          .order('created_at', { ascending: false }),
+      ]);
+      const seen = new Set();
+      const lst = [...(ownedRes.data || []), ...(assignedRes.data || [])].filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
 
       setListings(lst || []);
       setLoading(false);
