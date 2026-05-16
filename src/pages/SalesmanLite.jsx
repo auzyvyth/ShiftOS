@@ -625,15 +625,22 @@ export default function SalesmanLite() {
             const evts = allEvts || [];
             setAnalyticsEvents(evts);
             // build per-listing CVR map (all-time, session-deduped)
+            const now = Date.now();
+            const DAY_MS = 86400000;
             const map = {};
             const viewedKeys = new Set();
             const contactedKeys = new Set();
             evts.forEach((e) => {
               if (!e.car_id) return;
-              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
+              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0, daily: [0,0,0,0,0,0,0] };
               const key = `${e.car_id}:${e.session_id || e.car_id}`;
               if (["car_view", "link_visit"].includes(e.event_type)) {
-                if (!viewedKeys.has(key)) { viewedKeys.add(key); map[e.car_id].views++; }
+                if (!viewedKeys.has(key)) {
+                  viewedKeys.add(key);
+                  map[e.car_id].views++;
+                  const daysAgo = Math.floor((now - new Date(e.created_at).getTime()) / DAY_MS);
+                  if (daysAgo >= 0 && daysAgo < 7) map[e.car_id].daily[6 - daysAgo]++;
+                }
               }
               if (["whatsapp_click", "call_click"].includes(e.event_type)) {
                 if (!contactedKeys.has(key)) { contactedKeys.add(key); map[e.car_id].enquiries++; }
@@ -2793,6 +2800,24 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       </div>
                     )}
 
+                    {/* 7-day sparkline */}
+                    {!isSold && (() => {
+                      const daily = stats.daily || [0,0,0,0,0,0,0];
+                      const total = daily.reduce((s, v) => s + v, 0);
+                      if (total === 0) return null;
+                      const peak = Math.max(...daily, 1);
+                      const days = ["M","T","W","T","F","S","S"];
+                      return (
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 24, marginBottom: 10 }}>
+                          {daily.map((v, i) => (
+                            <div key={i} title={`${days[i]}: ${v} view${v !== 1 ? "s" : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                              <div style={{ width: "100%", height: Math.max(2, Math.round((v / peak) * 18)), background: v > 0 ? "#3b82f6" : "rgba(255,255,255,0.06)", borderRadius: 2 }} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
                     {/* Photo nudge — fewer than 3 photos hurts views */}
                     {!isSold && (!car.images || car.images.length < 3) && (
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: 6, background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.14)" }}>
@@ -3857,6 +3882,20 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         })
       : leads;
 
+    // lead source breakdown
+    const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+    leads.forEach(l => {
+      const s = l.lead_source || "manual";
+      srcMap[s] = (srcMap[s] || 0) + 1;
+    });
+    const srcTotal = leads.length;
+    const srcCfg = [
+      { key: "enquiry",  label: "WhatsApp",  color: "#4ade80" },
+      { key: "booking",  label: "Booking",   color: "#60a5fa" },
+      { key: "xdrive",   label: "XDrive",    color: "#f87171" },
+      { key: "manual",   label: "Manual",    color: "#6b7280" },
+    ].filter(s => srcMap[s.key] > 0);
+
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
 
@@ -4035,6 +4074,25 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             <Plus size={13} /> Add Lead
           </button>
         </div>
+
+        {/* Lead source breakdown */}
+        {srcTotal > 0 && srcCfg.length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
+              {srcCfg.map(({ key, color }) => (
+                <div key={key} style={{ flex: srcMap[key], background: color }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {srcCfg.map(({ key, label, color }) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search bar */}
         <div style={{ position: "relative", marginBottom: 12 }}>
