@@ -21,8 +21,7 @@ export default function SalesmanProfilePage() {
         .eq('role', 'salesman')
         .maybeSingle();
 
-      if (!p || p.plan !== 'salesman_full') {
-        setProfile(p || null);
+      if (!p) {
         setNotFound(true);
         setLoading(false);
         return;

@@ -759,7 +759,7 @@ Rules:
   };
 
   const uniqueLink = profile?.slug
-    ? `${window.location.origin}/cars?ref=${profile.slug}`
+    ? `https://xdrive.my/cars?ref=${profile.slug}`
     : null;
 
   const handleCopy = () => {
@@ -780,7 +780,7 @@ Rules:
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+    const link = `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
       const price = Number(car.selling_price || 0);

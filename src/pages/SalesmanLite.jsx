@@ -1255,7 +1255,7 @@ export default function SalesmanLite() {
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+    const link = `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
       const price = Number(car.selling_price || 0);
