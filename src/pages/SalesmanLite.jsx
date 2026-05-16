@@ -284,6 +284,16 @@ export default function SalesmanLite() {
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // browser push notifications + batch WA
+  const [browserNotifPerm, setBrowserNotifPerm] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  );
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
+    localStorage.getItem('slite_notif_banner_dismissed') === '1'
+  );
+  const [batchWALeads, setBatchWALeads] = useState(null); // null = closed, array = queue
+  const [batchWAIdx, setBatchWAIdx] = useState(0);
+
   // enquiry templates
   const [openTemplateId, setOpenTemplateId] = useState(null);
   const [templateToast, setTemplateToast] = useState(null);
@@ -864,6 +874,34 @@ export default function SalesmanLite() {
       if (saved) setGoal(saved);
     } catch {}
   }, [userId]);
+
+  // Browser notification: fire when user returns to tab and has stale leads
+  useEffect(() => {
+    if (browserNotifPerm !== 'granted') return;
+    const handler = () => {
+      if (document.hidden || staleLeads.length === 0) return;
+      const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
+      new Notification(`${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`, {
+        body: names,
+        tag: 'slite-followup',
+      });
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [browserNotifPerm, staleLeads]);
+
+  const requestBrowserNotif = async () => {
+    if (typeof Notification === 'undefined') return;
+    const perm = await Notification.requestPermission();
+    setBrowserNotifPerm(perm);
+    setNotifBannerDismissed(true);
+    localStorage.setItem('slite_notif_banner_dismissed', '1');
+  };
+
+  const dismissNotifBanner = () => {
+    setNotifBannerDismissed(true);
+    localStorage.setItem('slite_notif_banner_dismissed', '1');
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -1783,12 +1821,31 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
+        {/* ── Notification opt-in banner ── */}
+        {!notifBannerDismissed && browserNotifPerm === 'default' && staleLeads.length > 0 && (
+          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>🔔</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: "0 0 1px", fontSize: 12, fontWeight: 600, color: "#a5b4fc" }}>Never miss a follow-up</p>
+              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Get a nudge when leads go cold while you're away.</p>
+            </div>
+            <button onClick={requestBrowserNotif} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}>Turn on</button>
+            <button onClick={dismissNotifBanner} style={{ fontSize: 16, padding: "2px 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
+          </div>
+        )}
+
         {/* ── Follow-up needed ── */}
         {staleLeads.length > 0 && (
           <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(251,146,60,0.1)" }}>
               <AlertCircle size={13} style={{ color: "#fb923c", flexShrink: 0 }} />
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c" }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c", flex: 1 }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
+              {staleLeads.some(l => l.phone) && (
+                <button
+                  onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
+                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}
+                >WA All</button>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {staleLeads.map((lead, i) => {
@@ -5729,6 +5786,68 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     );
   })();
 
+  // ── BATCH WA MODAL ─────────────────────────────────────────────────────────
+
+  const renderBatchWAModal = () => {
+    if (!batchWALeads || batchWALeads.length === 0) return null;
+    const current = batchWALeads[batchWAIdx];
+    if (!current) return null;
+    const car = current.car_listings;
+    const waPhone = (current.phone || '').replace(/\D/g, '');
+    const waNum = waPhone.startsWith('6') ? waPhone : '6' + waPhone;
+    const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
+    const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > 48 * 3600 * 1000;
+    const msg = isStale
+      ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+      : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
+    const advance = () => {
+      if (batchWAIdx < batchWALeads.length - 1) setBatchWAIdx(i => i + 1);
+      else setBatchWALeads(null);
+    };
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <div style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Follow-up Blast</p>
+            <span style={{ fontSize: 12, color: "#4b5563" }}>{batchWAIdx + 1} / {batchWALeads.length}</span>
+          </div>
+          {/* Progress dots */}
+          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+            {batchWALeads.map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < batchWAIdx ? "#4ade80" : i === batchWAIdx ? "#fbbf24" : "rgba(255,255,255,0.08)" }} />
+            ))}
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{current.buyer_name || "—"}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>
+              {car ? `${car.brand} ${car.model}` : "No car linked"} · Last contact {timeAgo(current.updated_at)}
+            </p>
+          </div>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+            {msg}
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, "_blank"); advance(); }}
+              style={{ flex: 2, padding: "11px", borderRadius: 9, background: "#25D366", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              WA {current.buyer_name?.split(' ')[0] || 'Lead'} →
+            </button>
+            <button
+              onClick={advance}
+              style={{ flex: 1, padding: "11px", borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Skip
+            </button>
+          </div>
+          <button onClick={() => setBatchWALeads(null)} style={{ width: "100%", marginTop: 10, padding: "8px", background: "none", border: "none", color: "#374151", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            Stop — done for now
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ── FOLLOW-UP MODAL ────────────────────────────────────────────────────────
 
   const renderFollowUpModal = () => followUpModalLead && (
@@ -6711,6 +6830,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {renderAddLeadModal()}
       {renderWAModal()}
       {renderLogCallModal()}
+      {renderBatchWAModal()}
 
       {/* ── Test Drive outcome confirmation ── */}
       {testDriveConfirm && (() => {
