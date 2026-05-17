@@ -5117,105 +5117,65 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const car = apt.car_listings;
       const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
       const sc = statusColors[apt.status] || statusColors.pending;
-      const isEditing = editingReminder === apt.id;
+      const isRescheduling = reschedulingAptId === apt.id;
+      const isReminderPicking = reminderPickerAptId === apt.id;
+      const isCancelConfirm = cancelConfirmId === apt.id;
+      const notCancelled = apt.status !== "cancelled" && apt.status !== "completed";
 
       return (
         <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
-          {/* Name row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {apt.buyer_name || "—"}
-              </p>
-              {aptIsNew(apt.created_at) && (
-                <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0, letterSpacing: "0.05em" }}>
-                  NEW
-                </span>
-              )}
-            </div>
-            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+          {/* Header: name + badges */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {apt.buyer_name || "Unknown Buyer"}
+            </p>
+            {aptIsNew(apt.created_at) && (
+              <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0 }}>NEW</span>
+            )}
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
               {apt.status}
             </span>
           </div>
-          {/* Booked timestamp */}
-          {apt.created_at && (
-            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
-              Booked {timeAgo(apt.created_at)} · {new Date(apt.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
-            </p>
-          )}
-          {/* Appointment date/time — prominent */}
-          <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+
+          {/* Date/time — most important, prominent */}
+          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>
             📅 {dateStr}{timeStr && ` · ${timeStr}`}
           </p>
-          {/* Car */}
-          {car && (
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>
-              {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-            </p>
-          )}
-          {/* Phone */}
-          {apt.buyer_phone && (
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>
-              📞 {apt.buyer_phone}
-            </p>
-          )}
-          {/* Notes */}
-          {apt.notes && (
-            <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>
-              "{apt.notes}"
-            </p>
-          )}
-          {/* Reminder status */}
+
+          {/* Car + phone + booked time */}
+          {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+          {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>}
+          {apt.notes && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
+          {apt.created_at && <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
+
+          {/* Telegram reminder indicator */}
           {apt.remind_at && !apt.remind_sent ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", marginBottom: 8 }}>
-              <Bell size={12} color="#4ade80" />
-              <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
-                Telegram · {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} at {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
+              <Bell size={11} color="#4ade80" />
+              <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
+                Telegram reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#f87171", fontSize: 10, cursor: "pointer", padding: 0 }}>Clear</button>
+              <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
             </div>
           ) : apt.remind_sent ? (
-            <div style={{ fontSize: 11, color: "#4b5563", marginBottom: 8 }}>✓ Reminder sent</div>
+            <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px" }}>✓ Telegram reminder sent</p>
           ) : null}
-          {/* Actions */}
-          {isEditing ? (
-            <div style={{ marginTop: 8 }}>
-              <textarea
-                value={reminderMsg}
-                onChange={(e) => setReminderMsg(e.target.value)}
-                rows={3}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 10px", resize: "vertical", lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 6 }}
-              />
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  onClick={async () => {
-                    const phone = apt.buyer_phone.replace(/\D/g, "");
-                    window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer");
-                    setEditingReminder(null);
-                    if (apt.status === "pending") { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }
-                  }}
-                  style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Send
-                </button>
-                <button
-                  onClick={() => setEditingReminder(null)}
-                  style={{ fontSize: 12, padding: "6px 11px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : reschedulingAptId === apt.id ? (
-            <div style={{ marginTop: 8 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af" }}>Pick a new date &amp; time:</p>
+
+          {/* Expand: reschedule date picker */}
+          {isRescheduling && (
+            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
               <input
                 type="datetime-local"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
-                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 6 }}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 8 }}
               />
               <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                  Cancel
+                </button>
                 <button
                   onClick={async () => {
                     if (!rescheduleDate) return;
@@ -5227,120 +5187,142 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     setRescheduleDate("");
                     toast.success("Appointment rescheduled!");
                   }}
-                  style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)", color: "#c084fc", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Confirm Reschedule
-                </button>
-                <button
-                  onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
-                  style={{ fontSize: 12, padding: "6px 11px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
-                >
-                  Cancel
+                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
+                  Save New Time
                 </button>
               </div>
             </div>
-          ) : (
-            <div style={{ marginTop: 8 }}>
-              {/* Telegram reminder chip picker */}
-              {reminderPickerAptId === apt.id ? (
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-                  <p style={{ fontSize: 10, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 8px" }}>Send Telegram reminder</p>
-                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
-                    {[
-                      { key: "1h",        label: "1 hour before" },
-                      { key: "2h",        label: "2 hours before" },
-                      { key: "day_before", label: "Day before (9am)" },
-                      { key: "two_days",  label: "2 days before" },
-                    ].map(({ key, label }) => {
-                      const t = calcRemindAt(apt, key);
-                      const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
-                      return (
-                        <button key={key} onClick={() => setSelectedRemindAt(t)}
-                          style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
-                            background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
-                            border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                            color: active ? "#93c5fd" : "#6b7280" }}>
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <input type="datetime-local"
-                    value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0, 16) : ""}
-                    onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
-                  />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
-                      style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                      Cancel
+          )}
+
+          {/* Expand: Telegram reminder time picker */}
+          {isReminderPicking && (
+            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule Telegram reminder</p>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+                {[
+                  { key: "1h", label: "1h before" },
+                  { key: "2h", label: "2h before" },
+                  { key: "day_before", label: "Day before 9am" },
+                  { key: "two_days", label: "2 days before" },
+                ].map(({ key, label }) => {
+                  const t = calcRemindAt(apt, key);
+                  const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
+                  return (
+                    <button key={key} onClick={() => setSelectedRemindAt(t)}
+                      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+                        background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+                        border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                        color: active ? "#93c5fd" : "#6b7280" }}>
+                      {label}
                     </button>
-                    <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
-                      disabled={!selectedRemindAt || reminderSaving}
-                      style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
-                        background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                        border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                        color: selectedRemindAt ? "#4ade80" : "#374151",
-                        cursor: selectedRemindAt ? "pointer" : "not-allowed",
-                        opacity: reminderSaving ? 0.6 : 1 }}>
-                      {reminderSaving ? "Saving…" : "Set reminder"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button onClick={() => { setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setEditingReminder(null); }}
-                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, cursor: "pointer", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-                  <Bell size={11} /> Set reminder
+                  );
+                })}
+              </div>
+              <input type="datetime-local"
+                value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0, 16) : ""}
+                onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+              />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                  Cancel
                 </button>
-              )}
-              {/* Primary: WA Reminder */}
+                <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+                  disabled={!selectedRemindAt || reminderSaving}
+                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                    background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+                    border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                    color: selectedRemindAt ? "#4ade80" : "#374151",
+                    cursor: selectedRemindAt ? "pointer" : "not-allowed",
+                    opacity: reminderSaving ? 0.6 : 1 }}>
+                  {reminderSaving ? "Saving…" : "Set reminder"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Expand: cancel confirmation */}
+          {isCancelConfirm && (
+            <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setCancelConfirmId(null)}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                  Keep it
+                </button>
+                <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }}
+                  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
+                  Yes, cancel appt
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Action bar — always visible for active appointments */}
+          {notCancelled && !isRescheduling && !isCancelConfirm && (
+            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+              {/* WA Reminder — opens WhatsApp directly, auto-confirms if pending */}
               {apt.buyer_phone && (
                 <button
-                  onClick={() => { setEditingReminder(apt.id); setReminderMsg(buildReminderMessage(apt)); }}
-                  style={{ width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", marginBottom: 6 }}
+                  onClick={() => {
+                    const phone = apt.buyer_phone.replace(/\D/g, "");
+                    const msg = buildReminderMessage(apt);
+                    window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+                    if (apt.status === "pending") {
+                      updateApptStatus(apt.id, "confirmed");
+                      autoUpsertLeadFromAppt(apt);
+                      scheduleAptReminder(apt);
+                    }
+                  }}
+                  style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  title="Send WhatsApp reminder message to buyer"
                 >
-                  Send WA Reminder
+                  <MessageCircle size={12} /> WA Reminder
                 </button>
               )}
-              {/* Secondary: status actions */}
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {apt.status !== "confirmed" && (
-                  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>
-                    Confirm
-                  </button>
-                )}
-                {apt.status !== "rescheduled" && (
-                  <button
-                    onClick={() => {
-                      const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
-                      const pad = (n) => String(n).padStart(2, "0");
-                      const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`;
-                      setRescheduleDate(local);
-                      setReschedulingAptId(apt.id);
-                      setEditingReminder(null);
-                    }}
-                    style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
-                  >
-                    Reschedule
-                  </button>
-                )}
-                {apt.status !== "cancelled" && (
-                  cancelConfirmId === apt.id ? (
-                    <>
-                      <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.5)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>
-                        Confirm Cancel
-                      </button>
-                      <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                        Keep
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={() => setCancelConfirmId(apt.id)} style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>
-                      Cancel
-                    </button>
-                  )
-                )}
-              </div>
+              {/* Confirm — mark appointment as confirmed */}
+              {apt.status !== "confirmed" && (
+                <button
+                  onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }}
+                  style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}
+                  title="Mark appointment as confirmed"
+                >
+                  ✓ Confirm
+                </button>
+              )}
+              {/* Move — change the date/time */}
+              <button
+                onClick={() => {
+                  const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date();
+                  const pad = (n) => String(n).padStart(2, "0");
+                  const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`;
+                  setRescheduleDate(local);
+                  setReschedulingAptId(apt.id);
+                  setCancelConfirmId(null);
+                  setReminderPickerAptId(null);
+                }}
+                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}
+                title="Change appointment date or time"
+              >
+                ↺ Move
+              </button>
+              {/* Cancel — opens confirm panel above */}
+              <button
+                onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}
+                style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}
+                title="Cancel this appointment"
+              >
+                ✕ Cancel
+              </button>
+              {/* Bell — schedule Telegram reminder */}
+              <button
+                onClick={() => { setReminderPickerAptId(isReminderPicking ? null : apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); }}
+                style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: apt.remind_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: apt.remind_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: apt.remind_at ? "#fbbf24" : "#4b5563" }}
+                title="Schedule a Telegram reminder"
+              >
+                <Bell size={13} />
+              </button>
             </div>
           )}
         </div>
