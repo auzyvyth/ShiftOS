@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Routes, BrowserRouter as Router } from "react-router-dom";
+import { Route, Routes, BrowserRouter as Router, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import ScrollToTop from "./components/ScrollToTop";
 import HomePage from "./pages/HomePage";
@@ -35,6 +35,16 @@ import GuidesPage from "./pages/GuidesPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
+const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
+
+function CompareBarGate() {
+  const { pathname } = useLocation();
+  const show = COMPARE_PATHS.includes(pathname) ||
+    pathname.startsWith("/cars/") ||
+    pathname.startsWith("/showroom/");
+  return show ? <CompareBar /> : null;
+}
+
 function App() {
   return (
     <Router>
@@ -50,7 +60,7 @@ function App() {
           },
         }}
       />
-      <CompareBar />
+      <CompareBarGate />
       <Routes>
         {/* Public — XDrive */}
         <Route path="/" element={<HomePage />} />
