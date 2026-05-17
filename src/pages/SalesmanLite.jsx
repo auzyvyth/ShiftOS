@@ -45,7 +45,10 @@ import {
   Search,
   DollarSign,
   Clock,
-  MessageCircle,
+  BarChart2,
+  Target,
+  Award,
+  Zap,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -1459,6 +1462,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     {
+      tab: "performance",
+      label: "Performance",
+      icon: <BarChart2 style={{ width: 14, height: 14 }} />,
+    },
+    {
       tab: "merge",
       label: "Join Dealership",
       icon: <GitMerge style={{ width: 14, height: 14 }} />,
@@ -1490,6 +1498,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
+    { tab: "performance", label: "Stats", icon: <BarChart2 size={18} /> },
     { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
     { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
   ];
@@ -2169,6 +2178,373 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             Enter Code →
           </button>
         </div>
+
+      </div>
+    );
+  };
+
+  // ── RENDER PERFORMANCE ────────────────────────────────────────────────────
+
+  const renderPerformance = () => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 86400000;
+    const monthAgo = now - 30 * 86400000;
+
+    // Stage classification
+    const ACTIVE_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
+    const WON_STAGES = ["won","closed_won"];
+    const LOST_STAGES = ["lost","closed_lost"];
+    const FUNNEL_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
+    const FUNNEL_LABELS = { new:"New", contacted:"Contacted", viewing_booked:"Viewing", test_drive:"Test Drive", negotiating:"Negotiating", deposit_taken:"Deposit" };
+
+    const allLeads = leads;
+    const activeLeads = allLeads.filter(l => ACTIVE_STAGES.includes(l.stage));
+    const wonLeads = allLeads.filter(l => WON_STAGES.includes(l.stage));
+    const lostLeads = allLeads.filter(l => LOST_STAGES.includes(l.stage));
+    const closedLeads = [...wonLeads, ...lostLeads];
+
+    // Close rate
+    const closeRate = closedLeads.length > 0 ? Math.round((wonLeads.length / closedLeads.length) * 100) : null;
+    const overallRate = allLeads.length > 0 ? Math.round((wonLeads.length / allLeads.length) * 100) : null;
+
+    // This month
+    const monthWon = wonLeads.filter(l => new Date(l.updated_at) >= new Date(now - 30 * 86400000));
+    const monthLeads = allLeads.filter(l => new Date(l.created_at) >= new Date(now - 30 * 86400000));
+    const monthCloseRate = monthLeads.length > 0 ? Math.round((monthWon.length / monthLeads.length) * 100) : null;
+
+    // This week
+    const weekLeads = allLeads.filter(l => new Date(l.created_at).getTime() >= weekAgo);
+    const weekWon = wonLeads.filter(l => new Date(l.updated_at).getTime() >= weekAgo);
+
+    // Stale / follow-up
+    const staleCount = staleLeads.length;
+    const leadsFollowedUpThisWeek = activeLeads.filter(l => l.follow_up_at && new Date(l.follow_up_at).getTime() >= weekAgo).length;
+    const leadsWithNoFollowUp = activeLeads.filter(l => !l.follow_up_at).length;
+
+    // Avg days to close (won leads only, from created to updated)
+    const closingTimes = wonLeads
+      .filter(l => l.created_at && l.updated_at)
+      .map(l => (new Date(l.updated_at) - new Date(l.created_at)) / 86400000);
+    const avgDaysToClose = closingTimes.length > 0
+      ? Math.round(closingTimes.reduce((a, b) => a + b, 0) / closingTimes.length)
+      : null;
+
+    // Lead source breakdown
+    const sourceMap = {};
+    allLeads.forEach(l => {
+      const src = l.lead_source || "manual";
+      if (!sourceMap[src]) sourceMap[src] = { total: 0, won: 0 };
+      sourceMap[src].total++;
+      if (WON_STAGES.includes(l.stage)) sourceMap[src].won++;
+    });
+    const sources = Object.entries(sourceMap).sort((a, b) => b[1].total - a[1].total);
+
+    // Pipeline funnel counts
+    const funnelCounts = FUNNEL_STAGES.map(s => ({
+      stage: s,
+      label: FUNNEL_LABELS[s],
+      count: allLeads.filter(l => l.stage === s).length,
+    }));
+    const funnelMax = Math.max(...funnelCounts.map(f => f.count), 1);
+
+    // Lead aging — active leads by days in pipeline
+    const leadAging = activeLeads.map(l => ({
+      name: l.buyer_name || "—",
+      stage: l.stage,
+      days: Math.floor((now - new Date(l.created_at).getTime()) / 86400000),
+      car: l.car_listings,
+    })).sort((a, b) => b.days - a.days);
+
+    // WA activity proxy — leads updated in last 7 days (indicates contact)
+    const contactedThisWeek = activeLeads.filter(l =>
+      new Date(l.updated_at).getTime() >= weekAgo
+    ).length;
+
+    // Coaching nudges — rule-based
+    const nudges = [];
+    if (staleCount > 0) nudges.push({
+      type: "warn",
+      icon: <Clock size={14} />,
+      title: `${staleCount} lead${staleCount !== 1 ? "s" : ""} need follow-up now`,
+      body: `You haven't contacted ${staleCount} lead${staleCount !== 1 ? "s" : ""} in over 48 hours. A quick WhatsApp message today keeps deals alive — most buyers go cold within 72 hours of first enquiry.`,
+      cta: "Go to Leads",
+      ctaAction: () => setActiveTab("leads"),
+    });
+    if (leadsWithNoFollowUp > 2) nudges.push({
+      type: "warn",
+      icon: <Target size={14} />,
+      title: `${leadsWithNoFollowUp} leads have no follow-up date set`,
+      body: `Set a follow-up date on each lead so you never forget to reach out. Salesmen who schedule follow-ups close 2× more deals than those who don't.`,
+      cta: "Set follow-ups",
+      ctaAction: () => setActiveTab("leads"),
+    });
+    if (contactedThisWeek === 0 && activeLeads.length > 0) nudges.push({
+      type: "warn",
+      icon: <Zap size={14} />,
+      title: "No leads contacted this week",
+      body: `You have ${activeLeads.length} active lead${activeLeads.length !== 1 ? "s" : ""} but haven't moved any forward this week. Even a 2-minute check-in message can re-spark a deal. Follow up every 2–3 days to stay top of mind.`,
+      cta: "Contact leads",
+      ctaAction: () => setActiveTab("leads"),
+    });
+    if (closeRate !== null && closeRate < 20 && closedLeads.length >= 3) nudges.push({
+      type: "tip",
+      icon: <TrendingUp size={14} />,
+      title: `Your close rate is ${closeRate}% — here's how to improve it`,
+      body: `Top salesmen close 30–50% of qualified leads. Focus on leads in the Negotiating and Deposit stages first. Ask buyers what's stopping them and address it directly.`,
+      cta: null,
+    });
+    if (avgDaysToClose !== null && avgDaysToClose > 21) nudges.push({
+      type: "tip",
+      icon: <Clock size={14} />,
+      title: `Your average deal takes ${avgDaysToClose} days to close`,
+      body: `Deals that go past 3 weeks often stall. Create urgency — remind buyers about limited stock, upcoming price changes, or offer a test drive to speed up decisions.`,
+      cta: null,
+    });
+    if (nudges.length === 0 && wonLeads.length > 0) nudges.push({
+      type: "good",
+      icon: <Award size={14} />,
+      title: "You're on track — keep the momentum",
+      body: `${wonLeads.length} deal${wonLeads.length !== 1 ? "s" : ""} closed and ${activeLeads.length} still in pipeline. Keep following up every 2–3 days and you'll stay ahead.`,
+      cta: null,
+    });
+
+    const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" };
+    const CARD_HEADER = {
+      padding: "13px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+      fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", fontWeight: 700,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+    };
+    const nudgeColor = { warn: { bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.18)", icon: "#ef4444", title: "#f87171" }, tip: { bg: "rgba(59,130,246,0.07)", border: "rgba(59,130,246,0.18)", icon: "#3b82f6", title: "#93c5fd" }, good: { bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)", icon: "#22c55e", title: "#86efac" } };
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {/* ── Header ── */}
+        <div>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>Your Performance</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>Close rate, pipeline health, follow-up habits — all in one place.</p>
+        </div>
+
+        {/* ── Coaching nudges ── */}
+        {nudges.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {nudges.map((n, i) => {
+              const c = nudgeColor[n.type];
+              return (
+                <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ color: c.icon, flexShrink: 0 }}>{n.icon}</span>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: c.title }}>{n.title}</p>
+                  </div>
+                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{n.body}</p>
+                  {n.cta && (
+                    <button onClick={n.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{n.cta} →</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Close Rate ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>Close Rate</span>
+            <span>all time</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
+            {[
+              { label: "Total Leads", value: allLeads.length, note: "ever created" },
+              { label: "Closed Won", value: wonLeads.length, note: "deals done", color: "#22c55e" },
+              { label: "Closed Lost", value: lostLeads.length, note: "didn't convert", color: "#ef4444" },
+              { label: "Close Rate", value: closeRate !== null ? `${closeRate}%` : "—", note: "won ÷ (won+lost)", color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
+            ].map(({ label, value, note, color }, i, arr) => (
+              <div key={label} style={{
+                padding: "18px 20px",
+                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                borderBottom: isMobile && i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+              }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color: color || "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value ?? "—"}</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
+              </div>
+            ))}
+          </div>
+          {/* This month strip */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>This Month</span>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{monthLeads.length} new leads</span>
+            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{monthWon.length} won</span>
+            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{monthCloseRate}% close rate</span>}
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>{weekLeads.length} leads this week</span>
+          </div>
+        </div>
+
+        {/* ── Pipeline Funnel ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>Pipeline Funnel</span>
+            <span>{activeLeads.length} active</span>
+          </div>
+          <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {funnelCounts.map(({ stage, label, count }) => {
+              const pct = funnelMax > 0 ? (count / funnelMax) * 100 : 0;
+              const stageColors = { new: "#3b82f6", contacted: "#eab308", viewing_booked: "#a78bfa", test_drive: "#34d399", negotiating: "#fb923c", deposit_taken: "#22c55e" };
+              const color = stageColors[stage] || "#94a3b8";
+              return (
+                <div key={stage} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>{label}</p>
+                  <div style={{ flex: 1, height: 22, background: "rgba(255,255,255,0.04)", borderRadius: 6, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.max(pct, count > 0 ? 4 : 0)}%`, background: color, borderRadius: 6, opacity: 0.8, transition: "width 0.4s ease" }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: count > 0 ? "#f1f5f9" : "#374151", width: 24, textAlign: "right", flexShrink: 0 }}>{count}</p>
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>Won</p>
+              <div style={{ flex: 1, height: 22, background: "rgba(34,197,94,0.08)", borderRadius: 6, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min((wonLeads.length / funnelMax) * 100, 100)}%`, background: "#22c55e", borderRadius: 6, transition: "width 0.4s ease" }} />
+              </div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#22c55e", width: 24, textAlign: "right", flexShrink: 0 }}>{wonLeads.length}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Follow-up Habit ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>Follow-up Habits</span>
+            <span>7 days</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
+            {[
+              { label: "Active Leads", value: activeLeads.length, note: "in pipeline now" },
+              { label: "Contacted This Week", value: contactedThisWeek, note: "leads updated", color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
+              { label: "No Follow-up Set", value: leadsWithNoFollowUp, note: "no date scheduled", color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
+              { label: "Overdue", value: staleCount, note: "48h+ no contact", color: staleCount > 0 ? "#ef4444" : "#22c55e" },
+            ].map(({ label, value, note, color }, i, arr) => (
+              <div key={label} style={{
+                padding: "16px 20px",
+                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                borderBottom: isMobile && i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+              }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color: color || "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
+              </div>
+            ))}
+          </div>
+          {activeLeads.length > 0 && contactedThisWeek === 0 && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(239,68,68,0.04)" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>You've done <strong>no follow-ups this week</strong>. You have {activeLeads.length} leads in pipeline — follow up every 2–3 days to close more deals.</p>
+            </div>
+          )}
+          {activeLeads.length > 0 && contactedThisWeek > 0 && contactedThisWeek < activeLeads.length && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(234,179,8,0.03)" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>You contacted {contactedThisWeek} of {activeLeads.length} leads this week. Try to touch every active lead at least once every 3 days.</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Speed to Close ── */}
+        {(avgDaysToClose !== null || wonLeads.length > 0) && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Speed &amp; Conversion</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
+              {[
+                { label: "Avg Days to Close", value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? "fast close" : avgDaysToClose <= 30 ? "normal pace" : "consider urgency tactics") : "close more deals to see this", color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
+                { label: "Deals Closed Total", value: wonLeads.length, note: "all time", color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
+                { label: "Active Pipeline", value: activeLeads.length, note: `${lostLeads.length} lost all time`, color: "#3b82f6" },
+              ].map(({ label, value, note, color }, i, arr) => (
+                <div key={label} style={{ padding: "18px 20px", borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", borderBottom: isMobile && i < 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                  <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
+                  <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Lead Source ── */}
+        {sources.length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Lead Sources</span>
+              <span>where buyers come from</span>
+            </div>
+            <div style={{ padding: "0" }}>
+              {sources.map(([src, { total, won }], i) => {
+                const srcRate = total > 0 ? Math.round((won / total) * 100) : 0;
+                const srcLabels = { enquiry: "XDrive Enquiry", manual: "Manual Add", whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: "Referral", other: "Other" };
+                return (
+                  <div key={src} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i < sources.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{srcLabels[src] || src}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", maxWidth: 120 }}>
+                          <div style={{ height: "100%", width: `${srcRate}%`, background: srcRate >= 30 ? "#22c55e" : srcRate >= 15 ? "#eab308" : "#3b82f6", borderRadius: 99 }} />
+                        </div>
+                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{srcRate}% close rate</p>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{total}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{won} won</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Lead Aging ── */}
+        {leadAging.length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Lead Aging</span>
+              <span>oldest first</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              {["Buyer", "Stage", "In Pipeline", "Action"].map((h, i) => (
+                <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
+              ))}
+            </div>
+            {leadAging.slice(0, 8).map((l, idx) => {
+              const stageC = STAGE_COLOR[l.stage] || { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", tx: "#94a3b8" };
+              const ageColor = l.days > 21 ? "#ef4444" : l.days > 10 ? "#eab308" : "#94a3b8";
+              return (
+                <div key={idx} onClick={() => setActiveTab("leads")} style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "11px 18px", alignItems: "center", borderBottom: idx < Math.min(leadAging.length, 8) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</p>
+                    {l.car && <p style={{ margin: 0, fontSize: 10, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.car.brand} {l.car.model}</p>}
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{(l.stage || "new").replace(/_/g, " ")}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ageColor, textAlign: "center" }}>{l.days}d</p>
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontSize: 10, color: "#475569" }}>→ Leads</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Empty state ── */}
+        {allLeads.length === 0 && (
+          <div style={{ textAlign: "center", padding: "48px 24px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 32 }}>📊</p>
+            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>No data yet</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>Add your first listing and start collecting leads to see your performance stats.</p>
+            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Go to Listings →</button>
+          </div>
+        )}
 
       </div>
     );
@@ -6612,6 +6988,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "leads" && renderLeads()}
+          {activeTab === "performance" && renderPerformance()}
           {activeTab === "enquiries" && (
             <div>
               {/* Sub-tab switcher */}
