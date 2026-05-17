@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, MessageCircle, Sparkles, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -297,6 +297,7 @@ export default function Header() {
   const [userRole, setUserRole] = useState(null);
   const lastScrollY = useRef(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { siteName, siteInitial, waUrl } = useSiteProfile();
 
@@ -359,9 +360,10 @@ export default function Header() {
   const onSub = isSubdomain();
   const navLinks = onSub
     ? [
-        { name: t("nav.home"),       path: "/",           key: "home" },
-        { name: t("nav.browseCars"), path: "/cars",       key: "cars" },
-        { name: t("nav.calculator"), path: "/calculator", key: "calculator" },
+        { name: t("nav.home"),       path: "/",              key: "home" },
+        { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
+        { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
+        { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
       ]
     : [
         { name: t("nav.home"),       path: "/",              key: "home" },
@@ -375,11 +377,21 @@ export default function Header() {
   else
     navLinks.push({ name: t("nav.login"), path: "/login", key: "login" });
 
+  const scrollToHash = (hash) => {
+    const el = document.getElementById(hash);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleNav = (path) => {
     setMobileOpen(false);
-    if (path.includes("#") && location.pathname === "/") {
-      const el = document.getElementById(path.split("#")[1]);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (!path.includes("#")) return;
+    const hash = path.split("#")[1];
+    if (location.pathname === "/") {
+      scrollToHash(hash);
+    } else {
+      navigate("/");
+      // scroll after page renders
+      setTimeout(() => scrollToHash(hash), 120);
     }
   };
 
@@ -427,6 +439,15 @@ export default function Header() {
                   {link.name}
                   <Sparkles style={{ width: "9px", height: "9px", flexShrink: 0 }} />
                 </Link>
+              ) : link.path.includes("#") ? (
+                <button
+                  key={link.key}
+                  onClick={() => handleNav(link.path)}
+                  className={`hdr-link`}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  {link.name}
+                </button>
               ) : (
                 <Link
                   key={link.key}
@@ -497,15 +518,25 @@ export default function Header() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.035, ease: "easeOut" }}
                 >
-                  <Link
-                    to={link.path}
-                    onClick={() => handleNav(link.path)}
-                    className={`hdr-mlink${link.isSpecial ? " special" : location.pathname === link.path ? " active" : ""}`}
-                  >
-                    {link.isSpecial && <Crown style={{ width: "12px", height: "12px", flexShrink: 0 }} />}
-                    <span style={{ flex: 1 }}>{link.name}</span>
-                    {link.isSpecial && <Sparkles style={{ width: "10px", height: "10px", flexShrink: 0 }} />}
-                  </Link>
+                  {link.path.includes("#") ? (
+                    <button
+                      onClick={() => handleNav(link.path)}
+                      className="hdr-mlink"
+                      style={{ background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", fontFamily: "inherit" }}
+                    >
+                      <span style={{ flex: 1 }}>{link.name}</span>
+                    </button>
+                  ) : (
+                    <Link
+                      to={link.path}
+                      onClick={() => handleNav(link.path)}
+                      className={`hdr-mlink${link.isSpecial ? " special" : location.pathname === link.path ? " active" : ""}`}
+                    >
+                      {link.isSpecial && <Crown style={{ width: "12px", height: "12px", flexShrink: 0 }} />}
+                      <span style={{ flex: 1 }}>{link.name}</span>
+                      {link.isSpecial && <Sparkles style={{ width: "10px", height: "10px", flexShrink: 0 }} />}
+                    </Link>
+                  )}
                 </motion.div>
               ))}
 
