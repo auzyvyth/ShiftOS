@@ -288,6 +288,9 @@ export default function SalesmanLite() {
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // telegram setup nudge modal
+  const [telegramSetupModal, setTelegramSetupModal] = useState(false);
+
   // browser push notifications + batch WA
   const [browserNotifPerm, setBrowserNotifPerm] = useState(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
@@ -2021,7 +2024,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
             <div style={{ padding: "6px 0" }}>
               {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => setActiveTab("bookings")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                <div key={a.id} onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
@@ -5315,11 +5318,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               >
                 ✕ Cancel
               </button>
-              {/* Bell — schedule Telegram reminder */}
+              {/* Bell — schedule Telegram reminder (gates on telegram_chat_id) */}
               <button
-                onClick={() => { setReminderPickerAptId(isReminderPicking ? null : apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); }}
+                onClick={() => {
+                  if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); return; }
+                  setReminderPickerAptId(isReminderPicking ? null : apt.id);
+                  setSelectedRemindAt(null);
+                  setCancelConfirmId(null);
+                }}
                 style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: apt.remind_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: apt.remind_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: apt.remind_at ? "#fbbf24" : "#4b5563" }}
-                title="Schedule a Telegram reminder"
+                title={profile?.telegram_chat_id ? "Schedule a Telegram reminder" : "Connect Telegram to enable reminders"}
               >
                 <Bell size={13} />
               </button>
@@ -7110,6 +7118,60 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       {renderNotifPanel()}
       {renderCarDetailPopup()}
       {renderTour()}
+
+      {/* Telegram setup nudge modal */}
+      {telegramSetupModal && (
+        <div
+          onClick={() => setTelegramSetupModal(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 24, maxWidth: 340, width: "100%", fontFamily: "'DM Sans', sans-serif" }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
+                ✈️
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Connect Telegram</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>Required to schedule appointment reminders</p>
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              {[
+                { n: "1", text: <>Open Telegram and search <strong style={{ color: "#93c5fd" }}>@userinfobot</strong></> },
+                { n: "2", text: <>Send <strong style={{ color: "#e5e7eb" }}>/start</strong> — the bot replies with your ID number</> },
+                { n: "3", text: <>Go to <strong style={{ color: "#e5e7eb" }}>Settings → Telegram Notifications</strong> and paste the ID</> },
+              ].map(({ n, text }) => (
+                <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{n}</span>
+                  <p style={{ margin: 0, fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>{text}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setTelegramSetupModal(false)}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
+              >
+                Not now
+              </button>
+              <button
+                onClick={() => { setTelegramSetupModal(false); switchTab("settings"); }}
+                style={{ flex: 2, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", cursor: "pointer" }}
+              >
+                Go to Settings →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Broadcast modal */}
       {broadcastCar &&
