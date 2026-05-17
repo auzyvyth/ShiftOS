@@ -54,11 +54,14 @@ export default function WaitlistPage() {
 
     setLoading(true);
     try {
-      const { data: existing } = await supabase
+      // Check duplicate by phone
+      const { data: existing, error: selectErr } = await supabase
         .from("waitlist_signups")
         .select("position, referral_code")
         .eq("phone", trimPhone)
         .maybeSingle();
+
+      if (selectErr) throw selectErr;
 
       if (existing) {
         setResult({ position: existing.position, referral_code: existing.referral_code, isExisting: true });
@@ -75,6 +78,7 @@ export default function WaitlistPage() {
 
       if (insertErr) throw insertErr;
 
+      // Grant founding member to referrer on first successful referral
       if (refCode) {
         const { data: referrer } = await supabase
           .from("waitlist_signups")
@@ -95,8 +99,10 @@ export default function WaitlistPage() {
 
       setResult({ position: inserted.position, referral_code: inserted.referral_code, isExisting: false });
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
+      console.error("Waitlist error:", err);
+      // Surface the real error so it's debuggable
+      const msg = err?.message || err?.details || JSON.stringify(err);
+      setError(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -245,8 +251,8 @@ export default function WaitlistPage() {
               {error && <p style={{ margin: "0 0 14px", fontSize: 12, color: "#f87171" }}>{error}</p>}
               <button
                 type="submit"
-                disabled={loading}
-                style={{ width: "100%", padding: "13px", borderRadius: 6, background: loading ? "rgba(220,38,38,0.5)" : "#dc2626", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", letterSpacing: "0.02em", transition: "background 0.15s" }}
+                disabled={!consent || loading}
+                style={{ width: "100%", padding: "13px", borderRadius: 6, background: (!consent || loading) ? "rgba(220,38,38,0.35)" : "#dc2626", border: "none", color: !consent ? "rgba(255,255,255,0.4)" : "#fff", fontSize: 15, fontWeight: 700, cursor: (!consent || loading) ? "not-allowed" : "pointer", fontFamily: "inherit", letterSpacing: "0.02em", transition: "all 0.15s" }}
               >
                 {loading ? t("waitlist.ctaLoading") : t("waitlist.cta")}
               </button>
@@ -360,8 +366,8 @@ export default function WaitlistPage() {
               {error && <p style={{ margin: "0 0 12px", fontSize: 12, color: "#f87171" }}>{error}</p>}
               <button
                 type="submit"
-                disabled={loading}
-                style={{ width: "100%", padding: "13px", borderRadius: 6, background: loading ? "rgba(220,38,38,0.5)" : "#dc2626", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+                disabled={!consent || loading}
+                style={{ width: "100%", padding: "13px", borderRadius: 6, background: (!consent || loading) ? "rgba(220,38,38,0.35)" : "#dc2626", border: "none", color: !consent ? "rgba(255,255,255,0.4)" : "#fff", fontSize: 15, fontWeight: 700, cursor: (!consent || loading) ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
               >
                 {loading ? t("waitlist.ctaLoading") : t("waitlist.cta")}
               </button>
