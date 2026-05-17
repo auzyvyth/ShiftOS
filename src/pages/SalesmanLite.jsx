@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   Users,
   MessageSquare,
+  MessageCircle,
   Link as LinkIcon,
   GitMerge,
   AlertCircle,
