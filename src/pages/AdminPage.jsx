@@ -20,6 +20,11 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("dealers");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [waitlist, setWaitlist] = useState([]);
+  const [waitlistSearch, setWaitlistSearch] = useState("");
+  const [blastModal, setBlastModal] = useState(false);
+  const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
+  const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
 
   useEffect(() => {
     async function init() {
@@ -91,6 +96,13 @@ export default function AdminPage() {
       setDealerStats(perDealer);
     }
     setLoading(false);
+
+    // Load waitlist
+    const { data: wl } = await supabase
+      .from("waitlist_signups")
+      .select("id, name, phone, referral_code, referred_by, position, founding_member, created_at")
+      .order("position", { ascending: true });
+    setWaitlist(wl || []);
   }
 
   async function saveField(id, field, value) {
@@ -188,6 +200,7 @@ export default function AdminPage() {
   const TABS = [
     { id: "dealers",  label: `Dealers (${stats.total})` },
     { id: "salesman", label: `Salesmen (${salesmen.length})` },
+    { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform", label: "Platform Stats" },
   ];
 
@@ -233,6 +246,67 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Blast modal */}
+        {blastModal && (() => {
+          const filtered = waitlist.filter(w =>
+            !waitlistSearch || w.name?.toLowerCase().includes(waitlistSearch.toLowerCase()) || w.phone?.includes(waitlistSearch)
+          );
+          const numbers = filtered.map(w => w.phone).join("\n");
+          const copyNumbers = () => {
+            navigator.clipboard.writeText(numbers);
+            setBlastCopied("numbers");
+            setTimeout(() => setBlastCopied(null), 2500);
+          };
+          const copyMsg = () => {
+            navigator.clipboard.writeText(blastMsg);
+            setBlastCopied("msg");
+            setTimeout(() => setBlastCopied(null), 2500);
+          };
+          return (
+            <div className="modal-overlay" onClick={() => setBlastModal(false)}>
+              <div onClick={e => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 28, width: "min(560px,95vw)", maxHeight: "90vh", overflowY: "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: "#f5f5f5", marginBottom: 2 }}>📣 Blast Waitlist</p>
+                    <p style={{ fontSize: 12, color: "#6b7280" }}>{filtered.length} recipients — copy numbers + message, paste into WA Business broadcast</p>
+                  </div>
+                  <button onClick={() => setBlastModal(false)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
+                </div>
+
+                {/* Message composer */}
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Message</p>
+                  <textarea
+                    value={blastMsg}
+                    onChange={e => setBlastMsg(e.target.value)}
+                    rows={5}
+                    style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none" }}
+                  />
+                  <button onClick={copyMsg} style={{ marginTop: 8, fontSize: 12, padding: "6px 14px", borderRadius: 6, background: blastCopied === "msg" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.05)", border: blastCopied === "msg" ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)", color: blastCopied === "msg" ? "#4ade80" : "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                    {blastCopied === "msg" ? "✓ Copied!" : "Copy Message"}
+                  </button>
+                </div>
+
+                {/* Numbers */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Phone Numbers ({filtered.length})</p>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", maxHeight: 180, overflowY: "auto", marginBottom: 10 }}>
+                    {filtered.map(w => (
+                      <p key={w.id} style={{ margin: "2px 0", fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>{w.phone}</p>
+                    ))}
+                  </div>
+                  <button onClick={copyNumbers} style={{ width: "100%", fontSize: 13, padding: "10px 16px", borderRadius: 7, background: blastCopied === "numbers" ? "rgba(34,197,94,0.12)" : "rgba(220,38,38,0.12)", border: blastCopied === "numbers" ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(220,38,38,0.3)", color: blastCopied === "numbers" ? "#4ade80" : "#f87171", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                    {blastCopied === "numbers" ? `✓ ${filtered.length} numbers copied!` : `Copy All ${filtered.length} Numbers`}
+                  </button>
+                  <p style={{ marginTop: 10, fontSize: 11, color: "#4b5563", lineHeight: 1.6 }}>
+                    Paste numbers into <strong style={{ color: "#9ca3af" }}>WhatsApp Business → New Broadcast</strong>, then paste the message separately.
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Header */}
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 52, background: "rgba(8,12,20,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -270,6 +344,107 @@ export default function AdminPage() {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
+          ) : activeTab === "waitlist" ? (
+            /* ── WAITLIST TAB ── */
+            (() => {
+              const filtered = waitlist.filter(w =>
+                !waitlistSearch ||
+                w.name?.toLowerCase().includes(waitlistSearch.toLowerCase()) ||
+                w.phone?.includes(waitlistSearch) ||
+                w.referral_code?.includes(waitlistSearch)
+              );
+              const founding = waitlist.filter(w => w.founding_member).length;
+              const referred = waitlist.filter(w => w.referred_by).length;
+              return (
+                <>
+                  {/* Stats strip */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 24 }}>
+                    {[
+                      { label: "Total on Waitlist", value: waitlist.length, color: "#f5f5f5" },
+                      { label: "Founding Members", value: founding, color: "#fbbf24" },
+                      { label: "Via Referral", value: referred, color: "#4ade80" },
+                      { label: "Referral Rate", value: waitlist.length > 0 ? `${Math.round((referred/waitlist.length)*100)}%` : "—", color: "#60a5fa" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "16px 18px" }}>
+                        <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</p>
+                        <p style={{ fontSize: 26, fontWeight: 700, color, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Toolbar */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                    <input
+                      value={waitlistSearch} onChange={e => setWaitlistSearch(e.target.value)}
+                      placeholder="Search name, phone, code…" className="adm-input" style={{ width: 260 }}
+                    />
+                    <span style={{ fontSize: 12, color: "#4b5563" }}>{filtered.length} shown</span>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => {
+                          const csv = ["position,name,phone,referral_code,referred_by,founding_member,created_at",
+                            ...filtered.map(w => [w.position, `"${w.name}"`, w.phone, w.referral_code, w.referred_by||"", w.founding_member, w.created_at].join(","))
+                          ].join("\n");
+                          navigator.clipboard.writeText(csv);
+                        }}
+                        style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                        Copy CSV
+                      </button>
+                      <button
+                        onClick={() => setBlastModal(true)}
+                        style={{ fontSize: 12, padding: "6px 16px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                        📣 Blast Waitlist
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                            {["#", "Name", "Phone", "Referral Code", "Referred By", "Status", "Joined"].map(h => (
+                              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((w, i) => (
+                            <tr key={w.id} className="adm-row" style={{ borderBottom: i < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                              <td style={{ padding: "11px 14px", color: "#6b7280", fontWeight: 700 }}>#{w.position}</td>
+                              <td style={{ padding: "11px 14px", color: "#f5f5f5", fontWeight: 600 }}>
+                                {w.name}
+                                {w.founding_member && (
+                                  <span style={{ marginLeft: 7, fontSize: 9, padding: "1px 6px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700 }}>FOUNDING</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "11px 14px" }}>
+                                <a href={`https://wa.me/${w.phone}`} target="_blank" rel="noreferrer"
+                                  style={{ color: "#4ade80", textDecoration: "none", fontSize: 12, fontFamily: "monospace" }}>
+                                  {w.phone}
+                                </a>
+                              </td>
+                              <td style={{ padding: "11px 14px", fontFamily: "monospace", fontSize: 12, color: "#94a3b8" }}>{w.referral_code}</td>
+                              <td style={{ padding: "11px 14px", fontFamily: "monospace", fontSize: 12, color: w.referred_by ? "#60a5fa" : "#374151" }}>{w.referred_by || "—"}</td>
+                              <td style={{ padding: "11px 14px" }}>
+                                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: w.founding_member ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${w.founding_member ? "rgba(251,191,36,0.25)" : "rgba(255,255,255,0.08)"}`, color: w.founding_member ? "#fbbf24" : "#6b7280", fontWeight: 700 }}>
+                                  {w.founding_member ? "Founding" : "Waitlist"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "11px 14px", color: "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>{fmtDate(w.created_at)}</td>
+                            </tr>
+                          ))}
+                          {filtered.length === 0 && (
+                            <tr><td colSpan={7} style={{ padding: "40px 14px", textAlign: "center", color: "#4b5563" }}>No entries found</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              );
+            })()
           ) : activeTab === "platform" ? (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 32 }}>
