@@ -1024,7 +1024,7 @@ export default function CarDetailPage() {
             </div>
             <button
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
               <ArrowLeftRight size={13} />
               {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
             </button>
@@ -2307,7 +2307,7 @@ export default function CarDetailPage() {
                           <span
                             style={{
                               fontSize: "13px",
-                              color: "#f1f5f9",
+                              color: th.text,
                               textAlign: "right",
                             }}
                           >
@@ -2334,7 +2334,7 @@ export default function CarDetailPage() {
                             fontSize: 10,
                             textTransform: "uppercase",
                             letterSpacing: "0.16em",
-                            color: "#334155",
+                            color: th.textMuted,
                             fontWeight: 700,
                             marginBottom: 14,
                           }}
@@ -2729,7 +2729,7 @@ export default function CarDetailPage() {
             {/* ── LOCATION ── */}
             {(car.city || car.state) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Location</p>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 16 }}>Location</p>
                 <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div>
                     <p style={{ fontSize: 16, color: th.text, fontWeight: 600, margin: '0 0 4px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>
