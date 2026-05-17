@@ -1013,8 +1013,8 @@ export default function SalesmanLite() {
       dealer_id: lead?.dealer_id ?? null,
     });
     if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
-    await supabase.from("leads").update({ updated_at: new Date().toISOString() }).eq("id", logCallLeadId);
-    setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString() } : l));
+    await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+    setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
     setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
     toast.success("Call logged");
     setCallSaving(false);
@@ -2821,6 +2821,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             >
               + Add Listing
             </button>
+            <button
+              onClick={() => switchTab("dashboard")}
+              style={{ marginTop: 8, fontSize: 12, padding: "7px 16px", borderRadius: 9, background: "none", border: "none", color: "#374151", cursor: "pointer" }}
+            >
+              ← Back to Dashboard
+            </button>
           </div>
         ) : sorted.length === 0 ? (
           <div
@@ -4235,6 +4241,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     Last contact: {timeAgo(lead.updated_at)}
                   </p>
                 )}
+                {lead.last_call_outcome && (() => {
+                  const OUTCOME = { answered: { emoji: "✅", label: "Answered", color: "#4ade80" }, no_answer: { emoji: "📵", label: "No Answer", color: "#f87171" }, callback_requested: { emoji: "🔁", label: "Callback", color: "#fbbf24" }, voicemail: { emoji: "📬", label: "Voicemail", color: "#94a3b8" } };
+                  const o = OUTCOME[lead.last_call_outcome];
+                  if (!o) return null;
+                  return (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+                      {o.emoji} {o.label}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 
