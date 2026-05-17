@@ -22,6 +22,10 @@ export default function AdminPage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [waitlist, setWaitlist] = useState([]);
   const [waitlistSearch, setWaitlistSearch] = useState("");
+  const [pendingListings, setPendingListings] = useState([]);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [approvalActioning, setApprovalActioning] = useState(null);
   const [blastModal, setBlastModal] = useState(false);
   const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
   const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
@@ -103,6 +107,14 @@ export default function AdminPage() {
       .select("id, name, phone, referral_code, referred_by, position, founding_member, created_at")
       .order("position", { ascending: true });
     setWaitlist(wl || []);
+
+    // Load pending approval listings (salesman-lite standalone accounts)
+    const { data: pending } = await supabase
+      .from("car_listings")
+      .select("id, year, brand, model, variant, selling_price, images, status, created_at, rejection_reason, dealer_id, profiles!car_listings_dealer_id_fkey(full_name, slug, dealership)")
+      .eq("status", "pending_approval")
+      .order("created_at", { ascending: true });
+    setPendingListings(pending || []);
   }
 
   async function saveField(id, field, value) {
@@ -200,6 +212,7 @@ export default function AdminPage() {
   const TABS = [
     { id: "dealers",  label: `Dealers (${stats.total})` },
     { id: "salesman", label: `Salesmen (${salesmen.length})` },
+    { id: "approvals", label: "Approvals", badge: pendingListings.length },
     { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform", label: "Platform Stats" },
   ];
@@ -335,8 +348,13 @@ export default function AdminPage() {
         <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>
+              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
               {t.label}
+              {t.badge > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
+                  {t.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -344,6 +362,130 @@ export default function AdminPage() {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
+          ) : activeTab === "approvals" ? (
+            /* ── APPROVALS TAB ── */
+            <div>
+              <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Listing Approvals</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Listings from standalone salesman-lite accounts waiting for review</p>
+                </div>
+                {pendingListings.length === 0 && (
+                  <span style={{ fontSize: 12, color: "#4ade80" }}>✓ All clear</span>
+                )}
+              </div>
+
+              {pendingListings.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
+                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
+                  <p style={{ fontSize: 14, color: "#4b5563" }}>No listings pending approval</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {pendingListings.map(listing => {
+                    const salesman = listing.profiles;
+                    const img = listing.images?.[0];
+                    const carName = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(" ");
+                    const price = listing.selling_price ? `RM ${Number(listing.selling_price).toLocaleString("en-MY")}` : "—";
+                    const submittedAgo = (() => {
+                      const s = Math.floor((Date.now() - new Date(listing.created_at)) / 1000);
+                      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+                      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+                      return `${Math.floor(s / 86400)}d ago`;
+                    })();
+                    const isActioning = approvalActioning === listing.id;
+                    const isRejecting = rejectingId === listing.id;
+
+                    return (
+                      <div key={listing.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px" }}>
+                        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                          {/* Thumbnail */}
+                          {img ? (
+                            <img src={img} alt={carName} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 7, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                          ) : (
+                            <div style={{ width: 80, height: 60, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <span style={{ fontSize: 20 }}>🚗</span>
+                            </div>
+                          )}
+
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carName || "—"}</p>
+                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{price}</p>
+                            <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
+                              by <span style={{ color: "#9ca3af", fontWeight: 600 }}>{salesman?.full_name || "—"}</span>
+                              {salesman?.slug && <span style={{ color: "#4b5563" }}> · @{salesman.slug}</span>}
+                              <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
+                            </p>
+                          </div>
+
+                          {/* Action buttons */}
+                          {!isRejecting && (
+                            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                              <button
+                                disabled={isActioning}
+                                onClick={async () => {
+                                  setApprovalActioning(listing.id);
+                                  const { error } = await supabase.rpc("approve_listing", { p_listing_id: listing.id });
+                                  if (error) { alert("Error: " + error.message); }
+                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); }
+                                  setApprovalActioning(null);
+                                }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                {isActioning ? "…" : "✓ Approve"}
+                              </button>
+                              <button
+                                onClick={() => { setRejectingId(listing.id); setRejectReason(""); }}
+                                style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Inline reject reason input */}
+                        {isRejecting && (
+                          <div style={{ marginTop: 12, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
+                            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection (shown to salesman)</p>
+                            <textarea
+                              value={rejectReason}
+                              onChange={e => setRejectReason(e.target.value)}
+                              placeholder="e.g. Price seems too high, missing photos, suspected duplicate listing…"
+                              rows={2}
+                              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                disabled={!rejectReason.trim() || isActioning}
+                                onClick={async () => {
+                                  if (!rejectReason.trim()) return;
+                                  setApprovalActioning(listing.id);
+                                  const { error } = await supabase.rpc("reject_listing", { p_listing_id: listing.id, p_reason: rejectReason.trim() });
+                                  if (error) { alert("Error: " + error.message); }
+                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); setRejectingId(null); setRejectReason(""); }
+                                  setApprovalActioning(null);
+                                }}
+                                style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                {isActioning ? "Rejecting…" : "Confirm Reject"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ) : activeTab === "waitlist" ? (
             /* ── WAITLIST TAB ── */
             (() => {

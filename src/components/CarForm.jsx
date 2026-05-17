@@ -1348,11 +1348,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           : null,
       };
 
+      // Salesman-lite (standalone, no dealer) requires superadmin approval
+      const needsApproval = profile?.role === "salesman" && !profile?.dealer_id;
+
       if (listing) {
         // Edit mode — update by id
+        // If resubmitting a rejected listing, return it to pending_approval
+        const resubmitting = listing.status === "rejected" && needsApproval;
+        const editPayload = resubmitting
+          ? { ...payload, status: "pending_approval", rejection_reason: null }
+          : payload;
         const { data, error } = await supabase
           .from("car_listings")
-          .update(payload)
+          .update(editPayload)
           .eq("id", listing.id)
           .select("*");
         if (error) throw error;
@@ -1377,11 +1385,12 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           setUploading(false);
           return;
         }
+        const publishStatus = needsApproval ? "pending_approval" : "available";
         let savedListing;
         if (draftId) {
           const { data, error } = await supabase
             .from("car_listings")
-            .update({ ...payload, status: "available" })
+            .update({ ...payload, status: publishStatus })
             .eq("id", draftId)
             .select()
             .single();
@@ -1400,7 +1409,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               {
                 dealer_id: dealerId,
                 ...payload,
-                status: "available",
+                status: publishStatus,
                 // salesman_lite owns and sells their own listings
                 ...(profile?.role === "salesman"
                   ? { assigned_to: profile.id }

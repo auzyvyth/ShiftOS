@@ -2574,8 +2574,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       (c) => c.status === "available",
     ).length;
 
-    const normStatus = (s) => s === "active" ? "available" : s;
-    const filtered = enriched.filter((e) => normStatus(e.car.status || "available") === filterStatus);
+    const normStatus = (s) => {
+      if (!s || s === "active") return "available";
+      return s;
+    };
+    const filtered = enriched.filter((e) => normStatus(e.car.status) === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
@@ -2699,9 +2702,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               }}
             >
               {[
-                { key: "available", label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
-                { key: "reserved",  label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
-                { key: "sold",      label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
+                { key: "pending_approval", label: "Pending",  count: myListings.filter((c) => c.status === "pending_approval").length },
+                { key: "rejected",         label: "Rejected", count: myListings.filter((c) => c.status === "rejected").length },
+                { key: "available",        label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
+                { key: "reserved",         label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
+                { key: "sold",             label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
               ].map(({ key, label, count }) => (
                 <button
                   key={key}
@@ -2857,6 +2862,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             {sorted.map(({ car, views, enqs, daily, cvr, isHot, isStale }) => {
               const isSold     = car.status === "sold";
               const isReserved = car.status === "reserved";
+              const isPending  = car.status === "pending_approval";
+              const isRejected = car.status === "rejected";
+              const isInactive = isSold || isPending || isRejected;
               const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
               const img  = car.images?.[0];
               const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
@@ -2875,7 +2883,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       ? "1px solid rgba(255,255,255,0.04)"
                       : isReserved
                         ? "1px solid rgba(251,191,36,0.22)"
-                        : "1px solid rgba(255,255,255,0.07)",
+                        : isPending
+                          ? "1px solid rgba(251,191,36,0.18)"
+                          : isRejected
+                            ? "1px solid rgba(239,68,68,0.22)"
+                            : "1px solid rgba(255,255,255,0.07)",
                     borderRadius: 12,
                     overflow: "hidden",
                     opacity: isSold ? 0.62 : 1,
@@ -2948,8 +2960,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
                   )}
 
+                  {/* Pending approval banner */}
+                  {isPending && (
+                    <div style={{ background: "rgba(251,191,36,0.06)", borderBottom: "1px solid rgba(251,191,36,0.15)", padding: "6px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase" }}>⏳ Approval Pending</span>
+                      <span style={{ fontSize: 10, color: "#78716c" }}>· Not visible to buyers yet</span>
+                    </div>
+                  )}
+
+                  {/* Rejected banner + reason */}
+                  {isRejected && (
+                    <div style={{ background: "rgba(239,68,68,0.06)", borderBottom: "1px solid rgba(239,68,68,0.18)", padding: "6px 14px" }}>
+                      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#f87171", letterSpacing: "0.08em", textTransform: "uppercase" }}>✕ Rejected</p>
+                      {car.rejection_reason && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9ca3af", lineHeight: 1.4 }}>{car.rejection_reason}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Live on XDrive bar — only for available listings */}
-                  {!isSold && !isReserved && (
+                  {!isSold && !isReserved && !isPending && !isRejected && (
                     <div style={{ background: "rgba(16,185,129,0.05)", borderBottom: "1px solid rgba(16,185,129,0.13)", padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "pulse-green 2s ease-in-out infinite" }} />
                       <span style={{ fontSize: 9, fontWeight: 700, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
@@ -3115,6 +3145,23 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                         <>
                           <button onClick={openDetail} style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
                             View
+                          </button>
+                        </>
+                      ) : isPending ? (
+                        <>
+                          {/* Pending — only allow editing while waiting for approval */}
+                          <button onClick={openDetail} style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+                            View
+                          </button>
+                          <button onClick={() => setEditListing(car)} style={{ flex: 1, fontSize: 11, padding: "6px 0", borderRadius: 7, background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.18)", color: "#64b4ff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                            <Pencil size={10} /> Edit
+                          </button>
+                        </>
+                      ) : isRejected ? (
+                        <>
+                          {/* Rejected — prompt to fix and resubmit */}
+                          <button onClick={() => setEditListing(car)} style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 0", borderRadius: 7, background: "rgba(220,38,38,0.10)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                            <Pencil size={10} /> Edit & Resubmit
                           </button>
                         </>
                       ) : (
