@@ -1722,32 +1722,18 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       const today = new Date();
       return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
     }).length;
-    const newEnqCount = enquiries.filter((e) => e.status === "new").length;
-
     const { totalViews, totalWATaps, overallCVR, bestCVRStat } = dashboardCVR;
-    const cvrColor = (cvr) => cvr >= 10 ? "#4ade80" : cvr >= 5 ? "#fbbf24" : "#f87171";
+    const cvrColor = (cvr) => cvr >= 10 ? "#22c55e" : cvr >= 5 ? "#eab308" : "#ef4444";
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
-
-    const SL = { fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" };
-
     const isNewUser = myListings.length === 0 && leads.length === 0;
-    const hasListingsNoLeads = myListings.length > 0 && leads.length === 0;
 
     const STEP_CIRCLE = (done) => ({
       width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: 13, fontWeight: 700,
       background: done ? "rgba(34,197,94,0.15)" : "rgba(220,38,38,0.12)",
       border: done ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(220,38,38,0.2)",
-      color: done ? "#4ade80" : "#f87171",
+      color: done ? "#22c55e" : "#ef4444",
     });
-
-    const kpis = [
-      { label: "Pipeline", value: activeLeads.length, color: "#f87171", bg: "rgba(220,38,38,0.05)", border: "rgba(220,38,38,0.14)", accent: "#f87171", icon: "👤" },
-      { label: "Listings", value: myListings.filter(c => c.status === "available").length, color: "#4ade80", bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.15)", accent: "#4ade80", icon: "🚗" },
-      { label: "Follow-ups", value: staleLeads.length, color: staleLeads.length > 0 ? "#fb923c" : "#374151", bg: staleLeads.length > 0 ? "rgba(251,146,60,0.07)" : "rgba(255,255,255,0.02)", border: staleLeads.length > 0 ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.06)", accent: "#fb923c", icon: "⏰", warn: staleLeads.length > 0 },
-      { label: "Today", value: todayAppts, color: "#c084fc", bg: "rgba(192,132,252,0.06)", border: "rgba(192,132,252,0.15)", accent: "#c084fc", icon: "📅" },
-      { label: "Closed", value: wonLeads.length, color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.15)", accent: "#fbbf24", icon: "🏆" },
-    ];
 
     // Today's agenda items
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -1756,569 +1742,430 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
     const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
 
-    const pipelineValue = leads
-      .filter(l => !["won","lost","closed_won","closed_lost"].includes(l.stage) && l.car_listings?.selling_price)
-      .reduce((sum, l) => sum + Number(l.car_listings.selling_price || 0), 0);
-    const estimatedCommission = Math.round(pipelineValue * (profile?.commission_rate || 0.02));
+    // Goal panel data
+    const soldThisMonth = myListings.filter(c => {
+      if (c.status !== "sold" || !c.sold_at) return false;
+      const d = new Date(c.sold_at);
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).length;
+    const available = myListings.filter(c => c.status === "available");
+    const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
+    const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
+    const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
+    const autoFocus = !focusCar && available.length > 0
+      ? available.reduce((best, c) => {
+          const s = listingStats[c.id] || {};
+          const score = (s.views || 0) * 2 + (s.enquiries || 0) * 5;
+          const bestScore = (listingStats[best?.id]?.views || 0) * 2 + (listingStats[best?.id]?.enquiries || 0) * 5;
+          return score > bestScore ? c : best;
+        }, available[0])
+      : null;
+    const highlighted = focusCar || autoFocus;
+
+    // SVG ring
+    const R = 44, STROKE = 6, CIRC = 2 * Math.PI * R;
+
+    // Shared card style
+    const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" };
+    const CARD_HEADER = {
+      padding: "13px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+      fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", fontWeight: 700,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+    };
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* ── KPI strip ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 8 }}>
-          {kpis.map(({ label, value, color, bg, border, icon, warn }) => (
-            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 14px 12px", position: "relative", overflow: "hidden" }}>
-              {warn && value > 0 && (
-                <span style={{ position: "absolute", top: 10, right: 10, width: 6, height: 6, borderRadius: "50%", background: "#fb923c", boxShadow: "0 0 0 3px rgba(251,146,60,0.2)" }} />
-              )}
-              <p style={{ margin: "0 0 6px", fontSize: 18 }}>{icon}</p>
-              <p style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
-              <p style={{ margin: "4px 0 0", fontSize: 10, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+        {/* ── Greeting ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
+              {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"}.
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
+              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+          </div>
+          {staleLeads.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} overdue</span>
             </div>
-          ))}
+          )}
         </div>
 
-        {/* ── Today's Agenda ── */}
-        {hasAgenda && (
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <Calendar size={13} color="#c084fc" />
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f1f5f9" }}>Today's Agenda</p>
-              <span style={{ fontSize: 11, color: "#4b5563", marginLeft: "auto" }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "short" })}</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => setActiveTab("bookings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>📅</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Test drive · {a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</p>
-                  </div>
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", color: "#c084fc", textTransform: "capitalize" }}>{a.status}</span>
-                </div>
-              ))}
-              {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>⏰</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
-                  </div>
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>Follow up</span>
-                </div>
-              ))}
-              {agendaStale.slice(0, 3).map((l) => (
-                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>💬</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>No contact · {timeAgo(l.updated_at)}</p>
-                  </div>
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>WA</span>
-                </div>
-              ))}
-            </div>
+        {/* ── KPI strip ── */}
+        <div style={{ ...CARD, overflow: "visible" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)" }}>
+            {[
+              { label: "Pipeline", value: activeLeads.length, accent: "#3b82f6", first: true },
+              { label: "Live Listings", value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
+              { label: "Follow-ups", value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
+              { label: "Today's Appts", value: todayAppts, accent: "#3b82f6" },
+              { label: "Closed", value: wonLeads.length, accent: "#22c55e" },
+            ].map(({ label, value, accent, first }, i, arr) => (
+              <div key={label} style={{
+                padding: "18px 20px", position: "relative",
+                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                borderBottom: isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+              }}>
+                {first && <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: 3, borderRadius: "0 3px 3px 0", background: "#3b82f6" }} />}
+                <p style={{ margin: "0 0 5px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* ── Notification opt-in banner ── */}
-        {!notifBannerDismissed && browserNotifPerm === 'default' && staleLeads.length > 0 && (
-          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>🔔</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: "0 0 1px", fontSize: 12, fontWeight: 600, color: "#a5b4fc" }}>Never miss a follow-up</p>
-              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Get a nudge when leads go cold while you're away.</p>
+        {/* ── Goal + Marketplace Pulse ── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: 16 }}>
+          {/* Goal */}
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Monthly Goal</span>
+              <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
             </div>
-            <button onClick={requestBrowserNotif} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit" }}>Turn on</button>
-            <button onClick={dismissNotifBanner} style={{ fontSize: 16, padding: "2px 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
-          </div>
-        )}
+            <div style={{ padding: 18 }}>
+              {goalEditing ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>Target:</span>
+                  <input type="number" min="1" max="99" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
+                    style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>cars</span>
+                  <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Set</button>
+                  <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                </div>
+              ) : goal.target > 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  {/* SVG ring */}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    <svg width={100} height={100} style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx={50} cy={50} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={STROKE} />
+                      <circle cx={50} cy={50} r={R} fill="none"
+                        stroke={pct >= 100 ? "#22c55e" : pct >= 60 ? "#3b82f6" : "#ef4444"}
+                        strokeWidth={STROKE} strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct / 100)}
+                        strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#f1f5f9", lineHeight: 1 }}>{Math.round(pct)}%</p>
+                      <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>done</p>
+                    </div>
+                  </div>
+                  {/* Text */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                      {soldThisMonth}<span style={{ fontSize: 16, color: "#475569", fontWeight: 500 }}> / {goal.target}</span>
+                    </p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>cars sold this month</p>
+                    {pct >= 100
+                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>🎉 Goal smashed!</p>
+                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{goal.target - soldThisMonth} more · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day` : "last day!"}</p>
+                    }
+                    <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { setGoalDraft(5); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  + Set a monthly target
+                </button>
+              )}
 
-        {/* ── Follow-up needed ── */}
-        {staleLeads.length > 0 && (
-          <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(251,146,60,0.1)" }}>
-              <AlertCircle size={13} style={{ color: "#fb923c", flexShrink: 0 }} />
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fb923c", flex: 1 }}>Follow-up needed · {staleLeads.length} lead{staleLeads.length !== 1 ? "s" : ""}</p>
-              {staleLeads.some(l => l.phone) && (
-                <button
-                  onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
-                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0 }}
-                >WA All</button>
+              {/* Focus car */}
+              {highlighted && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <p style={{ margin: 0, fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                      {focusCar ? "📌 Pinned" : "⚡ Best to push"}
+                    </p>
+                    {focusCar && (
+                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {highlighted.images?.[0] ? (
+                      <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                    ) : (
+                      <div style={{ width: 52, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={18} color="#374151" /></div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[highlighted.year, highlighted.brand, highlighted.model].filter(Boolean).join(" ")}
+                      </p>
+                      <p style={{ margin: "1px 0 0", fontSize: 12, color: "#3b82f6", fontWeight: 600 }}>
+                        {highlighted.selling_price ? `RM ${Number(highlighted.selling_price).toLocaleString("en-MY")}` : "—"}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>WA</button>
+                      {!focusCar && (
+                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
+                      )}
+                    </div>
+                  </div>
+                  {available.length > 1 && (
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
+                      {available.filter(c => c.id !== highlighted.id).slice(0, 4).map(c => (
+                        <button key={c.id} onClick={() => saveGoal({ focusCarId: c.id })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#475569", cursor: "pointer", fontFamily: "inherit", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.brand} {c.model}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+          </div>
+
+          {/* Marketplace Pulse */}
+          {myListings.filter(c => c.status === "available").length > 0 && (
+            <div style={CARD}>
+              <div style={CARD_HEADER}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "live-glow 2s ease-in-out infinite" }} />
+                  <span>Live</span>
+                </div>
+                <span>30 days</span>
+              </div>
+              <div style={{ padding: 18 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+                  {[
+                    { label: "Buyer Views", value: totalViews || 0 },
+                    { label: "WA Taps", value: totalWATaps || 0, green: true },
+                    { label: "Live Listings", value: myListings.filter(c => c.status === "available").length },
+                  ].map(({ label, value, green }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{label}</p>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: green ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.03em" }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+                {profile?.slug && (
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+                  >
+                    <LinkIcon size={11} />
+                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+                    <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Copy</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Follow-up Needed ── */}
+        {staleLeads.length > 0 && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
+                <span>Follow-up Needed</span>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 99, background: "rgba(239,68,68,0.15)", color: "#ef4444", fontSize: 10, fontWeight: 800, padding: "0 5px" }}>{staleLeads.length}</span>
+              </div>
+              {staleLeads.some(l => l.phone) && (
+                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
+                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 700, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
+                  WA All
+                </button>
+              )}
+            </div>
+            <div>
               {staleLeads.map((lead, i) => {
                 const car = lead.car_listings;
+                const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
                 return (
-                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+                  <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: i < staleLeads.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0 }}>
                       {(lead.buyer_name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{car ? `${car.brand} ${car.model}` : "no car"} · {timeAgo(lead.updated_at)}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{car ? `${car.brand} ${car.model}` : "No car"}</p>
                     </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", flexShrink: 0 }}>{daysSince}d ago</span>
                     {lead.phone && (
-                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                        WA
-                      </button>
+                      <button onClick={() => pingWA(lead)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", cursor: "pointer", fontWeight: 600, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
                     )}
                   </div>
                 );
               })}
+            </div>
+            {!notifBannerDismissed && browserNotifPerm === 'default' && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                <p style={{ margin: 0, fontSize: 11, color: "#475569", flex: 1 }}>Get notified when leads go cold</p>
+                <button onClick={requestBrowserNotif} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Enable</button>
+                <button onClick={dismissNotifBanner} style={{ fontSize: 14, padding: "0 4px", background: "none", border: "none", color: "#374151", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Today's Agenda ── */}
+        {hasAgenda && (
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>Today's Agenda</span>
+              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
+            </div>
+            <div style={{ padding: "6px 0" }}>
+              {agendaAppts.map((a) => (
+                <div key={a.id} onClick={() => setActiveTab("bookings")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, boxShadow: "0 0 0 3px rgba(59,130,246,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Test drive</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                </div>
+              ))}
+              {agendaFollowUps.map((l) => (
+                <div key={l.id} onClick={() => setActiveTab("leads")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#eab308", flexShrink: 0, boxShadow: "0 0 0 3px rgba(234,179,8,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "no car"}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#eab308", fontWeight: 600, flexShrink: 0 }}>Today</span>
+                </div>
+              ))}
+              {agendaStale.slice(0, 3).map((l) => (
+                <div key={l.id} onClick={() => pingWA(l)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", flexShrink: 0, boxShadow: "0 0 0 3px rgba(239,68,68,0.15)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{l.buyer_name || "—"}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>No contact · {timeAgo(l.updated_at)}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, flexShrink: 0 }}>WA</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {/* ── This Month Analytics ── */}
         {commissionData.count > 0 && (
-          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <DollarSign size={13} color="#fbbf24" />
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.08em" }}>This Month</p>
+          <div style={CARD}>
+            <div style={CARD_HEADER}>
+              <span>This Month</span>
+              <span>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
+            </div>
+            <div style={{ padding: 18 }}>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Net Profit</p>
+                <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: commissionData.total >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                  RM {commissionData.total.toLocaleString("en-MY")}
+                </p>
               </div>
-              <span style={{ fontSize: 10, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
-            </div>
-
-            {/* Gross profit — hero */}
-            <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Net Profit</p>
-              <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: commissionData.total >= 0 ? "#4ade80" : "#f87171", letterSpacing: "-0.03em", lineHeight: 1 }}>
-                RM {commissionData.total.toLocaleString("en-MY")}
-              </p>
-            </div>
-
-            {/* Breakdown grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
-              {[
-                { label: "Revenue",  value: commissionData.revenue,  color: "#60a5fa" },
-                { label: "Purchase Cost", value: commissionData.purchase, color: "#f87171" },
-                { label: "Recon Cost",    value: commissionData.recon,    color: "#fb923c" },
-                { label: "Services Cost", value: commissionData.services,  color: "#a78bfa" },
-              ].map(({ label, value, color }, i) => (
-                <div key={label} style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", borderRight: i % 2 === 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color }}>{value > 0 ? `RM ${value.toLocaleString("en-MY")}` : "—"}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Goal Panel ── */}
-        {(() => {
-          const soldThisMonth = myListings.filter(c => {
-            if (c.status !== "sold" || !c.sold_at) return false;
-            const d = new Date(c.sold_at);
-            const now = new Date();
-            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-          }).length;
-          const available = myListings.filter(c => c.status === "available");
-          const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
-          const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
-          const focusCar = goal.focusCarId
-            ? myListings.find(c => c.id === goal.focusCarId && c.status === "available")
-            : null;
-          const autoFocus = !focusCar && available.length > 0
-            ? available.reduce((best, c) => {
-                const s = listingStats[c.id] || {};
-                const score = (s.views || 0) * 2 + (s.enquiries || 0) * 5;
-                const bestScore = (listingStats[best?.id]?.views || 0) * 2 + (listingStats[best?.id]?.enquiries || 0) * 5;
-                return score > bestScore ? c : best;
-              }, available[0])
-            : null;
-          const highlighted = focusCar || autoFocus;
-
-          return (
-            <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <TrendingUp size={13} color="#60a5fa" />
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.08em" }}>Monthly Goal</p>
-                </div>
-                <span style={{ fontSize: 10, color: "#4b5563" }}>{daysLeft}d left</span>
-              </div>
-
-              {/* Target + progress */}
-              <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                {goalEditing ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: "#6b7280" }}>Target:</span>
-                    <input
-                      type="number" min="1" max="99"
-                      value={goalDraft}
-                      onChange={e => setGoalDraft(Number(e.target.value))}
-                      style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
-                      autoFocus
-                    />
-                    <span style={{ fontSize: 12, color: "#6b7280" }}>cars</span>
-                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Set</button>
-                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
+                {[
+                  { label: "Revenue", value: commissionData.revenue, color: "#3b82f6" },
+                  { label: "Purchase Cost", value: commissionData.purchase, color: "#94a3b8" },
+                  { label: "Recon Cost", value: commissionData.recon, color: "#94a3b8" },
+                  { label: "Services", value: commissionData.services, color: "#94a3b8" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ padding: "12px 14px", background: "#0d1117" }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color }}>{value > 0 ? `RM ${value.toLocaleString("en-MY")}` : "—"}</p>
                   </div>
-                ) : goal.target > 0 ? (
-                  <>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 8 }}>
-                      <span style={{ fontSize: 28, fontWeight: 800, color: pct >= 100 ? "#4ade80" : "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{soldThisMonth}</span>
-                      <span style={{ fontSize: 16, color: "#4b5563", fontWeight: 600 }}>/ {goal.target}</span>
-                      <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>cars sold</span>
-                      <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ marginLeft: "auto", fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#4b5563", cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
-                    </div>
-                    <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: pct >= 100 ? "#4ade80" : pct >= 60 ? "#60a5fa" : "#dc2626", transition: "width 0.4s ease" }} />
-                    </div>
-                    {pct >= 100 && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#4ade80", fontWeight: 600 }}>🎉 Goal smashed! Set a new one.</p>}
-                    {pct < 100 && goal.target > 0 && (
-                      <p style={{ margin: "6px 0 0", fontSize: 10, color: "#4b5563" }}>
-                        {goal.target - soldThisMonth} more to go · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day needed` : "last day!"}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <button onClick={() => { setGoalDraft(5); setGoalEditing(true); }} style={{ width: "100%", padding: "10px", borderRadius: 8, background: "rgba(220,38,38,0.07)", border: "1px dashed rgba(220,38,38,0.25)", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    + Set a monthly target
-                  </button>
-                )}
-              </div>
-
-              {/* Focus car */}
-              {highlighted && (
-                <div style={{ padding: "10px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>
-                      {focusCar ? "📌 Pinned — share this car to close faster" : "⚡ Best car to push right now"}
-                    </p>
-                    {focusCar && (
-                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
-                    )}
-                  </div>
-                  <p style={{ margin: "0 0 8px", fontSize: 9, color: "#374151" }}>
-                    {focusCar ? "Tap WA to share this listing with interested buyers." : "Auto-selected based on views & enquiries. Pin a car to keep focus on it."}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {highlighted.images?.[0] ? (
-                      <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: 52, height: 40, borderRadius: 6, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={18} color="#374151" /></div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {[highlighted.year, highlighted.brand, highlighted.model].filter(Boolean).join(" ")}
-                      </p>
-                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#60a5fa", fontWeight: 700 }}>
-                        {highlighted.selling_price ? `RM ${Number(highlighted.selling_price).toLocaleString("en-MY")}` : "—"}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                      <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>WA</button>
-                      {focusCar ? null : (
-                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Pin a different car */}
-                  {available.length > 1 && (
-                    <div style={{ marginTop: 8 }}>
-                      <p style={{ margin: "0 0 5px", fontSize: 10, color: "#374151" }}>Pin a different car:</p>
-                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                        {available.filter(c => c.id !== highlighted.id).slice(0, 4).map(c => (
-                          <button key={c.id} onClick={() => saveGoal({ focusCarId: c.id })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {c.brand} {c.model}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── Marketplace Pulse ── */}
-        {myListings.filter(c => c.status === "available").length > 0 && (
-          <div style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.22)", borderRadius: 12, padding: "14px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", flexShrink: 0, animation: "live-glow 2s ease-in-out infinite" }} />
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#10b981", textTransform: "uppercase", letterSpacing: "0.1em" }}>XDrive Marketplace · Live</p>
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "#374151" }}>30 days</span>
-            </div>
-            <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalViews || 0}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Buyer views</p>
-              </div>
-              <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
-              <div>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#4ade80", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalWATaps || 0}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>WA taps</p>
-              </div>
-              <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }} />
-              <div>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>{myListings.filter(c => c.status === "available").length}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>Live listings</p>
-              </div>
-            </div>
-            {profile?.slug && (
-              <button
-                onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
-                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.22)", color: "#10b981", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}
-              >
-                <LinkIcon size={11} />
-                <span style={{ flex: 1, textAlign: "left" }}>xdrive.my/s/{profile.slug}</span>
-                <span style={{ fontSize: 10, opacity: 0.7 }}>Copy link</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* ── Pipeline value ── */}
-        {pipelineValue > 0 && (
-          <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.12)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <TrendingUp size={16} color="#f87171" />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>Pipeline Value</p>
-              <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 800, color: "#f87171", letterSpacing: "-0.02em" }}>RM {pipelineValue.toLocaleString("en-MY")}</p>
-              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Est. commission: RM {estimatedCommission.toLocaleString("en-MY")} · {activeLeads.filter(l => l.car_listings?.selling_price).length} deal{activeLeads.filter(l => l.car_listings?.selling_price).length !== 1 ? "s" : ""}</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Start Here onboarding card ── */}
-        {isNewUser && !profile?.onboarding_tour_done && (
-          <div style={{ background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(220,38,38,0.02))", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 14, padding: 20, marginBottom: 4 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>👋 Welcome to ShiftOS Lite</p>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Here's how to make your first sale:</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 16 }}>
-              {[
-                {
-                  num: 1,
-                  done: myListings.length > 0,
-                  title: "Add your first listing",
-                  sub: "Upload photos, set price, publish to XDrive marketplace in 2 minutes.",
-                  cta: null,
-                  ctaLabel: "Add Listing →",
-                  ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); },
-                  locked: false,
-                },
-                {
-                  num: 2,
-                  done: myListings.length > 0,
-                  title: "Share your listing link",
-                  sub: "Copy your car link and blast it on WhatsApp groups, Facebook, TikTok. Every share is a potential lead.",
-                  ctaLabel: "Go to Listings →",
-                  ctaAction: () => switchTab("listings"),
-                  locked: myListings.length === 0,
-                },
-                {
-                  num: 3,
-                  done: leads.length > 0,
-                  title: "Track your leads",
-                  sub: "Every enquiry auto-converts to a lead. Follow up, move stages, close deals.",
-                  ctaLabel: "View Pipeline →",
-                  ctaAction: () => switchTab("leads"),
-                  locked: myListings.length === 0,
-                },
-              ].map((step, idx) => (
-                <div key={step.num}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{step.title}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>{step.sub}</p>
-                    </div>
-                    {step.locked
-                      ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>Complete step 1 first</span>
-                      : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0 }}>{step.ctaLabel}</button>
-                    }
-                  </div>
-                  {idx < 2 && <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "12px 0" }} />}
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={dismissTour}
-              style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0 }}
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* ── Listings live nudge ── */}
-        {hasListingsNoLeads && (
-          <div style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>📢</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>Your listings are live — now drive traffic</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#4b5563" }}>Share your car links on WhatsApp groups and Facebook car groups. Every click is a potential buyer.</p>
-            </div>
-            <button onClick={() => switchTab("listings")} style={{ fontSize: 11, fontWeight: 700, padding: "7px 12px", borderRadius: 8, background: "#92400e", border: "none", color: "#fbbf24", cursor: "pointer", flexShrink: 0 }}>
-              Share Links →
-            </button>
-          </div>
-        )}
-
-
-        {/* ── Profile completeness nudge ── */}
-        {(() => {
-          const { pct, missing } = profileScore();
-          if (pct >= 80) return null;
-          const barColor = pct >= 60 ? "#fbbf24" : "#f87171";
-          return (
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>Complete your profile</p>
-                <span style={{ fontSize: 11, fontWeight: 700, color: barColor }}>{pct}%</span>
-              </div>
-              <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 10 }}>
-                <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s" }} />
-              </div>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563" }}>Buyers trust complete profiles. Missing:</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {missing.map(({ label, field }) => (
-                  <button key={field} onClick={() => setActiveTab("settings")}
-                    style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}>
-                    + {label}
-                  </button>
                 ))}
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
 
-        {/* ── Performance ── */}
-        <div>
-          <p style={SL}>My Performance · 30d</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 8 }}>
+        {/* ── My Performance ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>My Performance</span>
+            <span>30 days</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             {[
-              { label: "Views", value: totalViews, color: "#f87171", sub: "link + card + detail" },
-              { label: "WA Taps", value: totalWATaps, color: "#4ade80", sub: "whatsapp + calls" },
-              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", color: overallCVR !== null ? cvrColor(parseFloat(overallCVR)) : "#374151", sub: bestCVRStat ? `best: ${perfCarName(bestCVRStat.car)}` : "no data yet" },
-            ].map(({ label, value, color, sub }) => (
-              <div key={label} style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
-                <p style={{ margin: "0 0 2px", fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
-                <p style={{ margin: "0 0 4px", fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1, letterSpacing: "0.5px", color }}>{value}</p>
-                <p style={{ margin: 0, fontSize: 9, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>
+              { label: "Views", value: totalViews || 0 },
+              { label: "WA Taps", value: totalWATaps || 0 },
+              { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—" },
+            ].map(({ label, value }, i, arr) => (
+              <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
               </div>
             ))}
           </div>
-
-          {/* Funnel bar */}
-          {totalViews > 0 && (
-            <div style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>Conversion Funnel</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{totalViews} views → {totalWATaps} contacts</p>
-              </div>
-              <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.min((totalWATaps / totalViews) * 100 * 10, 100)}%`, background: "linear-gradient(90deg,#3b82f6,#4ade80)", borderRadius: 99, transition: "width 0.6s ease" }} />
-              </div>
-            </div>
-          )}
-
-          {/* Per-listing table */}
           {listingStats.length > 0 && (
-            <div style={{ marginTop: 8, background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "6px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 {["Listing", "Views", "WA", "CVR"].map((h, i) => (
-                  <p key={h} style={{ margin: 0, fontSize: 9, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
+                  <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
                 ))}
               </div>
-              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx) => (
-                <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 60px", padding: "9px 14px", alignItems: "center", borderBottom: idx < listingStats.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <p style={{ margin: 0, fontSize: 11, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{perfCarName(car)}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f87171", textAlign: "center" }}>{views}</p>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#4ade80", textAlign: "center" }}>{waTaps}</p>
-                  <div style={{ textAlign: "center" }}>
-                    {cvr !== null ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr), background: `${cvrColor(cvr)}15`, border: `1px solid ${cvrColor(cvr)}30`, borderRadius: 5, padding: "2px 7px" }}>{cvr.toFixed(1)}%</span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: "#374151" }}>—</span>
-                    )}
+              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
+                const isHot = views > 20 && cvr >= 10;
+                const isWarm = !isHot && views > 5 && cvr >= 5;
+                return (
+                  <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 70px", padding: "11px 18px", alignItems: "center", borderBottom: idx < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
+                      {isHot && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", flexShrink: 0 }}>HOT</span>}
+                      {isWarm && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)", flexShrink: 0 }}>WARM</span>}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{views}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", textAlign: "center" }}>{waTaps}</p>
+                    <div style={{ textAlign: "center" }}>
+                      {cvr !== null
+                        ? <span style={{ fontSize: 11, fontWeight: 700, color: cvrColor(cvr) }}>{cvr.toFixed(1)}%</span>
+                        : <span style={{ fontSize: 11, color: "#374151" }}>—</span>
+                      }
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
+            </>
+          )}
+          {listingStats.length === 0 && (
+            <p style={{ margin: 0, padding: "16px 18px", fontSize: 12, color: "#475569" }}>No listing data yet — publish a car to start tracking.</p>
           )}
         </div>
 
-        {/* ── Activity feed ── */}
-        {(() => {
-          const ICONS = { booking: "📅", enquiry: "💬", won: "🏆" };
-          const COLORS = { booking: "#60a5fa", enquiry: "#4ade80", won: "#fbbf24" };
-          const feed = [
-            ...appointments.slice(0, 4).map((a) => ({ type: "booking", label: `${a.buyer_name || "Someone"} booked a viewing`, sub: a.car_listings ? `${a.car_listings.brand} ${a.car_listings.model}` : "", ts: a.created_at })),
-            ...enquiries.slice(0, 4).map((e) => ({ type: "enquiry", label: `${e.buyer_name || "Someone"} enquired`, sub: e.car_listings ? `${e.car_listings.brand} ${e.car_listings.model}` : "", ts: e.created_at })),
-            ...leads.filter((l) => l.stage === "won").slice(0, 3).map((l) => ({ type: "won", label: `${l.buyer_name || "Lead"} closed`, sub: l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "", ts: l.updated_at })),
-          ].filter((f) => f.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 7);
-          if (!feed.length) return null;
-          return (
-            <div>
-              <p style={SL}>Recent Activity</p>
-              <div style={{ background: "#0a0e18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
-                {feed.map((f, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: i < feed.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: `${COLORS[f.type]}12`, border: `1px solid ${COLORS[f.type]}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>
-                      {ICONS[f.type]}
-                    </div>
+        {/* ── Onboarding ── */}
+        {isNewUser && !profile?.onboarding_tour_done && (
+          <div style={{ ...CARD, border: "1px solid rgba(220,38,38,0.15)" }}>
+            <div style={CARD_HEADER}><span>Get Started</span></div>
+            <div style={{ padding: 18 }}>
+              <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Here's how to make your first sale:</p>
+              {[
+                { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
+                { num: 2, done: myListings.length > 0, title: "Share your listing link", sub: "Blast it on WhatsApp groups, Facebook, TikTok.", ctaLabel: "Go to Listings →", ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
+                { num: 3, done: leads.length > 0, title: "Track your leads", sub: "Every enquiry auto-converts to a lead.", ctaLabel: "View Pipeline →", ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
+              ].map((step, idx) => (
+                <div key={step.num}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
+                    <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</p>
-                      {f.sub && <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{f.sub}</p>}
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{step.title}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{step.sub}</p>
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: "#374151", flexShrink: 0 }}>{timeAgo(f.ts)}</p>
+                    {step.locked
+                      ? <span style={{ fontSize: 10, color: "#374151", flexShrink: 0, paddingTop: 3 }}>Step 1 first</span>
+                      : <button onClick={step.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#ef4444", cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
+                    }
                   </div>
-                ))}
-              </div>
+                  {idx < 2 && <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "14px 0 0" }} />}
+                </div>
+              ))}
+              <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: "#374151", fontSize: 10, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Dismiss</button>
             </div>
-          );
-        })()}
-
-        {/* ── Weekly digest ── */}
-        {(() => {
-          const now = new Date();
-          const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0);
-          const prevStart = new Date(weekStart); prevStart.setDate(prevStart.getDate() - 7);
-          const weekViews = Object.values(carStatsMap).reduce((s, st) => s + (st.views || 0), 0);
-          const newLeads = leads.filter(l => new Date(l.created_at) >= weekStart).length;
-          const dealsWon = leads.filter(l => (l.stage === "won" || l.stage === "closed_won") && new Date(l.updated_at) >= weekStart).length;
-          const bestEntry = Object.entries(carStatsMap).sort((a,b) => (b[1].views||0) - (a[1].views||0))[0];
-          const bestCar = bestEntry ? myListings.find(c => c.id === bestEntry[0]) : null;
-          const weekLabel = `${weekStart.toLocaleDateString("en-MY",{day:"numeric",month:"short"})}–${now.toLocaleDateString("en-MY",{day:"numeric",month:"short"})}`;
-          return (
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#e5e7eb" }}>This Week · {weekLabel}</p>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0 }}>
-                {[
-                  { label: "Views", value: weekViews, color: "#60a5fa" },
-                  { label: "New Leads", value: newLeads, color: "#a78bfa" },
-                  { label: "Won", value: dealsWon, color: "#4ade80" },
-                  { label: "Best Car", value: bestCar ? bestCar.model : "—", color: "#fbbf24", small: true },
-                ].map(({ label, value, color, small }, i) => (
-                  <div key={label} style={{ padding: "10px 14px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: small ? 11 : 20, fontWeight: 700, color, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
+          </div>
+        )}
 
         {/* ── Upgrade nudge ── */}
-        <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.12)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 18px", ...CARD }}>
           <div>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f87171" }}>Join a dealership</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Get an invite code from your dealer to unlock the full panel.</p>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>Join a dealership</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>Get an invite code from your dealer to unlock the full panel.</p>
           </div>
-          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "7px 14px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+          <button onClick={() => setActiveTab("merge")} style={{ fontSize: 11, padding: "8px 16px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap", fontFamily: "inherit" }}>
             Enter Code →
           </button>
         </div>
