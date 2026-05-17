@@ -46,12 +46,11 @@ export default function AdminPage() {
     const dealers = dealerData || [];
     setDealers(dealers);
 
-    // Load salesman lite (role=salesman, dealer_id IS NULL)
+    // Load ALL salesmen with plan info
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status")
+      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status, plan, slug")
       .eq("role", "salesman")
-      .is("dealer_id", null)
       .order("created_at", { ascending: false });
     setSalesmen(salesmanData || []);
 
@@ -188,7 +187,7 @@ export default function AdminPage() {
 
   const TABS = [
     { id: "dealers",  label: `Dealers (${stats.total})` },
-    { id: "salesman", label: `Salesman Lite (${salesmen.length})` },
+    { id: "salesman", label: `Salesmen (${salesmen.length})` },
     { id: "platform", label: "Platform Stats" },
   ];
 
@@ -305,85 +304,147 @@ export default function AdminPage() {
             </>
 
           ) : activeTab === "salesman" ? (
-            /* ── SALESMAN LITE TAB ── */
+            /* ── SALESMEN TAB ── */
             <>
               <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <input value={salesmanSearch} onChange={e => setSalesmanSearch(e.target.value)}
-                  placeholder="Search name, email, subdomain…" className="adm-input" style={{ width: 280 }} />
+                  placeholder="Search name, email, slug…" className="adm-input" style={{ width: 280 }} />
                 <span style={{ fontSize: 12, color: "#4b5563", marginLeft: "auto" }}>{filteredSalesmen.length} accounts</span>
               </div>
-              <div style={{ background: "rgba(250,204,21,0.04)", border: "1px solid rgba(250,204,21,0.12)", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#ca8a04" }}>
-                ⚠ Salesman Lite accounts are standalone (no dealer_id). They own their own listings and enquiries.
-              </div>
-              <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        {["Account", "Subdomain / Plan", "Sub Status", "Joined", "Status", "Actions"].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSalesmen.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No salesman lite accounts.</td></tr>
-                      ) : filteredSalesmen.map(sm => (
-                        <tr key={sm.id} className="adm-row"
-                          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
-                          <td style={{ padding: "10px 14px" }}>
-                            <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
-                            <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
-                            {sm.subdomain ? (
-                              <a href={`https://${sm.subdomain}.xdrive.my`} target="_blank" rel="noreferrer"
-                                style={{ color: "#dc2626", textDecoration: "none" }}>
-                                {sm.subdomain}.xdrive.my ↗
-                              </a>
-                            ) : "—"}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <select className="adm-select"
-                              value={sm.subscription_status || "trial"}
-                              onChange={async e => {
-                                const val = e.target.value;
-                                const { error } = await supabase.from("profiles").update({ subscription_status: val }).eq("id", sm.id);
-                                if (!error) {
-                                  setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, subscription_status: val } : s));
-                                  flashSaved(sm.id);
-                                }
-                              }}>
-                              <option value="trial">trial</option>
-                              <option value="active">active</option>
-                              <option value="expired">expired</option>
-                            </select>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
-                              {sm.is_active === false ? "Suspended" : "Active"}
-                            </span>
-                            {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <div style={{ display: "flex", gap: 5 }}>
-                              <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                              </button>
-                              <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
+              {/* ── Group 1: Standalone Lite ── */}
+              {(() => {
+                const lites = filteredSalesmen.filter(s => s.plan === 'salesman_lite' && !s.dealer_id);
+                return (
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Standalone Lite</span>
+                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 20, padding: "1px 8px" }}>{lites.length}</span>
+                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Own listings · no dealer</span>
+                    </div>
+                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                              {["Account", "Slug / Profile", "Sub Status", "Joined", "Status", "Actions"].map(h => (
+                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lites.length === 0 ? (
+                              <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "#4b5563", fontSize: 12 }}>No standalone lite accounts.</td></tr>
+                            ) : lites.map(sm => (
+                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
+                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
+                                  {sm.slug ? (
+                                    <a href={`https://xdrive.my/s/${sm.slug}`} target="_blank" rel="noreferrer" style={{ color: "#fbbf24", textDecoration: "none" }}>
+                                      /s/{sm.slug} ↗
+                                    </a>
+                                  ) : "—"}
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <select className="adm-select" value={sm.subscription_status || "trial"}
+                                    onChange={async e => {
+                                      const val = e.target.value;
+                                      const { error } = await supabase.from("profiles").update({ subscription_status: val }).eq("id", sm.id);
+                                      if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, subscription_status: val } : s)); flashSaved(sm.id); }
+                                    }}>
+                                    <option value="trial">trial</option>
+                                    <option value="active">active</option>
+                                    <option value="expired">expired</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
+                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
+                                  </span>
+                                  {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", gap: 5 }}>
+                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                    </button>
+                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
+                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Group 2: Under Dealer (salesman_full) ── */}
+              {(() => {
+                const full = filteredSalesmen.filter(s => s.plan === 'salesman_full' && s.dealer_id);
+                if (full.length === 0) return null;
+                return (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em" }}>Under Dealer (SalesmanPanel)</span>
+                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 20, padding: "1px 8px" }}>{full.length}</span>
+                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Created by or merged into a dealer</span>
+                    </div>
+                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                              {["Account", "Dealer ID", "Joined", "Status", "Actions"].map(h => (
+                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {full.map(sm => (
+                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
+                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", fontSize: 11, fontFamily: "monospace" }}>{sm.dealer_id?.slice(0, 12)}…</td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
+                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", gap: 5 }}>
+                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                    </button>
+                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
+                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </>
 
           ) : (

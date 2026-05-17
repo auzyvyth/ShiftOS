@@ -414,6 +414,8 @@ export default function OnboardingPage() {
               full_name: v.fullName.trim(),
               phone: v.phone,
               role: "salesman",
+              plan: "salesman_lite",
+              dealer_id: null,
               is_active: true,
               onboarding_complete: true,
               slug: v.salesmanSlug,
@@ -426,7 +428,7 @@ export default function OnboardingPage() {
               ic_deadline: v.ic
                 ? null
                 : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: v.accountType === 'salesman' ? 'salesman_free' : 'standard',
+              selected_plan: 'salesman_free',
             }
           : {
               id: userId,
