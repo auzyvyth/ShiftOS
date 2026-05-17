@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
+import { isSubdomain } from "../hooks/useTenant";
 
 const HDR_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -355,13 +356,20 @@ export default function Header() {
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
 
-  const navLinks = [
-    { name: t("nav.home"),       path: "/",              key: "home" },
-    { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
-    { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
-    { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
-    { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },
-  ];
+  const onSub = isSubdomain();
+  const navLinks = onSub
+    ? [
+        { name: t("nav.home"),       path: "/",           key: "home" },
+        { name: t("nav.browseCars"), path: "/cars",       key: "cars" },
+        { name: t("nav.calculator"), path: "/calculator", key: "calculator" },
+      ]
+    : [
+        { name: t("nav.home"),       path: "/",              key: "home" },
+        { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
+        { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
+        { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
+        { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },
+      ];
   if (isLoggedIn)
     navLinks.push({ name: t("nav.dashboard"), path: dashboardPath, key: "dashboard" });
   else
@@ -443,7 +451,7 @@ export default function Header() {
                 className="hdr-logout"
                 onClick={async () => {
                   await supabase.auth.signOut();
-                  window.location.href = 'https://xdrive.my/login';
+                  window.location.href = '/login';
                 }}
               >
                 Logout
