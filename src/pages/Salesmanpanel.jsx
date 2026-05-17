@@ -6040,6 +6040,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </span>
                 )}
               </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <LogOut size={15} />
+              </button>
             </>
           ) : (
             <>
