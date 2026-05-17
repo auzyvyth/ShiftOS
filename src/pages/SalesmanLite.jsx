@@ -584,8 +584,8 @@ export default function SalesmanLite() {
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
-        if (r1.error) console.error("fetchListings(assigned_to):", r1.error);
-        if (r2.error) console.error("fetchListings(dealer_id):", r2.error);
+        if (r1.error) { console.error("fetchListings(assigned_to):", r1.error); toast.error(`Listings error: ${r1.error.message}`); }
+        if (r2.error) { console.error("fetchListings(dealer_id):", r2.error); toast.error(`Listings error: ${r2.error.message}`); }
         const seen = new Set();
         const merged = [...(r1.data || []), ...(r2.data || [])]
           .filter((c) => {
@@ -1012,7 +1012,7 @@ export default function SalesmanLite() {
       created_by: userId,
       dealer_id: lead?.dealer_id ?? null,
     });
-    if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+    if (error) { console.error("logCall:", error); toast.error(`Log call error: ${error.message}`); setCallSaving(false); return; }
     await supabase.from("leads").update({ updated_at: new Date().toISOString() }).eq("id", logCallLeadId);
     setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString() } : l));
     setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
@@ -1027,7 +1027,7 @@ export default function SalesmanLite() {
     setFollowUpSaving(true);
     const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
     setFollowUpSaving(false);
-    if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+    if (error) { console.error("saveFollowUp:", error); toast.error(`Reminder error: ${error.message}`); return; }
     setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
     setFollowUpModalLead(null);
     toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
