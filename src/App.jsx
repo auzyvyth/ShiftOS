@@ -32,6 +32,7 @@ import SavedCarsPage from "./pages/SavedCarsPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ShowroomPage from "./pages/ShowroomPage";
 import GuidesPage from "./pages/GuidesPage";
+import WaitlistPage from "./pages/WaitlistPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
@@ -101,6 +102,7 @@ function App() {
         {/* Public — ShiftOS marketing */}
         <Route path="/shiftos" element={<ShiftOSPage />} />
         <Route path="/mindmap" element={<MindMapPage />} />
+        <Route path="/waitlist" element={<WaitlistPage />} />
 
         {/* Dealer slug catch-all — redirects to subdomain */}
         <Route path="/s/:slug" element={<SalesmanProfilePage />} />
