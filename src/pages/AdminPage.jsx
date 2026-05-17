@@ -391,12 +391,31 @@ export default function AdminPage() {
                         Copy CSV
                       </button>
                       <button
+                        onClick={() => {
+                          const vcf = filtered.map(w =>
+                            `BEGIN:VCARD\nVERSION:3.0\nFN:${w.name} (ShiftOS #${w.position})\nTEL;TYPE=CELL:+${w.phone.replace(/^\+/, "")}\nEND:VCARD`
+                          ).join("\n");
+                          const blob = new Blob([vcf], { type: "text/vcard" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "shiftos-waitlist.vcf";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                        Download Contacts (.vcf)
+                      </button>
+                      <button
                         onClick={() => setBlastModal(true)}
                         style={{ fontSize: 12, padding: "6px 16px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
                         📣 Blast Waitlist
                       </button>
                     </div>
                   </div>
+                  <p style={{ fontSize: 11, color: "#374151", marginBottom: 14 }}>
+                    💡 Import .vcf into phone contacts → WA Business → New Broadcast → select all ShiftOS contacts
+                  </p>
 
                   {/* Table */}
                   <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
