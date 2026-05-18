@@ -212,14 +212,24 @@ export default function ComparePage() {
         }
         @media (max-width: 520px) {
           .cp-lbl { display: none !important; }
-          .cp-val { border-left: none !important; }
+          .cp-rows { --cp-cols: repeat(${n}, 1fr) !important; }
+          /* Block layout so ::before stacks above value, not beside it */
+          .cp-val {
+            display: block !important;
+            overflow: visible !important;
+            border-left: none !important;
+            padding: 7px 8px !important;
+          }
           .cp-val::before {
             content: attr(data-label);
-            display: block; font-size: 9px; color: #9ca3af;
+            display: block; font-size: 9px; color: #b0b7c3;
             text-transform: uppercase; letter-spacing: 0.08em;
-            font-weight: 600; margin-bottom: 3px; white-space: nowrap;
+            font-weight: 700; margin-bottom: 2px; white-space: nowrap;
           }
-          .cp-rows { --cp-cols: repeat(${n}, 1fr) !important; }
+          /* Hide Add Car slot on mobile — 3+ cars already fills width */
+          .cp-add-slot { display: none !important; }
+          /* Strip grid: n columns only (no add slot column) */
+          .cp-strip-grid { grid-template-columns: repeat(${n}, 1fr) !important; }
         }
       `}</style>
 
@@ -270,7 +280,7 @@ export default function ComparePage() {
             transition: 'max-height 0.35s ease, opacity 0.2s ease',
             pointerEvents: scrolled ? 'none' : 'auto',
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slotCols}, 1fr)`, gap: 'clamp(6px,2vw,12px)' }}>
+            <div className="cp-strip-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${slotCols}, 1fr)`, gap: 'clamp(6px,2vw,12px)' }}>
               {cars.map(car => {
                 const img = car.images?.[0];
                 const pct = hotDealPct(car);
@@ -323,6 +333,7 @@ export default function ComparePage() {
               })}
               {n < 4 && (
                 <Link
+                  className="cp-add-slot"
                   to="/showroom"
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
