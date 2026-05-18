@@ -113,6 +113,13 @@ export default function ComparePage() {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const ids = PARAM_KEYS.map(k => searchParams.get(k)).filter(Boolean).slice(0, 4);
 
@@ -248,11 +255,21 @@ export default function ComparePage() {
 
         {/* ── Sticky car strip ── */}
         <div style={{
-          position: 'sticky', top: 0, zIndex: 40,
+          position: 'sticky', top: 64, zIndex: 40,
           background: 'white', borderBottom: '2px solid #e5e7eb',
-          boxShadow: '0 3px 14px rgba(0,0,0,0.07)',
+          boxShadow: scrolled ? '0 3px 14px rgba(0,0,0,0.1)' : '0 2px 6px rgba(0,0,0,0.05)',
+          transition: 'box-shadow 0.3s',
         }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '10px 16px' }}>
+
+          {/* ── Expanded strip (at top) ── */}
+          <div style={{
+            maxWidth: 1100, margin: '0 auto', padding: '10px 16px',
+            maxHeight: scrolled ? 0 : 600,
+            opacity: scrolled ? 0 : 1,
+            overflow: 'hidden',
+            transition: 'max-height 0.35s ease, opacity 0.2s ease',
+            pointerEvents: scrolled ? 'none' : 'auto',
+          }}>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slotCols}, 1fr)`, gap: 'clamp(6px,2vw,12px)' }}>
               {cars.map(car => {
                 const img = car.images?.[0];
@@ -304,8 +321,6 @@ export default function ComparePage() {
                   </div>
                 );
               })}
-
-              {/* Add car slot */}
               {n < 4 && (
                 <Link
                   to="/showroom"
@@ -324,6 +339,50 @@ export default function ComparePage() {
               )}
             </div>
           </div>
+
+          {/* ── Collapsed mini bar (on scroll) ── */}
+          <div style={{
+            maxWidth: 1100, margin: '0 auto',
+            maxHeight: scrolled ? 80 : 0,
+            opacity: scrolled ? 1 : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.35s ease, opacity 0.2s ease 0.1s',
+            pointerEvents: scrolled ? 'auto' : 'none',
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 8, padding: '7px 16px' }}>
+              {cars.map(car => {
+                const img = car.images?.[0];
+                const isVerdict = verdict?.car.id === car.id;
+                return (
+                  <div key={car.id} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                    <div style={{
+                      width: 48, height: 34, borderRadius: 5, overflow: 'hidden', flexShrink: 0,
+                      background: '#f3f4f6',
+                      border: isVerdict ? '2px solid rgba(220,38,38,0.45)' : '1px solid #e5e7eb',
+                    }}>
+                      {img
+                        ? <img src={img} alt={car.model} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🚗</div>
+                      }
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.4vw,11px)', fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                        {car.year} {car.model}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 'clamp(9px,1.3vw,11px)', color: isVerdict ? '#dc2626' : '#6b7280', fontWeight: 600 }}>
+                        {fmtRM(car.selling_price)}
+                      </p>
+                    </div>
+                    {isVerdict && <Trophy size={11} color="#dc2626" style={{ flexShrink: 0 }} />}
+                    <button onClick={() => removeCar(car.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0 }}>
+                      <X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
 
         {/* ── Comparison rows ── */}
