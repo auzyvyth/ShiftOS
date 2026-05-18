@@ -692,6 +692,7 @@ export default function CarDetailPage() {
         car_listing_id: car.id,
         buyer_name: form.name,
         buyer_phone: form.phone,
+        buyer_state: form.state || null,
         appointment_date: dt.toISOString(),
         notes: form.notes || null,
         status: "confirmed",
@@ -713,6 +714,21 @@ export default function CarDetailPage() {
       lead_source: "enquiry",
       stage: "new",
     });
+    // Fire Telegram notification to dealer (non-blocking)
+    supabase.from("profiles").select("telegram_bot_token,telegram_channel_id,dealership")
+      .eq("id", car.dealer_id).maybeSingle()
+      .then(({ data: dp }) => {
+        if (!dp?.telegram_bot_token || !dp?.telegram_channel_id) return;
+        const dateStr = dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
+        const timeStr = dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
+        const stateStr = form.state ? ` (${form.state})` : "";
+        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
+        fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: dp.telegram_channel_id, text: msg, parse_mode: "Markdown" }),
+        }).catch(() => {});
+      });
     setSubmitting(false);
     setBooked(true);
     setBookingConsent({ appear: false, whatsapp: false });
