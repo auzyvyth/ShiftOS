@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 const SS_KEY = 'xdrive_compare';
-const MAX = 3;
+const MAX = 4;
 
 function readSession() {
   try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '[]'); } catch { return []; }

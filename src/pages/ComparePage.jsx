@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { X, Share2, Check, ExternalLink, Flame, Trophy } from 'lucide-react';
+import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
@@ -16,110 +16,97 @@ const SELECT_COLS = [
   'loan_eligible','previous_owners','created_at','images','status',
 ].join(', ');
 
-const fmtRM = (n) =>
-  n != null ? `RM ${Number(n).toLocaleString('en-MY')}` : '—';
+const fmtRM = n => n != null ? `RM ${Number(n).toLocaleString('en-MY')}` : '—';
+const ageDays = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null;
+const gradeNum = g => { if (!g) return null; const m = String(g).match(/(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : null; };
+const hotDealPct = car => (!car.original_price || car.original_price <= car.selling_price) ? null
+  : Math.round((car.original_price - car.selling_price) / car.original_price * 100);
 
-const ageDays = (iso) =>
-  iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null;
-
-function winnerIdx(values, direction = 'low') {
-  const nums = values.map((v) => (v != null && !isNaN(Number(v)) ? Number(v) : null));
-  if (nums.every((n) => n == null)) return -1;
-  const valid = nums.filter((n) => n != null);
-  const target = direction === 'low' ? Math.min(...valid) : Math.max(...valid);
-  return nums.findIndex((n) => n === target);
+const COMP_FIELDS = 13;
+function completeness(car) {
+  return [
+    !!car.mileage, !!car.engine_cc, !!car.transmission, !!car.fuel_type,
+    !!car.colour, !!car.body_type, !!car.condition, car.previous_owners != null,
+    (car.warranty_months || 0) > 0, !!car.state, !!car.variant,
+    Array.isArray(car.images) && car.images.length >= 3,
+    Array.isArray(car.car_documents) && car.car_documents.length > 0,
+  ].filter(Boolean).length;
 }
 
-function gradeNum(g) {
-  if (!g) return null;
-  const m = String(g).match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]) : null;
+// Only highlight when 2+ cars have a real value for the field
+function smartHL(vals, dir, n) {
+  const nums = vals.map(v => (v != null && !isNaN(Number(v))) ? Number(v) : null);
+  const valid = nums.filter(x => x != null);
+  if (valid.length < 2) return Array(n).fill(null);
+  const target = dir === 'low' ? Math.min(...valid) : Math.max(...valid);
+  return nums.map(v => v === target ? 'win' : null);
 }
 
-function hotDealPct(car) {
-  if (!car.original_price || car.original_price <= car.selling_price) return null;
-  return Math.round((car.original_price - car.selling_price) / car.original_price * 100);
+function getVerdict(cars) {
+  if (cars.length < 2) return null;
+  const scores = Array(cars.length).fill(0);
+  const check = (vals, dir) => {
+    const w = smartHL(vals, dir, cars.length).indexOf('win');
+    if (w >= 0) scores[w]++;
+  };
+  check(cars.map(c => c.selling_price), 'low');
+  check(cars.map(c => c.mileage), 'low');
+  check(cars.map(c => c.year), 'high');
+  check(cars.map(c => gradeNum(c.auction_grade)), 'high');
+  check(cars.map(c => gradeNum(c.interior_grade)), 'high');
+  check(cars.map(c => c.warranty_months || 0), 'high');
+  check(cars.map(c => ageDays(c.created_at)), 'low');
+  check(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high');
+  check(cars.map(c => completeness(c)), 'high');
+  const max = Math.max(...scores);
+  return { car: cars[scores.indexOf(max)], score: max };
 }
 
-// ─── Table primitives ─────────────────────────────────────────────────────────
+// ── Primitives ──────────────────────────────────────────────────────────────
+
+function Sec({ label }) {
+  return (
+    <div style={{
+      padding: '9px 14px 7px', fontSize: 10, fontWeight: 700,
+      color: '#dc2626', letterSpacing: '0.12em', textTransform: 'uppercase',
+      background: '#fafafa', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
+    }}>{label}</div>
+  );
+}
 
 function Row({ label, values, highlight, renderCell }) {
   return (
-    <tr className="cp-row">
-      <td className="cp-label">
-        {label}
-      </td>
+    <div className="cp-row" style={{ display: 'grid', gridTemplateColumns: 'var(--cp-cols)', borderBottom: '1px solid #f1f5f9' }}>
+      <div className="cp-lbl">{label}</div>
       {values.map((val, i) => {
-        const isWin = highlight?.[i] === 'win';
-        const isLose = highlight?.[i] === 'lose';
+        const win = highlight?.[i] === 'win';
+        const empty = val == null || val === '—' || val === '' || val === 'None';
         return (
-          <td
+          <div
             key={i}
-            className="cp-cell"
+            className="cp-val"
             data-label={label}
             style={{
-              padding: '10px 16px',
-              fontSize: 13,
-              color: isWin ? '#16a34a' : isLose ? '#dc2626' : '#374151',
-              borderBottom: '1px solid #f1f5f9',
-              verticalAlign: 'middle',
-              fontWeight: isWin || isLose ? 600 : 400,
-              background: isWin ? 'rgba(22,163,74,0.04)' : 'transparent',
-              minWidth: 0,
+              padding: 'clamp(8px,1.5vw,10px) clamp(8px,1.5vw,12px)',
+              fontSize: 'clamp(11px,1.6vw,13px)',
+              color: win && !empty ? '#16a34a' : empty ? '#d1d5db' : '#374151',
+              fontWeight: win && !empty ? 600 : 400,
+              background: win && !empty ? 'rgba(22,163,74,0.04)' : 'transparent',
+              borderLeft: '1px solid #f1f5f9',
+              display: 'flex', alignItems: 'center', minWidth: 0, overflow: 'hidden',
             }}
           >
-            {renderCell ? renderCell(val, i) : (val ?? '—')}
-          </td>
+            {renderCell ? renderCell(val, i, win) : (val ?? '—')}
+          </div>
         );
       })}
-    </tr>
+    </div>
   );
 }
 
-function SectionHeader({ label, colSpan }) {
-  return (
-    <tr>
-      <td
-        colSpan={colSpan + 1}
-        style={{
-          padding: '12px 16px 8px',
-          fontSize: 10,
-          fontWeight: 700,
-          color: '#dc2626',
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          background: '#fafafa',
-          borderTop: '1px solid #e5e7eb',
-          borderBottom: '1px solid #e5e7eb',
-        }}
-      >
-        {label}
-      </td>
-    </tr>
-  );
-}
+// ── Main ────────────────────────────────────────────────────────────────────
 
-// ─── Highlight helpers that return 'win' | 'lose' | null ─────────────────────
-
-function priceHL(cars) {
-  const idx = winnerIdx(cars.map((c) => c.selling_price), 'low');
-  return cars.map((_, i) => i === idx ? 'win' : null);
-}
-function mileHL(cars) {
-  const lo = winnerIdx(cars.map((c) => c.mileage), 'low');
-  const hi = winnerIdx(cars.map((c) => c.mileage), 'high');
-  return cars.map((_, i) => i === lo ? 'win' : i === hi ? 'lose' : null);
-}
-function highHL(vals, cars) {
-  const idx = winnerIdx(vals, 'high');
-  return cars.map((_, i) => i === idx ? 'win' : null);
-}
-function lowHL(vals, cars) {
-  const idx = winnerIdx(vals, 'low');
-  return cars.map((_, i) => i === idx ? 'win' : null);
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+const PARAM_KEYS = ['a', 'b', 'c', 'd'];
 
 export default function ComparePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,28 +114,23 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const paramKeys = ['a', 'b', 'c'];
-  const ids = paramKeys.map((k) => searchParams.get(k)).filter(Boolean);
+  const ids = PARAM_KEYS.map(k => searchParams.get(k)).filter(Boolean).slice(0, 4);
 
   useEffect(() => {
     if (!ids.length) { setLoading(false); return; }
-    supabase
-      .from('car_listings')
-      .select(SELECT_COLS)
-      .in('id', ids)
+    supabase.from('car_listings').select(SELECT_COLS).in('id', ids)
       .then(({ data }) => {
-        const ordered = ids.map((id) => (data || []).find((c) => c.id === id)).filter(Boolean);
-        setCars(ordered);
+        setCars(ids.map(id => (data || []).find(c => c.id === id)).filter(Boolean));
         setLoading(false);
       });
   }, [ids.join(',')]);
 
-  const removeCar = (id) => {
-    const remaining = cars.filter((c) => c.id !== id);
-    const newParams = new URLSearchParams();
-    remaining.forEach((c, i) => newParams.set(paramKeys[i], c.id));
-    setSearchParams(newParams);
-    setCars(remaining);
+  const removeCar = id => {
+    const rem = cars.filter(c => c.id !== id);
+    const p = new URLSearchParams();
+    rem.forEach((c, i) => p.set(PARAM_KEYS[i], c.id));
+    setSearchParams(p);
+    setCars(rem);
   };
 
   const handleShare = async () => {
@@ -158,42 +140,35 @@ export default function ComparePage() {
   };
 
   const n = cars.length;
-  const hasRecon = cars.some((c) => c.is_recon);
+  const hasRecon = cars.some(c => c.is_recon);
+  const verdict = getVerdict(cars);
 
-  // Verdict
-  const verdictCar = (() => {
-    if (n < 2) return null;
-    const scores = cars.map(() => 0);
-    const bump = (idx) => { if (idx >= 0 && idx < scores.length) scores[idx]++; };
-    bump(winnerIdx(cars.map((c) => c.selling_price), 'low'));
-    bump(winnerIdx(cars.map((c) => c.mileage), 'low'));
-    bump(winnerIdx(cars.map((c) => c.year), 'high'));
-    bump(winnerIdx(cars.map((c) => gradeNum(c.auction_grade)), 'high'));
-    bump(winnerIdx(cars.map((c) => gradeNum(c.interior_grade)), 'high'));
-    bump(winnerIdx(cars.map((c) => c.warranty_months || 0), 'high'));
-    bump(winnerIdx(cars.map((c) => ageDays(c.created_at)), 'low'));
-    const maxScore = Math.max(...scores);
-    const idx = scores.indexOf(maxScore);
-    return { car: cars[idx], score: maxScore };
+  const verdictReasons = (() => {
+    if (!verdict) return '';
+    const i = cars.indexOf(verdict.car);
+    const parts = [];
+    if (smartHL(cars.map(c => c.selling_price), 'low', n)[i] === 'win') parts.push('lowest asking price');
+    if (smartHL(cars.map(c => c.mileage), 'low', n)[i] === 'win') parts.push('lowest mileage');
+    if (smartHL(cars.map(c => c.year), 'high', n)[i] === 'win') parts.push('newest year');
+    if (smartHL(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high', n)[i] === 'win')
+      parts.push('most verified documents');
+    return parts.length ? parts.join(', ') : 'best overall value';
   })();
 
-  const verdictReason = (car) => {
-    const i = cars.indexOf(car);
-    const parts = [];
-    if (winnerIdx(cars.map((c) => c.selling_price), 'low') === i) parts.push('lowest asking price');
-    if (winnerIdx(cars.map((c) => c.mileage), 'low') === i) parts.push('lowest mileage');
-    if (winnerIdx(cars.map((c) => c.year), 'high') === i) parts.push('newest year');
-    return parts.length ? parts.join(', ') : 'most competitive overall value';
-  };
+  const loanHL = (() => {
+    const elig = cars.map(c => c.loan_eligible !== false);
+    if (elig.every(Boolean)) return Array(n).fill(null);
+    return elig.map(e => e ? 'win' : null);
+  })();
 
-  // ─── Loading / empty states ──────────────────────────────────────────────────
+  // ── Loading / empty ─────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <>
         <MarketplaceHeader />
         <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 72 }}>
-          <div style={{ width: 32, height: 32, border: '2px solid #e5e7eb', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ width: 28, height: 28, border: '2px solid #e5e7eb', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       </>
@@ -212,269 +187,263 @@ export default function ComparePage() {
     );
   }
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  const slotCols = n < 4 ? n + 1 : n;
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        .cp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-        .cp-table { border-collapse: collapse; width: 100%; }
-        .cp-row:hover td { background: #f9fafb !important; }
-        .cp-label {
-          position: sticky; left: 0; z-index: 2;
-          background: white; padding: 10px 14px;
-          font-size: 12px; color: #6b7280;
-          white-space: nowrap; border-bottom: 1px solid #f1f5f9;
-          width: 110px; min-width: 110px; font-weight: 500;
+        .cp-row:hover .cp-val { background: #f9fafb !important; }
+        .cp-lbl {
+          padding: clamp(8px,1.5vw,10px) clamp(8px,1.5vw,14px);
+          font-size: 11px; color: #9ca3af; font-weight: 500;
+          display: flex; align-items: center;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        @media (max-width: 600px) {
-          .cp-label { display: none !important; }
-          .cp-cell::before {
+        @media (max-width: 520px) {
+          .cp-lbl { display: none !important; }
+          .cp-val { border-left: none !important; }
+          .cp-val::before {
             content: attr(data-label);
-            display: block; font-size: 10px; color: #9ca3af;
+            display: block; font-size: 9px; color: #9ca3af;
             text-transform: uppercase; letter-spacing: 0.08em;
-            font-weight: 600; margin-bottom: 2px;
+            font-weight: 600; margin-bottom: 3px; white-space: nowrap;
           }
-          .cp-table { table-layout: auto; }
-          .cp-col-header { padding: 14px 10px 12px !important; }
+          .cp-rows { --cp-cols: repeat(${n}, 1fr) !important; }
         }
       `}</style>
 
       <MarketplaceHeader />
 
-      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", paddingBottom: 64 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(16px,4vw,32px) clamp(12px,4vw,20px)', paddingTop: 'calc(72px + clamp(16px,4vw,32px))' }}>
+      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "'DM Sans',sans-serif", paddingTop: 72, paddingBottom: 64 }}>
 
-          {/* ── Page header ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <p style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 4px' }}>Side by Side</p>
-              <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(28px,5vw,40px)', letterSpacing: 2, lineHeight: 1, color: '#111827', margin: 0 }}>
-                Compare Cars
-              </h1>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link to="/showroom" style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
-              <button
-                onClick={handleShare}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: copied ? 'rgba(22,163,74,0.08)' : 'white',
-                  border: `1px solid ${copied ? 'rgba(22,163,74,0.3)' : '#DDE3EC'}`,
-                  color: copied ? '#16a34a' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s',
-                }}
-              >
-                {copied ? <Check size={13} /> : <Share2 size={13} />}
-                {copied ? 'Copied!' : 'Share'}
-              </button>
+        {/* ── Page title ── */}
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <p style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 3px' }}>Side by Side</p>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(26px,5vw,38px)', letterSpacing: 2, lineHeight: 1, color: '#111827', margin: 0 }}>
+              Compare Cars
+            </h1>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link to="/showroom" style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>← All Cars</Link>
+            <button
+              onClick={handleShare}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                background: copied ? 'rgba(22,163,74,0.08)' : 'white',
+                border: `1px solid ${copied ? 'rgba(22,163,74,0.3)' : '#DDE3EC'}`,
+                color: copied ? '#16a34a' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {copied ? <Check size={12} /> : <Share2 size={12} />}
+              {copied ? 'Copied!' : 'Share'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Sticky car strip ── */}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 40,
+          background: 'white', borderBottom: '2px solid #e5e7eb',
+          boxShadow: '0 3px 14px rgba(0,0,0,0.07)',
+        }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '10px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slotCols}, 1fr)`, gap: 'clamp(6px,2vw,12px)' }}>
+              {cars.map(car => {
+                const img = car.images?.[0];
+                const pct = hotDealPct(car);
+                const monthly = calcMonthly(car.selling_price);
+                const isVerdict = verdict?.car.id === car.id;
+                return (
+                  <div key={car.id} style={{ minWidth: 0 }}>
+                    <div style={{
+                      position: 'relative', aspectRatio: '16/9', borderRadius: 8,
+                      overflow: 'hidden', background: '#f3f4f6', marginBottom: 6,
+                      border: isVerdict ? '2px solid rgba(220,38,38,0.5)' : '1px solid #e5e7eb',
+                    }}>
+                      {img
+                        ? <img src={img} alt={car.model} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🚗</div>
+                      }
+                      {pct && (
+                        <div style={{ position: 'absolute', top: 4, left: 4, display: 'flex', alignItems: 'center', gap: 2, background: '#dc2626', borderRadius: 4, padding: '2px 5px' }}>
+                          <Flame size={8} color="white" />
+                          <span style={{ color: 'white', fontSize: 9, fontWeight: 700 }}>-{pct}%</span>
+                        </div>
+                      )}
+                      {isVerdict && (
+                        <div style={{ position: 'absolute', bottom: 4, left: 4, display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(220,38,38,0.92)', borderRadius: 4, padding: '2px 6px' }}>
+                          <Trophy size={8} color="white" />
+                          <span style={{ color: 'white', fontSize: 9, fontWeight: 700 }}>Best Value</span>
+                        </div>
+                      )}
+                      <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3 }}>
+                        <HeartButton listingId={car.id} size={11} style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 5, padding: '3px 5px', backdropFilter: 'blur(4px)' }} />
+                        <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 5, color: '#6b7280', cursor: 'pointer', padding: '3px 5px', display: 'flex', backdropFilter: 'blur(4px)' }}>
+                          <X size={10} />
+                        </button>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 9, color: '#dc2626', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{car.brand}</p>
+                    <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(12px,2.2vw,17px)', color: '#111827', letterSpacing: 1, lineHeight: 1.1, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {car.year} {car.model}
+                    </p>
+                    {pct && <p style={{ fontSize: 9, color: '#9ca3af', textDecoration: 'line-through', margin: '0 0 1px' }}>{fmtRM(car.original_price)}</p>}
+                    <p style={{ fontSize: 'clamp(11px,1.8vw,13px)', fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
+                    {monthly && <p style={{ fontSize: 9, color: '#9ca3af', margin: '1px 0 3px' }}>~RM {monthly.toLocaleString()}/mo</p>}
+                    {car.slug && (
+                      <Link to={`/showroom/${car.slug}`} style={{ fontSize: 9, color: '#dc2626', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        View <ExternalLink size={8} />
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Add car slot */}
+              {n < 4 && (
+                <Link
+                  to="/showroom"
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '1/1', maxHeight: 110, border: '1.5px dashed #d1d5db',
+                    borderRadius: 10, color: '#9ca3af', textDecoration: 'none', gap: 5,
+                    transition: 'border-color 0.15s, color 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#9ca3af'; }}
+                >
+                  <Plus size={18} />
+                  <span style={{ fontSize: 10, fontWeight: 600 }}>Add Car</span>
+                </Link>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* ── Comparison table ── */}
-          <div style={{ background: 'white', borderRadius: 14, border: '1px solid #DDE3EC', overflow: 'hidden' }}>
-            <div className="cp-wrap">
-              <table className="cp-table" style={{ minWidth: 110 + n * 180 }}>
-                <colgroup>
-                  <col style={{ width: 110 }} />
-                  {cars.map((c) => <col key={c.id} />)}
-                </colgroup>
+        {/* ── Comparison rows ── */}
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '12px 16px 0' }}>
+          <div
+            className="cp-rows"
+            style={{ '--cp-cols': `75px repeat(${n}, 1fr)`, background: 'white', borderRadius: 12, border: '1px solid #DDE3EC', overflow: 'hidden' }}
+          >
 
-                {/* ── Car headers ── */}
-                <thead>
-                  <tr style={{ background: 'white', borderBottom: '1px solid #e5e7eb' }}>
-                    <th className="cp-label" style={{ background: 'white', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
-                    {cars.map((car) => {
-                      const img = car.images?.[0];
-                      const pct = hotDealPct(car);
-                      const monthly = calcMonthly(car.selling_price);
-                      return (
-                        <th key={car.id} className="cp-col-header" style={{ padding: '20px 16px 16px', verticalAlign: 'top', minWidth: 180, borderLeft: '1px solid #f1f5f9', textAlign: 'left', fontWeight: 400 }}>
-                          {/* Photo */}
-                          <div style={{ position: 'relative', marginBottom: 12 }}>
-                            <div style={{ aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', background: '#f3f4f6' }}>
-                              {img
-                                ? <img src={img} alt={car.model} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🚗</div>
-                              }
-                            </div>
-                            {/* Hot deal badge */}
-                            {pct && (
-                              <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', alignItems: 'center', gap: 3, background: '#dc2626', borderRadius: 5, padding: '2px 7px' }}>
-                                <Flame size={9} color="white" />
-                                <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>-{pct}%</span>
-                              </div>
-                            )}
-                            {/* Remove + save controls */}
-                            <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>
-                              <HeartButton listingId={car.id} size={14} style={{ background: 'rgba(255,255,255,0.88)', borderRadius: 6, padding: '4px 6px', backdropFilter: 'blur(4px)' }} />
-                              <button onClick={() => removeCar(car.id)} style={{ background: 'rgba(255,255,255,0.88)', border: 'none', borderRadius: 6, color: '#6b7280', cursor: 'pointer', padding: '4px 6px', display: 'flex', backdropFilter: 'blur(4px)' }}>
-                                <X size={12} />
-                              </button>
-                            </div>
-                          </div>
+            <Sec label="Pricing" />
+            <Row label="Asking Price" values={cars.map(c => fmtRM(c.selling_price))} highlight={smartHL(cars.map(c => c.selling_price), 'low', n)} />
+            <Row label="Monthly Est." values={cars.map(c => { const m = calcMonthly(c.selling_price); return m ? `RM ${m.toLocaleString()}` : '—'; })} />
 
-                          {/* Brand */}
-                          <p style={{ fontSize: 10, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 2px', fontWeight: 700 }}>{car.brand}</p>
-                          {/* Name */}
-                          <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(16px,2.5vw,20px)', color: '#111827', letterSpacing: 1, lineHeight: 1.1, margin: '0 0 8px' }}>
-                            {[car.year, car.model, car.variant].filter(Boolean).join(' ')}
-                          </p>
+            <Sec label="Basics" />
+            <Row label="Year" values={cars.map(c => c.year || '—')} highlight={smartHL(cars.map(c => c.year), 'high', n)} />
+            <Row
+              label="Mileage"
+              values={cars.map(c => c.mileage ? `${Number(c.mileage).toLocaleString()} km` : '—')}
+              highlight={smartHL(cars.map(c => c.mileage), 'low', n)}
+            />
+            <Row label="Condition" values={cars.map(c => c.condition || '—')} />
+            <Row
+              label="Prev. Owners"
+              values={cars.map(c => c.previous_owners != null ? String(c.previous_owners) : '—')}
+              highlight={smartHL(cars.map(c => c.previous_owners), 'low', n)}
+            />
+            <Row label="Location" values={cars.map(c => [c.city, c.state].filter(Boolean).join(', ') || '—')} />
 
-                          {/* Price block */}
-                          <div style={{ marginBottom: 4 }}>
-                            {pct && (
-                              <p style={{ fontSize: 11, color: '#9ca3af', textDecoration: 'line-through', margin: '0 0 1px' }}>
-                                {fmtRM(car.original_price)}
-                              </p>
-                            )}
-                            <p style={{ fontSize: 17, fontWeight: 700, color: pct ? '#dc2626' : '#111827', margin: 0 }}>{fmtRM(car.selling_price)}</p>
-                          </div>
-                          {monthly && (
-                            <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 8px' }}>
-                              ~RM {monthly.toLocaleString()}/mo est.
-                            </p>
-                          )}
+            <Sec label="Specs" />
+            <Row label="Engine CC" values={cars.map(c => c.engine_cc ? `${Number(c.engine_cc).toLocaleString()} cc` : '—')} />
+            <Row label="Transmission" values={cars.map(c => c.transmission || '—')} />
+            <Row label="Fuel Type" values={cars.map(c => c.fuel_type || '—')} />
+            <Row label="Colour" values={cars.map(c => c.colour || '—')} />
+            <Row label="Body Type" values={cars.map(c => c.body_type || '—')} />
 
-                          {car.slug && (
-                            <Link to={`/showroom/${car.slug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#dc2626', textDecoration: 'none', fontWeight: 600 }}>
-                              View listing <ExternalLink size={10} />
-                            </Link>
-                          )}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {/* ── PRICING ── */}
-                  <SectionHeader label="Pricing" colSpan={n} />
-                  <Row
-                    label="Asking Price"
-                    values={cars.map((c) => fmtRM(c.selling_price))}
-                    highlight={priceHL(cars)}
-                  />
-                  <Row
-                    label="Monthly Est."
-                    values={cars.map((c) => { const m = calcMonthly(c.selling_price); return m ? `RM ${m.toLocaleString()}` : '—'; })}
-                  />
-
-                  {/* ── BASICS ── */}
-                  <SectionHeader label="Basics" colSpan={n} />
-                  <Row label="Year" values={cars.map((c) => c.year || '—')} highlight={highHL(cars.map((c) => c.year), cars)} />
-                  <Row
-                    label="Mileage"
-                    values={cars.map((c) => c.mileage ? `${Number(c.mileage).toLocaleString()} km` : '—')}
-                    highlight={mileHL(cars)}
-                  />
-                  <Row label="Condition" values={cars.map((c) => c.condition || '—')} />
-                  <Row
-                    label="Prev. Owners"
-                    values={cars.map((c) => c.previous_owners != null ? String(c.previous_owners) : '—')}
-                    highlight={lowHL(cars.map((c) => c.previous_owners), cars)}
-                  />
-                  <Row label="Location" values={cars.map((c) => [c.city, c.state].filter(Boolean).join(', ') || '—')} />
-
-                  {/* ── SPECS ── */}
-                  <SectionHeader label="Specs" colSpan={n} />
-                  <Row label="Engine CC" values={cars.map((c) => c.engine_cc ? `${Number(c.engine_cc).toLocaleString()} cc` : '—')} />
-                  <Row label="Transmission" values={cars.map((c) => c.transmission || '—')} />
-                  <Row label="Fuel Type" values={cars.map((c) => c.fuel_type || '—')} />
-                  <Row label="Colour" values={cars.map((c) => c.colour || '—')} />
-                  <Row label="Body Type" values={cars.map((c) => c.body_type || '—')} />
-
-                  {/* ── RECON ── */}
-                  {hasRecon && (
-                    <>
-                      <SectionHeader label="Recon / Import" colSpan={n} />
-                      <Row label="Recon" values={cars.map((c) => c.is_recon ? 'Yes' : 'No')} />
-                      <Row label="Country" values={cars.map((c) => c.import_country || '—')} />
-                      <Row
-                        label="Ext. Grade"
-                        values={cars.map((c) => c.auction_grade || '—')}
-                        highlight={highHL(cars.map((c) => gradeNum(c.auction_grade)), cars)}
-                      />
-                      <Row
-                        label="Int. Grade"
-                        values={cars.map((c) => c.interior_grade || '—')}
-                        highlight={highHL(cars.map((c) => gradeNum(c.interior_grade)), cars)}
-                      />
-                      <Row
-                        label="Chassis"
-                        values={cars.map((c) => c.chassis_status || '—')}
-                        renderCell={(val) => (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: val === 'clean' ? '#22c55e' : val === 'repaired' ? '#eab308' : val === 'written_off' ? '#dc2626' : '#d1d5db' }} />
-                            {val || '—'}
-                          </span>
-                        )}
-                      />
-                    </>
+            {hasRecon && (
+              <>
+                <Sec label="Recon / Import" />
+                <Row label="Recon" values={cars.map(c => c.is_recon ? 'Yes' : 'No')} />
+                <Row label="Country" values={cars.map(c => c.import_country || '—')} />
+                <Row label="Ext. Grade" values={cars.map(c => c.auction_grade || '—')} highlight={smartHL(cars.map(c => gradeNum(c.auction_grade)), 'high', n)} />
+                <Row label="Int. Grade" values={cars.map(c => c.interior_grade || '—')} highlight={smartHL(cars.map(c => gradeNum(c.interior_grade)), 'high', n)} />
+                <Row
+                  label="Chassis"
+                  values={cars.map(c => c.chassis_status || '—')}
+                  renderCell={val => (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: val === 'clean' ? '#22c55e' : val === 'repaired' ? '#eab308' : val === 'written_off' ? '#dc2626' : '#d1d5db' }} />
+                      {val || '—'}
+                    </span>
                   )}
+                />
+              </>
+            )}
 
-                  {/* ── TRUST ── */}
-                  <SectionHeader label="Trust & Value" colSpan={n} />
-                  <Row
-                    label="Verified Docs"
-                    values={cars.map((c) => Array.isArray(c.car_documents) && c.car_documents.length > 0 ? '✓' : '—')}
-                    highlight={cars.map((c) => Array.isArray(c.car_documents) && c.car_documents.length > 0 ? 'win' : null)}
-                  />
-                  <Row
-                    label="Warranty"
-                    values={cars.map((c) => c.warranty_months > 0 ? `${c.warranty_months} mo` : 'None')}
-                    highlight={highHL(cars.map((c) => c.warranty_months || 0), cars)}
-                  />
-                  <Row
-                    label="Days Listed"
-                    values={cars.map((c) => ageDays(c.created_at) != null ? `${ageDays(c.created_at)}d` : '—')}
-                    highlight={lowHL(cars.map((c) => ageDays(c.created_at)), cars)}
-                  />
-                  <Row
-                    label="Loan Eligible"
-                    values={cars.map((c) => c.loan_eligible === false ? 'No' : 'Yes')}
-                    highlight={cars.map((c) => c.loan_eligible !== false ? 'win' : null)}
-                  />
-                </tbody>
-              </table>
-            </div>
+            <Sec label="Trust & Value" />
+            <Row
+              label="Documents"
+              values={cars.map(c => { const cnt = Array.isArray(c.car_documents) ? c.car_documents.length : 0; return cnt > 0 ? `${cnt} doc${cnt !== 1 ? 's' : ''}` : 'None'; })}
+              highlight={smartHL(cars.map(c => Array.isArray(c.car_documents) ? c.car_documents.length : 0), 'high', n)}
+            />
+            <Row
+              label="Warranty"
+              values={cars.map(c => c.warranty_months > 0 ? `${c.warranty_months} mo` : 'None')}
+              highlight={smartHL(cars.map(c => c.warranty_months || 0), 'high', n)}
+            />
+            <Row label="Loan Eligible" values={cars.map(c => c.loan_eligible === false ? 'No' : 'Yes')} highlight={loanHL} />
+            <Row
+              label="Days Listed"
+              values={cars.map(c => ageDays(c.created_at) != null ? `${ageDays(c.created_at)}d` : '—')}
+              highlight={smartHL(cars.map(c => ageDays(c.created_at)), 'low', n)}
+            />
+            <Row
+              label="Listing Score"
+              values={cars.map(c => `${Math.round(completeness(c) / COMP_FIELDS * 100)}%`)}
+              highlight={smartHL(cars.map(c => completeness(c)), 'high', n)}
+              renderCell={(val, i, win) => {
+                const pct = completeness(cars[i]) / COMP_FIELDS * 100;
+                return (
+                  <div style={{ width: '100%', minWidth: 0 }}>
+                    <span style={{ fontSize: 'clamp(10px,1.6vw,12px)', fontWeight: win ? 600 : 400 }}>{Math.round(pct)}%</span>
+                    <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 3 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: win ? '#16a34a' : '#d1d5db', borderRadius: 2, transition: 'width 0.4s' }} />
+                    </div>
+                  </div>
+                );
+              }}
+            />
+
           </div>
 
           {/* ── Verdict ── */}
-          {verdictCar && (
-            <div style={{ marginTop: 16, background: 'white', border: '1px solid #DDE3EC', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(16px,3vw,24px) clamp(16px,3vw,24px)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                <Trophy size={14} color="#dc2626" />
+          {verdict && (
+            <div style={{ marginTop: 14, background: 'white', border: '1px solid #DDE3EC', borderLeft: '3px solid #dc2626', borderRadius: 12, padding: 'clamp(14px,3vw,22px)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Trophy size={13} color="#dc2626" />
                 <p style={{ fontSize: 10, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, margin: 0 }}>Our Verdict</p>
               </div>
-              <p style={{ fontSize: 'clamp(13px,2vw,15px)', color: '#374151', lineHeight: 1.65, margin: '0 0 16px' }}>
-                <strong style={{ color: '#111827' }}>
-                  {[verdictCar.car.year, verdictCar.car.brand, verdictCar.car.model].filter(Boolean).join(' ')}
-                </strong>
-                {' '}offers the best overall value — {verdictReason(verdictCar.car)} compared to the alternatives.
+              <p style={{ fontSize: 'clamp(13px,2vw,15px)', color: '#374151', lineHeight: 1.65, margin: '0 0 14px' }}>
+                <strong style={{ color: '#111827' }}>{[verdict.car.year, verdict.car.brand, verdict.car.model].filter(Boolean).join(' ')}</strong>
+                {' '}offers the best overall value — {verdictReasons} compared to the alternatives.
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {cars.map((car) =>
-                  car.slug && (
-                    <Link
-                      key={car.id}
-                      to={`/showroom/${car.slug}`}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: car.id === verdictCar.car.id ? 'rgba(220,38,38,0.06)' : '#f3f4f6',
-                        border: `1px solid ${car.id === verdictCar.car.id ? 'rgba(220,38,38,0.25)' : '#e5e7eb'}`,
-                        color: car.id === verdictCar.car.id ? '#dc2626' : '#6b7280',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      {car.id === verdictCar.car.id && <Trophy size={11} />}
-                      {[car.year, car.brand, car.model].filter(Boolean).join(' ')} →
-                    </Link>
-                  )
-                )}
+                {cars.map(car => car.slug && (
+                  <Link
+                    key={car.id}
+                    to={`/showroom/${car.slug}`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: car.id === verdict.car.id ? 'rgba(220,38,38,0.06)' : '#f3f4f6',
+                      border: `1px solid ${car.id === verdict.car.id ? 'rgba(220,38,38,0.25)' : '#e5e7eb'}`,
+                      color: car.id === verdict.car.id ? '#dc2626' : '#6b7280',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {car.id === verdict.car.id && <Trophy size={10} />}
+                    {[car.year, car.brand, car.model].filter(Boolean).join(' ')} →
+                  </Link>
+                ))}
               </div>
             </div>
           )}
