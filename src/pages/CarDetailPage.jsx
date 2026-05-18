@@ -3040,14 +3040,14 @@ export default function CarDetailPage() {
       {/* ── mobile sticky bar ── */}
       <div className="cdp-mobile-bar">
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'0 4px', flexShrink:0 }}>
-          <HeartButton listingId={car?.id} size={20} />
-          <span style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>Save</span>
+          <HeartButton listingId={car?.id} size={20} style={isXdrive ? { color: 'rgba(0,0,0,0.5)' } : undefined} />
+          <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>Save</span>
         </div>
         <button
           onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
           style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, background:'none', border:'none', cursor:'pointer', padding:'0 4px', flexShrink:0 }}>
-          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.35)'} />
-          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>
+          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)'} />
+          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>
             {car?.id && isInCompare(car.id) ? 'Added' : 'Compare'}
           </span>
         </button>
