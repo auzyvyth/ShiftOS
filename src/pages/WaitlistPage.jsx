@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { nanoid } from "nanoid";
-import { supabase } from "../supabaseClient";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
 const BASE = "https://xdrive.my";
@@ -54,55 +52,24 @@ export default function WaitlistPage() {
 
     setLoading(true);
     try {
-      // Check duplicate by phone
-      const { data: existing, error: selectErr } = await supabase
-        .from("waitlist_signups")
-        .select("position, referral_code")
-        .eq("phone", trimPhone)
-        .maybeSingle();
-
-      if (selectErr) throw selectErr;
-
-      if (existing) {
-        setResult({ position: existing.position, referral_code: existing.referral_code, isExisting: true });
-        setLoading(false);
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), phone: trimPhone, refCode: refCode || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 429) {
+          setError("Too many requests. Please try again in a few minutes.");
+        } else {
+          setError(data.error || "Something went wrong. Please try again.");
+        }
         return;
       }
-
-      const code = nanoid(8);
-      const { data: inserted, error: insertErr } = await supabase
-        .from("waitlist_signups")
-        .insert({ name: name.trim(), phone: trimPhone, referral_code: code, referred_by: refCode || null, founding_member: false })
-        .select("position, referral_code")
-        .single();
-
-      if (insertErr) throw insertErr;
-
-      // Grant founding member to referrer on first successful referral
-      if (refCode) {
-        const { data: referrer } = await supabase
-          .from("waitlist_signups")
-          .select("id, founding_member")
-          .eq("referral_code", refCode)
-          .maybeSingle();
-
-        if (referrer && !referrer.founding_member) {
-          const { count } = await supabase
-            .from("waitlist_signups")
-            .select("id", { count: "exact", head: true })
-            .eq("referred_by", refCode);
-          if (count >= 1) {
-            await supabase.from("waitlist_signups").update({ founding_member: true }).eq("id", referrer.id);
-          }
-        }
-      }
-
-      setResult({ position: inserted.position, referral_code: inserted.referral_code, isExisting: false });
+      setResult(data);
     } catch (err) {
       console.error("Waitlist error:", err);
-      // Surface the real error so it's debuggable
-      const msg = err?.message || err?.details || JSON.stringify(err);
-      setError(`Error: ${msg}`);
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }

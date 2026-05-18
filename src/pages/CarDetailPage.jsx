@@ -619,44 +619,29 @@ export default function CarDetailPage() {
       dealer_id: car.dealer_id,
       metadata: { source: "storefront", price: car.selling_price },
     });
-    const { data: listing } = await supabase
-      .from("car_listings")
-      .select("dealer_id, assigned_to")
-      .eq("id", car.id)
-      .single();
-    if (listing) {
-      const { error: enqErr } = await supabase
-        .from("whatsapp_enquiries")
-        .insert({
-          dealer_id: listing.dealer_id,
-          salesman_id: listing.assigned_to,
-          listing_id: car.id,
-          buyer_name: enquiryForm.name,
-          buyer_phone: enquiryForm.phone,
-          buyer_state: enquiryForm.state || null,
-          buyer_message:
-            `Enquiry about ${car.brand} ${car.model} ${car.variant || ""}`.trim(),
-          ref_slug: getRef() || null,
-          source: "storefront",
-          status: "new",
-        });
-      if (enqErr)
-        console.error(
-          "[handleEnquirySubmit] insert error:",
-          enqErr.message,
-          enqErr,
-        );
-      // Create leads row so buyer_state feeds the demand heatmap
-      await supabase.from("leads").insert({
-        dealer_id: listing.dealer_id,
-        salesman_id: listing.assigned_to || null,
-        car_listing_id: car.id,
-        buyer_name: enquiryForm.name,
-        phone: enquiryForm.phone,
-        buyer_state: enquiryForm.state || null,
-        lead_source: "whatsapp",
-        stage: "new",
+    try {
+      const res = await fetch("/api/enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carId: car.id,
+          name: enquiryForm.name,
+          phone: enquiryForm.phone,
+          state: enquiryForm.state || null,
+          refSlug: getRef() || null,
+        }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          alert("Too many enquiries. Please wait a moment and try again.");
+          setEnquirySubmitting(false);
+          return;
+        }
+        console.error("[handleEnquirySubmit]", data.error);
+      }
+    } catch (err) {
+      console.error("[handleEnquirySubmit] fetch error:", err);
     }
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
     window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
@@ -669,47 +654,41 @@ export default function CarDetailPage() {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    let salesmanId = car.assigned_to || null;
-    const refSlug = getRef();
-    if (refSlug) {
-      const { data: sm } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("slug", refSlug)
-        .maybeSingle();
-      if (sm?.id) salesmanId = sm.id;
-    }
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
-    const { error: bookErr } = await supabase
-      .from("appointments")
-      .insert({
-        dealer_id: car.dealer_id,
-        salesman_id: salesmanId,
-        car_listing_id: car.id,
-        buyer_name: form.name,
-        buyer_phone: form.phone,
-        appointment_date: dt.toISOString(),
-        notes: form.notes || null,
-        status: "confirmed",
+    try {
+      const res = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carId: car.id,
+          dealerId: car.dealer_id,
+          assignedTo: car.assigned_to || null,
+          name: form.name,
+          phone: form.phone,
+          state: form.state || null,
+          appointmentDate: dt.toISOString(),
+          notes: form.notes || null,
+          refSlug: getRef() || null,
+        }),
       });
-    if (bookErr) {
-      setSubmitting(false);
-      console.error("[handleBook] insert error:", bookErr.message, bookErr);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          alert("Too many bookings. Please wait a moment and try again.");
+        } else {
+          console.error("[handleBook]", data.error);
+          alert("Booking failed. Please try again.");
+        }
+        setSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      console.error("[handleBook] fetch error:", err);
       alert("Booking failed. Please try again.");
+      setSubmitting(false);
       return;
     }
-    // Create leads row so buyer_state feeds the demand heatmap
-    await supabase.from("leads").insert({
-      dealer_id: car.dealer_id,
-      salesman_id: salesmanId,
-      car_listing_id: car.id,
-      buyer_name: form.name,
-      phone: form.phone,
-      buyer_state: form.state || null,
-      lead_source: "enquiry",
-      stage: "new",
-    });
     setSubmitting(false);
     setBooked(true);
   }
