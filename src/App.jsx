@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Routes, BrowserRouter as Router } from "react-router-dom";
+import { Route, Routes, BrowserRouter as Router, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import ScrollToTop from "./components/ScrollToTop";
 import HomePage from "./pages/HomePage";
@@ -32,8 +32,19 @@ import SavedCarsPage from "./pages/SavedCarsPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ShowroomPage from "./pages/ShowroomPage";
 import GuidesPage from "./pages/GuidesPage";
+import WaitlistPage from "./pages/WaitlistPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
+
+const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
+
+function CompareBarGate() {
+  const { pathname } = useLocation();
+  const show = COMPARE_PATHS.includes(pathname) ||
+    pathname.startsWith("/cars/") ||
+    pathname.startsWith("/showroom/");
+  return show ? <CompareBar /> : null;
+}
 
 function App() {
   return (
@@ -50,7 +61,7 @@ function App() {
           },
         }}
       />
-      <CompareBar />
+      <CompareBarGate />
       <Routes>
         {/* Public — XDrive */}
         <Route path="/" element={<HomePage />} />
@@ -91,6 +102,7 @@ function App() {
         {/* Public — ShiftOS marketing */}
         <Route path="/shiftos" element={<ShiftOSPage />} />
         <Route path="/mindmap" element={<MindMapPage />} />
+        <Route path="/waitlist" element={<WaitlistPage />} />
 
         {/* Dealer slug catch-all — redirects to subdomain */}
         <Route path="/s/:slug" element={<SalesmanProfilePage />} />

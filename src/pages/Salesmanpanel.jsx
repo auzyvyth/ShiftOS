@@ -759,7 +759,7 @@ Rules:
   };
 
   const uniqueLink = profile?.slug
-    ? `${window.location.origin}/cars?ref=${profile.slug}`
+    ? `https://xdrive.my/cars?ref=${profile.slug}`
     : null;
 
   const handleCopy = () => {
@@ -780,7 +780,7 @@ Rules:
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `${window.location.origin}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+    const link = `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}`;
     let text = link;
     if (type === "wa") {
       const price = Number(car.selling_price || 0);
@@ -3259,14 +3259,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                       fontWeight: 600,
                       textTransform: "capitalize",
                       color:
-                        car.status === "active"
+                        car.status === "available"
                           ? "#4ade80"
                           : car.status === "sold"
                             ? "#9ca3af"
                             : "#fbbf24",
                     }}
                   >
-                    {car.status || "active"}
+                    {car.status || "available"}
                   </span>
                 </div>
               </div>
@@ -6039,6 +6039,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <LogOut size={15} />
               </button>
             </>
           ) : (

@@ -3,11 +3,13 @@ import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import MarketplaceHeader from '@/components/MarketplaceHeader';
+import Header from '@/components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import CalculatorInfoSection from '@/components/CalculatorInfoSection';
 import { motion } from 'framer-motion';
+import { isSubdomain } from '../hooks/useTenant';
 
 const CalculatorPage = () => {
   const [searchParams] = useSearchParams();
@@ -32,9 +34,9 @@ const CalculatorPage = () => {
         <meta name="description" content={t('calculator.header.subtitle')} />
       </Helmet>
 
-      <MarketplaceHeader />
+      {isSubdomain() ? <Header /> : <MarketplaceHeader />}
 
-      <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
+      <main style={{ paddingTop: isSubdomain() ? 82 : 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "'DM Sans',sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
           {/* Page header */}
@@ -87,7 +89,7 @@ const CalculatorPage = () => {
         </div>
       </main>
 
-      <MarketplaceFooter />
+      {!isSubdomain() && <MarketplaceFooter />}
       <StickyWhatsAppButton />
     </>
   );

@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "../supabaseClient";
+import { calcMonthly } from "../utils/financing";
 import {
   Undo2,
   Redo2,
@@ -173,11 +174,6 @@ function parseList(val) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-function calcMonthly(price) {
-  if (!price) return null;
-  const loan = price * 0.9;
-  return Math.round((loan + (3.5 / 100) * loan * 9) / (9 * 12));
 }
 function isIOS() {
   return (

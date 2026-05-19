@@ -20,6 +20,15 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("dealers");
   const [salesmanSearch, setSalesmanSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [waitlist, setWaitlist] = useState([]);
+  const [waitlistSearch, setWaitlistSearch] = useState("");
+  const [pendingListings, setPendingListings] = useState([]);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [approvalActioning, setApprovalActioning] = useState(null);
+  const [blastModal, setBlastModal] = useState(false);
+  const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
+  const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
 
   useEffect(() => {
     async function init() {
@@ -46,12 +55,11 @@ export default function AdminPage() {
     const dealers = dealerData || [];
     setDealers(dealers);
 
-    // Load salesman lite (role=salesman, dealer_id IS NULL)
+    // Load ALL salesmen with plan info
     const { data: salesmanData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status")
+      .select("id, full_name, email, created_at, is_active, role, dealer_id, subdomain, subscription_status, plan, slug")
       .eq("role", "salesman")
-      .is("dealer_id", null)
       .order("created_at", { ascending: false });
     setSalesmen(salesmanData || []);
 
@@ -92,6 +100,21 @@ export default function AdminPage() {
       setDealerStats(perDealer);
     }
     setLoading(false);
+
+    // Load waitlist
+    const { data: wl } = await supabase
+      .from("waitlist_signups")
+      .select("id, name, phone, referral_code, referred_by, position, founding_member, created_at")
+      .order("position", { ascending: true });
+    setWaitlist(wl || []);
+
+    // Load pending approval listings (salesman-lite standalone accounts)
+    const { data: pending } = await supabase
+      .from("car_listings")
+      .select("id, year, brand, model, variant, selling_price, images, status, created_at, rejection_reason, dealer_id, profiles!car_listings_dealer_id_fkey(full_name, slug, dealership)")
+      .eq("status", "pending_approval")
+      .order("created_at", { ascending: true });
+    setPendingListings(pending || []);
   }
 
   async function saveField(id, field, value) {
@@ -188,7 +211,9 @@ export default function AdminPage() {
 
   const TABS = [
     { id: "dealers",  label: `Dealers (${stats.total})` },
-    { id: "salesman", label: `Salesman Lite (${salesmen.length})` },
+    { id: "salesman", label: `Salesmen (${salesmen.length})` },
+    { id: "approvals", label: "Approvals", badge: pendingListings.length },
+    { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform", label: "Platform Stats" },
   ];
 
@@ -234,6 +259,67 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Blast modal */}
+        {blastModal && (() => {
+          const filtered = waitlist.filter(w =>
+            !waitlistSearch || w.name?.toLowerCase().includes(waitlistSearch.toLowerCase()) || w.phone?.includes(waitlistSearch)
+          );
+          const numbers = filtered.map(w => w.phone).join("\n");
+          const copyNumbers = () => {
+            navigator.clipboard.writeText(numbers);
+            setBlastCopied("numbers");
+            setTimeout(() => setBlastCopied(null), 2500);
+          };
+          const copyMsg = () => {
+            navigator.clipboard.writeText(blastMsg);
+            setBlastCopied("msg");
+            setTimeout(() => setBlastCopied(null), 2500);
+          };
+          return (
+            <div className="modal-overlay" onClick={() => setBlastModal(false)}>
+              <div onClick={e => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 28, width: "min(560px,95vw)", maxHeight: "90vh", overflowY: "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: "#f5f5f5", marginBottom: 2 }}>📣 Blast Waitlist</p>
+                    <p style={{ fontSize: 12, color: "#6b7280" }}>{filtered.length} recipients — copy numbers + message, paste into WA Business broadcast</p>
+                  </div>
+                  <button onClick={() => setBlastModal(false)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
+                </div>
+
+                {/* Message composer */}
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Message</p>
+                  <textarea
+                    value={blastMsg}
+                    onChange={e => setBlastMsg(e.target.value)}
+                    rows={5}
+                    style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 8, padding: "10px 14px", color: "#f1f5f9", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none" }}
+                  />
+                  <button onClick={copyMsg} style={{ marginTop: 8, fontSize: 12, padding: "6px 14px", borderRadius: 6, background: blastCopied === "msg" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.05)", border: blastCopied === "msg" ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)", color: blastCopied === "msg" ? "#4ade80" : "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                    {blastCopied === "msg" ? "✓ Copied!" : "Copy Message"}
+                  </button>
+                </div>
+
+                {/* Numbers */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Phone Numbers ({filtered.length})</p>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", maxHeight: 180, overflowY: "auto", marginBottom: 10 }}>
+                    {filtered.map(w => (
+                      <p key={w.id} style={{ margin: "2px 0", fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>{w.phone}</p>
+                    ))}
+                  </div>
+                  <button onClick={copyNumbers} style={{ width: "100%", fontSize: 13, padding: "10px 16px", borderRadius: 7, background: blastCopied === "numbers" ? "rgba(34,197,94,0.12)" : "rgba(220,38,38,0.12)", border: blastCopied === "numbers" ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(220,38,38,0.3)", color: blastCopied === "numbers" ? "#4ade80" : "#f87171", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                    {blastCopied === "numbers" ? `✓ ${filtered.length} numbers copied!` : `Copy All ${filtered.length} Numbers`}
+                  </button>
+                  <p style={{ marginTop: 10, fontSize: 11, color: "#4b5563", lineHeight: 1.6 }}>
+                    Paste numbers into <strong style={{ color: "#9ca3af" }}>WhatsApp Business → New Broadcast</strong>, then paste the message separately.
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Header */}
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 52, background: "rgba(8,12,20,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -262,8 +348,13 @@ export default function AdminPage() {
         <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 28px", background: "rgba(255,255,255,0.01)" }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>
+              style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === t.id ? "2px solid #dc2626" : "2px solid transparent", color: activeTab === t.id ? "#fff" : "#6b7280", fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
               {t.label}
+              {t.badge > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
+                  {t.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -271,6 +362,250 @@ export default function AdminPage() {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 28px 80px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading…</div>
+          ) : activeTab === "approvals" ? (
+            /* ── APPROVALS TAB ── */
+            <div>
+              <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Listing Approvals</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Listings from standalone salesman-lite accounts waiting for review</p>
+                </div>
+                {pendingListings.length === 0 && (
+                  <span style={{ fontSize: 12, color: "#4ade80" }}>✓ All clear</span>
+                )}
+              </div>
+
+              {pendingListings.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
+                  <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
+                  <p style={{ fontSize: 14, color: "#4b5563" }}>No listings pending approval</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {pendingListings.map(listing => {
+                    const salesman = listing.profiles;
+                    const img = listing.images?.[0];
+                    const carName = [listing.year, listing.brand, listing.model, listing.variant].filter(Boolean).join(" ");
+                    const price = listing.selling_price ? `RM ${Number(listing.selling_price).toLocaleString("en-MY")}` : "—";
+                    const submittedAgo = (() => {
+                      const s = Math.floor((Date.now() - new Date(listing.created_at)) / 1000);
+                      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+                      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+                      return `${Math.floor(s / 86400)}d ago`;
+                    })();
+                    const isActioning = approvalActioning === listing.id;
+                    const isRejecting = rejectingId === listing.id;
+
+                    return (
+                      <div key={listing.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 18px" }}>
+                        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                          {/* Thumbnail */}
+                          {img ? (
+                            <img src={img} alt={carName} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 7, flexShrink: 0, border: "1px solid rgba(255,255,255,0.06)" }} />
+                          ) : (
+                            <div style={{ width: 80, height: 60, borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <span style={{ fontSize: 20 }}>🚗</span>
+                            </div>
+                          )}
+
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carName || "—"}</p>
+                            <p style={{ margin: "0 0 4px", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{price}</p>
+                            <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>
+                              by <span style={{ color: "#9ca3af", fontWeight: 600 }}>{salesman?.full_name || "—"}</span>
+                              {salesman?.slug && <span style={{ color: "#4b5563" }}> · @{salesman.slug}</span>}
+                              <span style={{ color: "#374151" }}> · submitted {submittedAgo}</span>
+                            </p>
+                          </div>
+
+                          {/* Action buttons */}
+                          {!isRejecting && (
+                            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                              <button
+                                disabled={isActioning}
+                                onClick={async () => {
+                                  setApprovalActioning(listing.id);
+                                  const { error } = await supabase.rpc("approve_listing", { p_listing_id: listing.id });
+                                  if (error) { alert("Error: " + error.message); }
+                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); }
+                                  setApprovalActioning(null);
+                                }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "7px 16px", borderRadius: 8, background: isActioning ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: isActioning ? "not-allowed" : "pointer", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                {isActioning ? "…" : "✓ Approve"}
+                              </button>
+                              <button
+                                onClick={() => { setRejectingId(listing.id); setRejectReason(""); }}
+                                style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Inline reject reason input */}
+                        {isRejecting && (
+                          <div style={{ marginTop: 12, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
+                            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection (shown to salesman)</p>
+                            <textarea
+                              value={rejectReason}
+                              onChange={e => setRejectReason(e.target.value)}
+                              placeholder="e.g. Price seems too high, missing photos, suspected duplicate listing…"
+                              rows={2}
+                              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", resize: "vertical", fontFamily: "'DM Sans', sans-serif", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                disabled={!rejectReason.trim() || isActioning}
+                                onClick={async () => {
+                                  if (!rejectReason.trim()) return;
+                                  setApprovalActioning(listing.id);
+                                  const { error } = await supabase.rpc("reject_listing", { p_listing_id: listing.id, p_reason: rejectReason.trim() });
+                                  if (error) { alert("Error: " + error.message); }
+                                  else { setPendingListings(p => p.filter(l => l.id !== listing.id)); setRejectingId(null); setRejectReason(""); }
+                                  setApprovalActioning(null);
+                                }}
+                                style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                {isActioning ? "Rejecting…" : "Confirm Reject"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : activeTab === "waitlist" ? (
+            /* ── WAITLIST TAB ── */
+            (() => {
+              const filtered = waitlist.filter(w =>
+                !waitlistSearch ||
+                w.name?.toLowerCase().includes(waitlistSearch.toLowerCase()) ||
+                w.phone?.includes(waitlistSearch) ||
+                w.referral_code?.includes(waitlistSearch)
+              );
+              const founding = waitlist.filter(w => w.founding_member).length;
+              const referred = waitlist.filter(w => w.referred_by).length;
+              return (
+                <>
+                  {/* Stats strip */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 24 }}>
+                    {[
+                      { label: "Total on Waitlist", value: waitlist.length, color: "#f5f5f5" },
+                      { label: "Founding Members", value: founding, color: "#fbbf24" },
+                      { label: "Via Referral", value: referred, color: "#4ade80" },
+                      { label: "Referral Rate", value: waitlist.length > 0 ? `${Math.round((referred/waitlist.length)*100)}%` : "—", color: "#60a5fa" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "16px 18px" }}>
+                        <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</p>
+                        <p style={{ fontSize: 26, fontWeight: 700, color, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em" }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Toolbar */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                    <input
+                      value={waitlistSearch} onChange={e => setWaitlistSearch(e.target.value)}
+                      placeholder="Search name, phone, code…" className="adm-input" style={{ width: 260 }}
+                    />
+                    <span style={{ fontSize: 12, color: "#4b5563" }}>{filtered.length} shown</span>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => {
+                          const csv = ["position,name,phone,referral_code,referred_by,founding_member,created_at",
+                            ...filtered.map(w => [w.position, `"${w.name}"`, w.phone, w.referral_code, w.referred_by||"", w.founding_member, w.created_at].join(","))
+                          ].join("\n");
+                          navigator.clipboard.writeText(csv);
+                        }}
+                        style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                        Copy CSV
+                      </button>
+                      <button
+                        onClick={() => {
+                          const vcf = filtered.map(w =>
+                            `BEGIN:VCARD\nVERSION:3.0\nFN:${w.name} (ShiftOS #${w.position})\nTEL;TYPE=CELL:+${w.phone.replace(/^\+/, "")}\nEND:VCARD`
+                          ).join("\n");
+                          const blob = new Blob([vcf], { type: "text/vcard" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "shiftos-waitlist.vcf";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                        Download Contacts (.vcf)
+                      </button>
+                      <button
+                        onClick={() => setBlastModal(true)}
+                        style={{ fontSize: 12, padding: "6px 16px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                        📣 Blast Waitlist
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#374151", marginBottom: 14 }}>
+                    💡 Import .vcf into phone contacts → WA Business → New Broadcast → select all ShiftOS contacts
+                  </p>
+
+                  {/* Table */}
+                  <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                            {["#", "Name", "Phone", "Referral Code", "Referred By", "Status", "Joined"].map(h => (
+                              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((w, i) => (
+                            <tr key={w.id} className="adm-row" style={{ borderBottom: i < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                              <td style={{ padding: "11px 14px", color: "#6b7280", fontWeight: 700 }}>#{w.position}</td>
+                              <td style={{ padding: "11px 14px", color: "#f5f5f5", fontWeight: 600 }}>
+                                {w.name}
+                                {w.founding_member && (
+                                  <span style={{ marginLeft: 7, fontSize: 9, padding: "1px 6px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700 }}>FOUNDING</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "11px 14px" }}>
+                                <a href={`https://wa.me/${w.phone}`} target="_blank" rel="noreferrer"
+                                  style={{ color: "#4ade80", textDecoration: "none", fontSize: 12, fontFamily: "monospace" }}>
+                                  {w.phone}
+                                </a>
+                              </td>
+                              <td style={{ padding: "11px 14px", fontFamily: "monospace", fontSize: 12, color: "#94a3b8" }}>{w.referral_code}</td>
+                              <td style={{ padding: "11px 14px", fontFamily: "monospace", fontSize: 12, color: w.referred_by ? "#60a5fa" : "#374151" }}>{w.referred_by || "—"}</td>
+                              <td style={{ padding: "11px 14px" }}>
+                                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: w.founding_member ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${w.founding_member ? "rgba(251,191,36,0.25)" : "rgba(255,255,255,0.08)"}`, color: w.founding_member ? "#fbbf24" : "#6b7280", fontWeight: 700 }}>
+                                  {w.founding_member ? "Founding" : "Waitlist"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "11px 14px", color: "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>{fmtDate(w.created_at)}</td>
+                            </tr>
+                          ))}
+                          {filtered.length === 0 && (
+                            <tr><td colSpan={7} style={{ padding: "40px 14px", textAlign: "center", color: "#4b5563" }}>No entries found</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              );
+            })()
           ) : activeTab === "platform" ? (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 32 }}>
@@ -305,85 +640,147 @@ export default function AdminPage() {
             </>
 
           ) : activeTab === "salesman" ? (
-            /* ── SALESMAN LITE TAB ── */
+            /* ── SALESMEN TAB ── */
             <>
               <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <input value={salesmanSearch} onChange={e => setSalesmanSearch(e.target.value)}
-                  placeholder="Search name, email, subdomain…" className="adm-input" style={{ width: 280 }} />
+                  placeholder="Search name, email, slug…" className="adm-input" style={{ width: 280 }} />
                 <span style={{ fontSize: 12, color: "#4b5563", marginLeft: "auto" }}>{filteredSalesmen.length} accounts</span>
               </div>
-              <div style={{ background: "rgba(250,204,21,0.04)", border: "1px solid rgba(250,204,21,0.12)", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#ca8a04" }}>
-                ⚠ Salesman Lite accounts are standalone (no dealer_id). They own their own listings and enquiries.
-              </div>
-              <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        {["Account", "Subdomain / Plan", "Sub Status", "Joined", "Status", "Actions"].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSalesmen.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No salesman lite accounts.</td></tr>
-                      ) : filteredSalesmen.map(sm => (
-                        <tr key={sm.id} className="adm-row"
-                          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
-                          <td style={{ padding: "10px 14px" }}>
-                            <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
-                            <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
-                            {sm.subdomain ? (
-                              <a href={`https://${sm.subdomain}.xdrive.my`} target="_blank" rel="noreferrer"
-                                style={{ color: "#dc2626", textDecoration: "none" }}>
-                                {sm.subdomain}.xdrive.my ↗
-                              </a>
-                            ) : "—"}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <select className="adm-select"
-                              value={sm.subscription_status || "trial"}
-                              onChange={async e => {
-                                const val = e.target.value;
-                                const { error } = await supabase.from("profiles").update({ subscription_status: val }).eq("id", sm.id);
-                                if (!error) {
-                                  setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, subscription_status: val } : s));
-                                  flashSaved(sm.id);
-                                }
-                              }}>
-                              <option value="trial">trial</option>
-                              <option value="active">active</option>
-                              <option value="expired">expired</option>
-                            </select>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
-                              {sm.is_active === false ? "Suspended" : "Active"}
-                            </span>
-                            {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <div style={{ display: "flex", gap: 5 }}>
-                              <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
-                                style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
-                                {sm.is_active === false ? "Unsuspend" : "Suspend"}
-                              </button>
-                              <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
-                                style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
+              {/* ── Group 1: Standalone Lite ── */}
+              {(() => {
+                const lites = filteredSalesmen.filter(s => s.plan === 'salesman_lite' && !s.dealer_id);
+                return (
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Standalone Lite</span>
+                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 20, padding: "1px 8px" }}>{lites.length}</span>
+                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Own listings · no dealer</span>
+                    </div>
+                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                              {["Account", "Slug / Profile", "Sub Status", "Joined", "Status", "Actions"].map(h => (
+                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lites.length === 0 ? (
+                              <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "#4b5563", fontSize: 12 }}>No standalone lite accounts.</td></tr>
+                            ) : lites.map(sm => (
+                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
+                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#9ca3af" }}>
+                                  {sm.slug ? (
+                                    <a href={`https://xdrive.my/s/${sm.slug}`} target="_blank" rel="noreferrer" style={{ color: "#fbbf24", textDecoration: "none" }}>
+                                      /s/{sm.slug} ↗
+                                    </a>
+                                  ) : "—"}
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <select className="adm-select" value={sm.subscription_status || "trial"}
+                                    onChange={async e => {
+                                      const val = e.target.value;
+                                      const { error } = await supabase.from("profiles").update({ subscription_status: val }).eq("id", sm.id);
+                                      if (!error) { setSalesmen(prev => prev.map(s => s.id === sm.id ? { ...s, subscription_status: val } : s)); flashSaved(sm.id); }
+                                    }}>
+                                    <option value="trial">trial</option>
+                                    <option value="active">active</option>
+                                    <option value="expired">expired</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
+                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
+                                  </span>
+                                  {saved[sm.id] && <span style={{ fontSize: 10, color: "#4ade80", marginLeft: 6 }}>✓</span>}
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", gap: 5 }}>
+                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                    </button>
+                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
+                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Group 2: Under Dealer (salesman_full) ── */}
+              {(() => {
+                const full = filteredSalesmen.filter(s => s.plan === 'salesman_full' && s.dealer_id);
+                if (full.length === 0) return null;
+                return (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em" }}>Under Dealer (SalesmanPanel)</span>
+                      <span style={{ fontSize: 11, color: "#4b5563", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 20, padding: "1px 8px" }}>{full.length}</span>
+                      <span style={{ fontSize: 10, color: "#374151", marginLeft: 4 }}>Created by or merged into a dealer</span>
+                    </div>
+                    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                              {["Account", "Dealer ID", "Joined", "Status", "Actions"].map(h => (
+                                <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {full.map(sm => (
+                              <tr key={sm.id} className="adm-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: sm.is_active === false ? 0.45 : 1 }}>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{sm.full_name || "—"}</div>
+                                  <div style={{ fontSize: 11, color: "#6b7280" }}>{sm.email}</div>
+                                </td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", fontSize: 11, fontFamily: "monospace" }}>{sm.dealer_id?.slice(0, 12)}…</td>
+                                <td style={{ padding: "10px 14px", color: "#6b7280", whiteSpace: "nowrap" }}>{fmtDate(sm.created_at)}</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: sm.is_active === false ? "#f87171" : "#4ade80" }}>
+                                    {sm.is_active === false ? "○ Suspended" : "● Active"}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", gap: 5 }}>
+                                    <button className="adm-btn" onClick={() => toggleSalesmanSuspend(sm)}
+                                      style={{ background: sm.is_active === false ? "rgba(74,222,128,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${sm.is_active === false ? "rgba(74,222,128,0.2)" : "rgba(239,68,68,0.2)"}`, color: sm.is_active === false ? "#4ade80" : "#f87171" }}>
+                                      {sm.is_active === false ? "Unsuspend" : "Suspend"}
+                                    </button>
+                                    <button className="adm-btn" onClick={() => setConfirmDelete(sm)}
+                                      style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </>
 
           ) : (

@@ -42,6 +42,7 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
+import { calcMonthly } from "../utils/financing";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -53,11 +54,6 @@ const fmtFinancing = (car) => {
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
 
-/* 90% loan, 3.5% flat p.a., 7-year tenure */
-const calcMonthly = (price) => {
-  if (!price || price <= 0) return null;
-  return Math.round((price * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12));
-};
 
 const isImageUrl = (url) =>
   /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?|$)/i.test(url || "");
@@ -623,44 +619,29 @@ export default function CarDetailPage() {
       dealer_id: car.dealer_id,
       metadata: { source: "storefront", price: car.selling_price },
     });
-    const { data: listing } = await supabase
-      .from("car_listings")
-      .select("dealer_id, assigned_to")
-      .eq("id", car.id)
-      .single();
-    if (listing) {
-      const { error: enqErr } = await supabase
-        .from("whatsapp_enquiries")
-        .insert({
-          dealer_id: listing.dealer_id,
-          salesman_id: listing.assigned_to,
-          listing_id: car.id,
-          buyer_name: enquiryForm.name,
-          buyer_phone: enquiryForm.phone,
-          buyer_state: enquiryForm.state || null,
-          buyer_message:
-            `Enquiry about ${car.brand} ${car.model} ${car.variant || ""}`.trim(),
-          ref_slug: getRef() || null,
-          source: "storefront",
-          status: "new",
-        });
-      if (enqErr)
-        console.error(
-          "[handleEnquirySubmit] insert error:",
-          enqErr.message,
-          enqErr,
-        );
-      // Create leads row so buyer_state feeds the demand heatmap
-      await supabase.from("leads").insert({
-        dealer_id: listing.dealer_id,
-        salesman_id: listing.assigned_to || null,
-        car_listing_id: car.id,
-        buyer_name: enquiryForm.name,
-        phone: enquiryForm.phone,
-        buyer_state: enquiryForm.state || null,
-        lead_source: "whatsapp",
-        stage: "new",
+    try {
+      const res = await fetch("/api/enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carId: car.id,
+          name: enquiryForm.name,
+          phone: enquiryForm.phone,
+          state: enquiryForm.state || null,
+          refSlug: getRef() || null,
+        }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          alert("Too many enquiries. Please wait a moment and try again.");
+          setEnquirySubmitting(false);
+          return;
+        }
+        console.error("[handleEnquirySubmit]", data.error);
+      }
+    } catch (err) {
+      console.error("[handleEnquirySubmit] fetch error:", err);
     }
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
     window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
@@ -673,47 +654,41 @@ export default function CarDetailPage() {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    let salesmanId = car.assigned_to || null;
-    const refSlug = getRef();
-    if (refSlug) {
-      const { data: sm } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("slug", refSlug)
-        .maybeSingle();
-      if (sm?.id) salesmanId = sm.id;
-    }
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
-    const { error: bookErr } = await supabase
-      .from("appointments")
-      .insert({
-        dealer_id: car.dealer_id,
-        salesman_id: salesmanId,
-        car_listing_id: car.id,
-        buyer_name: form.name,
-        buyer_phone: form.phone,
-        appointment_date: dt.toISOString(),
-        notes: form.notes || null,
-        status: "confirmed",
+    try {
+      const res = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carId: car.id,
+          dealerId: car.dealer_id,
+          assignedTo: car.assigned_to || null,
+          name: form.name,
+          phone: form.phone,
+          state: form.state || null,
+          appointmentDate: dt.toISOString(),
+          notes: form.notes || null,
+          refSlug: getRef() || null,
+        }),
       });
-    if (bookErr) {
-      setSubmitting(false);
-      console.error("[handleBook] insert error:", bookErr.message, bookErr);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          alert("Too many bookings. Please wait a moment and try again.");
+        } else {
+          console.error("[handleBook]", data.error);
+          alert("Booking failed. Please try again.");
+        }
+        setSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      console.error("[handleBook] fetch error:", err);
       alert("Booking failed. Please try again.");
+      setSubmitting(false);
       return;
     }
-    // Create leads row so buyer_state feeds the demand heatmap
-    await supabase.from("leads").insert({
-      dealer_id: car.dealer_id,
-      salesman_id: salesmanId,
-      car_listing_id: car.id,
-      buyer_name: form.name,
-      phone: form.phone,
-      buyer_state: form.state || null,
-      lead_source: "enquiry",
-      stage: "new",
-    });
     setSubmitting(false);
     setBooked(true);
   }
@@ -1028,7 +1003,7 @@ export default function CarDetailPage() {
             </div>
             <button
               onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
               <ArrowLeftRight size={13} />
               {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
             </button>
@@ -2311,7 +2286,7 @@ export default function CarDetailPage() {
                           <span
                             style={{
                               fontSize: "13px",
-                              color: "#f1f5f9",
+                              color: th.text,
                               textAlign: "right",
                             }}
                           >
@@ -2338,7 +2313,7 @@ export default function CarDetailPage() {
                             fontSize: 10,
                             textTransform: "uppercase",
                             letterSpacing: "0.16em",
-                            color: "#334155",
+                            color: th.textMuted,
                             fontWeight: 700,
                             marginBottom: 14,
                           }}
@@ -2733,7 +2708,7 @@ export default function CarDetailPage() {
             {/* ── LOCATION ── */}
             {(car.city || car.state) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Location</p>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, marginBottom: 16 }}>Location</p>
                 <div style={{ background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div>
                     <p style={{ fontSize: 16, color: th.text, fontWeight: 600, margin: '0 0 4px' }}>{[car.city, car.state].filter(Boolean).join(', ')}</p>

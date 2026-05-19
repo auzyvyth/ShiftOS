@@ -17,6 +17,11 @@ import { supabase } from '../supabaseClient';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 import useTenant, { isSubdomain } from '../hooks/useTenant';
 import { useCTAContext } from '../hooks/useCTAContext';
+import FilterBadge from '../components/ui/FilterBadge';
+import FilterSection from '../components/ui/FilterSection';
+import FilterChip from '../components/ui/FilterChip';
+import DarkSelect from '../components/ui/DarkSelect';
+import SkeletonCard from '../components/ui/SkeletonCard';
 
 /* ─────────────────────────────────────────
    PRICE BRACKETS
@@ -33,102 +38,6 @@ const BODY_TYPES    = ['Sedan','SUV','MPV','Hatchback','Coupe','Pickup'];
 const TRANSMISSIONS = ['Automatic','Manual'];
 const FUEL_TYPES    = ['Petrol','Diesel','Hybrid','Electric'];
 
-/* ─────────────────────────────────────────
-   TINY REUSABLE BITS
-───────────────────────────────────────── */
-const ActiveTag = ({ label, onRemove }) => (
-  <span style={{
-    display:'inline-flex', alignItems:'center', gap:'4px',
-    background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.25)',
-    color:'#f87171', fontSize:'11px', fontWeight:'600',
-    padding:'4px 10px', borderRadius:'20px',
-  }}>
-    {label}
-    <button onClick={onRemove} style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', padding:0, display:'flex', alignItems:'center' }}>
-      <X size={10}/>
-    </button>
-  </span>
-);
-
-/* Collapsible filter section */
-const FilterSection = ({ title, children, defaultOpen = true }) => {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom: open ? '16px' : '0', marginBottom:'4px' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
-          background:'none', border:'none', cursor:'pointer',
-          padding:'14px 0 10px', color:'white', fontSize:'12px', fontWeight:'700',
-          textTransform:'uppercase', letterSpacing:'0.1em',
-          fontFamily:"'DM Sans',sans-serif",
-        }}
-      >
-        {title}
-        {open ? <ChevronUp size={13} style={{ color:'#6b7280' }}/> : <ChevronDown size={13} style={{ color:'#6b7280' }}/>}
-      </button>
-      {open && <div>{children}</div>}
-    </div>
-  );
-};
-
-/* Chip button for multi-select filters */
-const Chip = ({ label, active, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display:'inline-flex', alignItems:'center', gap:'4px',
-      background: active ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)',
-      border: active ? '1px solid rgba(220,38,38,0.4)' : '1px solid rgba(255,255,255,0.08)',
-      color: active ? '#f87171' : '#9ca3af',
-      fontSize:'12px', fontWeight: active ? '700' : '500',
-      padding:'6px 12px', borderRadius:'8px', cursor:'pointer',
-      transition:'all 0.15s ease',
-      fontFamily:"'DM Sans',sans-serif",
-    }}
-  >
-    {active && <Check size={10}/>}
-    {label}
-  </button>
-);
-
-/* Native select styled dark */
-const DarkSelect = ({ value, onChange, options, placeholder }) => (
-  <div style={{ position:'relative' }}>
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        width:'100%', background:'rgba(255,255,255,0.04)',
-        border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px',
-        padding:'9px 32px 9px 12px', color: value ? 'white' : '#6b7280',
-        fontSize:'12px', fontWeight:'500',
-        appearance:'none', WebkitAppearance:'none',
-        cursor:'pointer', outline:'none',
-        fontFamily:"'DM Sans',sans-serif",
-      }}
-    >
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o} value={o} style={{ background:'#0d1117', color:'white' }}>{o}</option>)}
-    </select>
-    <ChevronDown size={12} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', color:'#6b7280', pointerEvents:'none' }}/>
-  </div>
-);
-
-/* ─────────────────────────────────────────
-   SKELETON CARD
-───────────────────────────────────────── */
-const SkeletonCard = () => (
-  <div style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', overflow:'hidden' }}>
-    <div style={{ height:'190px', background:'linear-gradient(90deg,#111827 25%,#1f2937 50%,#111827 75%)', backgroundSize:'200% 100%', animation:'shimmer 1.5s infinite' }}/>
-    <div style={{ padding:'16px' }}>
-      {[75,55,90,100].map((w,i) => (
-        <div key={i} style={{ height:'11px', width:`${w}%`, background:'#1f2937', borderRadius:'6px', marginBottom:'9px', animation:'shimmer 1.5s infinite' }}/>
-      ))}
-    </div>
-  </div>
-);
 
 /* ─────────────────────────────────────────
    MAIN PAGE
@@ -225,7 +134,7 @@ const CarsPage = () => {
     let query = supabase
       .from('car_listings')
       .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)')
-      .eq('status', 'active')
+      .eq('status', 'available')
       .order('created_at', { ascending: false });
 
     if (tenant?.id) {
@@ -369,7 +278,7 @@ const CarsPage = () => {
       <FilterSection title="Price Range">
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px' }}>
           {PRICE_BRACKETS.map(b => (
-            <Chip key={b.label} label={b.label} active={selectedPriceBracket?.label===b.label} onClick={() => setSelectedPriceBracket(selectedPriceBracket?.label===b.label ? null : b)} />
+            <FilterChip key={b.label} label={b.label} active={selectedPriceBracket?.label===b.label} onClick={() => setSelectedPriceBracket(selectedPriceBracket?.label===b.label ? null : b)} />
           ))}
         </div>
       </FilterSection>
@@ -409,7 +318,7 @@ const CarsPage = () => {
       <FilterSection title="Body Type">
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
           {BODY_TYPES.map(bt => (
-            <Chip key={bt} label={bt} active={selectedBodyTypes.includes(bt)} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
+            <FilterChip key={bt} label={bt} active={selectedBodyTypes.includes(bt)} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
           ))}
         </div>
       </FilterSection>
@@ -418,7 +327,7 @@ const CarsPage = () => {
       <FilterSection title="Transmission" defaultOpen={false}>
         <div style={{ display:'flex', gap:'6px' }}>
           {TRANSMISSIONS.map(tr => (
-            <Chip key={tr} label={tr} active={selectedTransmission.includes(tr)} onClick={() => toggle(setSelectedTransmission)(tr)}/>
+            <FilterChip key={tr} label={tr} active={selectedTransmission.includes(tr)} onClick={() => toggle(setSelectedTransmission)(tr)}/>
           ))}
         </div>
       </FilterSection>
@@ -427,7 +336,7 @@ const CarsPage = () => {
       <FilterSection title="Fuel Type" defaultOpen={false}>
         <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
           {FUEL_TYPES.map(ft => (
-            <Chip key={ft} label={ft} active={selectedFuelTypes.includes(ft)} onClick={() => toggle(setSelectedFuelTypes)(ft)}/>
+            <FilterChip key={ft} label={ft} active={selectedFuelTypes.includes(ft)} onClick={() => toggle(setSelectedFuelTypes)(ft)}/>
           ))}
         </div>
       </FilterSection>
@@ -713,7 +622,7 @@ const CarsPage = () => {
             {activeTags.length > 0 && (
               <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center', marginTop:'10px' }}>
                 <span style={{ color:'#4b5563', fontSize:'11px', fontWeight:'600' }}>Active:</span>
-                {activeTags.map((tag,i) => <ActiveTag key={i} label={tag.label} onRemove={tag.remove}/>)}
+                {activeTags.map((tag,i) => <FilterBadge key={i} label={tag.label} onRemove={tag.remove}/>)}
                 <button onClick={resetFilters} className="reset-btn" style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:'11px', fontWeight:'600', transition:'color 0.15s', fontFamily:"'DM Sans',sans-serif" }}>
                   Clear all
                 </button>
@@ -740,9 +649,9 @@ const CarsPage = () => {
               {loading && <span style={{ marginLeft:'8px', color:'#4b5563' }}>(refreshing…)</span>}
             </p>
             <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-              <Chip label="🔥 Hot Deals" active={hotDealsOnly} onClick={() => setHotDealsOnly(!hotDealsOnly)}/>
+              <FilterChip label="🔥 Hot Deals" active={hotDealsOnly} onClick={() => setHotDealsOnly(!hotDealsOnly)}/>
               {selectedBodyTypes.length === 0 && BODY_TYPES.slice(0,4).map(bt => (
-                <Chip key={bt} label={bt} active={false} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
+                <FilterChip key={bt} label={bt} active={false} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
               ))}
             </div>
           </div>

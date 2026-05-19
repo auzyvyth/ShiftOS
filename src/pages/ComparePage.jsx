@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 import HeartButton from '../components/HeartButton';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
+import { calcMonthly } from '../utils/financing';
 
 const SELECT_COLS = [
   'id','slug','year','brand','model','variant',
@@ -14,9 +15,6 @@ const SELECT_COLS = [
   'import_country','chassis_status','car_documents','warranty_months',
   'loan_eligible','previous_owners','created_at','images','status',
 ].join(', ');
-
-const calcMonthly = (p) =>
-  p > 0 ? Math.round((p * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
 
 const fmtRM = (n) =>
   n != null ? `RM ${Number(n).toLocaleString('en-MY')}` : '—';

@@ -1832,7 +1832,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
         .from("car_listings")
         .select("id")
         .eq("dealer_id", dealerId)
-        .in("status", ["active", "available", "reserved", "sold"]),
+        .in("status", ["available", "reserved", "sold"]),
     ]).then(([eventsRes, listingsRes]) => {
       const directEvents = eventsRes.data || [];
       const dealerCarIds = new Set((listingsRes.data || []).map(l => l.id));
@@ -1922,7 +1922,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
 
   const total = listings.length;
   const active = listings.filter(
-    (l) => ['active', 'available'].includes(l.status || 'active'),
+    (l) => (l.status || 'available') === 'available',
   ).length;
   const sold = listings.filter((l) => l.status === "sold").length;
   const hot = listings.filter((l) => {
@@ -1937,7 +1937,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
     : 0;
   const stale = listings.filter(
     (l) =>
-      getListingAge(l.created_at) >= 30 && ['active', 'available'].includes(l.status || 'active'),
+      getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
   );
 
   const ctx = () => {
@@ -1945,7 +1945,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
       .slice(0, 20)
       .map(
         (l) =>
-          `${l.brand} ${l.model}|RM${l.selling_price?.toLocaleString()}|${getListingAge(l.created_at)}d|${l.status || "active"}|${l.condition}|${l.mileage ? l.mileage.toLocaleString() + "km" : "-"}|${l.state || "-"}${l.original_price ? `|was RM${l.original_price.toLocaleString()}` : ""}`,
+          `${l.brand} ${l.model}|RM${l.selling_price?.toLocaleString()}|${getListingAge(l.created_at)}d|${l.status || "available"}|${l.condition}|${l.mileage ? l.mileage.toLocaleString() + "km" : "-"}|${l.state || "-"}${l.original_price ? `|was RM${l.original_price.toLocaleString()}` : ""}`,
       )
       .join("\n");
     return `AI performance advisor for ShiftOS, Malaysian car dealer SaaS.\nDealer: ${profile?.dealership || "Unknown"}. Total:${total} Active:${active} Sold:${sold} HotDeals:${hot} AvgAge:${avgAge}d Stale:${stale.length}\nListings:\n${s}\nBe concise, actionable. Under 200 words.`;
@@ -2433,8 +2433,8 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                       const cvr    = stats.cvr;
                       const cvrNum = parseFloat(cvr);
                       const isStale = getListingAge(l.created_at) >= 30;
-                      const statusKey = l.status || 'active';
-                      const statusCls = statusKey === 'active' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
+                      const statusKey = l.status || 'available';
+                      const statusCls = statusKey === 'available' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
                         : statusKey === 'reserved' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
                         : 'bg-blue-400/10 text-blue-400 border-blue-400/20';
                       return (
@@ -2520,8 +2520,8 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                   const cvr    = stats.cvr;
                   const cvrNum = parseFloat(cvr);
                   const isStale = getListingAge(l.created_at) >= 30;
-                  const statusKey = l.status || 'active';
-                  const statusColor = statusKey === 'active' ? '#4ade80' : statusKey === 'reserved' ? '#fbbf24' : '#60a5fa';
+                  const statusKey = l.status || 'available';
+                  const statusColor = statusKey === 'available' ? '#4ade80' : statusKey === 'reserved' ? '#fbbf24' : '#60a5fa';
                   return (
                     <div key={l.id} className={`lp-card${isStale ? ' stale' : ''}`}>
                       {/* top row */}
@@ -3891,7 +3891,7 @@ function ListingDetailDrawer({
   const options  = parseTags(listing.options);
   const isSold   = listing.status === 'sold';
   const age      = getListingAge(listing.created_at);
-  const sCfg = ({ active: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'active'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
+  const sCfg = ({ available: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'available'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
 
   // ESC to close
   useEffect(() => {
@@ -4178,7 +4178,7 @@ function ListingDetailDrawer({
                   <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: sCfg.tx, textTransform: 'capitalize' }}>{listing.status || 'active'}</span>
+                    <span style={{ fontSize: 11, color: sCfg.tx, textTransform: 'capitalize' }}>{listing.status || 'available'}</span>
                   </div>
                 </div>
               </div>
@@ -4622,7 +4622,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }
   }, [showGen]);
 
-  const calcMonthly = (amount, rate, months) => {
+  // Generic document form calculator — not the same as the standard car estimate in utils/financing.js.
+  // This one accepts user-specified rate and tenure from form inputs.
+  const calcLoanPayment = (amount, rate, months) => {
     const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
     if (!a || !r || !m) return '';
     return ((a + a * (r / 100) * (m / 12)) / m).toFixed(2);
@@ -4632,7 +4634,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     setGenForm(p => {
       const next = { ...p, [field]: value };
       if (['loan_amount', 'interest_rate', 'loan_tenure_months'].includes(field)) {
-        next.monthly_payment = calcMonthly(
+        next.monthly_payment = calcLoanPayment(
           field === 'loan_amount' ? value : next.loan_amount,
           field === 'interest_rate' ? value : next.interest_rate,
           field === 'loan_tenure_months' ? value : next.loan_tenure_months,
@@ -5375,7 +5377,7 @@ export default function DashboardPage() {
   const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("available");
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [salesmen,         setSalesmen]         = useState([]);
@@ -5661,9 +5663,7 @@ export default function DashboardPage() {
 
   const filteredListings = useMemo(() => {
     let result = listings.filter((l) =>
-      statusFilter === 'active'
-        ? ['active', 'available'].includes(l.status || 'active')
-        : (l.status || 'active') === statusFilter
+      (l.status || 'available') === statusFilter
     );
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase();
@@ -5741,8 +5741,8 @@ export default function DashboardPage() {
   );
 
   const STATUS = {
-    active: {
-      label: "Active",
+    available: {
+      label: "Available",
       dot: "bg-emerald-400",
       cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
       next: "reserved",
@@ -5757,13 +5757,13 @@ export default function DashboardPage() {
       label: "Sold",
       dot: "bg-red-400",
       cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
-      next: "active",
+      next: "available",
     },
   };
 
   const StatusBadge = React.memo(({ listing }) => {
-    const s = listing.status || "active",
-      cfg = STATUS[s] || STATUS.active,
+    const s = listing.status || "available",
+      cfg = STATUS[s] || STATUS.available,
       busy = updatingStatus === listing.id;
     return (
       <button
@@ -6411,7 +6411,7 @@ export default function DashboardPage() {
                   {/* ── Status filter tabs ── */}
                   <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginTop: 14 }}>
                     {[
-                      { key: 'active',   label: 'Active',   count: listings.filter(l => ['active', 'available'].includes(l.status || 'active')).length },
+                      { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
                       { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
                     ].map(({ key, label, count }) => (

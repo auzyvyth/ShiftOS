@@ -105,6 +105,12 @@ async function buildClaudeMessages(file, sheetsUrl) {
   }
 
   if (ext === "pdf") {
+    // TODO: investigate PDF→XLSX pre-conversion as a path to image extraction.
+    // Hypothesis: some dealer PDFs embed image hyperlinks that survive conversion to xlsx
+    // (the URL lives in the link target, not the cell text), meaning the blocker may not
+    // be the PDF format itself but rather that pdfjs only yields text content — no links.
+    // If confirmed, the fix is: detect hyperlink annotations via page.getAnnotations(),
+    // pull out URI actions, and append them to fullText so the AI can map them to rows.
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
       "pdfjs-dist/build/pdf.worker.mjs",
       import.meta.url

@@ -1461,7 +1461,7 @@ export default function ManagerPanel() {
                                 textTransform: "capitalize",
                               }}
                             >
-                              {l.status || "active"}
+                              {l.status || "available"}
                             </span>
                           </td>
                           <td style={{ padding: "10px 14px" }}>

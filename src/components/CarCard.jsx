@@ -8,11 +8,7 @@ import { trackEvent } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import { useSavedCars } from '../hooks/useSavedCars';
-
-const calcMonthly = (price) => {
-  if (!price || price <= 0) return null;
-  return Math.round((price * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12));
-};
+import { calcMonthly } from '../utils/financing';
 
 const getAgeDays = (createdAt) => {
   if (!createdAt) return null;
@@ -38,7 +34,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const mileage       = car.mileage || car.odometer || null;
   const transmission  = car.transmission || null;
   const location      = car.state || car.location || null;
-  const status        = car.status || 'active';
+  const status        = car.status || 'available';
   const ageDays       = getAgeDays(car.created_at);
 
   const hasDiscount = originalPrice && originalPrice > 0 && price > 0 && originalPrice > price;
