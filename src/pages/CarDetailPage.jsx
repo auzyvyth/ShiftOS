@@ -1458,8 +1458,10 @@ export default function CarDetailPage() {
               <p style={{ fontSize:11, color:'#475569', marginTop:8, textAlign:'center' }}>RM {fmt(car.deposit_amount)} deposit to reserve</p>
             )}
             <button onClick={() => setCalcOpen(true)}
-              style={{ width:'100%', background:'none', border:`1px solid ${th.border}`, color: th.textSec, borderRadius:10, padding:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, letterSpacing:'0.05em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8 }}>
-              <Calculator size={13} /> Financing Calculator
+              style={{ width:'100%', background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', borderRadius:10, padding:'11px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, fontSize:12, fontWeight:700, letterSpacing:'0.04em', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", marginTop:8, transition:'all .2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(220,38,38,0.1)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.4)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
+              <Calculator size={14} /> Financing Calculator
             </button>
             {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
@@ -2814,8 +2816,10 @@ export default function CarDetailPage() {
             </div>
 
             <button onClick={() => setCalcOpen(true)}
-              style={{ width: '100%', background: 'none', border: `1px solid ${th.borderSec}`, color: th.textMuted, borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}>
-              <Calculator size={13} /> Financing Calculator
+              style={{ width: '100%', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.22)', color: '#dc2626', borderRadius: 10, padding: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginTop: 8, transition: 'all .2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(220,38,38,0.1)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.4)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(220,38,38,0.06)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.22)'; }}>
+              <Calculator size={14} /> Financing Calculator
             </button>
             {dealer?.subdomain && !isSubdomain() && (
               <a href={`https://${dealer.subdomain}.xdrive.my`} target="_blank" rel="noopener noreferrer"
