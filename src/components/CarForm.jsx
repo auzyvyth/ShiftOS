@@ -1541,83 +1541,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     }
   }
 
-  return (
-    <div
-      ref={formRef}
-      onKeyDown={handleKeyDown}
-      className="w-full"
-      style={{
-        fontFamily: "'DM Sans', sans-serif",
-        backgroundImage:
-          "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
-      }}
-    >
-      {/* Draft resume banner */}
-      {draftBanner && !listing && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
-          <span style={{ fontSize: 13 }}>📝</span>
-          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
-          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
-          <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
-        </div>
-      )}
-
-      {/* Sections */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleSectionDragEnd}
-      >
-        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-          {sectionOrder.map((id) => {
-            const section = STEPS.find((s) => s.id === id);
-            return (
-              <SortableSection
-                key={id}
-                id={id}
-                section={section}
-                complete={isSectionComplete(id)}
-                collapsed={!!collapsed[id]}
-                onToggle={() =>
-                  setCollapsed((p) => ({ ...p, [id]: !p[id] }))
-                }
-              >
-                {renderSectionContent(id)}
-              </SortableSection>
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-
-      {/* Submit */}
-      <div className="mt-6">
-        {listing && (
-          <div className="flex justify-end mb-3">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20"}`}
-            >
-              {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={uploading || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
-          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {uploading ? (
-            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
-          ) : (
-            <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
-          )}
-        </button>
-      </div>
-    </div>
-  );
 
   function renderSectionContent(id) {
     switch (id) {
@@ -2610,5 +2533,83 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       default: return null;
     }
   }
+
+  return (
+    <div
+      ref={formRef}
+      onKeyDown={handleKeyDown}
+      className="w-full"
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        backgroundImage:
+          "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
+        backgroundSize: "24px 24px",
+      }}
+    >
+      {/* Draft resume banner */}
+      {draftBanner && !listing && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
+          <span style={{ fontSize: 13 }}>📝</span>
+          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
+          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
+          <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+        </div>
+      )}
+
+      {/* Sections */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleSectionDragEnd}
+      >
+        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+          {sectionOrder.map((id) => {
+            const section = STEPS.find((s) => s.id === id);
+            return (
+              <SortableSection
+                key={id}
+                id={id}
+                section={section}
+                complete={isSectionComplete(id)}
+                collapsed={!!collapsed[id]}
+                onToggle={() =>
+                  setCollapsed((p) => ({ ...p, [id]: !p[id] }))
+                }
+              >
+                {renderSectionContent(id)}
+              </SortableSection>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
+
+      {/* Submit */}
+      <div className="mt-6">
+        {listing && (
+          <div className="flex justify-end mb-3">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20"}`}
+            >
+              {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={uploading || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {uploading ? (
+            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
+          ) : (
+            <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 
 }
