@@ -3,178 +3,51 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 const STATES = [
-  "Johor",
-  "Kedah",
-  "Kelantan",
-  "Kuala Lumpur",
-  "Labuan",
-  "Melaka",
-  "Negeri Sembilan",
-  "Pahang",
-  "Penang",
-  "Perak",
-  "Perlis",
-  "Putrajaya",
-  "Sabah",
-  "Sarawak",
-  "Selangor",
-  "Terengganu",
+  "Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka",
+  "Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya",
+  "Sabah","Sarawak","Selangor","Terengganu",
 ];
 const DEALER_TYPES = [
-  "Independent Dealer",
-  "Franchise Dealer",
-  "Used Car Lot",
-  "Car Rental",
-  "Multi-Brand Showroom",
+  "Independent Dealer","Franchise Dealer","Used Car Lot",
+  "Car Rental","Multi-Brand Showroom",
 ];
-const FLEET = ["1–5 cars", "6–15 cars", "16–30 cars", "31–50 cars", "50+ cars"];
+const FLEET = ["1–5 cars","6–15 cars","16–30 cars","31–50 cars","50+ cars"];
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 function buildStages(accountType, hasUser) {
   const s = [
+    { id: "type",  field: "accountType", q: "I'm signing up as…",      type: "cards" },
+    { id: "legal", field: "_legal",       q: "Terms & Privacy Consent", type: "legal" },
+    { id: "name",  field: "fullName",     q: "What's your name?",       type: "text", ph: "Ahmad bin Abdullah" },
+    { id: "phone", field: "phone",        q: "Your WhatsApp number?",   type: "tel",  ph: "+60123456789" },
     {
-      id: "type",
-      field: "accountType",
-      q: "I'm signing up as…",
-      type: "cards",
-    },
-    {
-      id: "name",
-      field: "fullName",
-      q: "What's your name?",
-      type: "text",
-      ph: "Ahmad bin Abdullah",
-    },
-    {
-      id: "phone",
-      field: "phone",
-      q: "Your WhatsApp number?",
-      type: "tel",
-      ph: "+60123456789",
-    },
-    {
-      id: "ic",
-      field: "ic",
-      q: "IC number (MyKad)?",
-      type: "text",
-      ph: "901231-10-1234",
-      opt: true,
+      id: "ic", field: "ic", q: "IC number (MyKad)?", type: "text",
+      ph: "901231-10-1234", opt: true,
       hint: "Optional now — required within 10 days or account is terminated.",
     },
   ];
   if (!hasUser)
     s.push(
-      {
-        id: "email",
-        field: "email",
-        q: "Email address?",
-        type: "email",
-        ph: "you@example.com",
-      },
-      {
-        id: "pw",
-        field: "password",
-        q: "Create a password",
-        type: "pw",
-        ph: "Min 8 chars, mixed + symbol",
-      },
-      {
-        id: "cpw",
-        field: "confirm",
-        q: "Confirm your password",
-        type: "pw",
-        ph: "Repeat it",
-      },
+      { id: "email", field: "email",    q: "Email address?",      type: "email", ph: "you@example.com" },
+      { id: "pw",    field: "password", q: "Create a password",   type: "pw",    ph: "Min 8 chars, mixed + symbol" },
+      { id: "cpw",   field: "confirm",  q: "Confirm your password", type: "pw",  ph: "Repeat it" },
     );
   if (accountType === "dealership")
     s.push(
-      {
-        id: "dname",
-        field: "dealerName",
-        q: "Dealership name?",
-        type: "text",
-        ph: "Fast Track Auto Sdn Bhd",
-      },
-      {
-        id: "dtype",
-        field: "dealerType",
-        q: "Type of dealership?",
-        type: "pills",
-        options: DEALER_TYPES,
-      },
-      {
-        id: "dstate",
-        field: "state",
-        q: "Which state?",
-        type: "sel",
-        options: STATES,
-      },
-      {
-        id: "dcity",
-        field: "city",
-        q: "City or area?",
-        type: "text",
-        ph: "e.g. Butterworth",
-        opt: true,
-      },
-      {
-        id: "sub",
-        field: "subdomain",
-        q: "Your XDrive URL",
-        type: "sub",
-        ph: "yourbrand",
-        hint: "Letters & numbers only · min 3 chars",
-      },
-      {
-        id: "ssm",
-        field: "ssmNumber",
-        q: "SSM number?",
-        type: "text",
-        ph: "e.g. 1234567-A",
-        opt: true,
-        hint: "Required within 10 days for full verification.",
-      },
-      {
-        id: "fleet",
-        field: "fleetSize",
-        q: "Current fleet size?",
-        type: "pills",
-        options: FLEET,
-      },
+      { id: "dname",  field: "dealerName",  q: "Dealership name?",     type: "text",  ph: "Fast Track Auto Sdn Bhd" },
+      { id: "dtype",  field: "dealerType",  q: "Type of dealership?",  type: "pills", options: DEALER_TYPES },
+      { id: "dstate", field: "state",       q: "Which state?",          type: "sel",   options: STATES },
+      { id: "dcity",  field: "city",        q: "City or area?",         type: "text",  ph: "e.g. Butterworth", opt: true },
+      { id: "sub",    field: "subdomain",   q: "Your XDrive URL",       type: "sub",   ph: "yourbrand", hint: "Letters & numbers only · min 3 chars" },
+      { id: "ssm",    field: "ssmNumber",   q: "SSM number?",           type: "text",  ph: "e.g. 1234567-A", opt: true, hint: "Required within 10 days for full verification." },
+      { id: "fleet",  field: "fleetSize",   q: "Current fleet size?",   type: "pills", options: FLEET },
     );
   if (accountType === "salesman")
     s.push(
-      {
-        id: "sbrand",
-        field: "salesmanBrand",
-        q: "Your name or brand?",
-        type: "text",
-        ph: "Ahmad Motors",
-        hint: "Appears on your XDrive profile and listings.",
-      },
-      {
-        id: "sslug",
-        field: "salesmanSlug",
-        q: "Your profile URL",
-        type: "slug",
-        ph: "yourname",
-        hint: "xdrive.my/s/yourname",
-      },
-      {
-        id: "sstate",
-        field: "salesmanState",
-        q: "Which state?",
-        type: "sel",
-        options: STATES,
-      },
-      {
-        id: "scity",
-        field: "salesmanCity",
-        q: "City or area?",
-        type: "text",
-        ph: "e.g. Cheras",
-        opt: true,
-      },
+      { id: "sbrand", field: "salesmanBrand", q: "Your name or brand?", type: "text", ph: "Ahmad Motors", hint: "Appears on your XDrive profile and listings." },
+      { id: "sslug",  field: "salesmanSlug",  q: "Your profile URL",    type: "slug", ph: "yourname", hint: "xdrive.my/s/yourname" },
+      { id: "sstate", field: "salesmanState", q: "Which state?",         type: "sel",  options: STATES },
+      { id: "scity",  field: "salesmanCity",  q: "City or area?",        type: "text", ph: "e.g. Cheras", opt: true },
     );
   s.push({ id: "review", q: "Ready to activate.", type: "review" });
   return s;
@@ -197,29 +70,18 @@ export default function OnboardingPage() {
   const [animKey, setAnimKey] = useState(0);
   const [dir, setDir] = useState("fwd");
   const [showPw, setShowPw] = useState(false);
+  const [legalScrolled, setLegalScrolled] = useState(false);
   const inputRef = useRef(null);
+  const legalRef = useRef(null);
   const subTouched = useRef(false);
   const slugTouched = useRef(false);
 
   const [v, setV] = useState({
-    accountType: "",
-    fullName: "",
-    phone: "+60",
-    ic: "",
-    email: "",
-    password: "",
-    confirm: "",
-    dealerName: "",
-    dealerType: "",
-    state: "",
-    city: "",
-    subdomain: "",
-    ssmNumber: "",
-    fleetSize: "",
-    salesmanBrand: "",
-    salesmanSlug: "",
-    salesmanState: "",
-    salesmanCity: "",
+    accountType: "", fullName: "", phone: "+60", ic: "",
+    email: "", password: "", confirm: "",
+    dealerName: "", dealerType: "", state: "", city: "",
+    subdomain: "", ssmNumber: "", fleetSize: "",
+    salesmanBrand: "", salesmanSlug: "", salesmanState: "", salesmanCity: "",
   });
   const upd = (k) => (val) => setV((p) => ({ ...p, [k]: val }));
 
@@ -231,10 +93,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
-        setAuthReady(true);
-        return;
-      }
+      if (!data.session) { setAuthReady(true); return; }
       const uid = data.session.user.id;
       setUserId(uid);
       setUserEmail(data.session.user.email);
@@ -242,27 +101,18 @@ export default function OnboardingPage() {
       const meta = data.session.user.user_metadata || {};
       const savedType = sessionStorage.getItem("ob_account_type");
       if (savedType) sessionStorage.removeItem("ob_account_type");
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", uid)
-        .maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
       if (prof) {
         setProfileData(prof);
         const updates = {};
-        if (prof.role === "dealer" || prof.role === "superadmin")
-          updates.accountType = "dealership";
+        if (prof.role === "dealer" || prof.role === "superadmin") updates.accountType = "dealership";
         else if (prof.role === "salesman") updates.accountType = "salesman";
         else if (savedType) updates.accountType = savedType;
         if (prof.full_name) updates.fullName = prof.full_name;
-        else if (!v.fullName && (meta.full_name || meta.name))
-          updates.fullName = meta.full_name || meta.name;
+        else if (!v.fullName && (meta.full_name || meta.name)) updates.fullName = meta.full_name || meta.name;
         if (prof.phone) updates.phone = prof.phone;
         if (prof.dealership) updates.dealerName = prof.dealership;
-        if (prof.subdomain) {
-          updates.subdomain = prof.subdomain;
-          subTouched.current = true;
-        }
+        if (prof.subdomain) { updates.subdomain = prof.subdomain; subTouched.current = true; }
         if (prof.location) {
           const ms = STATES.find((s) => prof.location.includes(s));
           if (ms) {
@@ -275,8 +125,7 @@ export default function OnboardingPage() {
       } else {
         const updates = {};
         if (savedType) updates.accountType = savedType;
-        if (meta.full_name || meta.name)
-          updates.fullName = meta.full_name || meta.name;
+        if (meta.full_name || meta.name) updates.fullName = meta.full_name || meta.name;
         if (Object.keys(updates).length) setV((p) => ({ ...p, ...updates }));
       }
       setAuthReady(true);
@@ -285,22 +134,12 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!subTouched.current)
-      upd("subdomain")(
-        v.dealerName
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .slice(0, 20),
-      );
+      upd("subdomain")(v.dealerName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20));
   }, [v.dealerName]);
 
   useEffect(() => {
     if (!slugTouched.current)
-      upd("salesmanSlug")(
-        v.fullName
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .slice(0, 20),
-      );
+      upd("salesmanSlug")(v.fullName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20));
   }, [v.fullName]);
 
   useEffect(() => {
@@ -308,155 +147,94 @@ export default function OnboardingPage() {
     return () => clearTimeout(t);
   }, [si, animKey]);
 
+  const handleLegalScroll = () => {
+    if (legalScrolled) return;
+    const el = legalRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 16) setLegalScrolled(true);
+  };
+
   const canAdvance = () => {
     if (loading) return false;
     if (stage.opt) return true;
     switch (stage.id) {
-      case "type":
-        return !!v.accountType;
-      case "name":
-        return v.fullName.trim().length >= 2;
-      case "phone":
-        return v.phone.replace(/\D/g, "").length >= 9;
-      case "email":
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email);
-      case "pw":
-        return STRONG_PW.test(v.password);
-      case "cpw":
-        return v.confirm === v.password && v.confirm.length > 0;
-      case "dname":
-        return v.dealerName.trim().length >= 2;
-      case "dtype":
-        return !!v.dealerType;
-      case "dstate":
-        return !!v.state;
-      case "sub":
-        return /^[a-z0-9]{3,20}$/.test(v.subdomain);
-      case "fleet":
-        return !!v.fleetSize;
-      case "sbrand":
-        return v.salesmanBrand.trim().length >= 2;
-      case "sslug":
-        return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
-      case "sstate":
-        return !!v.salesmanState;
-      case "review":
-        return !loading;
-      default:
-        return true;
+      case "type":   return !!v.accountType;
+      case "legal":  return legalScrolled;
+      case "name":   return v.fullName.trim().length >= 2;
+      case "phone":  return v.phone.replace(/\D/g, "").length >= 9;
+      case "email":  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email);
+      case "pw":     return STRONG_PW.test(v.password);
+      case "cpw":    return v.confirm === v.password && v.confirm.length > 0;
+      case "dname":  return v.dealerName.trim().length >= 2;
+      case "dtype":  return !!v.dealerType;
+      case "dstate": return !!v.state;
+      case "sub":    return /^[a-z0-9]{3,20}$/.test(v.subdomain);
+      case "fleet":  return !!v.fleetSize;
+      case "sbrand": return v.salesmanBrand.trim().length >= 2;
+      case "sslug":  return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
+      case "sstate": return !!v.salesmanState;
+      case "review": return !loading;
+      default:       return true;
     }
   };
 
-  const goNext = () => {
-    setDir("fwd");
-    setAnimKey((k) => k + 1);
-    setIdx((i) => Math.min(i + 1, stages.length - 1));
-    setError("");
-  };
-  const goPrev = () => {
-    if (si === 0) return;
-    setDir("bk");
-    setAnimKey((k) => k + 1);
-    setIdx((i) => i - 1);
-    setError("");
-  };
+  const goNext = () => { setDir("fwd"); setAnimKey((k) => k + 1); setIdx((i) => Math.min(i + 1, stages.length - 1)); setError(""); };
+  const goPrev = () => { if (si === 0) return; setDir("bk"); setAnimKey((k) => k + 1); setIdx((i) => i - 1); setError(""); };
 
   const advance = async () => {
     if (!canAdvance()) return;
     if (stage.id === "cpw") {
-      setLoading(true);
-      setError("");
+      setLoading(true); setError("");
       const { data, error: err } = await supabase.auth.signUp({
-        email: v.email.trim(),
-        password: v.password,
+        email: v.email.trim(), password: v.password,
         options: { emailRedirectTo: `${window.location.origin}/onboarding` },
       });
-      if (err) {
-        setError(err.message);
-        setLoading(false);
-        return;
-      }
+      if (err) { setError(err.message); setLoading(false); return; }
       if (data.user) {
         await supabase.from("profiles").upsert({
-          id: data.user.id,
-          email: v.email.trim(),
+          id: data.user.id, email: v.email.trim(),
           full_name: v.fullName.trim() || null,
           phone: v.phone !== "+60" ? v.phone : null,
           role: v.accountType === "salesman" ? "salesman" : "dealer",
-          is_active: true,
-          onboarding_complete: false,
+          is_active: true, onboarding_complete: false,
         });
-        setUserId(data.user.id);
-        setUserEmail(v.email.trim());
+        setUserId(data.user.id); setUserEmail(v.email.trim());
       }
-      setLoading(false);
-      setConfirmSent(true);
-      return;
+      setLoading(false); setConfirmSent(true); return;
     }
     if (stage.id === "review") {
       if (!userId) return;
-      setLoading(true);
-      setError("");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user?.email_confirmed_at) {
-        setError("Please verify your email first.");
-        setLoading(false);
-        return;
-      }
+      setLoading(true); setError("");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email_confirmed_at) { setError("Please verify your email first."); setLoading(false); return; }
       try {
         const isS = v.accountType === "salesman";
         const payload = isS
           ? {
-              id: userId,
-              email: v.email || userEmail,
-              full_name: v.fullName.trim(),
-              phone: v.phone,
-              role: "salesman",
-              plan: "salesman_lite",
-              dealer_id: null,
-              is_active: true,
-              onboarding_complete: true,
-              slug: v.salesmanSlug,
+              id: userId, email: v.email || userEmail, full_name: v.fullName.trim(),
+              phone: v.phone, role: "salesman", plan: "salesman_lite", dealer_id: null,
+              is_active: true, onboarding_complete: true, slug: v.salesmanSlug,
               dealership: v.salesmanBrand.trim(),
-              location: v.salesmanCity
-                ? `${v.salesmanCity}, ${v.salesmanState}`
-                : v.salesmanState,
-              ic: v.ic || null,
-              ic_submitted: !!v.ic,
-              ic_deadline: v.ic
-                ? null
-                : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: 'salesman_free',
+              location: v.salesmanCity ? `${v.salesmanCity}, ${v.salesmanState}` : v.salesmanState,
+              ic: v.ic || null, ic_submitted: !!v.ic,
+              ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+              selected_plan: "salesman_free", pdpa_consent: true, pdpa_consent_at: new Date().toISOString(),
             }
           : {
-              id: userId,
-              email: v.email || userEmail,
-              full_name: v.fullName.trim(),
-              phone: v.phone,
-              dealership: v.dealerName.trim(),
+              id: userId, email: v.email || userEmail, full_name: v.fullName.trim(),
+              phone: v.phone, dealership: v.dealerName.trim(),
               location: v.city ? `${v.city}, ${v.state}` : v.state,
-              role: "dealer",
-              is_active: true,
-              onboarding_complete: true,
-              subdomain: v.subdomain,
-              ssm_number: v.ssmNumber || null,
-              ic: v.ic || null,
-              ic_submitted: !!v.ic,
-              ic_deadline: v.ic
-                ? null
-                : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-              selected_plan: v.accountType === 'salesman' ? 'salesman_free' : 'standard',
+              role: "dealer", is_active: true, onboarding_complete: true,
+              subdomain: v.subdomain, ssm_number: v.ssmNumber || null,
+              ic: v.ic || null, ic_submitted: !!v.ic,
+              ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+              selected_plan: "standard", pdpa_consent: true, pdpa_consent_at: new Date().toISOString(),
             };
         const { error: err } = await supabase.from("profiles").upsert(payload);
         if (err) throw err;
         setDone(true);
         setTimeout(() => navigate(isS ? "/salesman-lite" : "/dashboard"), 2600);
-      } catch (e) {
-        setError(e.message);
-        setLoading(false);
-      }
+      } catch (e) { setError(e.message); setLoading(false); }
       return;
     }
     goNext();
@@ -464,11 +242,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const h = (e) => {
-      if (
-        e.key === "Enter" &&
-        !e.shiftKey &&
-        !["cards", "pills", "sel"].includes(stage.type)
-      ) {
+      if (e.key === "Enter" && !e.shiftKey && !["cards","pills","sel","legal"].includes(stage.type)) {
         e.preventDefault();
         if (canAdvance()) advance();
       }
@@ -489,20 +263,10 @@ export default function OnboardingPage() {
   const setField = (newVal) => {
     if (stage.id === "sub") {
       subTouched.current = true;
-      upd("subdomain")(
-        newVal
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .slice(0, 20),
-      );
+      upd("subdomain")(newVal.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20));
     } else if (stage.id === "sslug") {
       slugTouched.current = true;
-      upd("salesmanSlug")(
-        newVal
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .slice(0, 20),
-      );
+      upd("salesmanSlug")(newVal.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20));
     } else upd(stage.field)(newVal);
   };
 
@@ -512,110 +276,24 @@ export default function OnboardingPage() {
     return (
       <>
         <style>{CSS}</style>
-        <div
-          className="ob-root"
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            display: "flex",
-          }}
-        >
+        <div className="ob-root" style={{ justifyContent: "center", alignItems: "center", display: "flex" }}>
           <div style={{ width: "min(420px,90%)", textAlign: "center" }}>
-            <div
-              className="ob-logo"
-              style={{ justifyContent: "center", marginBottom: 32 }}
-            >
+            <div className="ob-logo" style={{ justifyContent: "center", marginBottom: 32 }}>
               <div className="ob-lm">⚡</div>
               <span className="ob-lt">SHIFTOS</span>
             </div>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: "rgba(220,38,38,0.1)",
-                border: "1px solid rgba(220,38,38,0.25)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 24px",
-                fontSize: 28,
-              }}
-            >
-              ✉
-            </div>
-            <h2
-              style={{
-                fontFamily: "'Bebas Neue',cursive",
-                fontSize: 40,
-                letterSpacing: 3,
-                color: "#E8EDF5",
-                marginBottom: 12,
-              }}
-            >
-              CHECK YOUR INBOX
-            </h2>
-            <p
-              style={{
-                color: "rgba(232,237,245,0.4)",
-                fontSize: 13,
-                marginBottom: 6,
-              }}
-            >
-              Confirmation link sent to
-            </p>
-            <p
-              style={{
-                color: "#E8EDF5",
-                fontWeight: 600,
-                fontSize: 14,
-                marginBottom: 24,
-                wordBreak: "break-all",
-              }}
-            >
-              {v.email}
-            </p>
-            <p
-              style={{
-                color: "rgba(232,237,245,0.2)",
-                fontSize: 12,
-                lineHeight: 1.7,
-                marginBottom: 28,
-              }}
-            >
-              Click the link to activate your account, then sign in to continue
-              setup.
-            </p>
-            {resendSent && (
-              <p style={{ color: "#4ade80", fontSize: 12, marginBottom: 12 }}>
-                ↺ Email resent!
-              </p>
-            )}
-            <button
-              className="ob-btn-ghost"
-              style={{ width: "100%", marginBottom: 14 }}
-              onClick={async () => {
-                setResendLoading(true);
-                setResendSent(false);
-                await supabase.auth.resend({ type: "signup", email: v.email });
-                setResendLoading(false);
-                setResendSent(true);
-              }}
-              disabled={resendLoading}
-            >
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 28 }}>✉</div>
+            <h2 style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 40, letterSpacing: 3, color: "#E8EDF5", marginBottom: 12 }}>CHECK YOUR INBOX</h2>
+            <p style={{ color: "rgba(232,237,245,0.4)", fontSize: 13, marginBottom: 6 }}>Confirmation link sent to</p>
+            <p style={{ color: "#E8EDF5", fontWeight: 600, fontSize: 14, marginBottom: 24, wordBreak: "break-all" }}>{v.email}</p>
+            <p style={{ color: "rgba(232,237,245,0.2)", fontSize: 12, lineHeight: 1.7, marginBottom: 28 }}>Click the link to activate your account, then sign in to continue setup.</p>
+            {resendSent && <p style={{ color: "#4ade80", fontSize: 12, marginBottom: 12 }}>↺ Email resent!</p>}
+            <button className="ob-btn-ghost" style={{ width: "100%", marginBottom: 14 }}
+              onClick={async () => { setResendLoading(true); setResendSent(false); await supabase.auth.resend({ type: "signup", email: v.email }); setResendLoading(false); setResendSent(true); }}
+              disabled={resendLoading}>
               {resendLoading ? "SENDING…" : "RESEND CONFIRMATION EMAIL"}
             </button>
-            <a
-              href="/login"
-              style={{
-                fontSize: 12,
-                color: "rgba(232,237,245,0.2)",
-                textDecoration: "none",
-                fontFamily: "'Azeret Mono',monospace",
-              }}
-            >
-              ← Back to sign in
-            </a>
+            <a href="/login" style={{ fontSize: 12, color: "rgba(232,237,245,0.2)", textDecoration: "none", fontFamily: "'Azeret Mono',monospace" }}>← Back to sign in</a>
           </div>
         </div>
       </>
@@ -625,61 +303,25 @@ export default function OnboardingPage() {
     return (
       <>
         <style>{CSS}</style>
-        <div
-          className="ob-root"
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            display: "flex",
-          }}
-        >
+        <div className="ob-root" style={{ justifyContent: "center", alignItems: "center", display: "flex" }}>
           <div style={{ textAlign: "center" }}>
             <div className="ob-done-ring">
-              <svg
-                width="36"
-                height="36"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="1.5"
-              >
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div
-              style={{
-                fontFamily: "'Bebas Neue',cursive",
-                fontSize: "clamp(52px,8vw,88px)",
-                letterSpacing: 4,
-                color: "#E8EDF5",
-                lineHeight: 1,
-                marginTop: 24,
-                animation: "wUp .6s ease both",
-              }}
-            >
-              ACTIVATED
-            </div>
-            <p
-              style={{
-                fontFamily: "'Azeret Mono',monospace",
-                fontSize: 12,
-                color: "rgba(232,237,245,0.4)",
-                marginTop: 14,
-                letterSpacing: 1,
-                animation: "wUp .6s ease .3s both",
-              }}
-            >
-              {v.accountType === "salesman"
-                ? "Launching salesman panel…"
-                : "Launching your command center…"}
+            <div style={{ fontFamily: "'Bebas Neue',cursive", fontSize: "clamp(52px,8vw,88px)", letterSpacing: 4, color: "#E8EDF5", lineHeight: 1, marginTop: 24, animation: "wUp .6s ease both" }}>ACTIVATED</div>
+            <p style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 12, color: "rgba(232,237,245,0.4)", marginTop: 14, letterSpacing: 1, animation: "wUp .6s ease .3s both" }}>
+              {v.accountType === "salesman" ? "Launching salesman panel…" : "Launching your command center…"}
             </p>
           </div>
         </div>
       </>
     );
 
-  const isAutoAdv = ["cards", "pills", "sel"].includes(stage.type);
+  const isAutoAdv = ["cards","pills","sel"].includes(stage.type);
   const isReview = stage.id === "review";
+  const isLegal = stage.type === "legal";
 
   return (
     <>
@@ -694,50 +336,43 @@ export default function OnboardingPage() {
             <div className="ob-lm">⚡</div>
             <span className="ob-lt">SHIFTOS</span>
           </div>
-          <span className="ob-counter">
-            {String(si + 1).padStart(2, "0")} /{" "}
-            {String(stages.length).padStart(2, "0")}
-          </span>
+          <span className="ob-counter">{String(si + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}</span>
         </div>
 
-        <div className="ob-body">
+        <div className={`ob-body${isLegal ? " ob-body-legal" : ""}`}>
           <div className="ob-stage" key={animKey} data-dir={dir}>
             <p className="ob-eyebrow">
               {stage.opt
                 ? "OPTIONAL"
                 : isReview
-                  ? v.accountType === "salesman"
-                    ? "FREE FOREVER — NO CARD REQUIRED"
-                    : "14-DAY FREE TRIAL — NO CARD REQUIRED"
-                  : stage.id === "type"
-                    ? "WELCOME"
-                    : "QUESTION"}
+                  ? v.accountType === "salesman" ? "FREE FOREVER — NO CARD REQUIRED" : "14-DAY FREE TRIAL — NO CARD REQUIRED"
+                  : isLegal
+                    ? "PDPA 2010 COMPLIANCE — REQUIRED"
+                    : stage.id === "type" ? "WELCOME" : "QUESTION"}
             </p>
             <h1 className="ob-q">{stage.q}</h1>
+
+            {/* Legal scroll */}
+            {isLegal && (
+              <div className="ob-legal-wrap">
+                <div className="ob-legal-scroll" ref={legalRef} onScroll={handleLegalScroll}>
+                  <LegalContent />
+                </div>
+                {!legalScrolled
+                  ? <p className="ob-legal-prompt">↓ Scroll to the bottom to accept and continue</p>
+                  : <p className="ob-legal-done">✓ Agreements reviewed — you may continue</p>}
+              </div>
+            )}
 
             {/* Cards */}
             {stage.type === "cards" && (
               <div className="ob-cards">
                 {[
-                  {
-                    val: "dealership",
-                    label: "Dealership",
-                    sub: "Full team dashboard · RM700/mo after trial",
-                  },
-                  {
-                    val: "salesman",
-                    label: "Sole Salesman",
-                    sub: "Free forever · No credit card needed",
-                  },
+                  { val: "dealership", label: "Dealership",    sub: "Full team dashboard · RM700/mo after trial" },
+                  { val: "salesman",   label: "Sole Salesman", sub: "Free forever · No credit card needed" },
                 ].map((c) => (
-                  <button
-                    key={c.val}
-                    className={`ob-card${v.accountType === c.val ? " ob-card-on" : ""}`}
-                    onClick={() => {
-                      upd("accountType")(c.val);
-                      setTimeout(() => goNext(), 220);
-                    }}
-                  >
+                  <button key={c.val} className={`ob-card${v.accountType === c.val ? " ob-card-on" : ""}`}
+                    onClick={() => { upd("accountType")(c.val); setTimeout(() => goNext(), 220); }}>
                     <div className="ob-card-label">{c.label}</div>
                     <div className="ob-card-sub">{c.sub}</div>
                   </button>
@@ -749,14 +384,8 @@ export default function OnboardingPage() {
             {stage.type === "pills" && (
               <div className="ob-pills">
                 {stage.options.map((opt) => (
-                  <button
-                    key={opt}
-                    className={`ob-pill${val === opt ? " ob-pill-on" : ""}`}
-                    onClick={() => {
-                      upd(stage.field)(opt);
-                      setTimeout(() => goNext(), 200);
-                    }}
-                  >
+                  <button key={opt} className={`ob-pill${val === opt ? " ob-pill-on" : ""}`}
+                    onClick={() => { upd(stage.field)(opt); setTimeout(() => goNext(), 200); }}>
                     {opt}
                   </button>
                 ))}
@@ -766,32 +395,12 @@ export default function OnboardingPage() {
             {/* Select */}
             {stage.type === "sel" && (
               <div className="ob-inp-wrap">
-                <select
-                  ref={inputRef}
-                  className="ob-inp ob-sel"
-                  value={val}
-                  onChange={(e) => {
-                    const nv = e.target.value;
-                    upd(stage.field)(nv);
-                    if (nv) setTimeout(() => goNext(), 150);
-                  }}
-                >
+                <select ref={inputRef} className="ob-inp ob-sel" value={val}
+                  onChange={(e) => { const nv = e.target.value; upd(stage.field)(nv); if (nv) setTimeout(() => goNext(), 150); }}>
                   <option value="">— select state —</option>
-                  {stage.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
+                  {stage.options.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <svg
-                  className="ob-sel-arr"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
+                <svg className="ob-sel-arr" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
@@ -801,68 +410,31 @@ export default function OnboardingPage() {
             {(stage.type === "sub" || stage.type === "slug") && (
               <div className="ob-inp-wrap">
                 <div className="ob-url-row">
-                  <span className="ob-url-pre">
-                    {stage.type === "sub" ? "xdrive.my /" : "xdrive.my/s /"}
-                  </span>
-                  <input
-                    ref={inputRef}
-                    className="ob-inp ob-inp-url"
-                    value={val}
-                    onChange={(e) => setField(e.target.value)}
-                    placeholder={stage.ph}
-                    autoComplete="off"
-                  />
+                  <span className="ob-url-pre">{stage.type === "sub" ? "xdrive.my /" : "xdrive.my/s /"}</span>
+                  <input ref={inputRef} className="ob-inp ob-inp-url" value={val}
+                    onChange={(e) => setField(e.target.value)} placeholder={stage.ph} autoComplete="off" />
                 </div>
-                {val && !/^[a-z0-9]{3,20}$/.test(val) && (
-                  <p className="ob-verr">
-                    Min 3 chars · letters & numbers only
-                  </p>
-                )}
+                {val && !/^[a-z0-9]{3,20}$/.test(val) && <p className="ob-verr">Min 3 chars · letters & numbers only</p>}
               </div>
             )}
 
             {/* Password */}
             {stage.type === "pw" && (
               <div className="ob-inp-wrap" style={{ position: "relative" }}>
-                <input
-                  ref={inputRef}
-                  type={showPw ? "text" : "password"}
-                  className="ob-inp"
-                  value={val}
-                  onChange={(e) => setField(e.target.value)}
-                  placeholder={stage.ph}
-                  autoComplete={stage.id === "pw" ? "new-password" : "off"}
-                />
-                <button
-                  className="ob-eye"
-                  type="button"
-                  onClick={() => setShowPw((p) => !p)}
-                >
-                  {showPw ? "◉" : "○"}
-                </button>
-                {stage.id === "pw" && val && !STRONG_PW.test(val) && (
-                  <p className="ob-verr">
-                    8+ chars · uppercase · lowercase · number · special char
-                  </p>
-                )}
-                {stage.id === "cpw" && val && val !== v.password && (
-                  <p className="ob-verr">Passwords don't match</p>
-                )}
+                <input ref={inputRef} type={showPw ? "text" : "password"} className="ob-inp" value={val}
+                  onChange={(e) => setField(e.target.value)} placeholder={stage.ph}
+                  autoComplete={stage.id === "pw" ? "new-password" : "off"} />
+                <button className="ob-eye" type="button" onClick={() => setShowPw((p) => !p)}>{showPw ? "◉" : "○"}</button>
+                {stage.id === "pw" && val && !STRONG_PW.test(val) && <p className="ob-verr">8+ chars · uppercase · lowercase · number · special char</p>}
+                {stage.id === "cpw" && val && val !== v.password && <p className="ob-verr">Passwords don't match</p>}
               </div>
             )}
 
             {/* Text / email / tel */}
-            {["text", "email", "tel"].includes(stage.type) && (
+            {["text","email","tel"].includes(stage.type) && (
               <div className="ob-inp-wrap">
-                <input
-                  ref={inputRef}
-                  type={stage.type === "tel" ? "tel" : stage.type}
-                  className="ob-inp"
-                  value={val}
-                  onChange={(e) => setField(e.target.value)}
-                  placeholder={stage.ph}
-                  autoComplete="off"
-                />
+                <input ref={inputRef} type={stage.type === "tel" ? "tel" : stage.type} className="ob-inp" value={val}
+                  onChange={(e) => setField(e.target.value)} placeholder={stage.ph} autoComplete="off" />
               </div>
             )}
             {stage.id === "email" && (
@@ -872,11 +444,8 @@ export default function OnboardingPage() {
                   <span style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 10, color: "rgba(232,237,245,0.25)", letterSpacing: "0.1em" }}>OR</span>
                   <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleGoogleSignUp}
-                  style={{ width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#E8EDF5", fontFamily: "'DM Sans',sans-serif", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}
-                >
+                <button type="button" onClick={handleGoogleSignUp}
+                  style={{ width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#E8EDF5", fontFamily: "'DM Sans',sans-serif", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
                   <svg width="18" height="18" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.332 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
                     <path d="M6.306 14.691l6.571 4.819C14.655 15.108 19.001 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
@@ -891,43 +460,29 @@ export default function OnboardingPage() {
             {/* Review */}
             {isReview && (
               <div className="ob-review">
-                <RR k="Name" v_={v.fullName} />
+                <RR k="Name"  v_={v.fullName} />
                 <RR k="Email" v_={v.email || userEmail} />
                 <RR k="Phone" v_={v.phone} />
                 {v.accountType === "dealership" && (
                   <>
                     <RR k="Dealership" v_={v.dealerName} />
-                    <RR k="Type" v_={v.dealerType} />
-                    <RR
-                      k="Location"
-                      v_={v.city ? `${v.city}, ${v.state}` : v.state}
-                    />
-                    <RR
-                      k="XDrive URL"
-                      v_={`${v.subdomain}.xdrive.my`}
-                      accent="#f87171"
-                    />
-                    <RR k="Fleet" v_={v.fleetSize} />
+                    <RR k="Type"       v_={v.dealerType} />
+                    <RR k="Location"   v_={v.city ? `${v.city}, ${v.state}` : v.state} />
+                    <RR k="XDrive URL" v_={`${v.subdomain}.xdrive.my`} accent="#f87171" />
+                    <RR k="Fleet"      v_={v.fleetSize} />
                   </>
                 )}
                 {v.accountType === "salesman" && (
                   <>
-                    <RR k="Brand" v_={v.salesmanBrand} />
-                    <RR
-                      k="Location"
-                      v_={
-                        v.salesmanCity
-                          ? `${v.salesmanCity}, ${v.salesmanState}`
-                          : v.salesmanState
-                      }
-                    />
-                    <RR
-                      k="Profile URL"
-                      v_={`xdrive.my/s/${v.salesmanSlug}`}
-                      accent="#93c5fd"
-                    />
+                    <RR k="Brand"      v_={v.salesmanBrand} />
+                    <RR k="Location"   v_={v.salesmanCity ? `${v.salesmanCity}, ${v.salesmanState}` : v.salesmanState} />
+                    <RR k="Profile URL" v_={`xdrive.my/s/${v.salesmanSlug}`} accent="#93c5fd" />
                   </>
                 )}
+                <div className="ob-rr" style={{ background: "rgba(220,38,38,0.04)" }}>
+                  <span className="ob-rr-k">PDPA</span>
+                  <span className="ob-rr-v" style={{ color: "#4ade80", fontSize: 11 }}>✓ Consent recorded</span>
+                </div>
               </div>
             )}
 
@@ -937,40 +492,21 @@ export default function OnboardingPage() {
         </div>
 
         <div className="ob-bottom">
-          <button className="ob-back" onClick={goPrev} disabled={si === 0}>
-            ← BACK
-          </button>
-          {!isAutoAdv &&
-            (isReview ? (
-              emailConfirmed ? (
-                <button
-                  className="ob-btn-act"
-                  onClick={advance}
-                  disabled={loading}
-                >
-                  {loading ? "ACTIVATING…" : "ACTIVATE NOW ⚡"}
-                </button>
-              ) : (
-                <button
-                  className="ob-btn-verify"
-                  onClick={() => setConfirmSent(true)}
-                >
-                  VERIFY EMAIL FIRST ✉
-                </button>
-              )
+          <button className="ob-back" onClick={goPrev} disabled={si === 0}>← BACK</button>
+          {!isAutoAdv && (
+            isReview ? (
+              emailConfirmed
+                ? <button className="ob-btn-act" onClick={advance} disabled={loading}>{loading ? "ACTIVATING…" : "ACTIVATE NOW ⚡"}</button>
+                : <button className="ob-btn-verify" onClick={() => setConfirmSent(true)}>VERIFY EMAIL FIRST ✉</button>
             ) : (
-              <div
-                className="ob-enter"
-                style={{
-                  opacity: canAdvance() ? 1 : 0.3,
-                  pointerEvents: canAdvance() ? "auto" : "none",
-                }}
-                onClick={advance}
-              >
-                <span>{stage.opt ? "SKIP OR CONTINUE" : "CONTINUE"}</span>
-                <kbd>ENTER ↵</kbd>
+              <div className="ob-enter"
+                style={{ opacity: canAdvance() ? 1 : 0.25, pointerEvents: canAdvance() ? "auto" : "none" }}
+                onClick={advance}>
+                <span>{stage.opt ? "SKIP OR CONTINUE" : isLegal ? "I AGREE — CONTINUE" : "CONTINUE"}</span>
+                {!isLegal && <kbd>ENTER ↵</kbd>}
               </div>
-            ))}
+            )
+          )}
         </div>
       </div>
     </>
@@ -982,9 +518,158 @@ function RR({ k, v_, accent }) {
   return (
     <div className="ob-rr">
       <span className="ob-rr-k">{k}</span>
-      <span className="ob-rr-v" style={accent ? { color: accent } : {}}>
-        {v_}
-      </span>
+      <span className="ob-rr-v" style={accent ? { color: accent } : {}}>{v_}</span>
+    </div>
+  );
+}
+
+function LegalSection({ title, children }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 18, letterSpacing: 3, color: "#E8EDF5", borderBottom: "1px solid rgba(220,38,38,0.3)", paddingBottom: 6, marginBottom: 14 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function LP({ children }) {
+  return <p style={{ fontSize: 12, color: "rgba(232,237,245,0.55)", lineHeight: 1.75, marginBottom: 10 }}>{children}</p>;
+}
+
+function LH({ children }) {
+  return <p style={{ fontSize: 11, fontFamily: "'Azeret Mono',monospace", color: "rgba(220,38,38,0.8)", letterSpacing: 1, marginTop: 14, marginBottom: 6 }}>{children}</p>;
+}
+
+function LegalContent() {
+  return (
+    <div style={{ padding: "0 2px" }}>
+
+      {/* ── TERMS OF SERVICE ── */}
+      <LegalSection title="TERMS OF SERVICE — ShiftOS / xdrive.my">
+        <LP>Effective Date: 20 May 2026. These Terms govern your access to and use of the ShiftOS platform, including the XDrive dealer dashboard and the xdrive.my marketplace. By creating an account or using the Platform, you agree to be bound by these Terms.</LP>
+
+        <LH>1. DEFINITIONS</LH>
+        <LP>"ShiftOS" / "we" / "us" refers to the Platform operated by ShiftOS (operated by Airy, sole proprietor). "Dealer" refers to a subscribed business user. "Salesman" refers to a sub-user account linked to a Dealer. "User" refers to any person accessing the Platform. "Content" refers to vehicle listings, images, descriptions, and other data uploaded. "Customer Data" refers to buyer information, leads, enquiries and other data uploaded by Dealers.</LP>
+
+        <LH>2. ACCOUNT REGISTRATION</LH>
+        <LP>To access the dealer dashboard you must register and provide accurate, complete information. You agree to: provide truthful registration information including your name, IC number, and business details; maintain the security of your login credentials and not share them with unauthorised persons; notify us immediately of any unauthorised access; ensure your use complies with all applicable Malaysian laws and regulations. We reserve the right to suspend or terminate accounts that provide false information or violate these Terms.</LP>
+
+        <LH>3. SUBSCRIPTION PLANS AND PAYMENT</LH>
+        <LP>Standard Plan: RM 1,000/month. Premium Plan: RM 2,500/month. Salesman Lite: Free (limited features, subject to fair use). All prices are in MYR and exclusive of applicable taxes. New dealer accounts receive a 14-day free trial with full platform access. No payment information is required during the trial. Subscriptions are billed monthly in advance. You may cancel at any time by contacting Auzyvyth@gmail.com. Cancellation takes effect at the end of the current billing period. No refunds for partial months. Data remains accessible for 30 days after cancellation before deletion.</LP>
+
+        <LH>4. ACCEPTABLE USE</LH>
+        <LP>You agree not to: upload fraudulent, stolen, or non-existent vehicle listings; misrepresent vehicle condition, mileage, ownership history, or specifications; collect or process customer data without appropriate consent; violate any applicable Malaysian law including the Road Transport Act 1987, Consumer Protection Act 1999, or PDPA 2010; attempt to circumvent, reverse engineer, or compromise the Platform's security; use the Platform to harass, defraud, or deceive any person; upload defamatory, obscene, or intellectual-property-infringing content. Violation may result in immediate account suspension without refund.</LP>
+
+        <LH>5. YOUR CONTENT AND DATA</LH>
+        <LP>You retain ownership of all Content and Customer Data you upload. By uploading Content, you grant ShiftOS a non-exclusive, royalty-free licence to store, display, and process that Content solely for providing the Platform services. You are the data controller for your customers' personal data and are responsible for: obtaining valid consent from customers before uploading their personal data; ensuring compliance with PDPA 2010; responding to customer data access and correction requests. ShiftOS acts as a data processor on your behalf. Vehicle listings marked "available" will be publicly visible on xdrive.my.</LP>
+
+        <LH>6. PLATFORM AVAILABILITY</LH>
+        <LP>We aim to maintain 99% uptime, excluding scheduled maintenance. We will provide advance notice of planned maintenance where possible. We are not liable for downtime caused by third-party infrastructure providers, force majeure events, or circumstances beyond our reasonable control.</LP>
+
+        <LH>7. INTELLECTUAL PROPERTY</LH>
+        <LP>ShiftOS, XDrive, xdrive.my and associated branding are the intellectual property of the Platform operator. You may not use our trademarks, logos or branding without prior written consent. The Platform software, design, and underlying technology remain our exclusive property.</LP>
+
+        <LH>8. LIMITATION OF LIABILITY</LH>
+        <LP>ShiftOS is a software tool. We are not a party to any vehicle sale transaction between a dealer and a buyer. We are not liable for any loss arising from vehicle transactions facilitated by the Platform. Our total aggregate liability for any claim shall not exceed the total subscription fees paid by you in the three months preceding the claim. We exclude liability for indirect, consequential, special or punitive damages of any kind.</LP>
+
+        <LH>9. INDEMNIFICATION</LH>
+        <LP>You agree to indemnify and hold harmless ShiftOS and its operators from any claims, damages, losses or expenses (including legal fees) arising from: (a) your use of the Platform in violation of these Terms; (b) your vehicle listings or customer data; (c) your violation of any applicable law; or (d) any dispute between you and a buyer or third party.</LP>
+
+        <LH>10. TERMINATION</LH>
+        <LP>We may suspend or terminate your account immediately if you: breach any provision of these Terms; fail to pay subscription fees within 14 days of the due date; engage in fraudulent, illegal, or abusive conduct. Upon termination, access ceases and data is retained for 30 days during which you may request an export, after which it will be permanently deleted.</LP>
+
+        <LH>11. GOVERNING LAW</LH>
+        <LP>These Terms are governed by the laws of Malaysia. Any dispute shall be subject to the exclusive jurisdiction of the courts of Malaysia.</LP>
+
+        <LH>12. CHANGES TO THESE TERMS</LH>
+        <LP>We may update these Terms from time to time with at least 14 days notice of material changes via in-app notification or email. Continued use after the effective date constitutes acceptance.</LP>
+
+        <LH>13. CONTACT</LH>
+        <LP>For questions regarding these Terms: Email: Auzyvyth@gmail.com · Website: https://xdrive.my</LP>
+      </LegalSection>
+
+      {/* ── PRIVACY POLICY ── */}
+      <LegalSection title="PRIVACY POLICY — ShiftOS / xdrive.my">
+        <LP>Effective Date: 20 May 2026. This Privacy Policy describes how ShiftOS collects, uses, stores, and protects personal data in connection with the ShiftOS platform and xdrive.my marketplace. Prepared in compliance with the Personal Data Protection Act 2010 (PDPA) of Malaysia.</LP>
+
+        <LH>1. WHO WE ARE</LH>
+        <LP>ShiftOS (operated by Airy, sole proprietor) operates ShiftOS, a SaaS platform for independent used car dealerships in Malaysia, accessible at https://xdrive.my. For data protection enquiries: Auzyvyth@gmail.com.</LP>
+
+        <LH>2. DATA WE COLLECT</LH>
+        <LP>Dealer and Salesman accounts: full name, email address, phone number, IC (MyKad) number (for account verification), dealership name, SSM registration number, business address, profile photo, subdomain, and platform usage data.</LP>
+        <LP>Customer Data uploaded by Dealers: buyer names, phone numbers, state of residence, lead and enquiry information, appointment and booking details, loan application data including IC numbers and employment details. ShiftOS processes this data on behalf of dealers. Dealers are the data controllers for their customers' data and are responsible for obtaining appropriate consent.</LP>
+        <LP>Automatically collected data: analytics events (page views, WhatsApp clicks, car views — no cookies, session-based only), browser type, device information, IP address (not stored persistently), and error logs for debugging.</LP>
+
+        <LH>3. HOW WE USE YOUR DATA</LH>
+        <LP>To provide, maintain and improve the platform; to authenticate users and manage account access; to process and display vehicle listings on xdrive.my; to send in-app notifications and Telegram alerts; to generate reports, analytics and performance insights; to comply with legal obligations; to communicate service updates, billing information, and security notices. We do not use your data for advertising purposes. ShiftOS is ad-free.</LP>
+
+        <LH>4. LEGAL BASIS FOR PROCESSING (PDPA 2010)</LH>
+        <LP>Contractual necessity — to deliver subscribed services. Legitimate interests — to improve the platform and prevent fraud. Consent — for optional features such as Telegram notifications. Legal obligation — where required by Malaysian law.</LP>
+
+        <LH>5. DATA SHARING</LH>
+        <LP>We do not sell, rent or trade your personal data. We may share data with: Supabase Inc. (database and authentication infrastructure); Vercel Inc. (hosting and edge network); Telegram (if you opt in to notifications, your chat ID is used to deliver alerts); Malaysian regulatory authorities if required by law or court order. All third-party providers maintain appropriate security and confidentiality obligations.</LP>
+
+        <LH>6. DATA RETENTION</LH>
+        <LP>Account data: retained for the duration of your subscription plus 12 months after termination. Customer lead and enquiry data: retained as long as your dealer account is active. Analytics data: retained for 24 months on a rolling basis. Error logs: retained for 90 days. You may request deletion at any time by contacting Auzyvyth@gmail.com. Deletion requests will be actioned within 30 days, subject to legal retention obligations.</LP>
+
+        <LH>7. DATA SECURITY</LH>
+        <LP>We implement: Row Level Security (RLS) on all database tables; encrypted data transmission via HTTPS/TLS; access controls limiting data access to authorised roles only; regular security audits and policy reviews. No method of transmission or storage is 100% secure. You are responsible for maintaining the confidentiality of your login credentials.</LP>
+
+        <LH>8. YOUR RIGHTS UNDER PDPA 2010</LH>
+        <LP>As a data subject under the Personal Data Protection Act 2010, you have the right to: access the personal data we hold about you; correct inaccurate or incomplete personal data; withdraw consent for processing where consent is the legal basis; request deletion of your personal data (subject to legal obligations); object to processing for purposes beyond what you were informed of. To exercise these rights, contact Auzyvyth@gmail.com. We will respond within 21 days.</LP>
+
+        <LH>9. COOKIES AND LOCAL STORAGE</LH>
+        <LP>ShiftOS does not use third-party tracking cookies. We use browser localStorage to maintain your authenticated session while logged in. This data is cleared when you log out. We do not use advertising or analytics cookies.</LP>
+
+        <LH>10. CHILDREN'S DATA</LH>
+        <LP>ShiftOS is a business-to-business platform intended for use by persons aged 18 and above. We do not knowingly collect personal data from individuals under 18 years of age.</LP>
+
+        <LH>11. CHANGES TO THIS POLICY</LH>
+        <LP>We will notify registered dealers of material changes via in-app notification or email at least 14 days before changes take effect. Continued use of the platform after the effective date constitutes acceptance.</LP>
+
+        <LH>12. CONTACT</LH>
+        <LP>For questions, concerns or data access requests: Email: Auzyvyth@gmail.com · Website: https://xdrive.my</LP>
+      </LegalSection>
+
+      {/* ── DATA PROCESSING AGREEMENT ── */}
+      <LegalSection title="DATA PROCESSING AGREEMENT — ShiftOS / xdrive.my">
+        <LP>Effective Date: 20 May 2026. This DPA forms part of the Terms of Service between ShiftOS ("Processor") and the registered Dealer ("Controller") and governs the processing of personal data by ShiftOS on behalf of the Dealer. Prepared in accordance with the Personal Data Protection Act 2010 (PDPA) of Malaysia.</LP>
+
+        <LH>1. DEFINITIONS</LH>
+        <LP>"Controller" means the Dealer who determines the purposes and means of processing Customer Data. "Processor" means ShiftOS, which processes Customer Data on behalf of the Controller. "Customer Data" means any personal data relating to the Controller's customers uploaded to the Platform. "Personal Data" has the meaning given under the PDPA 2010. "Processing" includes collecting, storing, organising, retrieving, disclosing, and deleting data. "Sub-processor" means any third party engaged by ShiftOS to assist in processing Customer Data.</LP>
+
+        <LH>2. ROLES AND RESPONSIBILITIES</LH>
+        <LP>Controller (Dealer) confirms that: it has a lawful basis for collecting and uploading Customer Data; it has provided customers with appropriate privacy notices; it has obtained necessary consents where required under PDPA 2010; it will only upload Customer Data that is accurate and relevant to its legitimate business activities; it will promptly action any customer data access, correction or deletion requests.</LP>
+        <LP>ShiftOS (Processor) agrees to: process Customer Data only on documented instructions from the Controller; ensure that all staff with access to Customer Data are bound by confidentiality obligations; implement appropriate technical and organisational security measures; not engage sub-processors without informing the Controller and ensuring equivalent protections apply; assist the Controller in responding to data subject requests; notify the Controller without undue delay upon becoming aware of a personal data breach affecting Customer Data; delete or return all Customer Data upon termination of the subscription, at the Controller's request.</LP>
+
+        <LH>3. SUB-PROCESSORS</LH>
+        <LP>ShiftOS currently engages the following sub-processors: Supabase Inc. (USA) — database hosting, authentication, and file storage; Vercel Inc. (USA) — web hosting and edge delivery; Telegram Messenger Inc. — notification delivery (only where Dealer has enabled Telegram integration). ShiftOS will notify Dealers of any intended changes to sub-processors at least 14 days in advance, giving the Dealer the opportunity to object.</LP>
+
+        <LH>4. DATA SECURITY</LH>
+        <LP>ShiftOS implements and maintains: Row Level Security (RLS) ensuring each Dealer can only access their own Customer Data; encrypted transmission of all data via HTTPS/TLS; role-based access controls limiting data access within the Platform; regular security reviews and vulnerability assessments; secure deletion of data upon account termination.</LP>
+
+        <LH>5. DATA BREACH NOTIFICATION</LH>
+        <LP>In the event of a personal data breach affecting Customer Data, ShiftOS will: notify the affected Dealer within 72 hours of becoming aware of the breach; provide details of the nature of the breach, the data affected, and likely consequences; describe the measures taken or proposed to address the breach. The Dealer is responsible for determining whether notification to affected customers or the Personal Data Protection Commissioner is required under PDPA 2010.</LP>
+
+        <LH>6. DATA SUBJECT RIGHTS</LH>
+        <LP>Where a Dealer's customer exercises rights under PDPA 2010 (access, correction, deletion), ShiftOS will provide reasonable assistance to the Dealer in fulfilling those requests, including providing tools to export or delete specific customer records from the Platform.</LP>
+
+        <LH>7. AUDITS</LH>
+        <LP>The Dealer may request information from ShiftOS to verify compliance with this DPA not more than once per calendar year, with reasonable advance notice. ShiftOS will respond within 30 days.</LP>
+
+        <LH>8. TERM AND TERMINATION</LH>
+        <LP>This DPA remains in effect for the duration of the Dealer's subscription. Upon termination: ShiftOS will retain Customer Data for 30 days to allow the Dealer to export it; after 30 days, Customer Data will be permanently deleted from all active systems; backups containing Customer Data will be purged within 90 days of termination.</LP>
+
+        <LH>9. GOVERNING LAW</LH>
+        <LP>This DPA is governed by the laws of Malaysia. Any disputes shall be subject to the jurisdiction of the Malaysian courts.</LP>
+
+        <LH>10. CONTACT FOR DATA PROTECTION MATTERS</LH>
+        <LP>For any data protection queries or to exercise rights under this DPA, contact ShiftOS at Auzyvyth@gmail.com.</LP>
+
+        <LP style={{ marginTop: 20, padding: "12px 14px", background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 2 }}>
+          By scrolling to the bottom and clicking "I Agree — Continue", you confirm that you have read, understood, and agree to the Terms of Service, Privacy Policy, and Data Processing Agreement above. Your consent is recorded with a timestamp in compliance with the Personal Data Protection Act 2010 (Malaysia).
+        </LP>
+      </LegalSection>
     </div>
   );
 }
@@ -1021,6 +706,7 @@ html,body{background:var(--bg);height:100%}
 .ob-counter{font-family:'Azeret Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted)}
 
 .ob-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 40px;position:relative;z-index:2;overflow:hidden}
+.ob-body-legal{align-items:flex-start;padding-top:0;overflow:visible}
 
 .ob-stage{width:min(580px,100%)}
 .ob-stage[data-dir="fwd"]{animation:sIn .22s ease both}
@@ -1029,7 +715,24 @@ html,body{background:var(--bg);height:100%}
 @keyframes sInBk{from{opacity:0;transform:translateX(-36px)}to{opacity:1;transform:translateX(0)}}
 
 .ob-eyebrow{font-family:'Azeret Mono',monospace;font-size:9px;font-weight:500;letter-spacing:3.5px;color:var(--red);margin-bottom:12px}
-.ob-q{font-family:'Bebas Neue',cursive;font-size:clamp(46px,6vw,72px);line-height:.95;color:var(--text);letter-spacing:1px;margin-bottom:32px}
+.ob-q{font-family:'Bebas Neue',cursive;font-size:clamp(36px,5vw,58px);line-height:.95;color:var(--text);letter-spacing:1px;margin-bottom:16px}
+
+/* ── Legal ── */
+.ob-legal-wrap{display:flex;flex-direction:column;gap:8px}
+.ob-legal-scroll{
+  height:calc(100vh - 290px);
+  overflow-y:scroll;
+  border:1px solid rgba(255,255,255,0.07);
+  background:rgba(255,255,255,0.015);
+  padding:20px 18px;
+  scroll-behavior:smooth;
+}
+.ob-legal-scroll::-webkit-scrollbar{width:4px}
+.ob-legal-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.03)}
+.ob-legal-scroll::-webkit-scrollbar-thumb{background:rgba(220,38,38,0.4);border-radius:2px}
+.ob-legal-prompt{font-family:'Azeret Mono',monospace;font-size:10px;letter-spacing:1.5px;color:rgba(220,38,38,0.7);text-align:center;padding:8px 0;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+.ob-legal-done{font-family:'Azeret Mono',monospace;font-size:10px;letter-spacing:1.5px;color:#4ade80;text-align:center;padding:8px 0}
 
 /* ── Cards ── */
 .ob-cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
@@ -1113,8 +816,9 @@ kbd{display:inline-flex;align-items:center;padding:4px 10px;background:rgba(255,
 @media(max-width:600px){
   .ob-topbar,.ob-bottom{padding:16px 20px}
   .ob-body{padding:0 20px}
-  .ob-q{font-size:42px}
+  .ob-q{font-size:36px}
   .ob-inp{font-size:18px}
   .ob-cards{flex-direction:column}
+  .ob-legal-scroll{height:calc(100vh - 260px)}
 }
 `;
