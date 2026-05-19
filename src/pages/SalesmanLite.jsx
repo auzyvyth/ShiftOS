@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -181,6 +182,7 @@ function StatusBadge({ status }) {
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
+  const { t, i18n } = useTranslation();
 
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -1444,67 +1446,67 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   const TABS_DESKTOP = [
     {
       tab: "dashboard",
-      label: "Dashboard",
+      label: t("salesmanLite.tabs.dashboard"),
       icon: <LayoutGrid style={{ width: 14, height: 14 }} />,
     },
     {
       tab: "listings",
-      label: "My Listings",
+      label: t("salesmanLite.tabs.listings"),
       icon: <Car style={{ width: 14, height: 14 }} />,
       badge: myListings.length || null,
     },
     {
       tab: "leads",
-      label: "Leads",
+      label: t("salesmanLite.tabs.leads"),
       icon: <User style={{ width: 14, height: 14 }} />,
       badge: leads.filter((l) => l.stage !== "lost").length || null,
     },
     {
       tab: "enquiries",
-      label: "Inbox",
+      label: t("salesmanLite.tabs.inbox"),
       icon: <MessageSquare style={{ width: 14, height: 14 }} />,
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
     {
       tab: "performance",
-      label: "Performance",
+      label: t("salesmanLite.tabs.performance"),
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
     },
     {
       tab: "merge",
-      label: "Join Dealership",
+      label: t("salesmanLite.tabs.merge"),
       icon: <GitMerge style={{ width: 14, height: 14 }} />,
     },
     {
       tab: "settings",
-      label: "Settings",
+      label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
     },
   ];
 
   const TABS_MOBILE = [
-    { tab: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} /> },
+    { tab: "dashboard", label: t("salesmanLite.tabs.dashboard"), icon: <LayoutGrid size={18} /> },
     {
       tab: "listings",
-      label: "Listings",
+      label: t("salesmanLite.tabs.listingsMobile"),
       icon: <Car size={18} />,
       badge: myListings.length || null,
     },
     {
       tab: "leads",
-      label: "Leads",
+      label: t("salesmanLite.tabs.leads"),
       icon: <User size={18} />,
       badge: leads.filter((l) => l.stage !== "lost").length || null,
     },
     {
       tab: "enquiries",
-      label: "Inbox",
+      label: t("salesmanLite.tabs.inbox"),
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + newBookingsCount) || null,
     },
-    { tab: "performance", label: "Stats", icon: <BarChart2 size={18} /> },
-    { tab: "merge", label: "Merge", icon: <GitMerge size={18} /> },
-    { tab: "settings", label: "Settings", icon: <Settings size={18} /> },
+    { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
+    { tab: "merge", label: t("salesmanLite.tabs.mergeMobile"), icon: <GitMerge size={18} /> },
+    { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
   ];
 
   // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
@@ -1794,7 +1796,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; })()}, {profile?.full_name?.split(" ")[0] || "there"}.
+              {(() => { const h = new Date().getHours(); return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening"); })()}, {profile?.full_name?.split(" ")[0] || "there"}.
             </p>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
               {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
@@ -1803,7 +1805,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {staleLeads.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} overdue</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#ef4444" }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
             </div>
           )}
         </div>
@@ -1812,11 +1814,11 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         <div style={{ ...CARD, overflow: "visible" }}>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)" }}>
             {[
-              { label: "Pipeline", value: activeLeads.length, accent: "#3b82f6", first: true },
-              { label: "Live Listings", value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
-              { label: "Follow-ups", value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
-              { label: "Today's Appts", value: todayAppts, accent: "#3b82f6" },
-              { label: "Closed", value: wonLeads.length, accent: "#22c55e" },
+              { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: "#3b82f6", first: true },
+              { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: "#22c55e" },
+              { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? "#ef4444" : "#475569" },
+              { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: "#3b82f6" },
+              { label: t("salesmanLite.kpi.closed"), value: wonLeads.length, accent: "#22c55e" },
             ].map(({ label, value, accent, first }, i, arr) => (
               <div key={label} style={{
                 padding: "18px 20px", position: "relative",
@@ -5554,7 +5556,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     return (
       <div style={{ maxWidth: 480 }}>
         <p style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          Profile Settings
+          {t("salesmanLite.settings.title")}
         </p>
 
         {/* Avatar */}
@@ -5584,25 +5586,25 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || "Your Name"}</p>
-            <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>Shown on your listings & profile page</p>
+            <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>{t("salesmanLite.settings.photoSubtext")}</p>
             <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
-              {avatarUploading ? "Uploading…" : "Change photo"}
+              {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
             </button>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.fullName")}</label>
             <input
               value={settingsForm.full_name}
               onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))}
-              placeholder="Your full name"
+              placeholder={t("salesmanLite.settings.fullNamePlaceholder")}
               style={inputStyle}
             />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.whatsapp")}</label>
             <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
               <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
               <input
@@ -5616,51 +5618,51 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }}
               />
             </div>
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.whatsappHint")}</p>
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <label style={{ fontSize: 11, color: "#6b7280" }}>✈️ Telegram Notifications</label>
+              <label style={{ fontSize: 11, color: "#6b7280" }}>✈️ {t("salesmanLite.settings.telegram")}</label>
               {profile?.telegram_chat_id
-                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
-                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanLite.settings.telegramConnected")}</span>
+                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanLite.settings.telegramNotSet")}</span>
               }
             </div>
             <input
               value={settingsForm.telegram_chat_id}
               onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))}
-              placeholder="e.g. 123456789"
+              placeholder={t("salesmanLite.settings.telegramPlaceholder")}
               style={inputStyle}
             />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
-              How to get your Chat ID: Open Telegram → search{" "}
-              <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>
-              {" "}→ send /start → copy the Id: number shown.
+              {t("salesmanLite.settings.telegramHint").split("@userinfobot").map((part, i) =>
+                i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>{part}</React.Fragment>
+              )}
             </p>
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.slug")}</label>
             <input
               value={profile?.slug || ""}
               readOnly
               style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }}
             />
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.slugHint")}</p>
           </div>
 
           {/* Location + IC */}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Location & Identity</p>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.locationSection")}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>City</label>
-                <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="Kuala Lumpur" style={inputStyle} />
+                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.city")}</label>
+                <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder={t("salesmanLite.settings.cityPlaceholder")} style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>State</label>
+                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.state")}</label>
                 <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))}
                   style={{ ...inputStyle, appearance: "none" }}>
-                  <option value="">Select state</option>
+                  <option value="">{t("salesmanLite.settings.stateSelect")}</option>
                   {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -5668,15 +5670,15 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>IC Number <span style={{ color: "#4b5563" }}>(private — admin only)</span></label>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
               <input value={settingsForm.ic_number} onChange={(e) => setSettingsForm((p) => ({ ...p, ic_number: e.target.value }))} placeholder="e.g. 901231-14-1234" style={inputStyle} />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Required for verification. Never shown publicly.</p>
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
             </div>
           </div>
 
           {/* Social links */}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Social Links</p>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.socialSection")}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
@@ -5702,6 +5704,33 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
           </div>
 
+          {/* Language toggle */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanLite.settings.language")}</p>
+            <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[{ code: "en", label: "English" }, { code: "ms", label: "Melayu" }].map(({ code, label }) => (
+                <button
+                  key={code}
+                  onClick={() => i18n.changeLanguage(code)}
+                  style={{
+                    padding: "7px 18px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: i18n.language === code ? "#dc2626" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${i18n.language === code ? "#dc2626" : "rgba(255,255,255,0.1)"}`,
+                    color: i18n.language === code ? "#fff" : "#9ca3af",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
           <button
             onClick={handleSave}
@@ -5718,7 +5747,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               opacity: settingsSaving ? 0.6 : 1,
             }}
           >
-            {settingsSaving ? "Saving..." : "Save Changes"}
+            {settingsSaving ? t("salesmanLite.settings.savingBtn") : t("salesmanLite.settings.saveBtn")}
           </button>
         </div>
       </div>
@@ -5737,7 +5766,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           color: "#f1f5f9",
         }}
       >
-        Join a Dealership
+        {t("salesmanLite.merge.title")}
       </p>
       <p
         style={{
@@ -5747,15 +5776,14 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           lineHeight: 1.6,
         }}
       >
-        Got an invite code from your dealer? Enter it below to merge your
-        account into their ShiftOS system.
+        {t("salesmanLite.merge.subtitle")}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <input
           value={mergeCode}
           onChange={(e) => setMergeCode(e.target.value.toUpperCase())}
-          placeholder="Enter invite code e.g. DEALER-XXXX"
+          placeholder={t("salesmanLite.merge.placeholder")}
           disabled={mergeStatus === "pending" || mergeStatus === "success"}
           style={{
             width: "100%",
@@ -6956,10 +6984,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   {(() => {
                     const h = new Date().getHours();
                     return h < 12
-                      ? "Good morning"
+                      ? t("salesmanLite.greeting.morning")
                       : h < 17
-                        ? "Good afternoon"
-                        : "Good evening";
+                        ? t("salesmanLite.greeting.afternoon")
+                        : t("salesmanLite.greeting.evening");
                   })()}
                   , {profile?.full_name?.split(" ")[0] || "there"} 👋
                 </p>
@@ -6976,7 +7004,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     day: "numeric",
                     month: "long",
                   })}{" "}
-                  · Lite Panel
+                  · {t("salesmanLite.header.litePanel")}
                 </p>
               </div>
               <button
@@ -7025,7 +7053,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   cursor: "pointer",
                 }}
               >
-                <Plus size={14} /> Add Lead
+                <Plus size={14} /> {t("salesmanLite.header.addLead")}
               </button>
             </>
           )}
@@ -7048,8 +7076,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               {/* Sub-tab switcher */}
               <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                 {[
-                  { key: "enquiries", label: "Enquiries", badge: enquiries.filter((e) => e.status === "new").length },
-                  { key: "bookings", label: "Bookings", badge: newBookingsCount },
+                  { key: "enquiries", label: t("salesmanLite.inbox.enquiries"), badge: enquiries.filter((e) => e.status === "new").length },
+                  { key: "bookings", label: t("salesmanLite.inbox.bookings"), badge: newBookingsCount },
                 ].map(({ key, label, badge }) => (
                   <button
                     key={key}

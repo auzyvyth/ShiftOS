@@ -287,5 +287,77 @@
     "ctaBottomBody": "Join Malaysian car salespeople who are done with listing fees, ghost leads, and zero visibility. ShiftOS is built for you — and it's free.",
     "ctaBottomFormTitle": "Join the Waitlist",
     "footerText": "© {year} ShiftOS · xdrive.my · Built for Malaysian car salespeople"
+  },
+  "salesmanLite": {
+    "tabs": {
+      "dashboard": "Dashboard",
+      "listings": "My Listings",
+      "listingsMobile": "Listings",
+      "leads": "Leads",
+      "inbox": "Inbox",
+      "performance": "Performance",
+      "performanceMobile": "Stats",
+      "merge": "Join Dealership",
+      "mergeMobile": "Merge",
+      "settings": "Settings"
+    },
+    "header": {
+      "litePanel": "Lite Panel",
+      "addLead": "Add Lead"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "kpi": {
+      "pipeline": "Pipeline",
+      "liveListings": "Live Listings",
+      "followUps": "Follow-ups",
+      "todayAppts": "Today's Appts",
+      "closed": "Closed",
+      "overdue": "overdue"
+    },
+    "inbox": {
+      "enquiries": "Enquiries",
+      "bookings": "Bookings"
+    },
+    "settings": {
+      "title": "Profile Settings",
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Your full name",
+      "whatsapp": "WhatsApp Number",
+      "whatsappHint": "Malaysia country code pre-applied. Enter digits only.",
+      "telegram": "Telegram Notifications",
+      "telegramConnected": "Connected",
+      "telegramNotSet": "Not set",
+      "telegramPlaceholder": "e.g. 123456789",
+      "telegramHint": "How to get your Chat ID: Open Telegram → search @userinfobot → send /start → copy the Id: number shown.",
+      "slug": "Username / Slug",
+      "slugHint": "Contact support to change your username.",
+      "locationSection": "Location & Identity",
+      "city": "City",
+      "cityPlaceholder": "Kuala Lumpur",
+      "state": "State",
+      "stateSelect": "Select state",
+      "icNumber": "IC Number",
+      "icPrivate": "(private — admin only)",
+      "icHint": "Required for verification. Never shown publicly.",
+      "socialSection": "Social Links",
+      "changePhoto": "Change photo",
+      "uploading": "Uploading…",
+      "photoSubtext": "Shown on your listings & profile page",
+      "saveBtn": "Save Changes",
+      "savingBtn": "Saving...",
+      "language": "Language",
+      "languageSubtext": "Switch between English and Malay"
+    },
+    "merge": {
+      "title": "Join a Dealership",
+      "subtitle": "Got an invite code from your dealer? Enter it below to merge your account into their ShiftOS system.",
+      "placeholder": "Enter invite code e.g. DEALER-XXXX",
+      "submitBtn": "Submit Code",
+      "submitting": "Submitting..."
+    }
   }
 }

@@ -286,5 +286,77 @@
     "ctaBottomBody": "Sertai jurujual kereta Malaysia yang sudah penat dengan yuran senarai, prospek hilang, dan keterlihatan sifar. ShiftOS dibina untuk anda — dan ia percuma.",
     "ctaBottomFormTitle": "Sertai Senarai Menunggu",
     "footerText": "© {year} ShiftOS · xdrive.my · Dibina untuk jurujual kereta Malaysia"
+  },
+  "salesmanLite": {
+    "tabs": {
+      "dashboard": "Papan Pemuka",
+      "listings": "Listing Saya",
+      "listingsMobile": "Listing",
+      "leads": "Lead",
+      "inbox": "Peti Masuk",
+      "performance": "Prestasi",
+      "performanceMobile": "Statistik",
+      "merge": "Sertai Pengedar",
+      "mergeMobile": "Gabung",
+      "settings": "Tetapan"
+    },
+    "header": {
+      "litePanel": "Panel Lite",
+      "addLead": "Tambah Lead"
+    },
+    "greeting": {
+      "morning": "Selamat pagi",
+      "afternoon": "Selamat tengahari",
+      "evening": "Selamat petang"
+    },
+    "kpi": {
+      "pipeline": "Pipeline",
+      "liveListings": "Listing Aktif",
+      "followUps": "Follow-up",
+      "todayAppts": "Temujanji Hari Ini",
+      "closed": "Ditutup",
+      "overdue": "tertunggak"
+    },
+    "inbox": {
+      "enquiries": "Pertanyaan",
+      "bookings": "Tempahan"
+    },
+    "settings": {
+      "title": "Tetapan Profil",
+      "fullName": "Nama Penuh",
+      "fullNamePlaceholder": "Nama penuh anda",
+      "whatsapp": "Nombor WhatsApp",
+      "whatsappHint": "Kod negara Malaysia sudah dimasukkan. Nombor sahaja.",
+      "telegram": "Notifikasi Telegram",
+      "telegramConnected": "Disambungkan",
+      "telegramNotSet": "Belum ditetapkan",
+      "telegramPlaceholder": "cth. 123456789",
+      "telegramHint": "Cara dapat Chat ID: Buka Telegram → cari @userinfobot → hantar /start → salin nombor Id yang tertera.",
+      "slug": "Nama Pengguna / Slug",
+      "slugHint": "Hubungi support untuk tukar nama pengguna.",
+      "locationSection": "Lokasi & Identiti",
+      "city": "Bandar",
+      "cityPlaceholder": "Kuala Lumpur",
+      "state": "Negeri",
+      "stateSelect": "Pilih negeri",
+      "icNumber": "No. IC",
+      "icPrivate": "(peribadi — admin sahaja)",
+      "icHint": "Diperlukan untuk pengesahan. Tidak ditunjukkan kepada umum.",
+      "socialSection": "Pautan Sosial",
+      "changePhoto": "Tukar foto",
+      "uploading": "Memuat naik…",
+      "photoSubtext": "Terpapar pada listing & halaman profil anda",
+      "saveBtn": "Simpan Perubahan",
+      "savingBtn": "Menyimpan...",
+      "language": "Bahasa",
+      "languageSubtext": "Tukar antara Inggeris dan Melayu"
+    },
+    "merge": {
+      "title": "Sertai Pengedar",
+      "subtitle": "Ada kod jemputan dari pengedar anda? Masukkan di bawah untuk gabungkan akaun anda ke dalam sistem ShiftOS mereka.",
+      "placeholder": "Masukkan kod jemputan cth. DEALER-XXXX",
+      "submitBtn": "Hantar Kod",
+      "submitting": "Menghantar..."
+    }
   }
 }
