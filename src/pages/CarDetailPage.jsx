@@ -2911,7 +2911,7 @@ export default function CarDetailPage() {
                   carName={carTitle}
                   carYear={car.year ? String(car.year) : ''}
                   carColor={car.colour || ''}
-                  flat
+                  light={isXdrive}
                 />
               </div>
             </div>
