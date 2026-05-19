@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus } from "lucide-react";
+import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import LeadsPage from "./LeadsPage";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -13,12 +14,9 @@ const T = {
     backdropFilter: "blur(12px)",
   },
   btnRed: {
-    background:
-      "linear-gradient(135deg, rgba(59,130,246,0.9), rgba(29,78,216,0.95))",
-    backdropFilter: "blur(8px)",
-    boxShadow:
-      "0 2px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "linear-gradient(135deg,#dc2626,#b91c1c)",
+    boxShadow: "0 2px 10px rgba(220,38,38,0.28)",
+    border: "none",
   },
 };
 
@@ -1244,6 +1242,11 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [reminderMsg, setReminderMsg] = useState("");
   const [bkTmplSaving, setBkTmplSaving] = useState(false);
   const [dealerBkProfile, setDealerBkProfile] = useState(null);
+  const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+  const [reminderOffset, setReminderOffset] = useState("1h");
+  const [cancelConfirmId, setCancelConfirmId] = useState(null);
+  const [rescheduleAptId, setRescheduleAptId] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
 
   const statusMeta = {
     pending: {
@@ -1293,15 +1296,30 @@ function BookingsTab({ userId, listings, salesmen }) {
     fetchBookings();
     const ch = supabase
       .channel("bookings_live_" + userId)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "appointments",
-          filter: `dealer_id=eq.${userId}`,
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `dealer_id=eq.${userId}` },
+        (payload) => {
+          fetchBookings();
+          if (payload.eventType === "INSERT") {
+            toast("📅 New booking!", { description: payload.new.buyer_name || "New appointment" });
+            // Push Telegram notification if dealer has it configured
+            supabase.from("profiles").select("telegram_bot_token,telegram_channel_id,dealership")
+              .eq("id", userId).maybeSingle()
+              .then(({ data: dp }) => {
+                if (!dp?.telegram_bot_token || !dp?.telegram_channel_id) return;
+                const n = payload.new;
+                const d = n.appointment_date ? new Date(n.appointment_date) : null;
+                const dateStr = d ? d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) : "TBD";
+                const timeStr = d ? d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+                const stateStr = n.buyer_state ? ` (${n.buyer_state})` : "";
+                const msg = `🗓️ New Booking!\n\n*${n.buyer_name || "Customer"}*${stateStr} booked a viewing\n📅 ${dateStr}${timeStr ? ` · ${timeStr}` : ""}\n📞 ${n.buyer_phone || "—"}${n.notes ? `\n💬 "${n.notes}"` : ""}`;
+                fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chat_id: dp.telegram_channel_id, text: msg, parse_mode: "Markdown" }),
+                }).catch(() => {});
+              });
+          }
         },
-        () => fetchBookings(),
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -1311,7 +1329,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     if (!userId) return;
     supabase
       .from("profiles")
-      .select("full_name, dealership, booking_wa_template")
+      .select("full_name, dealership, booking_wa_template, telegram_bot_token, telegram_channel_id")
       .eq("id", userId)
       .single()
       .then(({ data }) => {
@@ -1457,221 +1475,166 @@ function BookingsTab({ userId, listings, salesmen }) {
       new Date(b.appointment_date).toDateString() !== todayStr,
   );
 
+  const scheduleReminder = async (b) => {
+    if (!b.appointment_date) return;
+    const aptDate = new Date(b.appointment_date);
+    const offsets = { "1h": -60, "2h": -120, "1d": -1440, "2d": -2880 };
+    const remindAt = new Date(aptDate.getTime() + (offsets[reminderOffset] ?? -60) * 60000);
+    await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", b.id);
+    setBookings(p => p.map(a => a.id === b.id ? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+    setReminderPickerAptId(null);
+    toast.success("Telegram reminder scheduled ✓");
+  };
+
+  const clearReminder = async (b) => {
+    await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", b.id);
+    setBookings(p => p.map(a => a.id === b.id ? { ...a, remind_at: null } : a));
+  };
+
+  const doReschedule = async (b) => {
+    if (!rescheduleDate) return;
+    const newDate = new Date(rescheduleDate);
+    await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "confirmed", remind_at: null }).eq("id", b.id);
+    setBookings(p => p.map(a => a.id === b.id ? { ...a, appointment_date: newDate.toISOString(), status: "confirmed" } : a));
+    setRescheduleAptId(null);
+    setRescheduleDate("");
+    toast.success("Rescheduled ✓");
+  };
+
   const renderBookingRow = (b) => {
     const car = b.car_listings;
     const sm = b.profiles;
-    const isToday =
-      b.appointment_date &&
-      new Date(b.appointment_date).toDateString() === todayStr;
-    const isNew = Date.now() - new Date(b.created_at) < 7200000;
-    const newBadge = isNew ? (
-      <span
-        style={{
-          marginLeft: 6,
-          fontSize: 9,
-          fontWeight: 800,
-          background: "rgba(59,130,246,0.15)",
-          border: "1px solid rgba(59,130,246,0.3)",
-          color: "#93c5fd",
-          borderRadius: 4,
-          padding: "1px 5px",
-          letterSpacing: "0.08em",
-          verticalAlign: "middle",
-        }}
-      >
-        NEW
-      </span>
-    ) : null;
+    const now = Date.now();
+    const aptMs = b.appointment_date ? new Date(b.appointment_date).getTime() : null;
+    const isToday = aptMs && new Date(b.appointment_date).toDateString() === todayStr;
+    const isNew = now - new Date(b.created_at).getTime() < 7200000;
+    const isPast = aptMs && aptMs < now && !isToday;
+    const dateColor = isToday ? "#60a5fa" : isPast ? "#f87171" : "#9ca3af";
+    const dateBg   = isToday ? "rgba(96,165,250,0.08)" : isPast ? "rgba(248,113,113,0.06)" : "transparent";
+    const sm_meta  = statusMeta[b.status] || statusMeta.pending;
+    const isReminderPicking = reminderPickerAptId === b.id;
+    const isRescheduling    = rescheduleAptId === b.id;
+    const isCancelConfirm   = cancelConfirmId === b.id;
+    const notDone = b.status !== "cancelled" && b.status !== "completed";
 
-    const actionButtons = (
-      <div className="flex flex-wrap gap-1 items-center">
-        {b.status === "pending" && (
-          <>
-            <button
-              onClick={() => updateStatus(b.id, "confirmed")}
-              style={{
-                fontSize: 10,
-                color: "#93c5fd",
-                background: "rgba(96,165,250,0.08)",
-                border: "1px solid rgba(96,165,250,0.2)",
-                borderRadius: 5,
-                padding: "3px 8px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Confirm
-            </button>
-            <button
-              onClick={() => updateStatus(b.id, "cancelled")}
-              style={{
-                fontSize: 10,
-                color: "#9ca3af",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 5,
-                padding: "3px 8px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Cancel
-            </button>
-          </>
-        )}
-        {b.status === "confirmed" && (
-          <>
-            <button
-              onClick={() => updateStatus(b.id, "completed")}
-              style={{
-                fontSize: 10,
-                color: "#34d399",
-                background: "rgba(52,211,153,0.08)",
-                border: "1px solid rgba(52,211,153,0.2)",
-                borderRadius: 5,
-                padding: "3px 8px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Done
-            </button>
-            <button
-              onClick={() => updateStatus(b.id, "cancelled")}
-              style={{
-                fontSize: 10,
-                color: "#9ca3af",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 5,
-                padding: "3px 8px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Cancel
-            </button>
-            {b.buyer_phone && (
-              <button
-                key="wa"
-                onClick={() => openReminder(b)}
-                style={{
-                  fontSize: 10,
-                  color: "#4ade80",
-                  background: "rgba(37,211,102,0.08)",
-                  border: "1px solid rgba(37,211,102,0.2)",
-                  borderRadius: 5,
-                  padding: "3px 8px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Remind
-              </button>
-            )}
-          </>
-        )}
-        {b.status === "completed" && (
-          <span style={{ fontSize: 12, color: "#34d399" }}>✓ Completed</span>
-        )}
-        {b.status === "cancelled" && (
-          <span style={{ fontSize: 12, color: "#6b7280" }}>Cancelled</span>
-        )}
-      </div>
-    );
+    const dateDisplay = b.appointment_date
+      ? new Date(b.appointment_date).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" })
+      : "—";
 
     return (
-      <React.Fragment key={b.id}>
-        {/* Mobile card */}
-        <tr className="md:hidden">
-          <td colSpan={7} style={{ padding: "4px 12px" }}>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-2">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-semibold text-white text-sm">
-                    {b.buyer_name || "—"}
-                    {newBadge}
-                  </p>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {b.buyer_phone || "—"}
-                  </p>
-                </div>
-                <StatusBadge status={b.status} />
-              </div>
-              <p className="text-gray-300 text-xs mb-1">
-                {car ? `${car.brand} ${car.model}` : "—"}
-              </p>
-              <p className="text-gray-500 text-xs mb-1">
-                {b.appointment_date
-                  ? new Date(b.appointment_date).toLocaleString("en-MY", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })
-                  : "—"}
-                {sm?.full_name ? ` · ${sm.full_name}` : ""}
-              </p>
-              <div className="mt-3">{actionButtons}</div>
+      <div key={b.id} style={{ background: "#0d1117", border: `1px solid ${isToday ? "rgba(96,165,250,0.25)" : "rgba(255,255,255,0.07)"}`, borderRadius: 10, padding: "12px 14px", boxShadow: isToday ? "0 0 0 1px rgba(96,165,250,0.1)" : "none" }}>
+        {/* Header: name + badges */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {b.buyer_name || "Unknown Buyer"}
+          </p>
+          {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
+          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sm_meta.bg, border: `1px solid ${sm_meta.border}`, color: sm_meta.color, textTransform: "capitalize" }}>
+            {b.status}
+          </span>
+        </div>
+
+        {/* Date — most prominent */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 7, background: dateBg, marginBottom: 6 }}>
+          <Calendar size={12} color={dateColor} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: dateColor }}>
+            {dateDisplay}
+            {isToday && <span style={{ fontSize: 9, marginLeft: 6, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>TODAY</span>}
+          </span>
+        </div>
+
+        {/* Details row */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginBottom: 6 }}>
+          {car && <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+          {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>📞 {b.buyer_phone}</p>}
+          {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>👤 {sm.full_name}</p>}
+          {b.buyer_state && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", fontWeight: 600 }}>
+              <MapPin size={9} />
+              {b.buyer_state}
+            </span>
+          )}
+        </div>
+
+        {b.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{b.notes}"</p>}
+
+        {/* Telegram reminder indicator */}
+        {b.remind_at && !b.remind_sent ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
+            <Bell size={11} color="#4ade80" />
+            <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
+              Reminder: {new Date(b.remind_at).toLocaleString("en-MY", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <button onClick={() => clearReminder(b)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
+          </div>
+        ) : b.remind_sent ? (
+          <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px" }}>✓ Telegram reminder sent</p>
+        ) : null}
+
+        {/* Reminder picker */}
+        {isReminderPicking && (
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4ade80", fontWeight: 600 }}>Schedule Telegram reminder</p>
+            <select value={reminderOffset} onChange={e => setReminderOffset(e.target.value)}
+              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", marginBottom: 8, outline: "none", boxSizing: "border-box" }}>
+              <option value="1h">1 hour before</option>
+              <option value="2h">2 hours before</option>
+              <option value="1d">1 day before (9 AM)</option>
+              <option value="2d">2 days before (9 AM)</option>
+            </select>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
             </div>
-          </td>
-        </tr>
-        {/* Desktop row */}
-        <tr
-          className="hidden md:table-row"
-          style={{
-            borderBottom: "1px solid rgba(255,255,255,0.04)",
-            background: isToday ? "rgba(59,130,246,0.03)" : "transparent",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(59,130,246,0.06)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = isToday
-              ? "rgba(59,130,246,0.03)"
-              : "transparent")
-          }
-        >
-          <td
-            style={{
-              padding: "12px 14px",
-              color: "#f3f4f6",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          >
-            {b.buyer_name || "—"}
-            {newBadge}
-          </td>
-          <td style={{ padding: "12px 14px", color: "#9ca3af", fontSize: 13 }}>
-            {b.buyer_phone || "—"}
-          </td>
-          <td style={{ padding: "12px 14px", color: "#9ca3af", fontSize: 13 }}>
-            {car ? `${car.brand} ${car.model}` : "—"}
-          </td>
-          <td
-            style={{
-              padding: "12px 14px",
-              color: "#f3f4f6",
-              fontSize: 12,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {b.appointment_date
-              ? new Date(b.appointment_date).toLocaleString("en-MY", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })
-              : "—"}
-          </td>
-          <td style={{ padding: "12px 14px", color: "#9ca3af", fontSize: 13 }}>
-            {sm?.full_name || "—"}
-          </td>
-          <td style={{ padding: "12px 14px" }}>
-            <StatusBadge status={b.status} />
-          </td>
-          <td style={{ padding: "12px 14px" }}>{actionButtons}</td>
-        </tr>
-      </React.Fragment>
+          </div>
+        )}
+
+        {/* Reschedule picker */}
+        {isRescheduling && (
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+            <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
+              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "'DM Sans',sans-serif" }} />
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", color: "#c084fc", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel confirm */}
+        {isCancelConfirm && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8 }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#fca5a5", flex: 1 }}>Cancel this appointment?</p>
+            <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 10, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>No</button>
+            <button onClick={() => { updateStatus(b.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 10, color: "#f87171", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Yes, Cancel</button>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4 }}>
+          {b.status === "pending" && (
+            <button onClick={() => updateStatus(b.id, "confirmed")} style={{ fontSize: 10, color: "#93c5fd", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Confirm</button>
+          )}
+          {(b.status === "pending" || b.status === "confirmed") && (
+            <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#34d399", background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Done</button>
+          )}
+          {notDone && (
+            <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#c084fc", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Reschedule</button>
+          )}
+          {notDone && !isCancelConfirm && (
+            <button onClick={() => setCancelConfirmId(b.id)} style={{ fontSize: 10, color: "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+          )}
+          {b.buyer_phone && notDone && (
+            <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#4ade80", background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>WhatsApp</button>
+          )}
+          {notDone && dealerBkProfile?.telegram_bot_token && (
+            <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#4ade80" : "#6b7280", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
+              <Bell size={10} />{b.remind_at ? "Reminder set" : "Remind"}
+            </button>
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -1742,224 +1705,29 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {loading ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
+        ) : bookings.length === 0 ? (
+          <p style={{ padding: "32px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>No bookings yet.</p>
         ) : view === "list" ? (
-          <>
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
             {todaysBookings.length > 0 && (
               <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "12px 20px 8px",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      background: "#3b82f6",
-                      boxShadow: "0 0 6px rgba(59,130,246,0.8)",
-                      animation: "hotpulse 1.5s ease-in-out infinite",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#3b82f6",
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Today's Bookings
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      background: "rgba(59,130,246,0.12)",
-                      border: "1px solid rgba(59,130,246,0.25)",
-                      color: "#93c5fd",
-                      borderRadius: 20,
-                      padding: "1px 8px",
-                    }}
-                  >
-                    {todaysBookings.length}
-                  </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#60a5fa", boxShadow: "0 0 6px rgba(96,165,250,0.8)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length}</span>
                 </div>
-                <div
-                  style={{
-                    overflowX: "auto",
-                    WebkitOverflowScrolling: "touch",
-                  }}
-                >
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    <thead className="hidden md:table-header-group">
-                      <tr
-                        style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        {[
-                          "Buyer",
-                          "Phone",
-                          "Car",
-                          "Time",
-                          "Salesman",
-                          "Status",
-                          "Actions",
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            style={{
-                              padding: "10px 14px",
-                              fontSize: 10,
-                              letterSpacing: "0.12em",
-                              textTransform: "uppercase",
-                              color: "#6b7280",
-                              fontWeight: 500,
-                              textAlign: "left",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {todaysBookings.map((b) => renderBookingRow(b))}
-                    </tbody>
-                  </table>
-                </div>
+                {todaysBookings.map(b => renderBookingRow(b))}
+                {otherBookings.length > 0 && <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />}
               </>
             )}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 20px 8px",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
-                borderTop:
-                  todaysBookings.length > 0
-                    ? "1px solid rgba(255,255,255,0.08)"
-                    : "none",
-                marginTop: todaysBookings.length > 0 ? 8 : 0,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                }}
-              >
-                All Bookings
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#4b5563",
-                  borderRadius: 20,
-                  padding: "1px 8px",
-                }}
-              >
-                {otherBookings.length}
-              </span>
-            </div>
-            <div
-              style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}
-            >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <thead className="hidden md:table-header-group">
-                  <tr
-                    style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    {[
-                      "Buyer",
-                      "Phone",
-                      "Car",
-                      "Scheduled",
-                      "Salesman",
-                      "Status",
-                      "Actions",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: "10px 14px",
-                          fontSize: 10,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          color: "#6b7280",
-                          fontWeight: 500,
-                          textAlign: "left",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {otherBookings.length === 0 && todaysBookings.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        style={{
-                          padding: "32px",
-                          textAlign: "center",
-                          color: "#4b5563",
-                          fontSize: 13,
-                        }}
-                      >
-                        No bookings yet.
-                      </td>
-                    </tr>
-                  ) : otherBookings.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        style={{
-                          padding: "20px",
-                          textAlign: "center",
-                          color: "#4b5563",
-                          fontSize: 13,
-                        }}
-                      >
-                        No other bookings.
-                      </td>
-                    </tr>
-                  ) : (
-                    otherBookings.map((b) => renderBookingRow(b))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+            {otherBookings.length > 0 && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.12em", textTransform: "uppercase" }}>Upcoming & Past · {otherBookings.length}</span>
+                </div>
+                {otherBookings.map(b => renderBookingRow(b))}
+              </>
+            )}
+          </div>
         ) : (
           <div className="table-wrap" style={{ padding: 16 }}>
             <div
@@ -2337,387 +2105,9 @@ function BookingsTab({ userId, listings, salesmen }) {
   );
 }
 
-// ─── Pipeline heatmap constants ───────────────────────────────────────────────
-const timeAgo = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  const s = Math.floor((Date.now() - d) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
-};
-
-const LEAD_STAGES = [
-  "new", "contacted", "viewing_booked", "test_drive",
-  "negotiating", "deposit_taken", "won", "lost", "closed_won", "closed_lost",
-];
-
-const STAGE_COLOR = {
-  new:           { bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.3)",  tx: "#93c5fd" },
-  contacted:     { bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.3)",  tx: "#fbbf24" },
-  viewing_booked:{ bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
-  test_drive:    { bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.3)",  tx: "#34d399" },
-  negotiating:   { bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)",  tx: "#fb923c" },
-  deposit_taken: { bg: "rgba(34,197,94,0.12)",   border: "rgba(34,197,94,0.3)",   tx: "#4ade80" },
-  won:           { bg: "rgba(34,197,94,0.18)",   border: "rgba(34,197,94,0.4)",   tx: "#4ade80" },
-  lost:          { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
-};
-
-const STAGE_WEIGHT = {
-  new: 1, contacted: 2, viewing_booked: 3,
-  test_drive: 4, negotiating: 5, deposit_taken: 6,
-};
-
-const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
-
-const getHeatScore = (lead) => {
-  const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
-  const daysStale = lead.updated_at
-    ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
-    : 0;
-  const score = stageWeight - Math.min(daysStale * 0.5, 3);
-  if (score >= 4) return { score, emoji: "🔥", label: "hot",  color: "#f87171" };
-  if (score >= 2) return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
-  return           { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
-};
-
-// ─── PipelinePanel ─────────────────────────────────────────────────────────────
-function PipelinePanel({ userId }) {
-  const [leads, setLeads] = useState([]);
-  const [leadsLoading, setLeadsLoading] = useState(true);
-  const [lostOpen, setLostOpen] = useState(false);
-  const [showAddLead, setShowAddLead] = useState(false);
-  const [addLeadForm, setAddLeadForm] = useState({ buyer_name: "", phone: "", notes: "" });
-  const [addLeadSaving, setAddLeadSaving] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [lostPromptId, setLostPromptId] = useState(null);
-  const [waModalLead, setWaModalLead] = useState(null);
-  const [waModalMsg, setWaModalMessage] = useState("");
-  const [collapsedStages, setCollapsedStages] = useState(new Set());
-  const toggleStage = (s) => setCollapsedStages(p => { const n = new Set(p); n.has(s) ? n.delete(s) : n.add(s); return n; });
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("leads")
-      .select("*, car_listings(brand, model, year, selling_price)")
-      .eq("dealer_id", userId)
-      .eq("is_deleted", false)
-      .order("updated_at", { ascending: false })
-      .then(({ data }) => { setLeads(data || []); setLeadsLoading(false); });
-
-    const ch = supabase
-      .channel("crm-pipeline-" + userId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${userId}` }, (payload) => {
-        if (payload.eventType === "INSERT") setLeads((p) => [payload.new, ...p]);
-        if (payload.eventType === "UPDATE") setLeads((p) => p.map((l) => l.id === payload.new.id ? { ...l, ...payload.new } : l));
-        if (payload.eventType === "DELETE") setLeads((p) => p.filter((l) => l.id !== payload.old.id));
-      })
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const updateLeadStage = async (leadId, stage) => {
-    const lead = leads.find((l) => l.id === leadId);
-    await supabase.from("leads").update({ stage, updated_at: new Date().toISOString() }).eq("id", leadId);
-    await supabase.from("lead_activities").insert({
-      lead_id: leadId, activity_type: "stage_changed",
-      from_stage: lead?.stage ?? null, to_stage: stage,
-      created_by: userId, dealer_id: userId,
-    });
-    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, stage } : l));
-  };
-
-  const handleDeleteLead = async (leadId) => {
-    await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
-    setLeads((p) => p.filter((l) => l.id !== leadId));
-    setDeleteConfirmId(null);
-  };
-
-  const handleLostReason = async (leadId, reason) => {
-    const lead = leads.find((l) => l.id === leadId);
-    const now = new Date().toISOString();
-    await supabase.from("leads").update({ stage: "lost", lost_reason: reason, updated_at: now }).eq("id", leadId);
-    await supabase.from("lead_activities").insert({
-      lead_id: leadId, activity_type: "stage_changed",
-      from_stage: lead?.stage ?? null, to_stage: "lost",
-      note: `Lost reason: ${reason}`, created_by: userId, dealer_id: userId,
-    });
-    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, stage: "lost", lost_reason: reason, updated_at: now } : l));
-    setLostPromptId(null);
-  };
-
-  const handleAddLead = async () => {
-    setAddLeadSaving(true);
-    const { data } = await supabase
-      .from("leads")
-      .insert({ dealer_id: userId, buyer_name: addLeadForm.buyer_name, phone: addLeadForm.phone, notes: addLeadForm.notes, stage: "new", lead_source: "manual", is_deleted: false })
-      .select().single();
-    if (data) setLeads((p) => [data, ...p]);
-    setAddLeadSaving(false);
-    setShowAddLead(false);
-    setAddLeadForm({ buyer_name: "", phone: "", notes: "" });
-  };
-
-  const activeStages = LEAD_STAGES.filter((s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won");
-  const lostLeads = leads.filter((l) => l.stage === "lost" || l.stage === "closed_lost" || l.stage === "closed_won");
-
-  const renderLeadCard = (lead) => {
-    const car = lead.car_listings;
-    const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
-    const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
-    const stageIdx = LEAD_STAGES.indexOf(lead.stage);
-    const nextStage = LEAD_STAGES.filter((s) => s !== "lost" && s !== "won" && s !== "closed_won" && s !== "closed_lost")
-      .find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
-    const heat = getHeatScore(lead);
-    const isConfirmingDelete = deleteConfirmId === lead.id;
-    const isPromptingLost = lostPromptId === lead.id;
-
-    return (
-      <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 2 }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {lead.buyer_name || "—"}
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <span title={`${heat.label} · score ${heat.score.toFixed(1)}`} style={{ fontSize: 10, fontWeight: 600, color: heat.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 99, padding: "1px 6px", lineHeight: 1.4, whiteSpace: "nowrap" }}>
-              {heat.emoji} {heat.score.toFixed(1)}
-            </span>
-            <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(lead.id); }} title="Delete lead" style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}>
-              <Trash2 size={12} />
-            </button>
-          </div>
-        </div>
-        <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Added {timeAgo(lead.created_at)}</p>
-        {carName && <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>{carName}</p>}
-        {carPrice && <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#60a5fa" }}>{carPrice}</p>}
-        {lead.phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {lead.phone}</p>}
-        {lead.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{lead.notes}"</p>}
-
-        {isConfirmingDelete ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "4px 0" }}>
-            <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
-            <button onClick={() => handleDeleteLead(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>Yes</button>
-            <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
-          </div>
-        ) : isPromptingLost ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", padding: "4px 0" }}>
-            <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
-            {LOST_REASONS.map((r) => (
-              <button key={r} onClick={() => handleLostReason(lead.id, r)} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer" }}>{r}</button>
-            ))}
-            <button onClick={() => setLostPromptId(null)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {nextStage && lead.stage !== "won" && (
-              <button onClick={() => updateLeadStage(lead.id, nextStage)} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
-                → {nextStage.replace(/_/g, " ")}
-              </button>
-            )}
-            {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
-              <button onClick={() => updateLeadStage(lead.id, "won")} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>→ Won</button>
-            )}
-            {lead.stage !== "won" && (
-              <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(lead.id); }} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(148,163,184,0.06)", border: "1px solid rgba(148,163,184,0.18)", color: "#9ca3af", cursor: "pointer" }}>→ Lost</button>
-            )}
-            {lead.phone && (
-              <button onClick={() => { const car = lead.car_listings; const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${car ? `${car.brand} ${car.model}` : "kereta tu"} tu? Jom kita discuss lagi 😊`; setWaModalMessage(msg); setWaModalLead(lead); }} style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  if (leadsLoading) return <p style={{ color: "#6b7280", fontSize: 13, padding: 16 }}>Loading pipeline...</p>;
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
-          Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
-        </p>
-        <button onClick={() => setShowAddLead(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1d4ed8", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>
-          <Plus size={13} /> Add Lead
-        </button>
-      </div>
-
-      {/* ── Stage summary strip ── */}
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none", marginBottom: 12 }}>
-        {activeStages.map((stage) => {
-          const sc = STAGE_COLOR[stage] || {};
-          const count = leads.filter((l) => l.stage === stage).length;
-          return (
-            <button
-              key={stage}
-              onClick={() => toggleStage(stage)}
-              style={{
-                flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center",
-                gap: 3, padding: "8px 10px", minWidth: 64,
-                background: collapsedStages.has(stage) ? "rgba(255,255,255,0.02)" : (sc.bg || "rgba(255,255,255,0.04)"),
-                border: `1px solid ${collapsedStages.has(stage) ? "rgba(255,255,255,0.06)" : (sc.border || "rgba(255,255,255,0.1)")}`,
-                borderRadius: 10, cursor: "pointer", transition: "all 0.15s",
-              }}
-            >
-              <span style={{ fontSize: 15, fontWeight: 800, color: collapsedStages.has(stage) ? "#374151" : (sc.tx || "#e5e7eb"), lineHeight: 1 }}>{count}</span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: collapsedStages.has(stage) ? "#374151" : (sc.tx || "#6b7280"), textTransform: "capitalize", textAlign: "center", lineHeight: 1.3 }}>
-                {stage.replace(/_/g, " ")}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Accordion stages ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {activeStages.map((stage) => {
-          const sc = STAGE_COLOR[stage] || {};
-          const stageLeads = leads.filter((l) => l.stage === stage).sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
-          const isCollapsed = collapsedStages.has(stage);
-          return (
-            <div key={stage} style={{ borderRadius: 10, border: `1px solid ${stageLeads.length > 0 ? (sc.border || "rgba(255,255,255,0.1)") : "rgba(255,255,255,0.05)"}`, overflow: "hidden" }}>
-              {/* Stage header — always visible, click to collapse */}
-              <button
-                onClick={() => toggleStage(stage)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "10px 14px", background: stageLeads.length > 0 ? (sc.bg || "rgba(255,255,255,0.04)") : "rgba(255,255,255,0.02)",
-                  border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: sc.tx || "#6b7280", flexShrink: 0, display: "inline-block" }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: stageLeads.length > 0 ? (sc.tx || "#e5e7eb") : "#4b5563", textTransform: "capitalize" }}>
-                    {stage.replace(/_/g, " ")}
-                  </span>
-                  {stageLeads.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 7px" }}>
-                      {stageLeads.length}
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: 11, color: "#374151", lineHeight: 1 }}>{isCollapsed ? "▶" : "▼"}</span>
-              </button>
-
-              {/* Stage body */}
-              {!isCollapsed && (
-                <div style={{ padding: stageLeads.length > 0 ? "0 10px 10px" : "6px 10px 8px", background: "rgba(0,0,0,0.2)" }}>
-                  {stageLeads.length === 0 ? (
-                    <p style={{ fontSize: 11, color: "#374151", margin: 0, textAlign: "center", padding: "6px 0" }}>No leads here</p>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", paddingTop: 10 }}>
-                      {stageLeads.map((lead) => renderLeadCard(lead))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {lostLeads.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <button onClick={() => setLostOpen((o) => !o)} style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>Lost ({lostLeads.length})</span>
-            <span style={{ fontSize: 12, color: "#374151" }}>{lostOpen ? "▲" : "▼"}</span>
-          </button>
-          {lostOpen && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-              {lostLeads.map((lead) => (
-                <div key={lead.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", opacity: 0.65 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#9ca3af", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {lead.buyer_name || "—"}
-                    </p>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      {lead.lost_reason && (
-                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", whiteSpace: "nowrap" }}>
-                          {lead.lost_reason}
-                        </span>
-                      )}
-                      <button onClick={() => setDeleteConfirmId(lead.id)} title="Delete lead" style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}>
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(lead.created_at)}</p>
-                  {deleteConfirmId === lead.id && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
-                      <button onClick={() => handleDeleteLead(lead.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>Yes</button>
-                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Add Lead Modal */}
-      {showAddLead && (
-        <div onClick={() => setShowAddLead(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Add Lead</p>
-                <button onClick={() => setShowAddLead(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={20} /></button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {[{ key: "buyer_name", label: "Name", placeholder: "Buyer name" }, { key: "phone", label: "Phone", placeholder: "e.g. 0123456789" }, { key: "notes", label: "Notes", placeholder: "Any notes..." }].map(({ key, label, placeholder }) => (
-                  <div key={key}>
-                    <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
-                    {key === "phone" ? (
-                      <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, overflow:"hidden" }}>
-                        <span style={{ padding:"9px 12px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
-                        <input type="tel" value={(addLeadForm.phone||'').replace(/^\+?60/,'')} onChange={(e) => setAddLeadForm((p) => ({ ...p, phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="123456789" style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#e5e7eb", fontSize:13, padding:"9px 12px", fontFamily:"'DM Sans',sans-serif" }} />
-                      </div>
-                    ) : (
-                      <input value={addLeadForm[key]} onChange={(e) => setAddLeadForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "9px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button onClick={handleAddLead} disabled={!addLeadForm.buyer_name || addLeadSaving} style={{ marginTop: 20, width: "100%", padding: "10px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: !addLeadForm.buyer_name || addLeadSaving ? 0.6 : 1 }}>
-                {addLeadSaving ? "Saving..." : "Add Lead"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* WA Modal */}
-      {waModalLead && (
-        <div onClick={() => setWaModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 440, padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#f1f5f9" }}>Send WA Message</p>
-              <button onClick={() => setWaModalLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}><X size={18} /></button>
-            </div>
-            <textarea value={waModalMsg} onChange={(e) => setWaModalMessage(e.target.value)} rows={5} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5 }} />
-            <button
-              onClick={async () => {
-                const phone = (waModalLead.phone || "").replace(/\D/g, "");
-                if (phone) window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`, "_blank", "noopener,noreferrer");
-                const now = new Date().toISOString();
-                await supabase.from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
-                setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
-                setWaModalLead(null);
-              }}
-              disabled={!waModalMsg.trim() || !waModalLead.phone}
-              style={{ marginTop: 12, width: "100%", padding: "10px", borderRadius: 8, background: "#16a34a", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: !waModalMsg.trim() || !waModalLead.phone ? "not-allowed" : "pointer", opacity: !waModalMsg.trim() || !waModalLead.phone ? 0.6 : 1 }}
-            >Send</button>
-            {!waModalLead.phone && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#f87171", textAlign: "center" }}>No phone number on this lead.</p>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+// ─── PipelinePanel — wraps the full LeadsPage (drag-drop, search, filters) ────
+function PipelinePanel() {
+  return <LeadsPage />;
 }
 
 // ─── CRM tab bar styles ────────────────────────────────────────────────────────

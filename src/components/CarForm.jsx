@@ -2296,24 +2296,36 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       {/* ── Step 1: Photos ── */}
       {step === 1 && (
         <div className="space-y-5">
-          <label className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group">
-            <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
-            <p className="text-white font-medium mb-1">Choose Photos</p>
-            <p className="text-gray-500 text-sm">
-              Up to 30 images — JPG, PNG, WEBP
-            </p>
-            <p className="text-blue-400 text-xs mt-2 font-medium">
-              {form.images.length}/30 selected
-            </p>
-            <input
-              ref={photosInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFiles}
-              className="hidden"
-            />
-          </label>
+          <input
+            ref={photosInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFiles}
+            className="hidden"
+          />
+          {previews.length === 0 ? (
+            <label
+              onClick={() => photosInputRef.current?.click()}
+              className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
+            >
+              <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
+              <p className="text-white font-medium mb-1">Choose Photos</p>
+              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
+              <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
+            </label>
+          ) : (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => photosInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Add more · {form.images.length}/30
+              </button>
+            </div>
+          )}
           {imgProgress.filter(p => p.status !== 'done').length > 0 && (
             <div className="space-y-1.5">
               {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
@@ -2335,54 +2347,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           )}
           {previews.length > 0 && (
             <>
-              <div className="sticky top-3 z-20 rounded-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-sm p-3 sm:p-4 space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-                    Sticky Thumbnail Panel
-                  </p>
-                  <span className="text-xs font-semibold text-blue-400">
-                    {form.images.length}/30
-                  </span>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-gray-800 border border-red-500/40 flex-shrink-0">
-                      <img
-                        src={previews[0]}
-                        alt="Primary"
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[10px] font-semibold">
-                        #1
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white">
-                        Primary image locked in
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        This photo appears first in cards and gallery.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => photosInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
-                    >
-                      Add more
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearAll}
-                      className="px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors"
-                    >
-                      Clear all
-                    </button>
-                  </div>
-                </div>
-              </div>
               <p className="text-xs text-gray-500">
                 Drag to reorder on desktop · use arrows on mobile · Image #1 is
                 the main thumbnail

@@ -69,7 +69,7 @@ export default function CompareBar() {
 
   const handleCompare = () => {
     const params = new URLSearchParams();
-    compareIds.forEach((id, i) => params.set(['a', 'b', 'c'][i], id));
+    compareIds.forEach((id, i) => params.set(['a', 'b', 'c', 'd'][i], id));
     navigate(`/compare?${params.toString()}`);
     setOpen(false);
   };
@@ -176,7 +176,7 @@ export default function CompareBar() {
               })}
 
               {/* Empty slots */}
-              {Array.from({ length: 3 - count }).map((_, i) => (
+              {Array.from({ length: 4 - count }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
                   style={{

@@ -15,6 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
   X,
+  Check,
   Calculator,
   Shield,
   Eye,
@@ -289,6 +290,8 @@ export default function CarDetailPage() {
   const [focusedField, setFocused] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bookingConsent, setBookingConsent] = useState({ appear: false, whatsapp: false });
   const bookingRef = useRef(null);
 
   /* enquiry modal */
@@ -689,8 +692,24 @@ export default function CarDetailPage() {
       setSubmitting(false);
       return;
     }
+    // Fire Telegram notification to dealer (non-blocking)
+    supabase.from("profiles").select("telegram_bot_token,telegram_channel_id,dealership")
+      .eq("id", car.dealer_id).maybeSingle()
+      .then(({ data: dp }) => {
+        if (!dp?.telegram_bot_token || !dp?.telegram_channel_id) return;
+        const dateStr = dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
+        const timeStr = dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
+        const stateStr = form.state ? ` (${form.state})` : "";
+        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
+        fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: dp.telegram_channel_id, text: msg, parse_mode: "Markdown" }),
+        }).catch(() => {});
+      });
     setSubmitting(false);
     setBooked(true);
+    setBookingConsent({ appear: false, whatsapp: false });
   }
 
   /* ── early returns ── */
@@ -1411,7 +1430,8 @@ export default function CarDetailPage() {
             <button
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+                setBooked(false);
+                setShowBookingModal(true);
               }}
               style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
               Book a Viewing
@@ -1813,61 +1833,6 @@ export default function CarDetailPage() {
 
         </div>
 
-        {/* M6 — Booking form */}
-        <div className="cdp-mobile-only" id="booking-form-mobile" style={{ padding:'0 18px', marginBottom:40 }}>
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color:'#dc2626', fontWeight:700, marginBottom:16 }}>Book a Viewing</p>
-          <div style={{ background: th.card, border:'1px solid rgba(220,38,38,0.1)', borderRadius:14, padding:'20px' }}>
-            {booked ? (
-              <div style={{ padding:'24px 0', textAlign:'center' }}>
-                <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:20, color:'#4ade80' }}>✓</div>
-                <p style={{ fontSize:'15px', color: th.text, marginBottom:6, fontWeight:600 }}>Viewing Booked</p>
-                <p style={{ fontSize:'13px', color: th.textSec }}>We'll reach out on WhatsApp shortly.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleBook}>
-                <input type="text" placeholder="Your name" required value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'name', th)} />
-                <input type="tel" placeholder="Phone number" required value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                  style={inputStyle(focusedField === 'phone', th)} />
-                <input type="date" required min={today} value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
-                <select value={form.time}
-                  onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                  onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'time', th), cursor:'pointer' }}>
-                  {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                    <option key={t} value={t} style={{ background:'#0d1117' }}>
-                      {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
-                    </option>
-                  ))}
-                </select>
-                <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'notes', th), resize:'vertical', minHeight:72 }} />
-                <select value={form.state}
-                  onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
-                  onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
-                  style={{ ...inputStyle(focusedField === 'state', th), cursor:'pointer' }}>
-                  <option value="" style={{ background:'#0d1117' }}>Your state (optional)</option>
-                  {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
-                    <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>
-                  ))}
-                </select>
-                <button type="submit" disabled={submitting}
-                  style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderRadius:'9px', padding:'13px', fontWeight:700, fontSize:'14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily:"'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing:'0.02em', transition:'opacity .2s', boxShadow:'0 4px 20px rgba(220,38,38,0.25)' }}>
-                  {submitting ? 'Booking…' : 'Confirm Viewing'}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
 
         {/* M7 — Salesman card */}
         {salesmanProfile && (() => {
@@ -2724,61 +2689,8 @@ export default function CarDetailPage() {
               </div>
             )}
 
-            {/* BOOKING FORM */}
-            <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#334155', fontWeight: 700, marginBottom: 16 }}>Book a Viewing</p>
-              <div style={{ maxWidth: 480, background: th.card, border: '1px solid rgba(220,38,38,0.1)', borderRadius: 16, padding: 28 }}>
-                {booked ? (
-                  <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 20, color: '#4ade80' }}>✓</div>
-                    <p style={{ fontSize: '15px', color: th.text, marginBottom: 6, fontWeight: 600 }}>Viewing Booked</p>
-                    <p style={{ fontSize: '13px', color: th.textMuted }}>We'll reach out on WhatsApp shortly.</p>
-                  </div>
-                ) : (
-                  <form onSubmit={handleBook}>
-                    <input type="text" placeholder="Your name" required value={form.name}
-                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                      onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'name', th)} />
-                    <input type="tel" placeholder="Phone number" required value={form.phone}
-                      onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                      onFocus={() => setFocused('phone')} onBlur={() => setFocused(null)}
-                      style={inputStyle(focusedField === 'phone', th)} />
-                    <input type="date" required min={today} value={form.date}
-                      onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                      onFocus={() => setFocused('date')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
-                    <select value={form.time}
-                      onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                      onFocus={() => setFocused('time')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'time', th), cursor: 'pointer' }}>
-                      {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
-                        <option key={t} value={t} style={{ background: th.card }}>
-                          {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
-                        </option>
-                      ))}
-                    </select>
-                    <textarea placeholder="Notes (optional)" rows={3} value={form.notes}
-                      onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                      onFocus={() => setFocused('notes')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'notes', th), resize: 'vertical', minHeight: 72 }} />
-                    <select value={form.state}
-                      onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
-                      onFocus={() => setFocused('state')} onBlur={() => setFocused(null)}
-                      style={{ ...inputStyle(focusedField === 'state', th), cursor: 'pointer' }}>
-                      <option value="" style={{ background: th.card }}>Your state (optional)</option>
-                      {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
-                        <option key={s} value={s} style={{ background: th.card }}>{s}</option>
-                      ))}
-                    </select>
-                    <button type="submit" disabled={submitting}
-                      style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: '9px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: submitting ? 0.6 : 1, letterSpacing: '0.02em', transition: 'opacity .2s', boxShadow: '0 4px 20px rgba(220,38,38,0.25)' }}>
-                      {submitting ? 'Booking…' : 'Confirm Viewing'}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
+            {/* BOOKING ANCHOR */}
+            <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />
 
             {/* SIMILAR CARS */}
             {similarCars.length > 0 && (
@@ -2881,7 +2793,8 @@ export default function CarDetailPage() {
             <button
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-                bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setBooked(false);
+                setShowBookingModal(true);
               }}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
               Book a Viewing
@@ -2976,7 +2889,7 @@ export default function CarDetailPage() {
                   carName={carTitle}
                   carYear={car.year ? String(car.year) : ''}
                   carColor={car.colour || ''}
-                  flat
+                  light={isXdrive}
                 />
               </div>
             </div>
@@ -3019,21 +2932,22 @@ export default function CarDetailPage() {
       {/* ── mobile sticky bar ── */}
       <div className="cdp-mobile-bar">
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'0 4px', flexShrink:0 }}>
-          <HeartButton listingId={car?.id} size={20} />
-          <span style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>Save</span>
+          <HeartButton listingId={car?.id} size={20} style={isXdrive ? { color: 'rgba(0,0,0,0.5)' } : undefined} />
+          <span style={{ fontSize:9, color: isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>Save</span>
         </div>
         <button
           onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
           style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, background:'none', border:'none', cursor:'pointer', padding:'0 4px', flexShrink:0 }}>
-          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.35)'} />
-          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>
+          <ArrowLeftRight size={20} color={car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)'} />
+          <span style={{ fontSize:9, color: car?.id && isInCompare(car.id) ? '#f87171' : isXdrive ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>
             {car?.id && isInCompare(car.id) ? 'Added' : 'Compare'}
           </span>
         </button>
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
         <button className="cdp-mobile-bar-book" onClick={() => {
           trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
-          document.getElementById('booking-form-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+          setBooked(false);
+          setShowBookingModal(true);
         }}>Book a Viewing</button>
       </div>
 
@@ -3079,6 +2993,158 @@ export default function CarDetailPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── booking modal ── */}
+      {showBookingModal && (
+        <>
+          <style>{`
+            .cdp-bk-overlay { display:flex; align-items:flex-end; justify-content:center; padding:0; }
+            .cdp-bk-card { border-radius:20px 20px 0 0; }
+            .cdp-bk-top-bar { border-radius:20px 20px 0 0; }
+            @media (min-width:640px) {
+              .cdp-bk-overlay { align-items:center; padding:24px; }
+              .cdp-bk-card { border-radius:20px !important; }
+              .cdp-bk-top-bar { border-radius:20px 20px 0 0 !important; }
+            }
+          `}</style>
+          <div
+            className="cdp-bk-overlay"
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)', zIndex:200, display:'flex' }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowBookingModal(false); } }}
+          >
+            <div
+              className="cdp-bk-card"
+              style={{ background: th.card, width:'100%', maxWidth:500, maxHeight:'92vh', overflowY:'auto', position:'relative', boxShadow:'0 -12px 60px rgba(0,0,0,0.5)' }}
+            >
+              {/* red accent bar */}
+              <div className="cdp-bk-top-bar" style={{ height:3, background:'linear-gradient(to right,#dc2626,#b91c1c)', flexShrink:0 }} />
+
+              {/* header */}
+              <div style={{ padding:'24px 28px 0', display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+                <div>
+                  <p style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#dc2626', fontWeight:700, margin:0, fontFamily:"'DM Sans',sans-serif" }}>Schedule a Visit</p>
+                  <h2 style={{ fontSize:'2.1rem', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.06em', color:th.text, margin:'4px 0 3px', lineHeight:1 }}>Book a Viewing</h2>
+                  <p style={{ fontSize:12, color:th.textMuted, margin:0, fontFamily:"'DM Sans',sans-serif" }}>{car?.year} {car?.brand} {car?.model}</p>
+                </div>
+                <button
+                  onClick={() => setShowBookingModal(false)}
+                  style={{ background:'none', border:'none', cursor:'pointer', padding:'4px', color:th.textMuted, display:'flex', alignItems:'center', marginTop:2, flexShrink:0 }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {booked ? (
+                <div style={{ padding:'44px 28px 36px', textAlign:'center' }}>
+                  <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+                    <Check size={26} color="#4ade80" strokeWidth={2.5} />
+                  </div>
+                  <h3 style={{ fontSize:18, fontWeight:700, color:th.text, margin:'0 0 8px', fontFamily:"'DM Sans',sans-serif" }}>Viewing Confirmed</h3>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 4px', fontFamily:"'DM Sans',sans-serif" }}>Your appointment is scheduled.</p>
+                  <p style={{ fontSize:13, color:th.textMuted, margin:'0 0 32px', fontFamily:"'DM Sans',sans-serif" }}>We'll send you a WhatsApp confirmation shortly.</p>
+                  <button
+                    onClick={() => setShowBookingModal(false)}
+                    style={{ background:'#dc2626', color:'white', border:'none', borderRadius:10, padding:'12px 36px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", letterSpacing:'0.02em' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleBook} style={{ padding:'20px 28px 32px' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
+                    <input type="text" placeholder="Your name" required value={form.name}
+                      onChange={e => setForm(f => ({...f, name: e.target.value}))}
+                      onFocus={() => setFocused('bk_name')} onBlur={() => setFocused(null)}
+                      style={inputStyle(focusedField === 'bk_name', th)} />
+                    <input type="tel" placeholder="Phone number" required value={form.phone}
+                      onChange={e => setForm(f => ({...f, phone: e.target.value}))}
+                      onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
+                      style={inputStyle(focusedField === 'bk_phone', th)} />
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
+                    <input type="date" required min={today} value={form.date}
+                      onChange={e => setForm(f => ({...f, date: e.target.value}))}
+                      onFocus={() => setFocused('bk_date')} onBlur={() => setFocused(null)}
+                      style={{ ...inputStyle(focusedField === 'bk_date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
+                    <select value={form.time}
+                      onChange={e => setForm(f => ({...f, time: e.target.value}))}
+                      onFocus={() => setFocused('bk_time')} onBlur={() => setFocused(null)}
+                      style={{ ...inputStyle(focusedField === 'bk_time', th), cursor:'pointer' }}>
+                      {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(t => (
+                        <option key={t} value={t} style={{ background: th.card }}>
+                          {parseInt(t) < 12 ? `${parseInt(t)}:00 AM` : parseInt(t) === 12 ? '12:00 PM' : `${parseInt(t)-12}:00 PM`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <select value={form.state}
+                    onChange={e => setForm(f => ({...f, state: e.target.value}))}
+                    onFocus={() => setFocused('bk_state')} onBlur={() => setFocused(null)}
+                    style={{ ...inputStyle(focusedField === 'bk_state', th), cursor:'pointer', width:'100%' }}>
+                    <option value="" style={{ background: th.card }}>Your state (optional)</option>
+                    {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Penang','Perak','Perlis','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => (
+                      <option key={s} value={s} style={{ background: th.card }}>{s}</option>
+                    ))}
+                  </select>
+                  <textarea placeholder="Notes (optional)" rows={2} value={form.notes}
+                    onChange={e => setForm(f => ({...f, notes: e.target.value}))}
+                    onFocus={() => setFocused('bk_notes')} onBlur={() => setFocused(null)}
+                    style={{ ...inputStyle(focusedField === 'bk_notes', th), resize:'none', width:'100%' }} />
+
+                  {/* consent */}
+                  <div style={{ borderTop:`1px solid ${th.border}`, paddingTop:16, marginTop:4, marginBottom:16 }}>
+                    <label
+                      onClick={() => setBookingConsent(c => ({...c, appear: !c.appear}))}
+                      style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', marginBottom:12, userSelect:'none' }}
+                    >
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                        {bookingConsent.appear && <Check size={11} color="white" strokeWidth={3} />}
+                      </div>
+                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"'DM Sans',sans-serif", lineHeight:1.5 }}>
+                        I confirm I will appear for the scheduled viewing
+                      </span>
+                    </label>
+                    <label
+                      onClick={() => setBookingConsent(c => ({...c, whatsapp: !c.whatsapp}))}
+                      style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', userSelect:'none' }}
+                    >
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                        {bookingConsent.whatsapp && <Check size={11} color="white" strokeWidth={3} />}
+                      </div>
+                      <span style={{ fontSize:12, color:th.textSec, fontFamily:"'DM Sans',sans-serif", lineHeight:1.5 }}>
+                        I agree to receive a WhatsApp confirmation message
+                      </span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || !bookingConsent.appear || !bookingConsent.whatsapp}
+                    style={{
+                      width:'100%',
+                      background: (!bookingConsent.appear || !bookingConsent.whatsapp) ? (isXdrive ? '#e5e7eb' : 'rgba(255,255,255,0.06)') : '#dc2626',
+                      color: (!bookingConsent.appear || !bookingConsent.whatsapp) ? th.textMuted : 'white',
+                      border:'none',
+                      borderTop: (!bookingConsent.appear || !bookingConsent.whatsapp) ? 'none' : '2px solid #b91c1c',
+                      borderRadius:10,
+                      padding:'14px',
+                      fontWeight:700,
+                      fontSize:14,
+                      cursor: (submitting || !bookingConsent.appear || !bookingConsent.whatsapp) ? 'not-allowed' : 'pointer',
+                      fontFamily:"'DM Sans',sans-serif",
+                      letterSpacing:'0.02em',
+                      transition:'all 0.2s',
+                      boxShadow: (!bookingConsent.appear || !bookingConsent.whatsapp) ? 'none' : '0 4px 20px rgba(220,38,38,0.25)',
+                    }}
+                  >
+                    {submitting ? 'Confirming…' : 'Confirm Viewing'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </>
   );
