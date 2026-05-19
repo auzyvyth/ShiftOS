@@ -1558,80 +1558,316 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
           <span style={{ fontSize: 13 }}>📝</span>
           <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
-          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); setStep(d.step || 1); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
+          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
           <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
         </div>
       )}
 
-      {/* Progress */}
-      <div className="mb-8">
-        <div className="relative h-1 bg-gray-800 rounded-full mb-6">
-          <div
-            className="absolute h-1 bg-blue-600 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {STEPS.map((s) => {
-            const Icon = s.icon;
-            const done = step > s.id;
-            const active = step === s.id;
+      {/* Sections */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleSectionDragEnd}
+      >
+        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+          {sectionOrder.map((id) => {
+            const section = STEPS.find((s) => s.id === id);
             return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => done && setStep(s.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${active ? "bg-blue-600 text-white" : done ? "bg-gray-800 text-green-400 cursor-pointer hover:bg-gray-700" : "bg-gray-800/50 text-gray-600 cursor-default"}`}
+              <SortableSection
+                key={id}
+                id={id}
+                section={section}
+                complete={isSectionComplete(id)}
+                collapsed={!!collapsed[id]}
+                onToggle={() =>
+                  setCollapsed((p) => ({ ...p, [id]: !p[id] }))
+                }
               >
-                {done ? (
-                  <Check className="w-3.5 h-3.5" />
-                ) : (
-                  <Icon className="w-3.5 h-3.5" />
-                )}
-                {s.label}
-              </button>
+                {renderSectionContent(id)}
+              </SortableSection>
             );
           })}
-        </div>
-      </div>
+        </SortableContext>
+      </DndContext>
 
-      {/* Step header */}
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-blue-500 font-semibold uppercase tracking-widest mb-1">
-            Step {step} of {STEPS.length}
-          </p>
-
-          <h2 className="text-xl font-bold text-white">
-            {STEPS[step - 1].label}
-          </h2>
-          <p className="text-sm text-gray-500">{STEPS[step - 1].desc}</p>
-        </div>
-        {/* Copy button — only shows in edit mode */}
+      {/* Submit */}
+      <div className="mt-6">
         {listing && (
-          <button
-            type="button"
-            onClick={handleCopy}
-            title="Copy listing data"
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border flex-shrink-0 ${copied ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20"}`}
-          >
-            {copied ? (
-              <>
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Clipboard className="w-3.5 h-3.5" />
-                Copy Data
-              </>
-            )}
-          </button>
+          <div className="flex justify-end mb-3">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20"}`}
+            >
+              {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
+            </button>
+          </div>
         )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={uploading || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {uploading ? (
+            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
+          ) : (
+            <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
+          )}
+        </button>
       </div>
+    </div>
+  );
 
-      {/* ── Step 2: Identity ── */}
-      {step === 2 && (
+  function renderSectionContent(id) {
+    switch (id) {
+      case 1: return (
+        <div className="space-y-5">
+          <input
+            ref={photosInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFiles}
+            className="hidden"
+          />
+          {previews.length === 0 ? (
+            <label
+              onClick={() => photosInputRef.current?.click()}
+              className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
+            >
+              <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
+              <p className="text-white font-medium mb-1">Choose Photos</p>
+              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
+              <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
+            </label>
+          ) : (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => photosInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Add more · {form.images.length}/30
+              </button>
+            </div>
+          )}
+          {imgProgress.filter(p => p.status !== 'done').length > 0 && (
+            <div className="space-y-1.5">
+              {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-800
+                     border border-gray-700 rounded-lg text-xs">
+                  {p.status === 'uploading'
+                    ? <div className="w-3 h-3 border border-white/30 border-t-white
+                           rounded-full animate-spin flex-shrink-0" />
+                    : <span className="text-red-400 flex-shrink-0">✕</span>}
+                  <span className="text-gray-400 truncate">{p.name}</span>
+                  <span className={p.status === 'error'
+                    ? 'text-red-400 ml-auto flex-shrink-0'
+                    : 'text-gray-500 ml-auto flex-shrink-0'}>
+                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {previews.length > 0 && (
+            <>
+              <p className="text-xs text-gray-500">
+                Drag to reorder on desktop · use arrows on mobile · Image #1 is
+                the main thumbnail
+              </p>
+              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-800 p-1.5 sm:p-2">
+                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
+                  {previews.map((src, i) => (
+                    <div
+                      key={src + i}
+                      draggable
+                      onDragStart={(e) => dragStart(i, e)}
+                      onDragOver={(e) => dragOver(i, e)}
+                      onDrop={(e) => drop(i, e)}
+                      onDragEnd={dragEnd}
+                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-700"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
+                    >
+                      <img
+                        src={src}
+                        alt={`preview ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-white text-[9px] sm:text-[10px] font-semibold">
+                        #{i + 1}
+                      </span>
+                      <span className="hidden sm:block absolute top-1 right-7 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium select-none">
+                        Drag
+                      </span>
+                      {i === 0 ? (
+                        <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
+                          Primary
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => moveToFirst(i)}
+                          className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors"
+                        >
+                          Set #1
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-[10px] sm:text-xs font-bold transition-colors"
+                      >
+                        ×
+                      </button>
+                      <div className="absolute bottom-1 right-1 flex items-center gap-1 sm:hidden">
+                        <button
+                          type="button"
+                          onClick={() => moveByStep(i, -1)}
+                          disabled={i === 0}
+                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
+                        >
+                          <ChevronLeft className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveByStep(i, 1)}
+                          disabled={i === previews.length - 1}
+                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
+                        >
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          {/* Walkthrough Video */}
+          <div className="space-y-1">
+            <label className="text-sm text-gray-400">
+              Walkthrough Video{" "}
+              <span className="text-gray-600">(optional)</span>
+            </label>
+            <input
+              type="url"
+              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
+              value={form.video_url || ""}
+              onChange={(e) => set("video_url", e.target.value)}
+              className={inputCls}
+            />
+            {form.video_url && <VideoPreview url={form.video_url} />}
+          </div>
+
+          {/* Car Documents */}
+          <div className="rounded-2xl border border-gray-800 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-900">
+              <BadgeCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-semibold text-white">
+                Car Documents
+              </span>
+              {form.car_documents.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
+                  {form.car_documents.length}
+                </span>
+              )}
+              <span className="ml-auto text-xs text-gray-600">
+                Puspakom, service history, insurance…
+              </span>
+            </div>
+            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+              {form.car_documents.length > 0 && (
+                <div className="space-y-2">
+                  {form.car_documents.map((doc, i) => {
+                    const dt =
+                      DOC_TYPES.find((d) => d.key === doc.type) ||
+                      DOC_TYPES[DOC_TYPES.length - 1];
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl"
+                      >
+                        <BadgeCheck
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ color: dt.color }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">
+                            {doc.name}
+                          </p>
+                          <p className="text-xs" style={{ color: dt.color }}>
+                            {dt.label}
+                          </p>
+                        </div>
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0"
+                        >
+                          View
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => removeDocument(i)}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                        >
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <select
+                  value={docTypeInput}
+                  onChange={(e) => setDocTypeInput(e.target.value)}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                >
+                  {DOC_TYPES.map((d) => (
+                    <option
+                      key={d.key}
+                      value={d.key}
+                      style={{ background: "#111827" }}
+                    >
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                <label
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-700 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
+                >
+                  {docUploading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" /> Upload
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onChange={handleDocumentFile}
+                    disabled={docUploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-600">
+                PDF, JPG or PNG — shown to buyers on the listing page and earns
+                a Verified badge on listing cards.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+      case 2: return (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Brand" required>
@@ -1676,72 +1912,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
         </div>
-      )}
-
-      {/* ── Step 4: Specs ── */}
-      {step === 4 && (
-        <div className="space-y-6">
-          <Field label="Body Type" required>
-            <PillSelect
-              options={BODY_TYPES}
-              value={form.bodyType}
-              onChange={(v) => set("bodyType", v)}
-            />
-          </Field>
-          <Field label="Fuel Type" required>
-            <PillSelect
-              options={FUEL_TYPES}
-              value={form.fuelType}
-              onChange={(v) => set("fuelType", v)}
-            />
-          </Field>
-          <Field label="Transmission">
-            <PillSelect
-              options={["Auto", "Manual"]}
-              value={form.transmission}
-              onChange={(v) => set("transmission", v)}
-            />
-          </Field>
-          <Field
-            label="Engine Displacement (CC)"
-            hint="Used for road tax & insurance calc"
-          >
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="number"
-                  name="engineCc"
-                  value={form.engineCc}
-                  onChange={handleChange}
-                  placeholder="e.g. 1500"
-                  min="50"
-                  max="10000"
-                  className={`${inputCls} pr-12`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
-                  cc
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {CC_PRESETS.map((cc) => (
-                  <button
-                    key={cc}
-                    type="button"
-                    onClick={() => set("engineCc", String(cc))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
-                  >
-                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
-                    cc
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Field>
-        </div>
-      )}
-
-      {/* ── Step 3: Condition ── */}
-      {step === 3 && (
+      );
+      case 3: return (
         <div className="space-y-5">
           <Field label="Condition" required>
             <PillSelect
@@ -1833,10 +2005,68 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
         </div>
-      )}
-
-      {/* ── Step 5: History (Recon & Import) ── */}
-      {step === 5 && (
+      );
+      case 4: return (
+        <div className="space-y-6">
+          <Field label="Body Type" required>
+            <PillSelect
+              options={BODY_TYPES}
+              value={form.bodyType}
+              onChange={(v) => set("bodyType", v)}
+            />
+          </Field>
+          <Field label="Fuel Type" required>
+            <PillSelect
+              options={FUEL_TYPES}
+              value={form.fuelType}
+              onChange={(v) => set("fuelType", v)}
+            />
+          </Field>
+          <Field label="Transmission">
+            <PillSelect
+              options={["Auto", "Manual"]}
+              value={form.transmission}
+              onChange={(v) => set("transmission", v)}
+            />
+          </Field>
+          <Field
+            label="Engine Displacement (CC)"
+            hint="Used for road tax & insurance calc"
+          >
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="number"
+                  name="engineCc"
+                  value={form.engineCc}
+                  onChange={handleChange}
+                  placeholder="e.g. 1500"
+                  min="50"
+                  max="10000"
+                  className={`${inputCls} pr-12`}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
+                  cc
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CC_PRESETS.map((cc) => (
+                  <button
+                    key={cc}
+                    type="button"
+                    onClick={() => set("engineCc", String(cc))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
+                  >
+                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
+                    cc
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Field>
+        </div>
+      );
+      case 5: return (
         <div className="space-y-6">
           {/* Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-800 border border-gray-700 rounded-2xl">
@@ -2000,10 +2230,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             </div>
           )}
         </div>
-      )}
-
-      {/* ── Step 6: Location ── */}
-      {step === 6 && (
+      );
+      case 6: return (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -2037,10 +2265,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
         </div>
-      )}
-
-      {/* ── Step 7: Pricing ── */}
-      {step === 7 && (
+      );
+      case 7: return (
         <div className="space-y-5">
           <Field
             label="Base Price (RM)"
@@ -2346,10 +2572,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             )}
           </div>
         </div>
-      )}
-
-      {/* ── Step 8: Details ── */}
-      {step === 8 && (
+      );
+      case 8: return (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea
@@ -2382,432 +2606,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
         </div>
-      )}
+      );
+      default: return null;
+    }
+  }
 
-      {/* ── Step 1: Photos ── */}
-      {step === 1 && (
-        <div className="space-y-5">
-          <input
-            ref={photosInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFiles}
-            className="hidden"
-          />
-          {previews.length === 0 ? (
-            <label
-              onClick={() => photosInputRef.current?.click()}
-              className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
-            >
-              <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
-              <p className="text-white font-medium mb-1">Choose Photos</p>
-              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
-              <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
-            </label>
-          ) : (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => photosInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Add more · {form.images.length}/30
-              </button>
-            </div>
-          )}
-          {imgProgress.filter(p => p.status !== 'done').length > 0 && (
-            <div className="space-y-1.5">
-              {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-800
-                     border border-gray-700 rounded-lg text-xs">
-                  {p.status === 'uploading'
-                    ? <div className="w-3 h-3 border border-white/30 border-t-white
-                           rounded-full animate-spin flex-shrink-0" />
-                    : <span className="text-red-400 flex-shrink-0">✕</span>}
-                  <span className="text-gray-400 truncate">{p.name}</span>
-                  <span className={p.status === 'error'
-                    ? 'text-red-400 ml-auto flex-shrink-0'
-                    : 'text-gray-500 ml-auto flex-shrink-0'}>
-                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {previews.length > 0 && (
-            <>
-              <p className="text-xs text-gray-500">
-                Drag to reorder on desktop · use arrows on mobile · Image #1 is
-                the main thumbnail
-              </p>
-              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-800 p-1.5 sm:p-2">
-                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
-                  {previews.map((src, i) => (
-                    <div
-                      key={src + i}
-                      draggable
-                      onDragStart={(e) => dragStart(i, e)}
-                      onDragOver={(e) => dragOver(i, e)}
-                      onDrop={(e) => drop(i, e)}
-                      onDragEnd={dragEnd}
-                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-700"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
-                    >
-                      <img
-                        src={src}
-                        alt={`preview ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-white text-[9px] sm:text-[10px] font-semibold">
-                        #{i + 1}
-                      </span>
-                      <span className="hidden sm:block absolute top-1 right-7 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium select-none">
-                        Drag
-                      </span>
-                      {i === 0 ? (
-                        <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
-                          Primary
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => moveToFirst(i)}
-                          className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors"
-                        >
-                          Set #1
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-[10px] sm:text-xs font-bold transition-colors"
-                      >
-                        ×
-                      </button>
-                      <div className="absolute bottom-1 right-1 flex items-center gap-1 sm:hidden">
-                        <button
-                          type="button"
-                          onClick={() => moveByStep(i, -1)}
-                          disabled={i === 0}
-                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
-                        >
-                          <ChevronLeft className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveByStep(i, 1)}
-                          disabled={i === previews.length - 1}
-                          className="w-5 h-5 rounded bg-black/70 text-white flex items-center justify-center disabled:opacity-30"
-                        >
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-          {/* Walkthrough Video */}
-          <div className="space-y-1">
-            <label className="text-sm text-gray-400">
-              Walkthrough Video{" "}
-              <span className="text-gray-600">(optional)</span>
-            </label>
-            <input
-              type="url"
-              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
-              value={form.video_url || ""}
-              onChange={(e) => set("video_url", e.target.value)}
-              className={inputCls}
-            />
-            {form.video_url && <VideoPreview url={form.video_url} />}
-          </div>
-
-          {/* Car Documents */}
-          <div className="rounded-2xl border border-gray-800 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-900">
-              <BadgeCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-white">
-                Car Documents
-              </span>
-              {form.car_documents.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
-                  {form.car_documents.length}
-                </span>
-              )}
-              <span className="ml-auto text-xs text-gray-600">
-                Puspakom, service history, insurance…
-              </span>
-            </div>
-            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
-              {form.car_documents.length > 0 && (
-                <div className="space-y-2">
-                  {form.car_documents.map((doc, i) => {
-                    const dt =
-                      DOC_TYPES.find((d) => d.key === doc.type) ||
-                      DOC_TYPES[DOC_TYPES.length - 1];
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl"
-                      >
-                        <BadgeCheck
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ color: dt.color }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
-                            {doc.name}
-                          </p>
-                          <p className="text-xs" style={{ color: dt.color }}>
-                            {dt.label}
-                          </p>
-                        </div>
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0"
-                        >
-                          View
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => removeDocument(i)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                        >
-                          <XIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <select
-                  value={docTypeInput}
-                  onChange={(e) => setDocTypeInput(e.target.value)}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                >
-                  {DOC_TYPES.map((d) => (
-                    <option
-                      key={d.key}
-                      value={d.key}
-                      style={{ background: "#111827" }}
-                    >
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-700 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
-                >
-                  {docUploading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
-                      Uploading…
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" /> Upload
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    onChange={handleDocumentFile}
-                    disabled={docUploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-gray-600">
-                PDF, JPG or PNG — shown to buyers on the listing page and earns
-                a Verified badge on listing cards.
-              </p>
-            </div>
-          </div>
-
-          {form.brand && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">
-                Listing Summary
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                <span className="text-gray-500">Vehicle</span>
-                <span className="text-white font-medium">
-                  {form.brand} {form.model} {form.variant}
-                </span>
-                <span className="text-gray-500">Year</span>
-                <span className="text-white">{form.year}</span>
-                <span className="text-gray-500">Body / Fuel</span>
-                <span className="text-white">
-                  {form.bodyType} · {form.fuelType}
-                </span>
-                <span className="text-gray-500">Transmission</span>
-                <span className="text-white">{form.transmission}</span>
-                {form.engineCc && (
-                  <>
-                    <span className="text-gray-500">Engine CC</span>
-                    <span className="text-white">
-                      {Number(form.engineCc).toLocaleString()}cc
-                    </span>
-                  </>
-                )}
-                <span className="text-gray-500">Mileage</span>
-                <span className="text-white">
-                  {Number(form.mileage).toLocaleString()} km
-                </span>
-                <span className="text-gray-500">Condition</span>
-                <span className="text-white capitalize">{form.condition}</span>
-                <span className="text-gray-500">Location</span>
-                <span className="text-white">
-                  {form.city}, {form.state}
-                </span>
-                <span className="text-gray-500">Selling Price</span>
-                <span className="text-white font-semibold">
-                  RM {Number(form.sellingPrice).toLocaleString()}
-                </span>
-                {hasDiscount && (
-                  <>
-                    <span className="text-gray-500">Original Price</span>
-                    <span className="text-white line-through opacity-60">
-                      RM {Number(form.originalPrice).toLocaleString()}
-                    </span>
-                    <span className="text-gray-500">Discount</span>
-                    <span
-                      className={`font-semibold ${isHotDeal ? "text-red-400" : "text-green-400"}`}
-                    >
-                      {isHotDeal ? "🔥 " : ""}−RM {discountAmt.toLocaleString()}{" "}
-                      ({discountPct}%)
-                    </span>
-                  </>
-                )}
-                <span className="text-gray-500">Photos</span>
-                <span className="text-white">
-                  {form.images.length} selected
-                </span>
-                {form.previous_owners !== "" && (
-                  <>
-                    <span className="text-gray-500">Prev. Owners</span>
-                    <span className="text-white">{form.previous_owners}</span>
-                  </>
-                )}
-                {form.road_tax_expiry && (
-                  <>
-                    <span className="text-gray-500">Road Tax Expiry</span>
-                    <span className="text-white">{form.road_tax_expiry}</span>
-                  </>
-                )}
-                <span className="text-gray-500">Loan Eligible</span>
-                <span
-                  className={
-                    form.loan_eligible
-                      ? "text-emerald-400 font-semibold"
-                      : "text-gray-400"
-                  }
-                >
-                  {form.loan_eligible ? "Yes" : "No"}
-                </span>
-                {form.deposit_amount && (
-                  <>
-                    <span className="text-gray-500">Deposit to Reserve</span>
-                    <span className="text-white">
-                      RM {Number(form.deposit_amount).toLocaleString()}
-                    </span>
-                  </>
-                )}
-                {form.warranty_months !== "" && (
-                  <>
-                    <span className="text-gray-500">Warranty</span>
-                    <span className="text-white">
-                      {form.warranty_months === "0" ||
-                      form.warranty_months === 0
-                        ? "None"
-                        : `${form.warranty_months} months`}
-                    </span>
-                  </>
-                )}
-                {form.isRecon && (
-                  <>
-                    <span className="text-gray-500">Type</span>
-                    <span className="text-red-400 font-semibold">
-                      Recon / Import
-                    </span>
-                    {form.auctionGrade && (
-                      <>
-                        <span className="text-gray-500">Auction Grade</span>
-                        <span className="text-white">
-                          {form.auctionGrade}
-                          {form.interiorGrade ? " | " + form.interiorGrade : ""}
-                        </span>
-                      </>
-                    )}
-                    {form.importCountry && (
-                      <>
-                        <span className="text-gray-500">Import Country</span>
-                        <span className="text-white">{form.importCountry}</span>
-                      </>
-                    )}
-                    {form.chassisStatus && (
-                      <>
-                        <span className="text-gray-500">Chassis</span>
-                        <span className="text-white capitalize">
-                          {form.chassisStatus.replace("_", " ")}
-                        </span>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Nav */}
-      <div className="flex gap-3 mt-8">
-        {step > 1 && (
-          <button
-            type="button"
-            onClick={() => setStep((s) => s - 1)}
-            className="flex items-center gap-2 px-5 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm font-medium transition-all border border-gray-700"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back
-          </button>
-        )}
-        {step < STEPS.length ? (
-          <button
-            type="button"
-            onClick={() => canNext() && setStep((s) => s + 1)}
-            disabled={!canNext()}
-            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Continue <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={uploading || !canNext()}
-            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {uploading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Uploading…
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                {listing ? "Save Changes" : "Publish Listing"}
-              </>
-            )}
-          </button>
-        )}
-      </div>
-    </div>
-  );
 }
