@@ -22,7 +22,11 @@ import {
   X as XIcon,
   BadgeCheck,
   Upload,
+  GripVertical,
 } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import DamageMap from "./DamageMap";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -493,6 +497,57 @@ const STEPS = [
   { id: 8, label: "Details",   icon: FileText,    desc: "Specs, features & docs" },
 ];
 
+function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  const Icon = section.icon;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="mb-2 rounded-xl border border-gray-800 bg-gray-900 overflow-hidden"
+    >
+      <div
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+        onClick={onToggle}
+      >
+        <button
+          type="button"
+          className="text-gray-600 hover:text-gray-400 touch-none flex-shrink-0"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <Icon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-white">{section.label}</span>
+            {complete && <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />}
+          </div>
+          <p className="text-xs text-gray-500">{section.desc}</p>
+        </div>
+        {collapsed
+          ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          : <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0" />
+        }
+      </div>
+      {!collapsed && (
+        <div className="px-4 pb-5 pt-1 border-t border-gray-800/70">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DOC_TYPES = [
   { key: "puspakom", label: "Puspakom Inspection", color: "#22c55e" },
   { key: "service_history", label: "Service History", color: "#60a5fa" },
@@ -775,6 +830,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
+  const DEFAULT_ORDER = STEPS.map((s) => s.id);
+  const [sectionOrder, setSectionOrder] = useState(DEFAULT_ORDER);
+  const [collapsed, setCollapsed] = useState({});
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
   const formRef = useRef(null);
@@ -791,6 +850,15 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     const t = setTimeout(() => cfSaveDraft(profile.id, form, step), 800);
     return () => clearTimeout(t);
   }, [form, step, profile?.id, listing]);
+
+  // Load saved section order from profile
+  useEffect(() => {
+    if (!profile) return;
+    const saved = profile.form_layout;
+    if (Array.isArray(saved) && saved.length === STEPS.length) {
+      setSectionOrder(saved);
+    }
+  }, [profile?.id]);
 
   // ── Documents state ──────────────────────────────────────────────────────
   const [docTypeInput, setDocTypeInput] = useState("puspakom");
@@ -1448,7 +1516,30 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     setUploading(false);
   };
 
-  const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+  async function handleSectionDragEnd({ active, over }) {
+    if (!over || active.id === over.id) return;
+    const oldIdx = sectionOrder.indexOf(active.id);
+    const newIdx = sectionOrder.indexOf(over.id);
+    const newOrder = arrayMove(sectionOrder, oldIdx, newIdx);
+    setSectionOrder(newOrder);
+    if (profile?.id) {
+      await supabase.from("profiles").update({ form_layout: newOrder }).eq("id", profile.id);
+    }
+  }
+
+  function isSectionComplete(id) {
+    switch (id) {
+      case 1: return form.images.length > 0;
+      case 2: return !!(form.brand && form.model && form.year);
+      case 3: return !!(form.mileage && form.colour && form.condition);
+      case 4: return !!(form.bodyType && form.fuelType);
+      case 5: return true;
+      case 6: return !!(form.state && form.city);
+      case 7: return !!(form.basePrice && form.sellingPrice);
+      case 8: return true;
+      default: return false;
+    }
+  }
 
   return (
     <div
