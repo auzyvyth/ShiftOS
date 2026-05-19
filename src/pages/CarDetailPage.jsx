@@ -30,6 +30,8 @@ import {
   ExternalLink,
   Camera,
   Download,
+  Share2,
+  Link as LinkIcon,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import { useCompare } from "../hooks/useCompare";
@@ -304,6 +306,27 @@ export default function CarDetailPage() {
 
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
+
+  /* share */
+  const [shareCopied, setShareCopied] = useState(false);
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = carTitle;
+    const text = [
+      carTitle,
+      car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString('en-MY')}` : null,
+      car?.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
+      car?.colour,
+      car?.transmission,
+      [car?.city, car?.state].filter(Boolean).join(', ') || null,
+    ].filter(Boolean).join(' · ');
+    if (navigator.share) {
+      try { await navigator.share({ title, text, url }); return; } catch {}
+    }
+    await navigator.clipboard.writeText(url);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
 
   /* document accordion */
   const [openDocKey, setOpenDocKey] = useState(null);
@@ -1047,6 +1070,12 @@ export default function CarDetailPage() {
               style={{ background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.15)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: car?.id && isInCompare(car.id) ? '#f87171' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
               <ArrowLeftRight size={13} />
               {car?.id && isInCompare(car.id) ? 'In Compare' : 'Compare'}
+            </button>
+            <button
+              onClick={handleShare}
+              style={{ background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, color: shareCopied ? '#16a34a' : th.textSec, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              {shareCopied ? <Check size={13} /> : <Share2 size={13} />}
+              {shareCopied ? 'Copied!' : 'Share'}
             </button>
             <button className="cdp-enquire-btn" onClick={handleWhatsApp}>Enquire</button>
           </div>

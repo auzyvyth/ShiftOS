@@ -128,6 +128,7 @@ function buildCarHtml(car, dealer) {
   const description = [
     price,
     mileage,
+    car.colour,
     car.transmission,
     car.fuel_type,
     location,
@@ -136,22 +137,42 @@ function buildCarHtml(car, dealer) {
     .join(" · ");
   const schema = buildCarSchema(car, dealer);
 
+  const priceFormatted = `RM ${Number(car.selling_price).toLocaleString("en-MY")}`;
+  const specs = [
+    car.variant,
+    car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
+    car.colour,
+    car.transmission,
+    car.fuel_type,
+    car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : null,
+  ].filter(Boolean).join(" · ");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>${esc(name)} | xdrive.my</title>
-  <meta name="description" content="${esc(description)}" />
+  <title>${esc(name)} — ${esc(priceFormatted)} | xdrive.my</title>
+  <meta name="description" content="${esc(name)} for ${esc(priceFormatted)}. ${esc(specs)}. Located in ${esc(location)}. Browse on xdrive.my." />
+
+  <!-- Open Graph (Facebook, WhatsApp, Telegram, iMessage) -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="${esc(name)}" />
-  <meta property="og:description" content="${esc(description)}" />
-  <meta property="og:image" content="${esc(image)}" />
-  <meta property="og:url" content="${esc(url)}" />
   <meta property="og:site_name" content="xdrive.my" />
+  <meta property="og:url" content="${esc(url)}" />
+  <meta property="og:title" content="${esc(name)} — ${esc(priceFormatted)}" />
+  <meta property="og:description" content="${esc(specs)} · ${esc(location)}" />
+  <meta property="og:image" content="${esc(image)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${esc(name)}" />
+  <meta property="og:locale" content="en_MY" />
+
+  <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${esc(name)}" />
-  <meta name="twitter:description" content="${esc(description)}" />
+  <meta name="twitter:title" content="${esc(name)} — ${esc(priceFormatted)}" />
+  <meta name="twitter:description" content="${esc(specs)} · ${esc(location)}" />
   <meta name="twitter:image" content="${esc(image)}" />
+  <meta name="twitter:image:alt" content="${esc(name)}" />
+
   <script type="application/ld+json">${JSON.stringify(schema)}</script>
 </head>
 <body></body>
@@ -170,7 +191,7 @@ export default async function handler(req) {
     });
   }
 
-  const carMatch = pathname.match(/^\/cars\/([^/]+)\/?$/);
+  const carMatch = pathname.match(/^\/(?:cars|showroom)\/([^/]+)\/?$/);
   if (!carMatch) {
     return new Response(
       `<!DOCTYPE html><html lang="en"><head>
