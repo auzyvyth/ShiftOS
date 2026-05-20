@@ -79,6 +79,7 @@ const initialListing = {
   loan_eligible: true,
   warranty_months: "",
   deposit_amount: "",
+  payment_type: "cash",
 };
 
 export const CAR_DATA = {
@@ -510,10 +511,10 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
     <div
       ref={setNodeRef}
       style={style}
-      className="mb-2 rounded-xl border border-gray-800 bg-gray-900 overflow-hidden"
+      className="mb-2 rounded-xl border border-gray-800 bg-gray-900"
     >
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-t-xl overflow-hidden"
         onClick={onToggle}
       >
         <button
@@ -702,6 +703,7 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
     <div ref={ref} className="relative">
       <input
         value={query}
+        enterKeyHint="next"
         onChange={(e) => {
           setQuery(e.target.value);
           onChange(e.target.value);
@@ -724,7 +726,7 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
         className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       />
       {open && !disabled && (
-        <ul className="absolute z-50 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-2xl">
+        <ul className="absolute z-[200] w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-2xl">
           {filtered.map((o) => (
             <li
               key={o}
@@ -970,6 +972,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             : "",
         road_tax_expiry: listing.road_tax_expiry || "",
         loan_eligible: listing.loan_eligible !== false,
+        payment_type: listing.payment_type || "cash",
         warranty_months:
           listing.warranty_months != null
             ? String(listing.warranty_months)
@@ -1414,6 +1417,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         deposit_amount: form.deposit_amount
           ? parseFloat(form.deposit_amount)
           : null,
+        payment_type: form.payment_type || "cash",
       };
 
       // Salesman-lite (standalone, no dealer) requires superadmin approval
@@ -1819,6 +1823,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               value={form.variant}
               onChange={handleChange}
               placeholder="e.g. 1.5 G"
+              enterKeyHint="next"
               className={inputCls}
             />
           </Field>
@@ -1831,6 +1836,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               placeholder="e.g. 2021"
               min="1900"
               max="2030"
+              enterKeyHint="next"
               className={inputCls}
             />
           </Field>
@@ -1854,6 +1860,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 onChange={handleChange}
                 placeholder="e.g. 45000"
                 min="0"
+                enterKeyHint="next"
                 className={inputCls}
               />
             </Field>
@@ -1863,6 +1870,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 value={form.colour}
                 onChange={handleChange}
                 placeholder="e.g. Pearl White"
+                enterKeyHint="next"
                 className={inputCls}
               />
             </Field>
@@ -2191,6 +2199,21 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       );
       case 7: return (
         <div className="space-y-5">
+          <Field label="Payment Type" required>
+            <PillSelect
+              options={["Cash", "Loan", "Sambung Bayar"]}
+              value={
+                form.payment_type === "sambung_bayar"
+                  ? "Sambung Bayar"
+                  : form.payment_type
+                    ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
+                    : "Cash"
+              }
+              onChange={(v) =>
+                set("payment_type", v === "Sambung Bayar" ? "sambung_bayar" : v.toLowerCase())
+              }
+            />
+          </Field>
           <Field
             label="Base Price (RM)"
             required
@@ -2207,6 +2230,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 onChange={handleChange}
                 placeholder="0"
                 min="0"
+                enterKeyHint="next"
+                inputMode="numeric"
                 className={`${inputCls} pl-12`}
               />
             </div>
@@ -2227,6 +2252,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 onChange={handleChange}
                 placeholder="0"
                 min="0"
+                enterKeyHint="next"
+                inputMode="numeric"
                 className={`${inputCls} pl-12`}
               />
             </div>
