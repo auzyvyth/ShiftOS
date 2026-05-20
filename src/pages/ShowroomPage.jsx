@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet';
 import { X, RotateCcw, Car, SlidersHorizontal, Flame } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
-import Footer from '@/components/Footer';
+import MarketplaceFooter from '../components/MarketplaceFooter';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
@@ -567,7 +567,7 @@ export default function ShowroomPage() {
         </button>
       </div>
 
-      <Footer/>
+      <MarketplaceFooter />
     </>
   );
 }

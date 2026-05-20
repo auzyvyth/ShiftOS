@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
+import { isSubdomain } from "../hooks/useTenant";
 
 // Superadmin profile is the fallback for xdrive.my main domain
 const SUPERADMIN_ID = "1e7bf24e-5b71-4c64-8d03-b60db5e59316";
@@ -105,10 +106,8 @@ const Footer = () => {
   const { siteName, siteInitial, profile: tenantProfile } = useSiteProfile();
   const [fallbackProfile, setFallbackProfile] = useState(null);
 
-  // When on the main marketplace domain, tenant is null — fetch the superadmin
-  // profile so the footer reflects whatever the owner has set in Settings.
   useEffect(() => {
-    if (tenantProfile !== null) return; // undefined = still loading, object = has data
+    if (tenantProfile !== null) return;
     supabase
       .from("public_dealer_profiles")
       .select(
@@ -118,6 +117,9 @@ const Footer = () => {
       .maybeSingle()
       .then(({ data }) => setFallbackProfile(data || null));
   }, [tenantProfile]);
+
+  // Hard-stop on main domain — subdomain dealer footer must never render on xdrive.my
+  if (!isSubdomain()) return null;
 
   // Use tenant profile when on subdomain, superadmin fallback on main domain
   const profile = tenantProfile || fallbackProfile;

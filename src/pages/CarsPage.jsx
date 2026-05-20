@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '@/components/StickyWhatsAppButton';
 import CarCard from '@/components/CarCard';
 import { supabase } from '../supabaseClient';
@@ -368,7 +368,7 @@ const CarsPage = () => {
           <p style={{ color:'#6b7280', fontSize:'14px' }}>Loading listings…</p>
         </div>
       </div>
-      <Footer />
+      <MarketplaceFooter />
     </>
   );
 
@@ -382,7 +382,7 @@ const CarsPage = () => {
           <p style={{ color:'#6b7280', fontSize:'12px', fontFamily:'monospace' }}>{fetchError}</p>
         </div>
       </div>
-      <Footer />
+      <MarketplaceFooter />
     </>
   );
 
@@ -782,7 +782,7 @@ const CarsPage = () => {
         }
       `}</style>
 
-      <Footer />
+      <MarketplaceFooter />
       <StickyWhatsAppButton />
     </>
   );
