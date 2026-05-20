@@ -4562,6 +4562,28 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
             </p>
           )}
 
+          {/* AI WA Reply */}
+          {isPremium && lead.buyer_name && lead.phone && (
+            <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 8 }}>
+              {!aiWaReplies[lead.id] ? (
+                <button onClick={() => generateAiWaReply(lead)} disabled={waReplyLoading[lead.id]} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>
+                  {waReplyLoading[lead.id] ? "Generating..." : "✨ AI WA Reply"}
+                </button>
+              ) : (
+                <div>
+                  <textarea readOnly value={aiWaReplies[lead.id]} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", resize: "none", boxSizing: "border-box" }} />
+                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                    <button onClick={() => { navigator.clipboard.writeText(aiWaReplies[lead.id]); setWaReplyCopied((p) => ({ ...p, [lead.id]: true })); setTimeout(() => setWaReplyCopied((p) => ({ ...p, [lead.id]: false })), 1500); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
+                      {waReplyCopied[lead.id] ? "Copied!" : "Copy"}
+                    </button>
+                    {lead.phone && <button onClick={() => { const ph = lead.phone.replace(/\D/g,""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6"+ph}?text=${encodeURIComponent(aiWaReplies[lead.id])}`, "_blank"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
+                    <button onClick={() => setAiWaReplies((p) => { const n = {...p}; delete n[lead.id]; return n; })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>Regenerate</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* action buttons */}
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {nextStage && lead.stage !== "won" && (
