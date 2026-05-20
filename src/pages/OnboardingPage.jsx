@@ -340,7 +340,7 @@ export default function OnboardingPage() {
         </div>
 
         <div className={`ob-body${isLegal ? " ob-body-legal" : ""}`}>
-          <div className="ob-stage" key={animKey} data-dir={dir}>
+          <div className={`ob-stage${isLegal ? " ob-stage-legal" : ""}`} key={animKey} data-dir={dir}>
             <p className="ob-eyebrow">
               {stage.opt
                 ? "OPTIONAL"
@@ -705,10 +705,11 @@ html,body{background:var(--bg);height:100%}
 .ob-lt{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:5px;color:var(--text)}
 .ob-counter{font-family:'Azeret Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted)}
 
-.ob-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 40px;position:relative;z-index:2;overflow:hidden}
-.ob-body-legal{align-items:flex-start;padding-top:0;overflow:visible}
+.ob-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 40px;position:relative;z-index:2;overflow:hidden;min-height:0}
+.ob-body-legal{align-items:stretch;padding:0 40px;overflow:hidden;justify-content:center}
 
 .ob-stage{width:min(580px,100%)}
+.ob-stage-legal{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 .ob-stage[data-dir="fwd"]{animation:sIn .22s ease both}
 .ob-stage[data-dir="bk"]{animation:sInBk .22s ease both}
 @keyframes sIn{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:translateX(0)}}
@@ -718,9 +719,9 @@ html,body{background:var(--bg);height:100%}
 .ob-q{font-family:'Bebas Neue',cursive;font-size:clamp(36px,5vw,58px);line-height:.95;color:var(--text);letter-spacing:1px;margin-bottom:16px}
 
 /* ── Legal ── */
-.ob-legal-wrap{display:flex;flex-direction:column;gap:8px}
+.ob-legal-wrap{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;width:min(580px,100%);margin:0 auto}
 .ob-legal-scroll{
-  height:calc(100vh - 290px);
+  flex:1;min-height:0;
   overflow-y:scroll;
   border:1px solid rgba(255,255,255,0.07);
   background:rgba(255,255,255,0.015);
@@ -816,9 +817,9 @@ kbd{display:inline-flex;align-items:center;padding:4px 10px;background:rgba(255,
 @media(max-width:600px){
   .ob-topbar,.ob-bottom{padding:16px 20px}
   .ob-body{padding:0 20px}
+  .ob-body-legal{padding:0 20px}
   .ob-q{font-size:36px}
   .ob-inp{font-size:18px}
   .ob-cards{flex-direction:column}
-  .ob-legal-scroll{height:calc(100vh - 260px)}
 }
 `;
