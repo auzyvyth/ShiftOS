@@ -147,6 +147,15 @@ export default function SalesmanPanel() {
   const [leadScores, setLeadScores] = useState({});
   const [scoreLoading, setScoreLoading] = useState(false);
 
+  // AI features state
+  const [aiFollowups, setAiFollowups] = useState([]);
+  const [followupsLoading, setFollowupsLoading] = useState(false);
+  const [aiWaReplies, setAiWaReplies] = useState({});
+  const [waReplyLoading, setWaReplyLoading] = useState({});
+  const [waReplyCopied, setWaReplyCopied] = useState({});
+  const [captionPlatform, setCaptionPlatform] = useState("whatsapp");
+  const [captionQuotaOk, setCaptionQuotaOk] = useState(true);
+
   // Broadcast modal
   const [broadcastCar, setBroadcastCar] = useState(null);
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -225,6 +234,8 @@ export default function SalesmanPanel() {
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsError, setSettingsError] = useState(null);
   const [tagInput, setTagInput] = useState('');
+
+  const isPremium = profile?.plan === 'salesman_full';
 
   // ── stale leads (48h no contact, exclude won/lost)
   useEffect(() => {
@@ -977,47 +988,126 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
     setTimeout(() => setTemplateToast(null), 2000);
   };
 
-  const generateAiCaptions = async (car) => {
-    setAiCaptionCar(car);
-    setAiCaptionTab("wa");
-    setCaptionCopied(false);
-    if (aiCaptions[car.id]) return;
-    setAiCaptionLoading(true);
-    const name = [car.year, car.brand, car.model, car.variant]
-      .filter(Boolean)
-      .join(" ");
-    const price = car.selling_price
-      ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-      : null;
-    const mileage = car.mileage
-      ? `${Number(car.mileage).toLocaleString()} km`
-      : null;
-    const prompt = `You are a car dealer social media assistant in Malaysia. Generate two captions for this car listing in JSON format only.
+  const AI_CAPTION_PLATFORMS = ["whatsapp", "tiktok", "instagram", "facebook", "general"];
 
-Car: ${name}${price ? `, ${price}` : ""}${mileage ? `, ${mileage}` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.colour ? `, ${car.colour}` : ""}
-
-Return valid JSON only (no markdown, no code block), exactly this shape:
-{"wa":"<WhatsApp caption — friendly Manglish, 3–5 lines, includes price, condition, CTA to WhatsApp. Use emojis.>","tiktok":"<TikTok caption — punchy, 1–2 lines max, hype energy, relevant hashtags at end>"}`;
-
+  const checkQuota = async (feature) => {
     try {
-      const { data, error } = await supabase.functions.invoke("ai-proxy", {
-        body: { prompt },
-      });
-      if (error) throw error;
-      const raw =
-        data?.reply ?? data?.content ?? data?.text ?? data?.message ?? "{}";
-      const parsed = JSON.parse(raw);
-      setAiCaptions((p) => ({ ...p, [car.id]: parsed }));
+      const { data } = await supabase.rpc("salesman_ai_quota_ok", { p_feature: feature });
+      return data !== false;
+    } catch { return true; }
+  };
+
+  const logAiUsage = async (feature) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const col = `${feature}_count`;
+    await supabase.from("ai_salesman_usage").upsert(
+      { salesman_id: userId, usage_date: today, [col]: 1 },
+      { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
+    ).catch(() => {});
+  };
+
+  const generateAiCaptions = async (car, platform = captionPlatform) => {
+    if (!isPremium) return;
+    setAiCaptionCar(car);
+    setCaptionPlatform(platform);
+    setCaptionCopied(false);
+    const cacheKey = `${car.id}_${platform}`;
+    if (aiCaptions[cacheKey]) return;
+    const quotaOk = await checkQuota("caption");
+    if (!quotaOk) { setCaptionQuotaOk(false); return; }
+    setCaptionQuotaOk(true);
+    setAiCaptionLoading(true);
+    const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+    const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "harga on request";
+    const mileage = car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "mileage not listed";
+    const features = [car.transmission, car.colour, car.fuel_type, car.body_type].filter(Boolean).join(", ") || "standard features";
+    const prompt = `You are a Malaysian used car salesman writing a social media caption in Bahasa Malaysia with some English. Tone: casual, excited, trustworthy. Car: ${name}. Price: ${price}. Mileage: ${mileage}. Key features: ${features}. Platform: ${platform}. Write one punchy caption with relevant emojis and a WhatsApp CTA. Max 150 words.`;
+    try {
+      const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
+      setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
+      await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).catch(() => {});
+      await logAiUsage("caption");
     } catch {
-      setAiCaptions((p) => ({
-        ...p,
-        [car.id]: {
-          wa: "Couldn't generate caption. Please try again.",
-          tiktok: "Couldn't generate caption. Please try again.",
-        },
-      }));
+      setAiCaptions((p) => ({ ...p, [cacheKey]: "Couldn't generate caption. Please try again." }));
     } finally {
       setAiCaptionLoading(false);
+    }
+  };
+
+  const generateAiWaReply = async (lead) => {
+    if (!isPremium) return;
+    const quotaOk = await checkQuota("wa_reply");
+    if (!quotaOk) return;
+    setWaReplyLoading((p) => ({ ...p, [lead.id]: true }));
+    const car = lead.car_listings;
+    const carName = car ? `${car.brand} ${car.model}` : "the car";
+    const prompt = `You are a Malaysian used car salesman. A buyer named ${lead.buyer_name || "kawan"} enquired about ${carName}. Their stage is ${lead.stage || "new"}. Last note: ${lead.notes || "no notes"}. AI score: ${leadScores[lead.id]?.score || "unknown"}. Write a short, friendly WhatsApp reply in casual Bahasa Malaysia + English mix. Max 3 sentences. Include the car name. End with a soft next step.`;
+    try {
+      const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
+      setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
+      await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).catch(() => {});
+      await logAiUsage("wa_reply");
+    } catch {
+      setAiWaReplies((p) => ({ ...p, [lead.id]: "Couldn't generate reply. Try again." }));
+    } finally {
+      setWaReplyLoading((p) => ({ ...p, [lead.id]: false }));
+    }
+  };
+
+  const rescoreLead = async (lead) => {
+    if (!isPremium) return;
+    const quotaOk = await checkQuota("rescore");
+    if (!quotaOk) return;
+    setLeadScores((p) => ({ ...p, [lead.id]: { ...p[lead.id], loading: true } }));
+    const daysOld = lead.created_at ? Math.floor((Date.now() - new Date(lead.created_at)) / 86400000) : 0;
+    const lastActivity = lead.updated_at ? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : daysOld;
+    const prompt = `Score this car sales lead. Respond ONLY with JSON:\n{"score":"hot"|"warm"|"cold","reason":"string max 15 words"}\nLead data:\n- Stage: ${lead.stage}\n- Days since created: ${daysOld}\n- Follow-up set: ${lead.follow_up_at ? "yes" : "no"}\n- Last activity: ${lastActivity} days ago\n- Enquiry message: ${lead.notes || "none"}\n- Employment: ${lead.employment_type || "unknown"}\n- Income bracket: ${lead.income_bracket || "unknown"}\nHot = likely to buy within 2 weeks. Warm = interested but needs nurturing. Cold = low engagement or stale.`;
+    try {
+      const raw = await callClaude(prompt, "You are a lead scoring AI. Respond with JSON only, no markdown.");
+      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+      const now = new Date().toISOString();
+      await supabase.from("leads").update({ ai_score: parsed.score, ai_score_reason: parsed.reason, ai_scored_at: now }).eq("id", lead.id);
+      setLeads((p) => p.map((l) => l.id === lead.id ? { ...l, ai_score: parsed.score, ai_score_reason: parsed.reason } : l));
+      setLeadScores((p) => ({ ...p, [lead.id]: { score: parsed.score, reason: parsed.reason } }));
+      await logAiUsage("rescore");
+    } catch {
+      setLeadScores((p) => { const n = { ...p }; if (n[lead.id]) delete n[lead.id].loading; return n; });
+    }
+  };
+
+  const fetchFollowupSuggestions = async () => {
+    if (!isPremium) return;
+    setFollowupsLoading(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const topLeads = leads
+        .filter((l) => !["closed_won", "closed_lost"].includes(l.stage))
+        .filter((l) => !l.follow_up_at || l.follow_up_at <= today)
+        .sort((a, b) => {
+          const scoreOrder = { hot: 3, warm: 2, cold: 1 };
+          const aScore = scoreOrder[a.ai_score] || 0;
+          const bScore = scoreOrder[b.ai_score] || 0;
+          if (bScore !== aScore) return bScore - aScore;
+          return new Date(a.created_at) - new Date(b.created_at);
+        })
+        .slice(0, 3);
+      const results = await Promise.all(
+        topLeads.map(async (lead) => {
+          const daysSince = lead.updated_at ? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : 0;
+          const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead: ${lead.buyer_name || "Lead"}, stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
+          try {
+            const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.");
+            const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+            return { lead, ...parsed, is_acted_on: false };
+          } catch { return { lead, type: "whatsapp", suggestion: "Hantar mesej WhatsApp semak status", is_acted_on: false }; }
+        })
+      );
+      setAiFollowups(results);
+      const rows = results.map((r) => ({ salesman_id: userId, lead_id: r.lead.id, suggestion_type: r.type, suggestion_text: r.suggestion }));
+      if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).catch(() => {});
+      await logAiUsage("followup");
+    } finally {
+      setFollowupsLoading(false);
     }
   };
 
@@ -1401,6 +1491,58 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       return (
         <>
           {SUBTABS_UI}
+
+          {/* AI: What to do today */}
+          <div
+            style={{
+              background: "rgba(220,38,38,0.04)",
+              border: "1px solid rgba(220,38,38,0.15)",
+              borderRadius: 12,
+              padding: "14px 16px",
+              marginBottom: 20,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>✨</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#fca5a5" }}>What to do today</span>
+              </div>
+              {isPremium && (
+                <button
+                  onClick={fetchFollowupSuggestions}
+                  disabled={followupsLoading}
+                  style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#fca5a5", cursor: "pointer" }}
+                >
+                  {followupsLoading ? "Loading..." : aiFollowups.length ? "Refresh" : "Generate"}
+                </button>
+              )}
+            </div>
+            {!isPremium ? (
+              <UpgradeBanner feature="AI Follow-up Suggestions" />
+            ) : followupsLoading ? (
+              <AiLoadingState text="AI sedang analisa leads anda..." />
+            ) : aiFollowups.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12, color: "#4b5563" }}>Klik Generate untuk cadangan susulan AI anda.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {aiFollowups.map((item, i) => (
+                  <div key={i} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, opacity: item.is_acted_on ? 0.4 : 1 }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{item.type === "call" ? "📞" : item.type === "whatsapp" ? "💬" : item.type === "visit" ? "🚗" : item.type === "offer" ? "💰" : "🤝"}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lead.buyer_name || "—"}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>{item.suggestion}</p>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      {item.lead.phone && (
+                        <button onClick={() => { const ph = item.lead.phone.replace(/\D/g,""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6"+ph}`, "_blank"); }} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA</button>
+                      )}
+                      <button onClick={() => setAiFollowups((p) => p.map((x, j) => j === i ? { ...x, is_acted_on: true } : x))} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Done</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* KPI cards */}
           <div
@@ -4348,18 +4490,28 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               marginBottom: 2,
             }}
           >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#e5e7eb",
-                lineHeight: 1.3,
-              }}
-            >
-              {lead.buyer_name || "—"}
-            </p>
-            {AI_SCORE_PILL(lead.id)}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#e5e7eb",
+                  lineHeight: 1.3,
+                }}
+              >
+                {lead.buyer_name || "—"}
+              </p>
+              {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
+                const score = lead.ai_score || leadScores[lead.id]?.score;
+                const c = score === "hot" ? { bg: "#dc2626", tx: "#fff" } : score === "warm" ? { bg: "#f59e0b", tx: "#000" } : { bg: "#52525b", tx: "#fff" };
+                return <span style={{ fontSize: 9, fontWeight: 800, background: c.bg, color: c.tx, borderRadius: 4, padding: "1px 6px", letterSpacing: "0.06em", flexShrink: 0 }}>{score.toUpperCase()}</span>;
+              })()}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              {AI_SCORE_PILL(lead.id)}
+              {isPremium && <button onClick={() => rescoreLead(lead)} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>Re-score</button>}
+            </div>
           </div>
 
           {/* lead age */}
@@ -7140,152 +7292,152 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </button>
             </div>
 
-            {/* tabs */}
-            <div className="flex gap-2 mb-4">
-              {["wa", "tiktok"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setAiCaptionTab(tab);
-                    setCaptionCopied(false);
-                  }}
-                  style={{
-                    padding: "6px 16px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    border:
-                      aiCaptionTab === tab
-                        ? "1px solid rgba(168,85,247,0.5)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                    background:
-                      aiCaptionTab === tab
-                        ? "rgba(168,85,247,0.15)"
-                        : "rgba(255,255,255,0.04)",
-                    color: aiCaptionTab === tab ? "#c084fc" : "#9ca3af",
-                  }}
-                >
-                  {tab === "wa" ? "WhatsApp" : "TikTok"}
-                </button>
-              ))}
-            </div>
-
-            {/* content */}
-            {aiCaptionLoading ? (
-              <div className="space-y-2">
-                <div
-                  className="caption-skeleton"
-                  style={{ height: 18, width: "70%" }}
-                />
-                <div
-                  className="caption-skeleton"
-                  style={{ height: 18, width: "90%" }}
-                />
-                <div
-                  className="caption-skeleton"
-                  style={{ height: 18, width: "55%" }}
-                />
-                <div
-                  className="caption-skeleton"
-                  style={{ height: 18, width: "80%" }}
-                />
-              </div>
+            {!isPremium ? (
+              <UpgradeBanner feature="AI Caption Writer" />
             ) : (
-              <textarea
-                value={aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? ""}
-                onChange={(e) =>
-                  setAiCaptions((p) => ({
-                    ...p,
-                    [aiCaptionCar.id]: {
-                      ...p[aiCaptionCar.id],
-                      [aiCaptionTab]: e.target.value,
-                    },
-                  }))
-                }
-                rows={6}
-                style={{
-                  width: "100%",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 10,
-                  color: "#e5e7eb",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  padding: "10px 12px",
-                  resize: "vertical",
-                  outline: "none",
-                }}
-              />
-            )}
+              <>
+                {/* platform tabs */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {[
+                    ["whatsapp", "WhatsApp"],
+                    ["tiktok", "TikTok"],
+                    ["instagram", "Instagram"],
+                    ["facebook", "Facebook"],
+                    ["general", "General"],
+                  ].map(([platform, label]) => (
+                    <button
+                      key={platform}
+                      onClick={() => {
+                        setCaptionPlatform(platform);
+                        setCaptionCopied(false);
+                      }}
+                      style={{
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        border:
+                          captionPlatform === platform
+                            ? "1px solid rgba(168,85,247,0.5)"
+                            : "1px solid rgba(255,255,255,0.08)",
+                        background:
+                          captionPlatform === platform
+                            ? "rgba(168,85,247,0.15)"
+                            : "rgba(255,255,255,0.04)",
+                        color: captionPlatform === platform ? "#c084fc" : "#9ca3af",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* actions */}
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => {
-                  const text =
-                    aiCaptions[aiCaptionCar.id]?.[aiCaptionTab] ?? "";
-                  navigator.clipboard.writeText(text);
-                  setCaptionCopied(true);
-                  setTimeout(() => setCaptionCopied(false), 2000);
-                }}
-                disabled={aiCaptionLoading || !aiCaptions[aiCaptionCar.id]}
-                style={{
-                  flex: 1,
-                  padding: "9px 0",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: captionCopied
-                    ? "rgba(34,197,94,0.15)"
-                    : "rgba(168,85,247,0.15)",
-                  border: captionCopied
-                    ? "1px solid rgba(34,197,94,0.4)"
-                    : "1px solid rgba(168,85,247,0.4)",
-                  color: captionCopied ? "#4ade80" : "#c084fc",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                {captionCopied ? (
-                  <Check className="w-3.5 h-3.5" />
+                {/* quota badge */}
+                <div style={{ marginBottom: 10 }}>
+                  <AiQuotaBadge userId={userId} feature="caption" limit={50} />
+                  {!captionQuotaOk && <p style={{ fontSize: 11, color: "#f87171", margin: "4px 0 0" }}>Daily limit reached, resets tomorrow.</p>}
+                </div>
+
+                {/* content */}
+                {aiCaptionLoading ? (
+                  <AiLoadingState text="Generating caption..." />
                 ) : (
-                  <Copy className="w-3.5 h-3.5" />
+                  <textarea
+                    value={aiCaptions[`${aiCaptionCar.id}_${captionPlatform}`] ?? ""}
+                    onChange={(e) =>
+                      setAiCaptions((p) => ({
+                        ...p,
+                        [`${aiCaptionCar.id}_${captionPlatform}`]: e.target.value,
+                      }))
+                    }
+                    rows={6}
+                    style={{
+                      width: "100%",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      borderRadius: 10,
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                      padding: "10px 12px",
+                      resize: "vertical",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 )}
-                {captionCopied ? "Copied!" : "Copy"}
-              </button>
-              <button
-                onClick={() => {
-                  setAiCaptions((p) => {
-                    const next = { ...p };
-                    delete next[aiCaptionCar.id];
-                    return next;
-                  });
-                  generateAiCaptions(aiCaptionCar);
-                }}
-                disabled={aiCaptionLoading}
-                style={{
-                  flex: 1,
-                  padding: "9px 0",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#9ca3af",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Regenerate
-              </button>
-            </div>
+
+                {/* actions */}
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      const text = aiCaptions[`${aiCaptionCar.id}_${captionPlatform}`] ?? "";
+                      navigator.clipboard.writeText(text);
+                      setCaptionCopied(true);
+                      setTimeout(() => setCaptionCopied(false), 2000);
+                    }}
+                    disabled={aiCaptionLoading || !aiCaptions[`${aiCaptionCar.id}_${captionPlatform}`]}
+                    style={{
+                      flex: 1,
+                      padding: "9px 0",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: captionCopied
+                        ? "rgba(34,197,94,0.15)"
+                        : "rgba(168,85,247,0.15)",
+                      border: captionCopied
+                        ? "1px solid rgba(34,197,94,0.4)"
+                        : "1px solid rgba(168,85,247,0.4)",
+                      color: captionCopied ? "#4ade80" : "#c084fc",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {captionCopied ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    {captionCopied ? "Copied!" : "Copy"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const cacheKey = `${aiCaptionCar.id}_${captionPlatform}`;
+                      setAiCaptions((p) => {
+                        const next = { ...p };
+                        delete next[cacheKey];
+                        return next;
+                      });
+                      generateAiCaptions(aiCaptionCar, captionPlatform);
+                    }}
+                    disabled={aiCaptionLoading || !captionQuotaOk || !isPremium}
+                    style={{
+                      flex: 1,
+                      padding: "9px 0",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#9ca3af",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {aiCaptions[`${aiCaptionCar.id}_${captionPlatform}`] ? "Regenerate" : "Generate"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
