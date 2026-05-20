@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
+import { toast } from "sonner";
 import {
   LogOut,
   Link,
@@ -44,6 +45,13 @@ import {
   CreditCard,
   Pencil,
   Trash2,
+  Search,
+  PhoneCall,
+  PhoneOff,
+  History,
+  RefreshCw,
+  CheckCircle,
+  Voicemail,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -175,8 +183,40 @@ export default function SalesmanPanel() {
     notes: "",
     car_listing_id: "",
     stage: "new",
+    buyer_state: "",
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
+
+  // CRM pipeline state
+  const [drawerLeadId, setDrawerLeadId] = useState(null);
+  const [deletingLeadId, setDeletingLeadId] = useState(null);
+  const [lostSavingId, setLostSavingId] = useState(null);
+  const [stageSavingId, setStageSavingId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteVal, setEditNoteVal] = useState("");
+  const [notesSavingId, setNotesSavingId] = useState(null);
+  const [leadActivities, setLeadActivities] = useState({});
+  const [expandedActivityLeadId, setExpandedActivityLeadId] = useState(null);
+  const [activitiesLoadingId, setActivitiesLoadingId] = useState(null);
+  const [leadSearch, setLeadSearch] = useState("");
+  const [logCallLeadId, setLogCallLeadId] = useState(null);
+  const [callOutcome, setCallOutcome] = useState("answered");
+  const [callNote, setCallNote] = useState("");
+  const [callSaving, setCallSaving] = useState(false);
+  const [followUpModalLead, setFollowUpModalLead] = useState(null);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
+  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+  const [batchWALeads, setBatchWALeads] = useState(null);
+  const [batchWAIdx, setBatchWAIdx] = useState(0);
+  const [mobileLeadStage, setMobileLeadStage] = useState("new");
+  const [lostPromptId, setLostPromptId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [waModalLead, setWaModalLead] = useState(null);
+  const [waModalMsg, setWaModalMessage] = useState("");
+  const [playbookLeadId, setPlaybookLeadId] = useState(null);
+  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
 
   // Monthly target
   const [thisMonthSales, setThisMonthSales] = useState(0);
@@ -237,17 +277,16 @@ export default function SalesmanPanel() {
 
   const isPremium = profile?.plan === 'salesman_full';
 
-  // ── stale leads (48h no contact, exclude won/lost)
+  // ── stale leads (48h no contact, exclude won/lost/closed)
   useEffect(() => {
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    const now = new Date();
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     setStaleLeads(
-      leads.filter(
-        (l) =>
-          l.stage !== "won" &&
-          l.stage !== "lost" &&
-          l.updated_at &&
-          new Date(l.updated_at).getTime() < cutoff,
-      ),
+      leads.filter((l) => {
+        if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
+        return (l.follow_up_at && new Date(l.follow_up_at) <= now)
+            || (l.updated_at && new Date(l.updated_at) < cutoff);
+      })
     );
   }, [leads]);
 
@@ -603,6 +642,7 @@ Rules:
   // ─────────────────────────────────────────────────────────────────────────
 
   const chartRefs = useRef({});
+  const pendingStageRef = useRef({});
 
   // ── sparkline charts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -1154,34 +1194,171 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   };
 
   const updateLeadStage = async (leadId, stage) => {
-    await supabase
+    setStageSavingId(leadId);
+    const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
+    const dealerId = getDealerIdFromProfile(profile);
+    const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
+    setStageSavingId(null);
+    if (stageErr) { console.error("updateLeadStage:", stageErr); toast.error("Failed to update lead stage"); return; }
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "stage_changed",
+      from_stage: oldStage,
+      to_stage: stage,
+      created_by: userId,
+      dealer_id: dealerId,
+    });
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
   };
 
-  const pingWA = async (lead) => {
+  const advanceLeadStage = (lead, newStage, force = false) => {
+    if (!newStage) return;
+    if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+    const oldStage = lead.stage;
+    const leadId = lead.id;
+    const buyerName = lead.buyer_name || "Lead";
+    if (pendingStageRef.current[leadId]) {
+      clearTimeout(pendingStageRef.current[leadId].timer);
+    }
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)));
+    const timer = setTimeout(() => {
+      delete pendingStageRef.current[leadId];
+      updateLeadStage(leadId, newStage);
+    }, 4500);
+    pendingStageRef.current[leadId] = { timer, oldStage };
+    toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(pendingStageRef.current[leadId]?.timer);
+          delete pendingStageRef.current[leadId];
+          setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: oldStage } : l)));
+        },
+      },
+      duration: 4500,
+    });
+  };
+
+  const pingWA = (lead) => {
     const car = lead.car_listings;
     const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
     const name = lead.buyer_name || "kawan";
-    const phone = (lead.phone || "").replace(/\D/g, "");
-    const msg = encodeURIComponent(
-      `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`,
-    );
-    if (phone) {
-      window.open(
-        `https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${msg}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
+    const defaultMsg = `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`;
+    setWaModalLead(lead);
+    setWaModalMessage(defaultMsg);
+  };
+
+  const saveLeadNote = async (leadId) => {
+    setNotesSavingId(leadId);
+    const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
+    setNotesSavingId(null);
+    if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
+    setEditingNoteId(null);
+  };
+
+  const fetchLeadActivities = async (leadId) => {
+    if (leadActivities[leadId]) { setExpandedActivityLeadId(leadId); return; }
+    setActivitiesLoadingId(leadId);
+    const { data, error } = await supabase
+      .from("lead_activities")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) console.error("fetchLeadActivities:", error);
+    setLeadActivities((p) => ({ ...p, [leadId]: data || [] }));
+    setActivitiesLoadingId(null);
+    setExpandedActivityLeadId(leadId);
+  };
+
+  const logCall = async () => {
+    if (!logCallLeadId) return;
+    setCallSaving(true);
+    const lead = leads.find((l) => l.id === logCallLeadId);
+    const { error } = await supabase.from("lead_activities").insert({
+      lead_id: logCallLeadId,
+      activity_type: "called",
+      note: `${callOutcome}${callNote ? ` — ${callNote}` : ""}`,
+      created_by: userId,
+      dealer_id: getDealerIdFromProfile(profile),
+    });
+    if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+    await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+    setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
+    setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
+    toast.success("Call logged");
+    setCallSaving(false);
+    setLogCallLeadId(null);
+    setCallNote("");
+    setCallOutcome("answered");
+  };
+
+  const saveFollowUp = async (leadId, date) => {
+    setFollowUpSaving(true);
+    const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
+    setFollowUpSaving(false);
+    if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
+    setFollowUpModalLead(null);
+    toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    setDeletingLeadId(leadId);
+    const { error: delErr } = await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    setDeletingLeadId(null);
+    if (delErr) { console.error("handleDeleteLead:", delErr); toast.error("Failed to delete lead"); return; }
+    setLeads((p) => p.filter((l) => l.id !== leadId));
+    setDeleteConfirmId(null);
+  };
+
+  const handleLinkCar = async (leadId, carId) => {
+    const { error: linkErr } = await supabase
+      .from("leads")
+      .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
+      .eq("id", leadId);
+    if (linkErr) { console.error("handleLinkCar:", linkErr); toast.error("Failed to link car"); return; }
+    const car = myListings.find((c) => c.id === carId);
+    setLeads((p) => p.map((l) =>
+      l.id === leadId
+        ? { ...l, car_listing_id: carId, car_listings: car
+            ? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
+            : l.car_listings }
+        : l
+    ));
+    setLinkCarLeadId(null);
+    toast.success("Car linked to lead!");
+  };
+
+  const handleLostReason = async (leadId, reason) => {
+    const lead = leads.find((l) => l.id === leadId);
+    const oldStage = lead?.stage ?? null;
+    const dealerId = getDealerIdFromProfile(profile);
     const now = new Date().toISOString();
-    await supabase.from("leads").update({ updated_at: now }).eq("id", lead.id);
-    setStaleLeads((p) => p.filter((l) => l.id !== lead.id));
+    setLostSavingId(leadId);
+    const { error: lostErr } = await supabase
+      .from("leads")
+      .update({ stage: "lost", loss_reason: reason, updated_at: now })
+      .eq("id", leadId);
+    setLostSavingId(null);
+    if (lostErr) { console.error("handleLostReason:", lostErr); toast.error("Failed to mark lead as lost"); return; }
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "stage_changed",
+      from_stage: oldStage,
+      to_stage: "lost",
+      note: `Lost reason: ${reason}`,
+      created_by: userId,
+      dealer_id: dealerId,
+    });
     setLeads((p) =>
-      p.map((l) => (l.id === lead.id ? { ...l, updated_at: now } : l)),
+      p.map((l) => l.id === leadId ? { ...l, stage: "lost", loss_reason: reason, updated_at: now } : l)
     );
+    setLostPromptId(null);
   };
 
   const handleAddLead = async () => {
@@ -1196,6 +1373,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
         phone: addLeadForm.phone,
         notes: addLeadForm.notes,
         car_listing_id: addLeadForm.car_listing_id || null,
+        buyer_state: addLeadForm.buyer_state || null,
         stage: "new",
         lead_source: "manual",
       })
@@ -1210,6 +1388,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
       notes: "",
       car_listing_id: "",
       stage: "new",
+      buyer_state: "",
     });
   };
 
@@ -1225,6 +1404,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
     "closed_won",
     "closed_lost",
   ];
+  const STAGE_WEIGHT = { new: 1, contacted: 2, viewing_booked: 3, test_drive: 4, negotiating: 5, deposit_taken: 6 };
+  const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+  const getHeatScore = (lead) => {
+    const stageWeight = STAGE_WEIGHT[lead.stage] || 0;
+    const daysStale = lead.updated_at
+      ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000) : 0;
+    const score = stageWeight - Math.min(daysStale * 0.5, 3);
+    if (score >= 4) return { score, label: "hot",  color: "#f87171" };
+    if (score >= 2) return { score, label: "warm", color: "#fbbf24" };
+    return              { score, label: "cold", color: "#93c5fd" };
+  };
   const STAGE_COLOR = {
     new: {
       bg: "rgba(96,165,250,0.12)",
@@ -4392,9 +4582,224 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
     );
   };
 
+  const renderLogCallModal = () => logCallLeadId && (() => {
+    const lead = leads.find((l) => l.id === logCallLeadId);
+    const OUTCOMES = [
+      { key: "answered", label: "✅ Answered", color: "#4ade80" },
+      { key: "no_answer", label: "📵 No Answer", color: "#f87171" },
+      { key: "callback_requested", label: "🔁 Callback Requested", color: "#fbbf24" },
+      { key: "voicemail", label: "📬 Left Voicemail", color: "#94a3b8" },
+    ];
+    return (
+      <div onClick={() => setLogCallLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Log Call</p>
+          <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{lead?.buyer_name || "—"} · {lead?.phone || "—"}</p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Outcome</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            {OUTCOMES.map((o) => (
+              <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280" }}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Note (optional)</p>
+          <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder="e.g. Will visit showroom Saturday" style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
+              {callSaving ? "Saving…" : "Log Call"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
+  const renderBatchWAModal = () => {
+    if (!batchWALeads || batchWALeads.length === 0) return null;
+    const current = batchWALeads[batchWAIdx];
+    if (!current) return null;
+    const car = current.car_listings;
+    const waPhone = (current.phone || '').replace(/\D/g, '');
+    const waNum = waPhone.startsWith('6') ? waPhone : '6' + waPhone;
+    const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
+    const isStale = current.updated_at && Date.now() - new Date(current.updated_at).getTime() > 48 * 3600 * 1000;
+    const msg = isStale
+      ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+      : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
+    const advance = () => {
+      if (batchWAIdx < batchWALeads.length - 1) setBatchWAIdx(i => i + 1);
+      else setBatchWALeads(null);
+    };
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <div style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Follow-up Blast</p>
+            <span style={{ fontSize: 12, color: "#4b5563" }}>{batchWAIdx + 1} / {batchWALeads.length}</span>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+            {batchWALeads.map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < batchWAIdx ? "#4ade80" : i === batchWAIdx ? "#fbbf24" : "rgba(255,255,255,0.08)" }} />
+            ))}
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{current.buyer_name || "—"}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>
+              {car ? `${car.brand} ${car.model}` : "No car linked"} · Last contact {timeAgo(current.updated_at)}
+            </p>
+          </div>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+            {msg}
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`, "_blank"); advance(); }}
+              style={{ flex: 2, padding: "11px", borderRadius: 9, background: "#25D366", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              WA {current.buyer_name?.split(' ')[0] || 'Lead'} →
+            </button>
+            <button
+              onClick={advance}
+              style={{ flex: 1, padding: "11px", borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Skip
+            </button>
+          </div>
+          <button onClick={() => setBatchWALeads(null)} style={{ width: "100%", marginTop: 10, padding: "8px", background: "none", border: "none", color: "#374151", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            Stop — done for now
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFollowUpModal = () => followUpModalLead && (
+    <div onClick={() => setFollowUpModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Set Follow-up Reminder</p>
+        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{followUpModalLead.buyer_name || "—"}</p>
+        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Remind me on</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          {[
+            { label: "Tomorrow", days: 1 },
+            { label: "In 2 days", days: 2 },
+            { label: "In 3 days", days: 3 },
+            { label: "Next week", days: 7 },
+          ].map(({ label, days }) => {
+            const d = new Date(); d.setDate(d.getDate() + days);
+            const val = d.toISOString().slice(0, 10);
+            return (
+              <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val ? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val ? 600 : 400 }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
+        <div style={{ display: "flex", gap: 8 }}>
+          {followUpModalLead.follow_up_at && (
+            <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Clear</button>
+          )}
+          <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+          <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
+            {followUpSaving ? "Saving…" : "Set Reminder"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderWAModal = () =>
+    waModalLead && (
+      <div
+        onClick={() => setWaModalLead(null)}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 440, padding: 24 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#f1f5f9" }}>Send WA Message</p>
+            <button onClick={() => setWaModalLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}>
+              <X size={18} />
+            </button>
+          </div>
+          <textarea
+            value={waModalMsg}
+            onChange={(e) => setWaModalMessage(e.target.value)}
+            rows={5}
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5 }}
+          />
+          <button
+            onClick={async () => {
+              const now = new Date().toISOString();
+              const { error: waTouchErr } = await supabase.from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
+              if (waTouchErr) { console.error("waModal leads update:", waTouchErr); toast.error("Failed to log message"); return; }
+              await supabase.from("lead_activities").insert({
+                lead_id: waModalLead.id, activity_type: "whatsapp_sent",
+                note: "WA message sent", created_by: userId,
+                dealer_id: getDealerIdFromProfile(profile),
+              });
+              setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
+              setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
+              const savedLeadId = waModalLead.id;
+              setWaModalLead(null);
+              toast("WA sent!", {
+                description: "Did you also call them?",
+                action: { label: "Log Call", onClick: () => { setLogCallLeadId(savedLeadId); setCallOutcome("answered"); setCallNote(""); } },
+                duration: 5000,
+              });
+              const phone = (waModalLead.phone || "").replace(/\D/g, "");
+              if (phone) window.open(`https://wa.me/${phone.startsWith("6") ? phone : "6" + phone}?text=${encodeURIComponent(waModalMsg)}`, "_blank", "noopener,noreferrer");
+            }}
+            disabled={!waModalMsg.trim() || !waModalLead.phone}
+            style={{ marginTop: 12, width: "100%", padding: "10px", borderRadius: 8, background: "#16a34a", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: !waModalMsg.trim() || !waModalLead.phone ? "not-allowed" : "pointer", opacity: !waModalMsg.trim() || !waModalLead.phone ? 0.6 : 1 }}
+          >
+            Send
+          </button>
+          {!waModalLead.phone && (
+            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#f87171", textAlign: "center" }}>No phone number on this lead.</p>
+          )}
+        </div>
+      </div>
+    );
+
   const renderLeads = () => {
-    const activeStages = LEAD_STAGES.filter((s) => s !== "lost");
-    const lostLeads = leads.filter((l) => l.stage === "lost");
+    const searchedLeads = leadSearch.trim()
+      ? leads.filter((l) => {
+          const q = leadSearch.toLowerCase();
+          return (
+            (l.buyer_name || "").toLowerCase().includes(q) ||
+            (l.phone || "").includes(q) ||
+            (l.notes || "").toLowerCase().includes(q)
+          );
+        })
+      : leads;
+
+    const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+    leads.forEach(l => {
+      const s = l.lead_source || "manual";
+      srcMap[s] = (srcMap[s] || 0) + 1;
+    });
+    const srcTotal = leads.length;
+    const srcCfg = [
+      { key: "enquiry",  label: "WhatsApp",  color: "#4ade80" },
+      { key: "booking",  label: "Booking",   color: "#60a5fa" },
+      { key: "xdrive",   label: "XDrive",    color: "#f87171" },
+      { key: "manual",   label: "Manual",    color: "#6b7280" },
+    ].filter(s => srcMap[s.key] > 0);
+
+    const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
+
+    const activeStages = LEAD_STAGES.filter(
+      (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
+    );
+    const lostLeads = searchedLeads.filter(
+      (l) => l.stage === "lost" || l.stage === "closed_lost",
+    );
 
     const AI_SCORE_PILL = (leadId) => {
       if (scoreLoading) {
@@ -4458,17 +4863,25 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
-      const carName = car
-        ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
-        : null;
-      const carPrice = car?.selling_price
-        ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-        : null;
-
+      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const progressStages = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won"];
+      const normalizedStage = lead.stage === "closed_won" ? "won" : lead.stage;
+      const currentProgressIdx = progressStages.indexOf(normalizedStage);
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
       const nextStage = LEAD_STAGES.filter(
-        (s) => s !== "lost" && s !== "won",
-      ).find((s, i) => LEAD_STAGES.indexOf(s) > stageIdx);
+        (s) => s !== "lost" && s !== "closed_won" && s !== "closed_lost",
+      ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
+      const heat = getHeatScore(lead);
+      const isConfirmingDelete = deleteConfirmId === lead.id;
+      const isPromptingLost = lostPromptId === lead.id;
+      const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
+      const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+      const heatStyle = heat.label === "hot"
+        ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
+        : heat.label === "warm"
+        ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" }
+        : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
 
       return (
         <div
@@ -4477,163 +4890,124 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
             background: "#0d1117",
             border: "1px solid rgba(255,255,255,0.07)",
             borderRadius: 10,
-            padding: "10px 12px",
+            overflow: "hidden",
           }}
         >
-          {/* top row: name + AI score */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 6,
-              marginBottom: 2,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#e5e7eb",
-                  lineHeight: 1.3,
-                }}
-              >
-                {lead.buyer_name || "—"}
+          {/* ── HEADER ── */}
+          <div style={{ padding: "12px 14px 0" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+              {/* Avatar */}
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {lead.buyer_name || "—"}
+                    </p>
+                    {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
+                      const score = lead.ai_score || leadScores[lead.id]?.score;
+                      const c = score === "hot" ? {bg:"#dc2626",tx:"#fff"} : score === "warm" ? {bg:"#f59e0b",tx:"#000"} : {bg:"#52525b",tx:"#fff"};
+                      return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{score.toUpperCase()}</span>;
+                    })()}
+                  </div>
+                  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>
+                    {heat.label}
+                  </span>
+                </div>
+                {(carName || carPrice) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
+                    {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+                  </div>
+                )}
+                {lead.updated_at && (
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#374151" }}>
+                    Last contact: {timeAgo(lead.updated_at)}
+                  </p>
+                )}
+                {lead.last_call_outcome && (() => {
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
+                  const o = OUTCOME[lead.last_call_outcome];
+                  if (!o) return null;
+                  return (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+                      <o.icon size={10} /> {o.label}
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Progress bar — 7 segments */}
+            <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
+              <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                {progressStages.map((s, i) => (
+                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "#9ca3af" : i === currentProgressIdx ? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+                ))}
+              </div>
+              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
+                Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
               </p>
-              {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
-                const score = lead.ai_score || leadScores[lead.id]?.score;
-                const c = score === "hot" ? { bg: "#dc2626", tx: "#fff" } : score === "warm" ? { bg: "#f59e0b", tx: "#000" } : { bg: "#52525b", tx: "#fff" };
-                return <span style={{ fontSize: 9, fontWeight: 800, background: c.bg, color: c.tx, borderRadius: 4, padding: "1px 6px", letterSpacing: "0.06em", flexShrink: 0 }}>{score.toUpperCase()}</span>;
-              })()}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-              {AI_SCORE_PILL(lead.id)}
-              {isPremium && <button onClick={() => rescoreLead(lead)} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>Re-score</button>}
-            </div>
+
+            {/* Follow-up warning */}
+            {followUpOverdue && (
+              <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+                Follow-up: {timeAgo(lead.follow_up_at)}
+              </div>
+            )}
           </div>
 
-          {/* lead age */}
-          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
-            Added {timeAgo(lead.created_at)}
-          </p>
-
-          {/* car name + price */}
-          {carName && (
-            <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>
-              {carName}
-            </p>
-          )}
-          {carPrice && (
-            <p
-              style={{
-                margin: "0 0 4px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#60a5fa",
-              }}
-            >
-              {carPrice}
-            </p>
-          )}
-
-          {/* phone */}
-          {lead.phone && (
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>
-              📞 {lead.phone}
-            </p>
-          )}
-
-          {/* notes preview */}
-          {lead.notes && (
-            <p
-              style={{
-                margin: "0 0 6px",
-                fontSize: 10,
-                color: "#4b5563",
-                fontStyle: "italic",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              "{lead.notes}"
-            </p>
-          )}
-
-          {/* AI WA Reply */}
-          {isPremium && lead.buyer_name && lead.phone && (
-            <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 8 }}>
-              {!aiWaReplies[lead.id] ? (
-                <button onClick={() => generateAiWaReply(lead)} disabled={waReplyLoading[lead.id]} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>
-                  {waReplyLoading[lead.id] ? "Generating..." : "✨ AI WA Reply"}
-                </button>
-              ) : (
-                <div>
-                  <textarea readOnly value={aiWaReplies[lead.id]} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", resize: "none", boxSizing: "border-box" }} />
-                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                    <button onClick={() => { navigator.clipboard.writeText(aiWaReplies[lead.id]); setWaReplyCopied((p) => ({ ...p, [lead.id]: true })); setTimeout(() => setWaReplyCopied((p) => ({ ...p, [lead.id]: false })), 1500); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
-                      {waReplyCopied[lead.id] ? "Copied!" : "Copy"}
-                    </button>
-                    {lead.phone && <button onClick={() => { const ph = lead.phone.replace(/\D/g,""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6"+ph}?text=${encodeURIComponent(aiWaReplies[lead.id])}`, "_blank"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
-                    <button onClick={() => setAiWaReplies((p) => { const n = {...p}; delete n[lead.id]; return n; })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>Regenerate</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* action buttons */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {nextStage && lead.stage !== "won" && (
+          {/* ── ACTIONS ── */}
+          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+            {lead.stage !== "won" && lead.stage !== "closed_won" && (
               <button
-                onClick={() => updateLeadStage(lead.id, nextStage)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 7px",
-                  borderRadius: 5,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#6b7280",
-                  cursor: "pointer",
-                }}
+                onClick={() => advanceLeadStage(lead, nextStage)}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
               >
-                → {nextStage.replace(/_/g, " ")}
-              </button>
-            )}
-            {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
-              <button
-                onClick={() => updateLeadStage(lead.id, "won")}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 7px",
-                  borderRadius: 5,
-                  background: "rgba(34,197,94,0.08)",
-                  border: "1px solid rgba(34,197,94,0.2)",
-                  color: "#4ade80",
-                  cursor: "pointer",
-                }}
-              >
-                → Won
+                → {(nextStage || "won").replace(/_/g, " ")}
               </button>
             )}
             {lead.phone && (
+              <a
+                href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                📞
+              </a>
+            )}
+            {lead.phone ? (
               <button
-                onClick={() => pingWA(lead)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 7px",
-                  borderRadius: 5,
-                  background: "rgba(37,211,102,0.1)",
-                  border: "1px solid rgba(37,211,102,0.2)",
-                  color: "#4ade80",
-                  cursor: "pointer",
+                onClick={() => {
+                  const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
+                  const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
+                  const msg = isStale
+                    ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${waCarName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+                    : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${waCarName} tu? Jom kita discuss lagi 😊`;
+                  setWaModalMessage(msg);
+                  setWaModalLead(lead);
                 }}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
               >
                 WA
               </button>
-            )}
+            ) : !lead.car_listing_id ? (
+              <button
+                onClick={() => setLinkCarLeadId(lead.id)}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
+              >
+                🚗 Link Car
+              </button>
+            ) : null}
+            <button
+              onClick={() => setDrawerLeadId(lead.id)}
+              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
+            >
+              ···
+            </button>
           </div>
         </div>
       );
@@ -4649,231 +5023,412 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
             marginBottom: 16,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#f1f5f9",
-            }}
-          >
-            Lead Pipeline ({leads.filter((l) => l.stage !== "lost").length})
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+            Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
           </p>
-          <button
-            onClick={() => setShowAddLead(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#1d4ed8",
-              border: "none",
-              borderRadius: 8,
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 600,
-              padding: "7px 12px",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={13} /> Add Lead
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {staleLeads.length > 0 && (
+              <button
+                onClick={() => { const sl = staleLeads.filter(l => l.phone); if (sl.length > 0) { setBatchWALeads(sl); setBatchWAIdx(0); } }}
+                style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)", borderRadius: 8, color: "#fb923c", fontSize: 11, fontWeight: 600, padding: "6px 10px", cursor: "pointer" }}
+              >
+                🔥 {staleLeads.length} stale
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddLead(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "#dc2626", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
+            >
+              <Plus size={13} /> Add Lead
+            </button>
+          </div>
         </div>
 
-        {isMobile && leads.length > 0 && (
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>
-            swipe to see more →
-          </p>
+        {/* Lead source breakdown */}
+        {srcTotal > 0 && srcCfg.length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
+              {srcCfg.map(({ key, color }) => (
+                <div key={key} style={{ flex: srcMap[key], background: color }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {srcCfg.map(({ key, label, color }) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        {/* Kanban board — lost excluded */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            overflowX: "auto",
-            paddingBottom: 8,
-            scrollSnapType: isMobile ? "x mandatory" : undefined,
-          }}
-        >
-          {activeStages.map((stage) => {
-            const sc = STAGE_COLOR[stage] || {};
-            const stageLeads = leads.filter((l) => l.stage === stage);
-            return (
-              <div
-                key={stage}
-                style={{
-                  minWidth: isMobile ? 170 : 200,
-                  flexShrink: 0,
-                  scrollSnapAlign: isMobile ? "start" : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span
+        {/* Search bar */}
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#4b5563", pointerEvents: "none" }} />
+          <input
+            value={leadSearch}
+            onChange={(e) => setLeadSearch(e.target.value)}
+            placeholder="Search by name or phone…"
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+          />
+          {leadSearch && (
+            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {isMobile ? (
+          <>
+            {/* Mobile: pill filter row */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+              {activeStages.map((stage) => {
+                const sc = STAGE_COLOR[stage] || {};
+                const count = searchedLeads.filter((l) => l.stage === stage).length;
+                const isActive = mobileLeadStage === stage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => setMobileLeadStage(stage)}
                     style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: sc.tx || "#9ca3af",
-                      textTransform: "capitalize",
+                      flexShrink: 0, display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 99, fontSize: 11,
+                      fontWeight: isActive ? 600 : 400, cursor: "pointer",
+                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                      border: isActive ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: isActive ? "#f87171" : "#4b5563", textTransform: "capitalize", whiteSpace: "nowrap",
                     }}
                   >
                     {stage.replace(/_/g, " ")}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      background: sc.bg,
-                      border: `1px solid ${sc.border}`,
-                      color: sc.tx,
-                      borderRadius: 99,
-                      padding: "1px 6px",
-                    }}
-                  >
-                    {stageLeads.length}
-                  </span>
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {stageLeads.length === 0 && (
-                    <div
-                      style={{
-                        height: 60,
-                        borderRadius: 10,
-                        border: "1px dashed rgba(255,255,255,0.07)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span style={{ fontSize: 11, color: "#374151" }}>
-                        Empty
-                      </span>
-                    </div>
-                  )}
+                    <span style={{ fontSize: 10, fontWeight: 700, color: isActive ? (sc.tx || "#f87171") : "#374151", background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)", borderRadius: 99, padding: "0px 6px", lineHeight: 1.6 }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile: vertical card list for selected stage */}
+            {(() => {
+              const stageLeads = searchedLeads
+                .filter((l) => l.stage === mobileLeadStage)
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              if (stageLeads.length === 0) {
+                return (
+                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })()}
+          </>
+        ) : (
+          /* Desktop: horizontal kanban scroll */
+          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+            {activeStages.map((stage) => {
+              const sc = STAGE_COLOR[stage] || {};
+              const stageLeads = searchedLeads
+                .filter((l) => l.stage === stage)
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              return (
+                <div key={stage} style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
+                      {stage.replace(/_/g, " ")}
+                    </span>
+                    <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
+                      {stageLeads.length}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {stageLeads.length === 0 && (
+                      <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                      </div>
+                    )}
+                    {stageLeads.map((lead) => renderLeadCard(lead))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Lost leads accordion */}
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <button
               onClick={() => setLostOpen((o) => !o)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px 0",
-              }}
+              style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0" }}
             >
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#4b5563",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Lost ({lostLeads.length})
               </span>
-              <span style={{ fontSize: 12, color: "#374151" }}>
-                {lostOpen ? "▲" : "▼"}
-              </span>
+              <span style={{ fontSize: 12, color: "#374151" }}>{lostOpen ? "▲" : "▼"}</span>
             </button>
             {lostOpen && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  marginTop: 8,
-                }}
-              >
-                {lostLeads.map((lead) => {
-                  const car = lead.car_listings;
-                  const carName = car
-                    ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
-                    : null;
-                  return (
-                    <div
-                      key={lead.id}
-                      style={{
-                        background: "#0d1117",
-                        border: "1px solid rgba(255,255,255,0.06)",
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        opacity: 0.65,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 6,
-                        }}
-                      >
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "#6b7280",
-                          }}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                {lostLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", opacity: 0.65 }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#9ca3af", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {lead.buyer_name || "—"}
+                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                        {lead.loss_reason && (
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", whiteSpace: "nowrap" }}>
+                            {lead.loss_reason}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setDeleteConfirmId(lead.id)}
+                          title="Delete lead"
+                          style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
                         >
-                          {lead.buyer_name || "—"}
-                        </p>
-                        <span style={{ fontSize: 10, color: "#374151" }}>
-                          {timeAgo(lead.created_at)}
-                        </span>
+                          <Trash2 size={12} />
+                        </button>
                       </div>
-                      {carName && (
-                        <p
-                          style={{
-                            margin: "2px 0 0",
-                            fontSize: 11,
-                            color: "#4b5563",
-                          }}
-                        >
-                          {carName}
-                        </p>
-                      )}
-                      {lead.notes && (
-                        <p
-                          style={{
-                            margin: "4px 0 0",
-                            fontSize: 10,
-                            color: "#374151",
-                            fontStyle: "italic",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          "{lead.notes}"
-                        </p>
-                      )}
                     </div>
-                  );
-                })}
+                    <p style={{ margin: "2px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(lead.created_at)}</p>
+                    {deleteConfirmId === lead.id && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Delete?</span>
+                        <button onClick={() => handleDeleteLead(lead.id)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600 }}>Yes</button>
+                        <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 10, padding: "6px 11px", borderRadius: 5, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>No</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
+
+        {/* ── LEAD DETAIL DRAWER ── */}
+        {drawerLeadId && (() => {
+          const pl = leads.find(l => l.id === drawerLeadId);
+          if (!pl) return null;
+          const plCar = pl.car_listings;
+          const plCarName = plCar ? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
+          const plCarPrice = plCar?.selling_price ? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
+          const plHeat = getHeatScore(pl);
+          const plHeatStyle = plHeat.label === "hot" ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm" ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+          const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+          const plIsPromptingLost = lostPromptId === pl.id;
+          const plIsConfirmingDelete = deleteConfirmId === pl.id;
+          const pbCar = pl.car_listings;
+          const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
+          const pbStage = pl.stage;
+          const scripts = {
+            price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already market price. The value is there."`] },
+            mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
+            timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it."`] },
+            trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+          };
+          const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+          return (
+            <>
+              {/* backdrop */}
+              <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+              {/* panel */}
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+
+                {/* header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || "No car linked"}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+                    <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* price strip */}
+                {plCarPrice && (
+                  <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
+                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+                  </div>
+                )}
+
+                {/* scrollable body */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+                  {/* Notes */}
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Notes</p>
+                    {editingNoteId === pl.id ? (
+                      <div>
+                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : "Save"}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : pl.notes ? (
+                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: "#9ca3af", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Pencil size={12} /> "{pl.notes}"
+                      </p>
+                    ) : (
+                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+                        <Pencil size={12} /> Add note…
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tool row 1 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <PhoneCall size={12} /> Log call
+                    </button>
+                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <Clock size={12} /> Set reminder
+                    </button>
+                    {isPremium && (
+                      <button onClick={() => rescoreLead(pl)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        {leadScores[pl.id]?.loading ? "Scoring..." : "✨ Re-score"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tool row 2 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
+                      Scripts
+                    </button>
+                    <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
+                      <History size={12} /> History
+                    </button>
+                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      🚗 {pl.car_listing_id ? "Change Car" : "Link Car"}
+                    </button>
+                  </div>
+
+                  {/* Activity timeline */}
+                  {expandedActivityLeadId === pl.id && (
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+                      {activitiesLoadingId === pl.id ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>Loading…</p>
+                      ) : (leadActivities[pl.id] || []).length === 0 ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No activity yet.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {(leadActivities[pl.id] || []).map((act, i) => {
+                            const icon = act.activity_type === "whatsapp_sent" ? "💬" : act.activity_type === "called" ? "📞" : act.activity_type === "stage_changed" ? "🔄" : "📝";
+                            return (
+                              <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Objection Scripts */}
+                  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
+                    <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+                      {Object.entries(scripts).map(([key, s]) => (
+                        <div key={key} style={{ marginBottom: 10 }}>
+                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
+                          {s.lines.map((line, lineIdx) => {
+                            const lineKey = `${pl.id}-${key}-${lineIdx}`;
+                            const isCopied = copiedScriptLine === lineKey;
+                            return (
+                              <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
+                                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
+                                <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                                  {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* AI WA Reply in drawer */}
+                  {isPremium && pl.buyer_name && pl.phone && (
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI WA Reply</p>
+                      {!aiWaReplies[pl.id] ? (
+                        <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}>
+                          {waReplyLoading[pl.id] ? "Generating..." : "✨ Generate AI Reply"}
+                        </button>
+                      ) : (
+                        <div>
+                          <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, padding: "8px 10px", resize: "none", boxSizing: "border-box" }} />
+                          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                            <button onClick={() => { navigator.clipboard.writeText(aiWaReplies[pl.id]); setWaReplyCopied(p=>({...p,[pl.id]:true})); setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>{waReplyCopied[pl.id]?"Copied!":"Copy"}</button>
+                            {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send via WA</button>}
+                            <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>Regenerate</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
+                  {/* Lost / Delete zone */}
+                  {plIsPromptingLost ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+                      {LOST_REASONS.map(r => (
+                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
+                          {lostSavingId === pl.id ? "…" : r}
+                        </button>
+                      ))}
+                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
+                    </div>
+                  ) : plIsConfirmingDelete ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>Delete this lead?</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : "Yes, delete"}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>No</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {pl.stage !== "won" && pl.stage !== "closed_won" && (
+                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                          Mark as lost
+                        </button>
+                      )}
+                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
       </div>
     );
   };

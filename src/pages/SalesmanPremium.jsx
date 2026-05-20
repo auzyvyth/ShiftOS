@@ -50,6 +50,11 @@ import {
   Voicemail,
   CheckCircle,
   Pin,
+  PhoneCall,
+  History,
+  Search,
+  DollarSign,
+  Clock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
@@ -215,12 +220,38 @@ export default function SalesmanPremium() {
     notes: "",
     car_listing_id: "",
     stage: "new",
+    buyer_state: "",
   });
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
   const [waModalMsg, setWaModalMessage] = useState("");
+  const [drawerLeadId, setDrawerLeadId] = useState(null);
+  const [deletingLeadId, setDeletingLeadId] = useState(null);
+  const [lostSavingId, setLostSavingId] = useState(null);
+  const [stageSavingId, setStageSavingId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteVal, setEditNoteVal] = useState("");
+  const [notesSavingId, setNotesSavingId] = useState(null);
+  const [leadActivities, setLeadActivities] = useState({});
+  const [expandedActivityLeadId, setExpandedActivityLeadId] = useState(null);
+  const [activitiesLoadingId, setActivitiesLoadingId] = useState(null);
+  const [leadSearch, setLeadSearch] = useState("");
+  const [logCallLeadId, setLogCallLeadId] = useState(null);
+  const [callOutcome, setCallOutcome] = useState("answered");
+  const [callNote, setCallNote] = useState("");
+  const [callSaving, setCallSaving] = useState(false);
+  const [followUpModalLead, setFollowUpModalLead] = useState(null);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
+  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+  const [batchWALeads, setBatchWALeads] = useState(null);
+  const [batchWAIdx, setBatchWAIdx] = useState(0);
+  const [mobileLeadStage, setMobileLeadStage] = useState("new");
+  const [playbookLeadId, setPlaybookLeadId] = useState(null);
+  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
 
   // settings
   const [settingsForm, setSettingsForm] = useState({
@@ -316,21 +347,21 @@ export default function SalesmanPremium() {
   const [loanEditStatus, setLoanEditStatus] = useState("");
 
   const channelRef = useRef(null);
+  const pendingStageRef = useRef({});
   const [appointments, setAppointments] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [analyticsEvents, setAnalyticsEvents] = useState([]);
 
-  // stale leads (48h)
+  // stale leads (48h + overdue follow-ups)
   useEffect(() => {
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    const now = new Date();
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     setStaleLeads(
-      leads.filter(
-        (l) =>
-          l.stage !== "won" &&
-          l.stage !== "lost" &&
-          l.updated_at &&
-          new Date(l.updated_at).getTime() < cutoff,
-      ),
+      leads.filter((l) => {
+        if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
+        return (l.follow_up_at && new Date(l.follow_up_at) <= now)
+            || (l.updated_at && new Date(l.updated_at) < cutoff);
+      })
     );
   }, [leads]);
 
@@ -649,60 +680,189 @@ export default function SalesmanPremium() {
   };
 
   const updateLeadStage = async (leadId, stage) => {
+    setStageSavingId(leadId);
     const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
-    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
-    await supabase
+    const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
       .eq("id", leadId);
-    await supabase.from("lead_activities").insert({
+    setStageSavingId(null);
+    if (stageErr) {
+      console.error("updateLeadStage:", stageErr);
+      toast.error("Failed to update lead stage");
+      return;
+    }
+    const { error: actErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
       from_stage: oldStage,
       to_stage: stage,
       created_by: userId,
-      dealer_id: dealerId,
+      dealer_id: null,
     });
+    if (actErr) console.error("updateLeadStage activity:", actErr);
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage } : l)));
+  };
+
+  const advanceLeadStage = (lead, newStage, force = false) => {
+    if (!newStage) return;
+    if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+    const oldStage = lead.stage;
+    const leadId = lead.id;
+    const buyerName = lead.buyer_name || "Lead";
+    if (pendingStageRef.current[leadId]) {
+      clearTimeout(pendingStageRef.current[leadId].timer);
+    }
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)));
+    const timer = setTimeout(() => {
+      delete pendingStageRef.current[leadId];
+      updateLeadStage(leadId, newStage);
+    }, 4500);
+    pendingStageRef.current[leadId] = { timer, oldStage };
+    toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(pendingStageRef.current[leadId]?.timer);
+          delete pendingStageRef.current[leadId];
+          setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: oldStage } : l)));
+        },
+      },
+      duration: 4500,
+    });
   };
 
   const pingWA = (lead) => {
     const car = lead.car_listings;
     const carName = car ? `${car.brand} ${car.model}` : "kereta tu";
-    const name = lead.buyer_name || "kawan";
-    const defaultMsg = `Hi ${name}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi — saya boleh tolong cari yang terbaik untuk you 😊`;
+    const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
+    const msg = isStale
+      ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+      : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
     setWaModalLead(lead);
-    setWaModalMessage(defaultMsg);
+    setWaModalMessage(msg);
+  };
+
+  const saveLeadNote = async (leadId) => {
+    setNotesSavingId(leadId);
+    const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
+    setNotesSavingId(null);
+    if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, notes: editNoteVal } : l));
+    setEditingNoteId(null);
+  };
+
+  const fetchLeadActivities = async (leadId) => {
+    if (leadActivities[leadId]) { setExpandedActivityLeadId(leadId); return; }
+    setActivitiesLoadingId(leadId);
+    const { data, error } = await supabase
+      .from("lead_activities")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) console.error("fetchLeadActivities:", error);
+    setLeadActivities((p) => ({ ...p, [leadId]: data || [] }));
+    setActivitiesLoadingId(null);
+    setExpandedActivityLeadId(leadId);
+  };
+
+  const logCall = async () => {
+    if (!logCallLeadId) return;
+    setCallSaving(true);
+    const lead = leads.find((l) => l.id === logCallLeadId);
+    const { error } = await supabase.from("lead_activities").insert({
+      lead_id: logCallLeadId,
+      activity_type: "called",
+      note: `${callOutcome}${callNote ? ` — ${callNote}` : ""}`,
+      created_by: userId,
+      dealer_id: null,
+    });
+    if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+    await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
+    setLeads((p) => p.map((l) => l.id === logCallLeadId ? { ...l, updated_at: new Date().toISOString(), last_call_outcome: callOutcome } : l));
+    setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
+    toast.success("Call logged");
+    setCallSaving(false);
+    setLogCallLeadId(null);
+    setCallNote("");
+    setCallOutcome("answered");
+  };
+
+  const saveFollowUp = async (leadId, date) => {
+    setFollowUpSaving(true);
+    const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
+    setFollowUpSaving(false);
+    if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+    setLeads((p) => p.map((l) => l.id === leadId ? { ...l, follow_up_at: date || null } : l));
+    setFollowUpModalLead(null);
+    toast.success(date ? "Follow-up reminder set" : "Reminder cleared");
   };
 
   const handleDeleteLead = async (leadId) => {
-    await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    setDeletingLeadId(leadId);
+    const { error: delErr } = await supabase.from("leads").update({ is_deleted: true }).eq("id", leadId);
+    setDeletingLeadId(null);
+    if (delErr) {
+      console.error("handleDeleteLead:", delErr);
+      toast.error("Failed to delete lead");
+      return;
+    }
     setLeads((p) => p.filter((l) => l.id !== leadId));
     setDeleteConfirmId(null);
+  };
+
+  const handleLinkCar = async (leadId, carId) => {
+    const { error: linkErr } = await supabase
+      .from("leads")
+      .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
+      .eq("id", leadId);
+    if (linkErr) {
+      console.error("handleLinkCar:", linkErr);
+      toast.error("Failed to link car");
+      return;
+    }
+    const car = myListings.find((c) => c.id === carId);
+    setLeads((p) => p.map((l) =>
+      l.id === leadId
+        ? { ...l, car_listing_id: carId, car_listings: car
+            ? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
+            : l.car_listings }
+        : l
+    ));
+    setLinkCarLeadId(null);
+    toast.success("Car linked to lead!");
   };
 
   const handleLostReason = async (leadId, reason) => {
     const lead = leads.find((l) => l.id === leadId);
     const oldStage = lead?.stage ?? null;
-    const dealerId = lead?.dealer_id ?? null;
     const now = new Date().toISOString();
-    await supabase
+    setLostSavingId(leadId);
+    const { error: lostErr } = await supabase
       .from("leads")
-      .update({ stage: "lost", lost_reason: reason, updated_at: now })
+      .update({ stage: "lost", loss_reason: reason, updated_at: now })
       .eq("id", leadId);
-    await supabase.from("lead_activities").insert({
+    setLostSavingId(null);
+    if (lostErr) {
+      console.error("handleLostReason:", lostErr);
+      toast.error("Failed to mark lead as lost");
+      return;
+    }
+    const { error: lostActErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
       from_stage: oldStage,
       to_stage: "lost",
       note: `Lost reason: ${reason}`,
       created_by: userId,
-      dealer_id: dealerId,
+      dealer_id: null,
     });
+    if (lostActErr) console.error("handleLostReason activity:", lostActErr);
     setLeads((p) =>
       p.map((l) =>
         l.id === leadId
-          ? { ...l, stage: "lost", lost_reason: reason, updated_at: now }
+          ? { ...l, stage: "lost", loss_reason: reason, updated_at: now }
           : l,
       ),
     );
@@ -789,7 +949,8 @@ export default function SalesmanPremium() {
         stage: "new",
         lead_source: "manual",
         is_deleted: false,
-        lost_reason: null,
+        loss_reason: null,
+        buyer_state: addLeadForm.buyer_state || null,
       })
       .select()
       .single();
@@ -802,6 +963,7 @@ export default function SalesmanPremium() {
       notes: "",
       car_listing_id: "",
       stage: "new",
+      buyer_state: "",
     });
   };
 
@@ -3494,35 +3656,62 @@ export default function SalesmanPremium() {
   // (() => { ... })().map() chain closes correctly.
 
   const renderLeads = () => {
+    const searchedLeads = leadSearch.trim()
+      ? leads.filter((l) => {
+          const q = leadSearch.toLowerCase();
+          return (
+            (l.buyer_name || "").toLowerCase().includes(q) ||
+            (l.phone || "").includes(q) ||
+            (l.notes || "").toLowerCase().includes(q)
+          );
+        })
+      : leads;
+
+    // lead source breakdown
+    const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+    leads.forEach(l => {
+      const s = l.lead_source || "manual";
+      srcMap[s] = (srcMap[s] || 0) + 1;
+    });
+    const srcTotal = leads.length;
+    const srcCfg = [
+      { key: "enquiry",  label: "WhatsApp",  color: "#4ade80" },
+      { key: "booking",  label: "Booking",   color: "#60a5fa" },
+      { key: "xdrive",   label: "XDrive",    color: "#f87171" },
+      { key: "manual",   label: "Manual",    color: "#6b7280" },
+    ].filter(s => srcMap[s.key] > 0);
+
+    // pre-compute heat scores once
+    const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
+
     const activeStages = LEAD_STAGES.filter(
       (s) => s !== "lost" && s !== "closed_lost" && s !== "closed_won",
     );
-    const lostLeads = leads.filter(
-      (l) =>
-        l.stage === "lost" ||
-        l.stage === "closed_lost" ||
-        l.stage === "closed_won",
+    const lostLeads = searchedLeads.filter(
+      (l) => l.stage === "lost" || l.stage === "closed_lost",
     );
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
-      const carName = car
-        ? [car.year, car.brand, car.model].filter(Boolean).join(" ")
-        : null;
-      const carPrice = car?.selling_price
-        ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-        : null;
+      const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+      const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+      const progressStages = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won"];
+      const normalizedStage = lead.stage === "closed_won" ? "won" : lead.stage;
+      const currentProgressIdx = progressStages.indexOf(normalizedStage);
       const stageIdx = LEAD_STAGES.indexOf(lead.stage);
       const nextStage = LEAD_STAGES.filter(
-        (s) =>
-          s !== "lost" &&
-          s !== "won" &&
-          s !== "closed_won" &&
-          s !== "closed_lost",
+        (s) => s !== "lost" && s !== "closed_won" && s !== "closed_lost",
       ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
       const heat = getHeatScore(lead);
       const isConfirmingDelete = deleteConfirmId === lead.id;
       const isPromptingLost = lostPromptId === lead.id;
+      const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
+      const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+      const heatStyle = heat.label === "hot"
+        ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
+        : heat.label === "warm"
+        ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" }
+        : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
 
       return (
         <div
@@ -3531,346 +3720,125 @@ export default function SalesmanPremium() {
             background: "#0d1117",
             border: "1px solid rgba(255,255,255,0.07)",
             borderRadius: 10,
-            padding: "10px 12px",
+            overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 6,
-              marginBottom: 2,
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#e5e7eb",
-                lineHeight: 1.3,
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {lead.buyer_name || "—"}
-            </p>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                flexShrink: 0,
-              }}
-            >
-              <span
-                title={`${heat.label} · score ${heat.score.toFixed(1)}`}
-                style={{ fontSize: 10, fontWeight: 600, color: heat.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 99, padding: "1px 6px", lineHeight: 1.4, whiteSpace: "nowrap" }}
-              >
-                <heat.icon size={10} /> {heat.score.toFixed(1)}
-              </span>
-              {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
-                const score = lead.ai_score || leadScores[lead.id]?.score;
-                const reason = lead.ai_score_reason || leadScores[lead.id]?.reason || "";
-                const colors = { hot: { bg: "#dc2626", tx: "#fff" }, warm: { bg: "#f59e0b", tx: "#000" }, cold: { bg: "#52525b", tx: "#fff" } };
-                const c = colors[score] || colors.cold;
-                return (
-                  <span title={reason} style={{ fontSize: 9, fontWeight: 800, background: c.bg, color: c.tx, borderRadius: 4, padding: "1px 6px", letterSpacing: "0.06em" }}>
-                    {score.toUpperCase()}
-                  </span>
-                );
-              })()}
-              <button
-                onClick={() => {
-                  setLostPromptId(null);
-                  setDeleteConfirmId(lead.id);
-                }}
-                title="Delete lead"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#4b5563",
-                  cursor: "pointer",
-                  padding: 2,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
-          <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>
-            Added {timeAgo(lead.created_at)}
-          </p>
-          {carName && (
-            <p style={{ margin: "0 0 1px", fontSize: 11, color: "#6b7280" }}>
-              {carName}
-            </p>
-          )}
-          {carPrice && (
-            <p
-              style={{
-                margin: "0 0 4px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#60a5fa",
-              }}
-            >
-              {carPrice}
-            </p>
-          )}
-          {lead.phone && (
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>
-              📞 {lead.phone}
-            </p>
-          )}
-          {lead.notes && (
-            <p
-              style={{
-                margin: "0 0 6px",
-                fontSize: 10,
-                color: "#4b5563",
-                fontStyle: "italic",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              "{lead.notes}"
-            </p>
-          )}
-          {/* AI WA Reply */}
-          {isPremium && lead.buyer_name && lead.phone && (
-            <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 8 }}>
-              {!aiWaReplies[lead.id] ? (
-                <button
-                  onClick={() => generateAiWaReply(lead)}
-                  disabled={waReplyLoading[lead.id]}
-                  style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", cursor: "pointer" }}
-                >
-                  {waReplyLoading[lead.id] ? "Generating..." : "✨ AI WA Reply"}
-                </button>
-              ) : (
-                <div>
-                  <textarea
-                    readOnly
-                    value={aiWaReplies[lead.id]}
-                    rows={3}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", resize: "none", boxSizing: "border-box" }}
-                  />
-                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                    <button onClick={() => { navigator.clipboard.writeText(aiWaReplies[lead.id]); setWaReplyCopied((p) => ({ ...p, [lead.id]: true })); setTimeout(() => setWaReplyCopied((p) => ({ ...p, [lead.id]: false })), 1500); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
-                      {waReplyCopied[lead.id] ? "Copied!" : "Copy"}
-                    </button>
-                    {lead.phone && (
-                      <button onClick={() => { const ph = lead.phone.replace(/\D/g,""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6"+ph}?text=${encodeURIComponent(aiWaReplies[lead.id])}`, "_blank"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>
-                        Send via WA
-                      </button>
-                    )}
-                    <button onClick={() => setAiWaReplies((p) => { const n = {...p}; delete n[lead.id]; return n; })} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#6b7280", cursor: "pointer" }}>
-                      Regenerate
-                    </button>
+          {/* ── HEADER ── */}
+          <div style={{ padding: "12px 14px 0" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+              {/* Avatar */}
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {lead.buyer_name || "—"}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
+                      {heat.label}
+                    </span>
+                    {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
+                      const score = lead.ai_score || leadScores[lead.id]?.score;
+                      const c = score === "hot" ? {bg:"#dc2626",tx:"#fff"} : score === "warm" ? {bg:"#f59e0b",tx:"#000"} : {bg:"#52525b",tx:"#fff"};
+                      return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{score.toUpperCase()}</span>;
+                    })()}
                   </div>
                 </div>
-              )}
+                {(carName || carPrice) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
+                    {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+                  </div>
+                )}
+                {lead.updated_at && (
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? "#fb923c" : "#374151" }}>
+                    Last contact: {timeAgo(lead.updated_at)}
+                  </p>
+                )}
+                {lead.last_call_outcome && (() => {
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
+                  const o = OUTCOME[lead.last_call_outcome];
+                  if (!o) return null;
+                  return (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+                      <o.icon size={10} /> {o.label}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
-          )}
-          {isConfirmingDelete ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                flexWrap: "wrap",
-                padding: "4px 0",
-              }}
+
+            {/* Progress bar — 7 segments */}
+            <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
+              <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                {progressStages.map((s, i) => (
+                  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? "#9ca3af" : i === currentProgressIdx ? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+                ))}
+              </div>
+              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>
+                Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+                {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
+              </p>
+            </div>
+
+            {/* Follow-up warning */}
+            {followUpOverdue && (
+              <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+                Follow-up: {timeAgo(lead.follow_up_at)}
+              </div>
+            )}
+          </div>
+
+          {/* ── ACTIONS — exactly 3 buttons ── */}
+          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+            {lead.stage !== "won" && lead.stage !== "closed_won" && (
+              <button
+                onClick={() => advanceLeadStage(lead, nextStage)}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
+              >
+                → {(nextStage || "won").replace(/_/g, " ")}
+              </button>
+            )}
+            {lead.phone && (
+              <a
+                href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
+                style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                📞
+              </a>
+            )}
+            {lead.phone ? (
+              <button
+                onClick={() => {
+                  const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
+                  const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
+                  const msg = isStale
+                    ? `Hi ${lead.buyer_name || "kawan"}! Ada orang lain tengah tanya pasal ${waCarName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
+                    : `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${waCarName} tu? Jom kita discuss lagi 😊`;
+                  setWaModalMessage(msg);
+                  setWaModalLead(lead);
+                }}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
+              >
+                WA
+              </button>
+            ) : !lead.car_listing_id ? (
+              <button
+                onClick={() => setLinkCarLeadId(lead.id)}
+                style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
+              >
+                🚗 Link Car
+              </button>
+            ) : null}
+            <button
+              onClick={() => setDrawerLeadId(lead.id)}
+              style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
             >
-              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>
-                Delete?
-              </span>
-              <button
-                onClick={() => handleDeleteLead(lead.id)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 9px",
-                  borderRadius: 5,
-                  background: "rgba(239,68,68,0.12)",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  color: "#f87171",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 9px",
-                  borderRadius: 5,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#6b7280",
-                  cursor: "pointer",
-                }}
-              >
-                No
-              </button>
-            </div>
-          ) : isPromptingLost ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                flexWrap: "wrap",
-                padding: "4px 0",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "#9ca3af",
-                  fontWeight: 600,
-                  marginRight: 2,
-                }}
-              >
-                Why lost?
-              </span>
-              {LOST_REASONS.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleLostReason(lead.id, r)}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 8px",
-                    borderRadius: 99,
-                    background: "rgba(148,163,184,0.08)",
-                    border: "1px solid rgba(148,163,184,0.2)",
-                    color: "#cbd5e1",
-                    cursor: "pointer",
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-              <button
-                onClick={() => setLostPromptId(null)}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 7px",
-                  borderRadius: 5,
-                  background: "transparent",
-                  border: "none",
-                  color: "#4b5563",
-                  cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {nextStage && lead.stage !== "won" && (
-                <button
-                  onClick={() => updateLeadStage(lead.id, nextStage)}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 7px",
-                    borderRadius: 5,
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                  }}
-                >
-                  → {nextStage.replace(/_/g, " ")}
-                </button>
-              )}
-              {lead.stage !== "won" && lead.stage !== "deposit_taken" && (
-                <button
-                  onClick={() => updateLeadStage(lead.id, "won")}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 7px",
-                    borderRadius: 5,
-                    background: "rgba(34,197,94,0.08)",
-                    border: "1px solid rgba(34,197,94,0.2)",
-                    color: "#4ade80",
-                    cursor: "pointer",
-                  }}
-                >
-                  → Won
-                </button>
-              )}
-              {lead.stage !== "won" && (
-                <button
-                  onClick={() => {
-                    setDeleteConfirmId(null);
-                    setLostPromptId(lead.id);
-                  }}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 7px",
-                    borderRadius: 5,
-                    background: "rgba(148,163,184,0.06)",
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    color: "#9ca3af",
-                    cursor: "pointer",
-                  }}
-                >
-                  → Lost
-                </button>
-              )}
-              {lead.phone && (
-                <button
-                  onClick={() => {
-                    const car = lead.car_listings;
-                    const carName = car
-                      ? `${car.brand} ${car.model}`
-                      : "kereta tu";
-                    const msg = `Hi ${lead.buyer_name || "kawan"}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`;
-                    setWaModalMessage(msg);
-                    setWaModalLead(lead);
-                  }}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 7px",
-                    borderRadius: 5,
-                    background: "rgba(37,211,102,0.1)",
-                    border: "1px solid rgba(37,211,102,0.2)",
-                    color: "#4ade80",
-                    cursor: "pointer",
-                  }}
-                >
-                  WA
-                </button>
-              )}
-              {isPremium && (
-                <button
-                  onClick={() => rescoreLead(lead)}
-                  disabled={leadScores[lead.id]?.loading}
-                  style={{
-                    fontSize: 10,
-                    padding: "3px 7px",
-                    borderRadius: 5,
-                    background: "rgba(168,85,247,0.08)",
-                    border: "1px solid rgba(168,85,247,0.2)",
-                    color: "#c084fc",
-                    cursor: "pointer",
-                  }}
-                >
-                  {leadScores[lead.id]?.loading ? "..." : "✨ Rescore"}
-                </button>
-              )}
-            </div>
-          )}
+              ···
+            </button>
+          </div>
         </div>
       );
     };
@@ -3893,7 +3861,7 @@ export default function SalesmanPremium() {
               color: "#f1f5f9",
             }}
           >
-            Lead Pipeline ({leads.filter((l) => l.stage !== "lost").length})
+            Lead Pipeline ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
           </p>
           <button
             onClick={() => setShowAddLead(true)}
@@ -3901,7 +3869,7 @@ export default function SalesmanPremium() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "#1d4ed8",
+              background: "#dc2626",
               border: "none",
               borderRadius: 8,
               color: "#fff",
@@ -3915,91 +3883,147 @@ export default function SalesmanPremium() {
           </button>
         </div>
 
-        {isMobile && leads.length > 0 && (
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#374151" }}>
-            swipe to see more →
-          </p>
+        {/* Lead source breakdown */}
+        {srcTotal > 0 && srcCfg.length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
+              {srcCfg.map(({ key, color }) => (
+                <div key={key} style={{ flex: srcMap[key], background: color }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {srcCfg.map(({ key, label, color }) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            overflowX: "auto",
-            paddingBottom: 8,
-            scrollSnapType: isMobile ? "x mandatory" : undefined,
-          }}
-        >
-          {activeStages.map((stage) => {
-            const sc = STAGE_COLOR[stage] || {};
-            const stageLeads = leads
-              .filter((l) => l.stage === stage)
-              .sort((a, b) => getHeatScore(b).score - getHeatScore(a).score);
-            return (
-              <div
-                key={stage}
-                style={{
-                  minWidth: isMobile ? 170 : 200,
-                  flexShrink: 0,
-                  scrollSnapAlign: isMobile ? "start" : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span
+        {/* Search bar */}
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#4b5563", pointerEvents: "none" }} />
+          <input
+            value={leadSearch}
+            onChange={(e) => setLeadSearch(e.target.value)}
+            placeholder="Search by name or phone…"
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+          />
+          {leadSearch && (
+            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {isMobile ? (
+          <>
+            {/* Mobile: pill filter row */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 10px", marginBottom: 12 }}>
+              {activeStages.map((stage) => {
+                const sc = STAGE_COLOR[stage] || {};
+                const count = searchedLeads.filter((l) => l.stage === stage).length;
+                const isActive = mobileLeadStage === stage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => setMobileLeadStage(stage)}
                     style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      borderRadius: 99,
                       fontSize: 11,
-                      fontWeight: 600,
-                      color: sc.tx || "#9ca3af",
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: "pointer",
+                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                      border: isActive ? "1px solid rgba(220,38,38,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      color: isActive ? "#f87171" : "#4b5563",
                       textTransform: "capitalize",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {stage.replace(/_/g, " ")}
-                  </span>
-                  <span
-                    style={{
+                    <span style={{
                       fontSize: 10,
-                      background: sc.bg,
-                      border: `1px solid ${sc.border}`,
-                      color: sc.tx,
+                      fontWeight: 700,
+                      color: isActive ? (sc.tx || "#f87171") : "#374151",
+                      background: isActive ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.06)",
                       borderRadius: 99,
-                      padding: "1px 6px",
-                    }}
-                  >
-                    {stageLeads.length}
-                  </span>
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {stageLeads.length === 0 && (
-                    <div
-                      style={{
-                        height: 60,
-                        borderRadius: 10,
-                        border: "1px dashed rgba(255,255,255,0.07)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span style={{ fontSize: 11, color: "#374151" }}>
-                        Empty
-                      </span>
-                    </div>
-                  )}
+                      padding: "0px 6px",
+                      lineHeight: 1.6,
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile: vertical card list for selected stage */}
+            {(() => {
+              const stageLeads = searchedLeads
+                .filter((l) => l.stage === mobileLeadStage)
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              if (stageLeads.length === 0) {
+                return (
+                  <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {stageLeads.map((lead) => renderLeadCard(lead))}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })()}
+          </>
+        ) : (
+          /* Desktop: horizontal kanban scroll */
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              overflowX: "auto",
+              paddingBottom: 8,
+            }}
+          >
+            {activeStages.map((stage) => {
+              const sc = STAGE_COLOR[stage] || {};
+              const stageLeads = searchedLeads
+                .filter((l) => l.stage === stage)
+                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+              return (
+                <div
+                  key={stage}
+                  style={{ minWidth: stageLeads.length === 0 ? 80 : 200, flexShrink: 0 }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: sc.tx || "#9ca3af", textTransform: "capitalize" }}>
+                      {stage.replace(/_/g, " ")}
+                    </span>
+                    <span style={{ fontSize: 10, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, borderRadius: 99, padding: "1px 6px" }}>
+                      {stageLeads.length}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {stageLeads.length === 0 && (
+                      <div style={{ height: 60, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 11, color: "#374151" }}>Empty</span>
+                      </div>
+                    )}
+                    {stageLeads.map((lead) => renderLeadCard(lead))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
@@ -4081,7 +4105,7 @@ export default function SalesmanPremium() {
                           flexShrink: 0,
                         }}
                       >
-                        {lead.lost_reason && (
+                        {lead.loss_reason && (
                           <span
                             style={{
                               fontSize: 10,
@@ -4093,7 +4117,7 @@ export default function SalesmanPremium() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {lead.lost_reason}
+                            {lead.loss_reason}
                           </span>
                         )}
                         <button
@@ -4145,7 +4169,7 @@ export default function SalesmanPremium() {
                           onClick={() => handleDeleteLead(lead.id)}
                           style={{
                             fontSize: 10,
-                            padding: "3px 9px",
+                            padding: "6px 11px",
                             borderRadius: 5,
                             background: "rgba(239,68,68,0.12)",
                             border: "1px solid rgba(239,68,68,0.3)",
@@ -4160,7 +4184,7 @@ export default function SalesmanPremium() {
                           onClick={() => setDeleteConfirmId(null)}
                           style={{
                             fontSize: 10,
-                            padding: "3px 9px",
+                            padding: "6px 11px",
                             borderRadius: 5,
                             background: "rgba(255,255,255,0.05)",
                             border: "1px solid rgba(255,255,255,0.08)",
@@ -4178,6 +4202,228 @@ export default function SalesmanPremium() {
             )}
           </div>
         )}
+
+        {/* ── LEAD DETAIL SIDEBAR ── */}
+        {drawerLeadId && (() => {
+          const pl = leads.find(l => l.id === drawerLeadId);
+          if (!pl) return null;
+          const plCar = pl.car_listings;
+          const plCarName = plCar ? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
+          const plCarPrice = plCar?.selling_price ? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
+          const plHeat = getHeatScore(pl);
+          const plHeatStyle = plHeat.label === "hot" ? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm" ? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+          const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+          const plIsPromptingLost = lostPromptId === pl.id;
+          const plIsConfirmingDelete = deleteConfirmId === pl.id;
+          const pbCar = pl.car_listings;
+          const pbCarName = pbCar ? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
+          const pbStage = pl.stage;
+          const scripts = {
+            price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price ? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price ? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
+            mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage ? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
+            timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`] },
+            trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+          };
+          const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+          return (
+            <>
+              {/* backdrop */}
+              <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+              {/* panel */}
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif" }}>
+
+                {/* header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || "No car linked"}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+                    <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* price strip */}
+                {plCarPrice && (
+                  <div style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
+                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>
+                  </div>
+                )}
+
+                {/* scrollable body */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+
+                  {/* Notes */}
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Notes</p>
+                    {editingNoteId === pl.id ? (
+                      <div>
+                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : "Save"}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : pl.notes ? (
+                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: "#9ca3af", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Pencil size={12} /> "{pl.notes}"
+                      </p>
+                    ) : (
+                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+                        <Pencil size={12} /> Add note…
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tool row 1 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => switchTab("loans")} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <DollarSign size={12} /> Loan calc
+                    </button>
+                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <PhoneCall size={12} /> Log call
+                    </button>
+                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at ? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <Clock size={12} /> Set reminder
+                    </button>
+                  </div>
+
+                  {/* Tool row 2 */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id ? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id ? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id ? "#c084fc" : "#9ca3af" }}>
+                      Scripts
+                    </button>
+                    <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id ? "#93c5fd" : "#9ca3af" }}>
+                      <History size={12} /> History
+                    </button>
+                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      🚗 {pl.car_listing_id ? "Change Car" : "Link Car"}
+                    </button>
+                    {isPremium && (
+                      <button onClick={() => rescoreLead(pl)} style={{fontSize:12,padding:"7px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"inherit"}}>
+                        {leadScores[pl.id]?.loading ? "Scoring..." : "✨ Re-score"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Activity timeline */}
+                  {expandedActivityLeadId === pl.id && (
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+                      {activitiesLoadingId === pl.id ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>Loading…</p>
+                      ) : (leadActivities[pl.id] || []).length === 0 ? (
+                        <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No activity yet.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {(leadActivities[pl.id] || []).map((act, i) => {
+                            const icon = act.activity_type === "whatsapp_sent" ? "💬" : act.activity_type === "call_logged" ? "📞" : act.activity_type === "called" ? "📞" : act.activity_type === "stage_changed" ? "🔄" : "📝";
+                            return (
+                              <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed" ? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Objection Scripts */}
+                  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
+                    <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+                      {Object.entries(scripts).map(([key, s]) => (
+                        <div key={key} style={{ marginBottom: 10 }}>
+                          <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
+                          {s.lines.map((line, lineIdx) => {
+                            const lineKey = `${pl.id}-${key}-${lineIdx}`;
+                            const isCopied = copiedScriptLine === lineKey;
+                            return (
+                              <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
+                                <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
+                                <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied ? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+                                  {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* AI WA Reply */}
+                  {isPremium && pl.buyer_name && pl.phone && (
+                    <div style={{marginTop:12,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:12}}>
+                      <p style={{margin:"0 0 6px",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em"}}>AI WA Reply</p>
+                      {!aiWaReplies[pl.id] ? (
+                        <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{fontSize:11,padding:"6px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer"}}>
+                          {waReplyLoading[pl.id] ? "Generating..." : "✨ Generate AI Reply"}
+                        </button>
+                      ) : (
+                        <div>
+                          <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,color:"#e5e7eb",fontSize:12,padding:"8px 10px",resize:"none",boxSizing:"border-box"}}/>
+                          <div style={{display:"flex",gap:6,marginTop:6}}>
+                            <button onClick={() => {navigator.clipboard.writeText(aiWaReplies[pl.id]);setWaReplyCopied(p=>({...p,[pl.id]:true}));setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500);}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#9ca3af",cursor:"pointer"}}>{waReplyCopied[pl.id]?"Copied!":"Copy"}</button>
+                            {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(37,211,102,0.1)",border:"1px solid rgba(37,211,102,0.2)",color:"#4ade80",cursor:"pointer"}}>Send via WA</button>}
+                            <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#6b7280",cursor:"pointer"}}>Regenerate</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+
+                  {/* Lost / Delete zone */}
+                  {plIsPromptingLost ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+                      {LOST_REASONS.map(r => (
+                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
+                          {lostSavingId === pl.id ? "…" : r}
+                        </button>
+                      ))}
+                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}>✕</button>
+                    </div>
+                  ) : plIsConfirmingDelete ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>Delete this lead?</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : "Yes, delete"}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>No</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {pl.stage !== "won" && pl.stage !== "closed_won" && (
+                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                          Mark as lost
+                        </button>
+                      )}
+                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
       </div>
     );
   };
