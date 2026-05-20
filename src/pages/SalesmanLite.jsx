@@ -21,6 +21,7 @@ import {
   MessageSquare,
   MessageCircle,
   Link as LinkIcon,
+  ExternalLink,
   GitMerge,
   AlertCircle,
   CheckCircle2,
@@ -48,6 +49,7 @@ import {
   DollarSign,
   Clock,
   BarChart2,
+  BarChart2 as BarChart2Icon,
   Target,
   Award,
   Zap,
@@ -561,9 +563,13 @@ export default function SalesmanLite() {
 
       if (
         !profileData.onboarding_tour_done &&
+        !localStorage.getItem(`slite_tour_seen_${uid}`) &&
         profileData.created_at &&
         Date.now() - new Date(profileData.created_at).getTime() < 7 * 24 * 60 * 60 * 1000
-      ) setTourStep(0);
+      ) {
+        localStorage.setItem(`slite_tour_seen_${uid}`, '1');
+        setTourStep(0);
+      }
 
       // seed from cache immediately so UI is instant
       const cachedListings = readCache(`slite_listings_${uid}`);
@@ -867,12 +873,18 @@ export default function SalesmanLite() {
     const TOUR_TABS = [null, "dashboard", "listings", "leads", "enquiries", "bookings", "merge"];
     const tab = TOUR_TABS[tourStep];
     if (!tab) { setTourTarget(null); return; }
-    switchTab(tab);
+    if (tab === "bookings") {
+      switchTab("enquiries");
+      setInboxSubTab("bookings");
+    } else {
+      switchTab(tab);
+    }
+    const targetId = tab === "bookings" ? "enquiries" : tab;
     const measure = () => {
-      const el = document.querySelector(`[data-tour-id="${tab}"]`);
+      const el = document.querySelector(`[data-tour-id="${targetId}"]`);
       if (el) setTourTarget(el.getBoundingClientRect());
     };
-    const t = setTimeout(measure, 60);
+    const t = setTimeout(measure, 80);
     return () => clearTimeout(t);
   }, [tourStep]);
 
@@ -1956,14 +1968,26 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   ))}
                 </div>
                 {profile?.slug && (
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
-                  >
-                    <LinkIcon size={11} />
-                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
-                    <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Copy</span>
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Store link copied — share it with buyers!"); }}
+                      style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
+                    >
+                      <LinkIcon size={11} />
+                      <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
+                      <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>Salin</span>
+                    </button>
+                    <a
+                      href={`https://xdrive.my/s/${profile.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 11, padding: "9px 12px", borderRadius: 8, background: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.2)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
+                    >
+                      <ExternalLink size={11} />
+                      <span style={{ flex: 1 }}>Lihat halaman mini anda</span>
+                      <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
@@ -6336,13 +6360,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
   const TOUR_STEPS = [
-    { emoji: "👋", title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
-    { emoji: "📊", title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
-    { emoji: "🚗", title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. 🔥 = buyers are clicking. 💤 = needs a refresh or price drop." },
-    { emoji: "👥", title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
-    { emoji: "💬", title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
-    { emoji: "📅", title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
-    { emoji: "🔗", title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
+    { icon: Zap,          title: "Selamat Datang ke ShiftOS Lite", body: "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata." },
+    { icon: LayoutGrid,   title: "Papan Pemuka",    body: "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan." },
+    { icon: Car,          title: "Iklan Saya",      body: "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas." },
+    { icon: Users,        title: "Bakal Pelanggan", body: "Jejak setiap pembeli: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp." },
+    { icon: MessageSquare, title: "Pertanyaan",    body: "Pembeli yang menghantar mesej melalui kad iklan anda akan masuk di sini. Balas dengan templat atau tukar kepada lead dalam satu ketikan." },
+    { icon: Calendar,     title: "Tempahan",        body: "Janji temu tontonan kereta dipaparkan di sini. Sahkan, batalkan, atau hantar peringatan WA tanpa keluar dari aplikasi." },
+    { icon: GitMerge,     title: "Sertai Pengedar", body: "Ada kod jemputan dari pengedar anda? Masukkan di sini untuk buka panel penuh — stok dikongsi, lead bersama, penjejak komisen dan lebih banyak lagi." },
   ];
 
   const dismissTour = async () => {
@@ -6464,8 +6488,10 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ fontSize: 20 }}>{step.emoji}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <step.icon size={15} style={{ color: "#f87171" }} />
+              </div>
               <div>
                 <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                   {tourStep + 1} / {TOUR_STEPS.length}
@@ -6473,7 +6499,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
               </div>
             </div>
-            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}>✕</button>
+            <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}><X size={14} /></button>
           </div>
 
           <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
@@ -6491,18 +6517,18 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-                ← Back
+                Kembali
               </button>
             )}
             <div style={{ flex: 1 }} />
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
-              Skip
+              Langkau
             </button>
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
               style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
-              {isLast ? "Got it 🎉" : "Next →"}
+              {isLast ? "Faham" : "Seterusnya"}
             </button>
           </div>
         </div>
