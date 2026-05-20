@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
+import { Clock } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
@@ -30,6 +31,9 @@ export default function SalesmanProfilePage() {
   const [soldCount, setSoldCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
+  const bioRef = useRef(null);
+  const [bioOverflows, setBioOverflows] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -74,6 +78,12 @@ export default function SalesmanProfilePage() {
     }
     load();
   }, [slug]);
+
+  useEffect(() => {
+    if (bioRef.current) {
+      setBioOverflows(bioRef.current.scrollHeight > bioRef.current.clientHeight + 2);
+    }
+  }, [profile?.bio, bioExpanded]);
 
   const waPhone = (profile?.whatsapp_number || '').replace(/\D/g, '');
   const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}` : null;
@@ -171,8 +181,19 @@ export default function SalesmanProfilePage() {
             </p>
           )}
 
+          {/* Specializations */}
+          {profile.specializations && profile.specializations.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 16 }}>
+              {profile.specializations.map((spec, i) => (
+                <span key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', color: '#d1d5db', borderRadius: 99, padding: '4px 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.02em' }}>
+                  {spec}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Stats strip */}
-          <div style={{ display: 'inline-flex', gap: 0, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', marginBottom: profile.about_text ? 18 : 22 }}>
+          <div style={{ display: 'inline-flex', gap: 0, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', marginBottom: (profile.about_text || profile.bio) ? 18 : 22 }}>
             <div style={{ padding: '10px 20px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
               <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 }}>{listings.length}</p>
               <p style={{ margin: '3px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Available</p>
@@ -194,10 +215,47 @@ export default function SalesmanProfilePage() {
             )}
           </div>
 
+          {/* Bio */}
+          {profile.bio && (
+            <div style={{ marginBottom: 18, maxWidth: 460, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+              <p
+                ref={bioRef}
+                style={{
+                  fontSize: 13,
+                  color: '#94a3b8',
+                  lineHeight: 1.75,
+                  margin: 0,
+                  display: '-webkit-box',
+                  WebkitLineClamp: bioExpanded ? 'unset' : 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: bioExpanded ? 'visible' : 'hidden',
+                }}
+              >
+                {profile.bio}
+              </p>
+              {(bioOverflows || bioExpanded) && (
+                <button
+                  onClick={() => setBioExpanded(v => !v)}
+                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0 0', display: 'inline-block' }}
+                >
+                  {bioExpanded ? 'Show less' : 'Read more'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* About */}
           {profile.about_text && (
             <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.8, marginBottom: 22, maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
               {profile.about_text}
+            </p>
+          )}
+
+          {/* Response Time */}
+          {profile.response_time && (
+            <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <Clock size={12} strokeWidth={2} style={{ flexShrink: 0, color: '#4b5563' }} />
+              {profile.response_time}
             </p>
           )}
 

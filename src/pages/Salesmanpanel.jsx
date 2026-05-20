@@ -210,6 +210,17 @@ export default function SalesmanPanel() {
   const [loanEditStatus, setLoanEditStatus] = useState("");
   const [loanEditCommission, setLoanEditCommission] = useState("");
 
+  // ── profile settings tab
+  const [profileSettings, setProfileSettings] = useState({
+    full_name: '', job_title: '', whatsapp_number: '',
+    city: '', state: '', about_text: '',
+    bio: '', response_time: '', specializations: [],
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsError, setSettingsError] = useState(null);
+  const [tagInput, setTagInput] = useState('');
+
   // ── stale leads (48h no contact, exclude won/lost)
   useEffect(() => {
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
@@ -223,6 +234,22 @@ export default function SalesmanPanel() {
       ),
     );
   }, [leads]);
+
+  // ── sync profile → settings form
+  useEffect(() => {
+    if (!profile) return;
+    setProfileSettings({
+      full_name: profile.full_name || '',
+      job_title: profile.job_title || '',
+      whatsapp_number: profile.whatsapp_number || '',
+      city: profile.city || '',
+      state: profile.state || '',
+      about_text: profile.about_text || '',
+      bio: profile.bio || '',
+      response_time: profile.response_time || '',
+      specializations: profile.specializations || [],
+    });
+  }, [profile?.id]);
 
   // ── page title
   useEffect(() => {
@@ -5407,6 +5434,200 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     </div>
   );
 
+  const renderSettings = () => {
+    const inputStyle = {
+      width: '100%', background: '#0d1117',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8, padding: '9px 12px',
+      fontSize: 13, color: '#e5e7eb', outline: 'none',
+      fontFamily: 'inherit', boxSizing: 'border-box',
+    };
+    const labelStyle = {
+      display: 'block', fontSize: 11, fontWeight: 600,
+      color: '#9ca3af', textTransform: 'uppercase',
+      letterSpacing: '0.08em', marginBottom: 6,
+    };
+    const cardStyle = {
+      background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: 12, padding: '20px 24px', marginBottom: 16,
+    };
+    const sectionLabel = {
+      fontSize: 11, fontWeight: 700, color: '#374151',
+      textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, margin: '0 0 18px',
+    };
+
+    const handleSave = async () => {
+      if (!profile?.id) return;
+      setSettingsSaving(true);
+      setSettingsError(null);
+      const { error } = await supabase.from('profiles').update({
+        full_name: profileSettings.full_name,
+        job_title: profileSettings.job_title,
+        whatsapp_number: profileSettings.whatsapp_number,
+        city: profileSettings.city,
+        state: profileSettings.state,
+        about_text: profileSettings.about_text,
+        bio: profileSettings.bio || null,
+        response_time: profileSettings.response_time || null,
+        specializations: profileSettings.specializations.length > 0 ? profileSettings.specializations : null,
+      }).eq('id', profile.id);
+      setSettingsSaving(false);
+      if (error) {
+        setSettingsError('Failed to save. Please try again.');
+      } else {
+        setProfile(prev => ({ ...prev, ...profileSettings }));
+        setSettingsSaved(true);
+        setTimeout(() => setSettingsSaved(false), 3000);
+      }
+    };
+
+    const removeTag = (i) =>
+      setProfileSettings(p => ({ ...p, specializations: p.specializations.filter((_, j) => j !== i) }));
+
+    const handleTagKeyDown = (e) => {
+      if (e.key === 'Enter' && tagInput.trim()) {
+        e.preventDefault();
+        const val = tagInput.trim();
+        if (!profileSettings.specializations.includes(val)) {
+          setProfileSettings(p => ({ ...p, specializations: [...p.specializations, val] }));
+        }
+        setTagInput('');
+      }
+    };
+
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: '0 0 4px' }}>Profile Settings</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: 0 }}>Changes appear on your public XDrive profile page.</p>
+        </div>
+
+        <div style={cardStyle}>
+          <p style={sectionLabel}>Identity</p>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Full Name</label>
+              <input type="text" value={profileSettings.full_name}
+                onChange={e => setProfileSettings(p => ({ ...p, full_name: e.target.value }))}
+                placeholder="Your full name" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Job Title</label>
+              <input type="text" value={profileSettings.job_title}
+                onChange={e => setProfileSettings(p => ({ ...p, job_title: e.target.value }))}
+                placeholder="e.g. Senior Sales Consultant" style={inputStyle} />
+            </div>
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <p style={sectionLabel}>Contact & Location</p>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>WhatsApp Number</label>
+              <input type="text" value={profileSettings.whatsapp_number}
+                onChange={e => setProfileSettings(p => ({ ...p, whatsapp_number: e.target.value }))}
+                placeholder="e.g. 60123456789" style={inputStyle} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>City</label>
+                <input type="text" value={profileSettings.city}
+                  onChange={e => setProfileSettings(p => ({ ...p, city: e.target.value }))}
+                  placeholder="e.g. Petaling Jaya" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>State</label>
+                <input type="text" value={profileSettings.state}
+                  onChange={e => setProfileSettings(p => ({ ...p, state: e.target.value }))}
+                  placeholder="e.g. Selangor" style={inputStyle} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <p style={sectionLabel}>Public Profile</p>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>About</label>
+              <textarea value={profileSettings.about_text}
+                onChange={e => setProfileSettings(p => ({ ...p, about_text: e.target.value }))}
+                placeholder="A short description shown on your public page"
+                rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
+            <div>
+              <label style={labelStyle}>Bio</label>
+              <textarea value={profileSettings.bio}
+                onChange={e => setProfileSettings(p => ({ ...p, bio: e.target.value }))}
+                placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley"
+                rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+              <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>
+                Shown below your name on your public page, with a "Read more" toggle.
+              </p>
+            </div>
+            <div>
+              <label style={labelStyle}>Response Time</label>
+              <input type="text" value={profileSettings.response_time}
+                onChange={e => setProfileSettings(p => ({ ...p, response_time: e.target.value }))}
+                placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Specializations</label>
+              {profileSettings.specializations.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {profileSettings.specializations.map((tag, i) => (
+                    <span key={i} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)',
+                      color: '#fca5a5', borderRadius: 99, padding: '3px 10px',
+                      fontSize: 11, fontWeight: 600,
+                    }}>
+                      {tag}
+                      <button onClick={() => removeTag(i)} style={{
+                        background: 'none', border: 'none', color: 'inherit',
+                        cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', opacity: 0.7,
+                      }}>
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input type="text" value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Type a specialization and press Enter"
+                style={inputStyle} />
+              <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>
+                Press Enter to add each tag. Shown as pills on your public profile.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={handleSave} disabled={settingsSaving} style={{
+            background: '#2563eb', border: 'none', borderRadius: 8,
+            padding: '10px 22px', fontSize: 13, fontWeight: 600, color: '#fff',
+            cursor: settingsSaving ? 'not-allowed' : 'pointer',
+            opacity: settingsSaving ? 0.6 : 1,
+          }}>
+            {settingsSaving ? 'Saving…' : 'Save Changes'}
+          </button>
+          {settingsSaved && (
+            <span style={{ fontSize: 12, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <CheckCircle2 size={14} /> Saved
+            </span>
+          )}
+          {settingsError && (
+            <span style={{ fontSize: 12, color: '#f87171' }}>{settingsError}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderTeam = () => (
     <div
       style={{
@@ -5517,6 +5738,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               tab: "team",
               label: "Team",
               icon: <Users size={18} />,
+              badge: null,
+            },
+            {
+              tab: "settings",
+              label: "Settings",
+              icon: <Settings size={18} />,
               badge: null,
             },
           ].map(({ tab, label, icon, badge }) => {
@@ -5860,6 +6087,53 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   activeTab === tab
                     ? "0.5px solid rgba(37,99,235,0.25)"
                     : "0.5px solid transparent",
+                color: activeTab === tab ? "#93c5fd" : "#6b7280",
+                fontSize: 13,
+                fontWeight: 500,
+                width: "calc(100% - 16px)",
+                textAlign: "left",
+              }}
+            >
+              {icon}
+              <span>{label}</span>
+            </button>
+          ))}
+
+          {/* SETTINGS section */}
+          <p
+            style={{
+              fontSize: 10,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              padding: "12px 16px 4px",
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            Account
+          </p>
+          {[
+            {
+              tab: "settings",
+              label: "Settings",
+              icon: <Settings style={{ width: 14, height: 14, flexShrink: 0 }} />,
+            },
+          ].map(({ tab, label, icon }) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 16px",
+                margin: "1px 8px",
+                borderRadius: 8,
+                cursor: "pointer",
+                position: "relative",
+                background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
+                border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
                 color: activeTab === tab ? "#93c5fd" : "#6b7280",
                 fontSize: 13,
                 fontWeight: 500,
@@ -6229,6 +6503,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {activeTab === "enquiries" && renderEnquiries()}
           {activeTab === "loans" && renderLoans()}
           {activeTab === "team" && renderTeam()}
+          {activeTab === "settings" && renderSettings()}
         </div>
       </div>
 
