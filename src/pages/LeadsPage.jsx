@@ -49,7 +49,7 @@ function StageSection({ stage, leads, onOpen, onMoveNext, onMovePrev }) {
         borderBottom: leads.length > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
         background: 'rgba(0,0,0,0.15)',
       }}>
-        <span style={{ fontSize: 14 }}>{cfg.emoji}</span>
+        {cfg.icon && <cfg.icon size={14} />}
         <span style={{ fontSize: 12, fontWeight: 700, color: cfg.headerBorder, flex: 1 }}>
           {cfg.label}
         </span>

@@ -42,6 +42,14 @@ import {
   Gauge,
   Sparkles,
   Eye,
+  Flame,
+  Snowflake,
+  BarChart2,
+  PhoneOff,
+  RefreshCw,
+  Voicemail,
+  CheckCircle,
+  Pin,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -147,10 +155,9 @@ const getHeatScore = (lead) => {
     : 0;
   const penalty = Math.min(daysStale * 0.5, 3);
   const score = stageWeight - penalty;
-  if (score >= 4) return { score, emoji: "🔥", label: "hot", color: "#f87171" };
-  if (score >= 2)
-    return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
-  return { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
+  if (score >= 4) return { score, icon: Flame,     label: "hot",  color: "#f87171" };
+  if (score >= 2) return { score, icon: TrendingUp, label: "warm", color: "#fbbf24" };
+  return          {         score, icon: Snowflake,  label: "cold", color: "#93c5fd" };
 };
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
@@ -3414,7 +3421,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 title={`${heat.label} · score ${heat.score.toFixed(1)}`}
                 style={{ fontSize: 10, fontWeight: 600, color: heat.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 99, padding: "1px 6px", lineHeight: 1.4, whiteSpace: "nowrap" }}
               >
-                {heat.emoji} {heat.score.toFixed(1)}
+                <heat.icon size={10} /> {heat.score.toFixed(1)}
               </span>
               {leadScores[lead.id] && (
                 <span
@@ -5551,13 +5558,13 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
   const TOUR_STEPS = [
-    { emoji: "👋", title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
-    { emoji: "📊", title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
-    { emoji: "🚗", title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. 🔥 = buyers are clicking. 💤 = needs a refresh or price drop." },
-    { emoji: "👥", title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
-    { emoji: "💬", title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
-    { emoji: "📅", title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
-    { emoji: "🔗", title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
+    { icon: Sparkles,     title: "Welcome to ShiftOS Lite", body: "Quick 30-second tour. Each step takes you to the real panel so you can see it live." },
+    { icon: BarChart2,    title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
+    { icon: Car,          title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop." },
+    { icon: Users,        title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
+    { icon: MessageSquare, title: "Enquiries", body: "Buyers who messaged through your listing cards land here. Reply with templates or convert them into pipeline leads in one tap." },
+    { icon: Calendar,     title: "Bookings", body: "Viewing appointments appear here. Confirm, cancel, or send a WA reminder without leaving the app." },
+    { icon: LinkIcon,     title: "Join a Dealership", body: "Have an invite code from your dealer? Enter it here to unlock the full panel — shared stock, team leads, commission tracking and more." },
   ];
 
   const dismissTour = () => {
@@ -5677,7 +5684,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ fontSize: 20 }}>{step.emoji}</span>
+              <step.icon size={20} />
               <div>
                 <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                   {tourStep + 1} / {TOUR_STEPS.length}

@@ -1258,12 +1258,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           )}
           {appt.buyer_phone && (
             <p className="text-xs text-gray-500 mt-0.5">
-              📞 {appt.buyer_phone}
+              <Phone size={11} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} /> {appt.buyer_phone}
             </p>
           )}
           {appt.notes && (
             <p className="text-xs text-gray-600 italic mt-0.5 truncate">
-              💬 "{appt.notes}"
+              <MessageSquare size={11} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} /> "{appt.notes}"
             </p>
           )}
         </div>

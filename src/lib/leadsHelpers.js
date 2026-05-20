@@ -1,21 +1,22 @@
 // ─── Stage config ─────────────────────────────────────────────────────────────
+import { Sparkles, Phone, Calendar, MessageSquare, DollarSign, Trophy, XCircle, Car } from 'lucide-react';
 
 export const STAGE_ORDER = [
   'new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost',
 ];
 
 export const STAGE_CONFIG = {
-  new:            { label: 'New',             emoji: '🆕', color: 'text-sky-400',     bg: 'rgba(56,189,248,0.10)',   border: 'rgba(56,189,248,0.22)',   headerBorder: '#38bdf8' },
-  contacted:      { label: 'Contacted',       emoji: '📞', color: 'text-violet-400',  bg: 'rgba(167,139,250,0.10)',  border: 'rgba(167,139,250,0.22)',  headerBorder: '#a78bfa' },
-  viewing_booked: { label: 'Viewing Booked',  emoji: '📅', color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
-  negotiating:    { label: 'Negotiating',     emoji: '🤝', color: 'text-orange-400',  bg: 'rgba(251,146,60,0.10)',   border: 'rgba(251,146,60,0.22)',   headerBorder: '#fb923c' },
-  deposit_taken:  { label: 'Deposit Taken',   emoji: '💰', color: 'text-teal-400',    bg: 'rgba(45,212,191,0.10)',   border: 'rgba(45,212,191,0.22)',   headerBorder: '#2dd4bf' },
-  won:            { label: 'Won ✓',           emoji: '🏆', color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
-  lost:           { label: 'Lost ✗',          emoji: '❌', color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
+  new:            { label: 'New',             icon: Sparkles,       color: 'text-sky-400',     bg: 'rgba(56,189,248,0.10)',   border: 'rgba(56,189,248,0.22)',   headerBorder: '#38bdf8' },
+  contacted:      { label: 'Contacted',       icon: Phone,          color: 'text-violet-400',  bg: 'rgba(167,139,250,0.10)',  border: 'rgba(167,139,250,0.22)',  headerBorder: '#a78bfa' },
+  viewing_booked: { label: 'Viewing Booked',  icon: Calendar,       color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
+  negotiating:    { label: 'Negotiating',     icon: MessageSquare,  color: 'text-orange-400',  bg: 'rgba(251,146,60,0.10)',   border: 'rgba(251,146,60,0.22)',   headerBorder: '#fb923c' },
+  deposit_taken:  { label: 'Deposit Taken',   icon: DollarSign,     color: 'text-teal-400',    bg: 'rgba(45,212,191,0.10)',   border: 'rgba(45,212,191,0.22)',   headerBorder: '#2dd4bf' },
+  won:            { label: 'Won',             icon: Trophy,         color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
+  lost:           { label: 'Lost',            icon: XCircle,        color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
   // Legacy aliases kept so old DB data still renders
-  test_drive:     { label: 'Test Drive',      emoji: '🚗', color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
-  closed_won:     { label: 'Closed Won ✓',    emoji: '🏆', color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
-  closed_lost:    { label: 'Closed Lost ✗',   emoji: '❌', color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
+  test_drive:     { label: 'Test Drive',      icon: Car,            color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
+  closed_won:     { label: 'Closed Won',      icon: Trophy,         color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
+  closed_lost:    { label: 'Closed Lost',     icon: XCircle,        color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
 };
 
 // ─── Loss reasons ──────────────────────────────────────────────────────────────

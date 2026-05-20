@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Flame, Menu, Phone, Heart } from 'lucide-react';
+import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import SavedCarsPanel from './SavedCarsPanel';
 
@@ -94,9 +94,9 @@ export default function MarketplaceHeader() {
                 Condition <span className="mh-dropdown-chevron">▾</span>
               </button>
               <div className="mh-dropdown-menu" role="menu">
-                <a href="/showroom?condition=used"  className="mh-dropdown-item">🚗 Used Cars</a>
-                <a href="/showroom?condition=new"   className="mh-dropdown-item">✨ New Cars</a>
-                <a href="/showroom?condition=recon" className="mh-dropdown-item">🔁 Recon / Import</a>
+                <a href="/showroom?condition=used"  className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><Car size={13} /> Used Cars</a>
+                <a href="/showroom?condition=new"   className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><Sparkles size={13} /> New Cars</a>
+                <a href="/showroom?condition=recon" className="mh-dropdown-item" style={{ display:'flex', alignItems:'center', gap:7 }}><RefreshCw size={13} /> Recon / Import</a>
               </div>
             </div>
             <button
@@ -139,14 +139,14 @@ export default function MarketplaceHeader() {
 
         <div className={`mh-mobile-nav${menuOpen ? ' open' : ''}`}>
           <Link to="/showroom" className={`mh-mobile-link${isShowroom ? ' active' : ''}`} onClick={() => setMenuOpen(false)}>Showroom</Link>
-          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c' }} onClick={() => setMenuOpen(false)}>🔥 Hot Deals</a>
+          <a href="/marketplace?hot_deals=true" className="mh-mobile-link" style={{ color:'#fb923c', display:'flex', alignItems:'center', gap:7 }} onClick={() => setMenuOpen(false)}><Flame size={14} /> Hot Deals</a>
           <button className="mh-mobile-link" style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'11px 0', color:'#9ca3af', fontSize:'15px', fontWeight:'500', fontFamily:"'Outfit',sans-serif" }} onClick={() => setCondOpen(o => !o)}>
             Condition <span style={{ fontSize:12 }}>{conditionOpen ? '▲' : '▼'}</span>
           </button>
           {conditionOpen && (
             <div className="mh-mobile-sub">
-              {[['used','🚗 Used Cars'],['new','✨ New Cars'],['recon','🔁 Recon / Import']].map(([v,l]) => (
-                <a key={v} href={`/showroom?condition=${v}`} className="mh-mobile-sub-item" onClick={() => setMenuOpen(false)}>{l}</a>
+              {[['used', Car, 'Used Cars'],['new', Sparkles, 'New Cars'],['recon', RefreshCw, 'Recon / Import']].map(([v, Icon, l]) => (
+                <a key={v} href={`/showroom?condition=${v}`} className="mh-mobile-sub-item" style={{ display:'flex', alignItems:'center', gap:7 }} onClick={() => setMenuOpen(false)}><Icon size={13} /> {l}</a>
               ))}
             </div>
           )}

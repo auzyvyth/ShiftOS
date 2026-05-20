@@ -167,7 +167,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               <label className="text-xs font-medium text-gray-400 block mb-1.5">Initial Stage</label>
               <select value={form.stage} onChange={e => set('stage', e.target.value)} className={sel}>
                 {STAGE_ORDER.map(s => (
-                  <option key={s} value={s}>{STAGE_CONFIG[s]?.emoji} {STAGE_CONFIG[s]?.label || s}</option>
+                  <option key={s} value={s}>{STAGE_CONFIG[s]?.label || s}</option>
                 ))}
               </select>
             </div>

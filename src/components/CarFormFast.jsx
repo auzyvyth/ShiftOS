@@ -105,7 +105,7 @@ export default function CarFormFast({ onCreate }) {
 
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-        {["📸 Photos", "🚗 Details"].map((label, i) => (
+        {["Photos", "Details"].map((label, i) => (
           <div key={label} style={{ flex: 1 }}>
             <div style={{
               height: 3, borderRadius: 99, marginBottom: 5,

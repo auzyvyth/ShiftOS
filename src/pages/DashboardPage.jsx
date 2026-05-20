@@ -94,6 +94,7 @@ import {
   CheckSquare,
   Wrench,
   Upload,
+  Snowflake,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -815,7 +816,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: tgChannel.trim(),
-            text: "✅ ShiftOS Telegram connected! Auto-posting is active.",
+            text: "ShiftOS Telegram connected! Auto-posting is active.",
           }),
         }
       );
@@ -1167,7 +1168,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <input
             value={announcementText}
             onChange={(e) => setAnnouncementText(e.target.value)}
-            placeholder="🔥 Raya sale — all recon cars discounted this week!"
+            placeholder="Raya sale — all recon cars discounted this week!"
             className={iCls}
             disabled={!announcementOn}
             style={{ opacity: announcementOn ? 1 : 0.4 }}
@@ -5068,10 +5069,10 @@ function OutreachHub({ dealerId, listings }) {
   }), [deduped]);
 
   const SEGS = {
-    hot:  { label: 'Hot',   color: '#ef4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   emoji: '🔥', filter: e => e.ageDays < 1 },
-    warm: { label: 'Warm',  color: '#f97316', bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.2)',  emoji: '🌡️', filter: e => e.ageDays >= 1 && e.ageDays < 7 },
-    cold: { label: 'Cold',  color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.2)',  emoji: '🧊', filter: e => e.ageDays >= 7 },
-    all:  { label: 'All',   color: '#94a3b8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.15)', emoji: '📋', filter: () => true },
+    hot:  { label: 'Hot',   color: '#ef4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   Icon: Flame,      filter: e => e.ageDays < 1 },
+    warm: { label: 'Warm',  color: '#f97316', bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.2)',  Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
+    cold: { label: 'Cold',  color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.2)',  Icon: Snowflake,  filter: e => e.ageDays >= 7 },
+    all:  { label: 'All',   color: '#94a3b8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.15)', Icon: Clipboard,  filter: () => true },
   };
 
   const visibleLeads = useMemo(() =>
@@ -5141,15 +5142,15 @@ function OutreachHub({ dealerId, listings }) {
       {/* ── Top pulse bar ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { label:'Total Contacts',  val: scored.length,  sub:'Unique enquiries', color:'#60a5fa', emoji:'👥', pulse:false },
-          { label:'Hot Right Now',   val: hotCount,        sub:'Enquired < 24h',   color:'#ef4444', emoji:'🔥', pulse: critCount > 0 },
-          { label:'Need Re-engage',  val: staleCount,      sub:'Silent 7+ days',   color:'#a78bfa', emoji:'🧊', pulse:false },
-          { label:'Sent Today',      val: sentToday,       sub:'This session',      color:'#34d399', emoji:'✅', pulse:false },
-        ].map(({ label, val, sub, color, emoji, pulse }) => (
+          { label:'Total Contacts',  val: scored.length,  sub:'Unique enquiries', color:'#60a5fa', Icon: Users,       pulse:false },
+          { label:'Hot Right Now',   val: hotCount,        sub:'Enquired < 24h',   color:'#ef4444', Icon: Flame,        pulse: critCount > 0 },
+          { label:'Need Re-engage',  val: staleCount,      sub:'Silent 7+ days',   color:'#a78bfa', Icon: Snowflake,    pulse:false },
+          { label:'Sent Today',      val: sentToday,       sub:'This session',      color:'#34d399', Icon: CheckCircle2, pulse:false },
+        ].map(({ label, val, sub, color, Icon, pulse }) => (
           <div key={label} className="card-top" style={{ background:`${color}0d`, border:`1px solid ${color}20`, borderRadius:14, padding:'16px 18px', position:'relative', overflow:'hidden' }}>
             {pulse && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${color},transparent)`, animation:'hotpulse 2s ease-in-out infinite' }} />}
             <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:10 }}>
-              <span style={{ fontSize:16 }}>{emoji}</span>
+              <Icon size={15} color={color} />
               <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.15em', color:'#374151', fontWeight:700 }}>{label}</p>
             </div>
             <p style={{ fontSize:30, fontWeight:800, color, lineHeight:1, marginBottom:3 }}>{val}</p>
@@ -5171,7 +5172,7 @@ function OutreachHub({ dealerId, listings }) {
               return (
                 <button key={key} onClick={() => setSegment(key)}
                   style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#374151', fontFamily:"'DM Sans',sans-serif", cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, transition:'all 0.15s' }}>
-                  <span style={{ fontSize:15 }}>{seg.emoji}</span>
+                  <seg.Icon size={14} />
                   <span style={{ fontSize:10, fontWeight: active ? 700 : 500 }}>{seg.label}</span>
                   <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : 'rgba(255,255,255,0.04)', color: active ? seg.color : '#374151' }}>{count}</span>
                 </button>
@@ -5183,7 +5184,7 @@ function OutreachHub({ dealerId, listings }) {
           <div style={{ overflowY:'auto', flex:1, maxHeight:440, padding:8 }}>
             {visibleLeads.length === 0 ? (
               <div style={{ padding:'40px 16px', textAlign:'center', color:'#374151', fontSize:13 }}>
-                <p style={{ fontSize:28, marginBottom:8 }}>{SEGS[segment].emoji}</p>
+                {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: SEGS[segment].color } })}
                 <p>No {SEGS[segment].label.toLowerCase()} leads</p>
                 <p style={{ fontSize:11, marginTop:4, color:'#1e293b' }}>Enquiries appear here as they come in</p>
               </div>
@@ -5316,7 +5317,7 @@ function OutreachHub({ dealerId, listings }) {
         <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(167,139,250,0.4),transparent)' }} />
         <Megaphone size={18} style={{ color:'#a78bfa', flexShrink:0 }} />
         <div style={{ flex:1, minWidth:200 }}>
-          <p style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:2 }}>Bulk Campaign · {SEGS[segment].emoji} {SEGS[segment].label} Leads</p>
+          <p style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>Bulk Campaign · {React.createElement(SEGS[segment].Icon, { size: 13 })} {SEGS[segment].label} Leads</p>
           <p style={{ fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
             Send the selected template to all {SEGS[segment].label.toLowerCase()} leads.
             {' '}<span style={{ color:'#a78bfa', fontWeight:600 }}>{Math.min(visibleLeads.length, 10)} WhatsApp chats</span> will open one by one (browser must allow popups).

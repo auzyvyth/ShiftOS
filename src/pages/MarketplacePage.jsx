@@ -259,7 +259,7 @@ export default function MarketplacePage() {
     yearTo       && { key: 'year_to',      label: `To ${yearTo}` },
     condition    && { key: 'condition',    label: CONDITION_OPTIONS.find(c => c.value === condition)?.label || condition },
     mileageMax   && { key: 'mileage_max', label: MILEAGE_OPTIONS.find(m => m.value === String(mileageMax))?.label || '' },
-    hotDeals     && { key: 'hot_deals',   label: '🔥 Hot Deals' },
+    hotDeals     && { key: 'hot_deals',   label: 'Hot Deals' },
     fuelType     && { key: 'fuel_type',   label: fuelType },
     colour       && { key: 'colour',      label: colour },
     sellerType   && { key: 'seller_type', label: sellerType === 'agent' ? 'Agent' : 'Dealer' },
@@ -720,7 +720,7 @@ export default function MarketplacePage() {
                   <button type="button"
                     onClick={() => { setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); }}
                     style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.45)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:'0 0 4px', width:'100%' }}>
-                    🔥 Browse hot deals →
+                    Browse hot deals →
                   </button>
 
                   {/* Advanced search trigger → opens modal */}

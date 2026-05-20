@@ -53,6 +53,13 @@ import {
   Target,
   Award,
   Zap,
+  Flame,
+  Snowflake,
+  Pin,
+  PhoneOff,
+  RefreshCw,
+  Voicemail,
+  CheckCircle,
 } from "lucide-react";
 
 function useWindowSize() {
@@ -158,10 +165,9 @@ const getHeatScore = (lead) => {
     : 0;
   const penalty = Math.min(daysStale * 0.5, 3);
   const score = stageWeight - penalty;
-  if (score >= 4) return { score, emoji: "🔥", label: "hot", color: "#f87171" };
-  if (score >= 2)
-    return { score, emoji: "🟡", label: "warm", color: "#fbbf24" };
-  return { score, emoji: "🧊", label: "cold", color: "#93c5fd" };
+  if (score >= 4) return { score, icon: Flame,     label: "hot",  color: "#f87171" };
+  if (score >= 2) return { score, icon: TrendingUp, label: "warm", color: "#fbbf24" };
+  return          {         score, icon: Snowflake,  label: "cold", color: "#93c5fd" };
 };
 
 const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
@@ -1886,7 +1892,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </p>
                     <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>cars sold this month</p>
                     {pct >= 100
-                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>🎉 Goal smashed!</p>
+                      ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Goal smashed!</p>
                       : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{goal.target - soldThisMonth} more · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day` : "last day!"}</p>
                     }
                     <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
@@ -1903,7 +1909,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <p style={{ margin: 0, fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
-                      {focusCar ? "📌 Pinned" : "⚡ Best to push"}
+                      {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Pinned</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Best to push</>}
                     </p>
                     {focusCar && (
                       <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
@@ -4319,12 +4325,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </p>
                 )}
                 {lead.last_call_outcome && (() => {
-                  const OUTCOME = { answered: { emoji: "✅", label: "Answered", color: "#4ade80" }, no_answer: { emoji: "📵", label: "No Answer", color: "#f87171" }, callback_requested: { emoji: "🔁", label: "Callback", color: "#fbbf24" }, voicemail: { emoji: "📬", label: "Voicemail", color: "#94a3b8" } };
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
                   const o = OUTCOME[lead.last_call_outcome];
                   if (!o) return null;
                   return (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
-                      {o.emoji} {o.label}
+                      <o.icon size={10} /> {o.label}
                     </span>
                   );
                 })()}

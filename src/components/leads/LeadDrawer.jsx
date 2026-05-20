@@ -216,7 +216,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       const updated = await onUpdate(lead.id, { stage: newStage });
       if (updated) setLead(updated);
       await addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage });
-      if (newStage === 'won') toast.success('🎉 Lead marked as Won!');
+      if (newStage === 'won') toast.success('Lead marked as Won!');
       else toast.success('Stage updated');
     } catch {
       setLead(p => ({ ...p, stage: oldStage }));
@@ -435,7 +435,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <LeadSourceBadge source={lead.lead_source} />
                 <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: stageCfg.bg, border: `1px solid ${stageCfg.border}` }} className={stageCfg.color}>
-                  {stageCfg.emoji} {stageCfg.label}
+                  {stageCfg.icon && <stageCfg.icon size={11} style={{ flexShrink: 0 }} />} {stageCfg.label}
                 </span>
                 <span style={{ fontSize: 11 }} className={ageCls}>{days === 0 ? 'Today' : `${days}d ago`}</span>
               </div>
@@ -594,7 +594,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     transition: 'all 0.15s',
                   }}
                 >
-                  {cfg.emoji} {cfg.label}
+                  {cfg.icon && <cfg.icon size={11} />} {cfg.label}
                 </button>
               );
             })}

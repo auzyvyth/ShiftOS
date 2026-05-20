@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Car, Eye, MessageSquare, Phone } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
 const ACC = "#dc2626";
@@ -810,7 +810,7 @@ export default function AdminPanel() {
                                       flexShrink: 0,
                                     }}
                                   >
-                                    <span style={{ fontSize: 14 }}>🚗</span>
+                                    <Car size={14} color="#4b5563" />
                                   </div>
                                 )}
                                 <div>
@@ -1010,19 +1010,19 @@ export default function AdminPanel() {
                   {
                     label: "Car Views",
                     value: analytics.views,
-                    icon: "👁",
+                    icon: Eye,
                     color: "#60a5fa",
                   },
                   {
                     label: "WhatsApp Clicks",
                     value: analytics.whatsapp,
-                    icon: "💬",
+                    icon: MessageSquare,
                     color: "#4ade80",
                   },
                   {
                     label: "Call Clicks",
                     value: analytics.calls,
-                    icon: "📞",
+                    icon: Phone,
                     color: "#facc15",
                   },
                 ].map((s) => (
@@ -1035,8 +1035,8 @@ export default function AdminPanel() {
                       padding: "20px 24px",
                     }}
                   >
-                    <div style={{ fontSize: 24, marginBottom: 8 }}>
-                      {s.icon}
+                    <div style={{ marginBottom: 8 }}>
+                      <s.icon size={24} color={s.color} />
                     </div>
                     <p
                       style={{

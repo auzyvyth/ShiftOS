@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar } from "lucide-react";
+import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import LeadsPage from "./LeadsPage";
 
@@ -1300,7 +1300,7 @@ function BookingsTab({ userId, listings, salesmen }) {
         (payload) => {
           fetchBookings();
           if (payload.eventType === "INSERT") {
-            toast("📅 New booking!", { description: payload.new.buyer_name || "New appointment" });
+            toast("New booking!", { description: payload.new.buyer_name || "New appointment" });
             // Push Telegram notification if dealer has it configured
             supabase.from("profiles").select("telegram_bot_token,telegram_channel_id,dealership")
               .eq("id", userId).maybeSingle()
@@ -1546,8 +1546,8 @@ function BookingsTab({ userId, listings, salesmen }) {
         {/* Details row */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginBottom: 6 }}>
           {car && <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>📞 {b.buyer_phone}</p>}
-          {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>👤 {sm.full_name}</p>}
+          {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
+          {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><User size={10} /> {sm.full_name}</p>}
           {b.buyer_state && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", fontWeight: 600 }}>
               <MapPin size={9} />

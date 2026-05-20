@@ -1526,7 +1526,7 @@ export default function CarDetailPage() {
                   </div>
                   <div style={{ textAlign:'right' }}>
                     {listedDays !== null && <p style={{ fontSize:10, color:'#1e293b' }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize:10, color:'#1e293b' }}>👁 {viewCount}</p>}
+                    {viewCount > 0 && <p style={{ fontSize:10, color:'#1e293b', display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
                   </div>
                 </div>
               );
