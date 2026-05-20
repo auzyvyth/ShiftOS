@@ -46,6 +46,11 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { callClaude } from "../lib/callClaude";
+import UpgradeBanner from "../components/ai/UpgradeBanner";
+import AiLoadingState from "../components/ai/AiLoadingState";
+import AiQuotaBadge from "../components/ai/AiQuotaBadge";
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function formatApptDate(iso) {
