@@ -141,7 +141,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
 
         @media (max-width: 520px) {
           .cc-img         { height: auto !important; aspect-ratio: 16/9 !important; }
-          .cc-body        { padding: 8px 10px 10px !important; }
+          .cc-body        { padding: 8px 8px 10px !important; }
           .cc-name        { font-size: 12px !important; margin-bottom: 1px !important; }
           .cc-sub         { height: auto !important; margin-bottom: 4px !important; font-size: 10px !important; }
           .cc-sub-loc     { display: none !important; }
@@ -274,7 +274,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
         <div
           className="cc-body"
           style={{
-            padding: '11px 13px 13px',
+            padding: '11px 8px 12px',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
