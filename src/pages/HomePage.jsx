@@ -586,9 +586,9 @@ const HomePage = () => {
         }
 
         /* Car grid */
-        .car-grid-hp { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+        .car-grid-hp { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
         @media(max-width:640px) {
-          .car-grid-hp { grid-template-columns:repeat(2,1fr) !important; gap:8px !important; }
+          .car-grid-hp { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
         }
 
         /* Search grid */
