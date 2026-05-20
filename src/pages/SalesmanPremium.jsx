@@ -676,7 +676,7 @@ export default function SalesmanPremium() {
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
- navigate("/login");
+ window.location.href = "https://xdrive.my/login";
  };
 
  const updateLeadStage = async (leadId, stage) => {

@@ -5508,7 +5508,7 @@ export default function DashboardPage() {
           if (session?.user?.id && session.user.id === loadedUidRef.current) return;
           loadSession(session);
         }
-        else if (event === "SIGNED_OUT") navigate("/login");
+        else if (event === "SIGNED_OUT") { window.location.href = "https://xdrive.my/login"; }
       }
     );
 

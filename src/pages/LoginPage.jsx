@@ -126,18 +126,23 @@ export default function LoginPage() {
         } = await supabase.auth.getSession();
         const accessToken = session.access_token;
         const refreshToken = session.refresh_token;
-        window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
+        window.location.href = `https://${subdomain}.xdrive.my/dashboard?access_token=${accessToken}&refresh_token=${refreshToken}`;
       } else {
         window.location.href = "https://xdrive.my/dashboard";
       }
     } else if (role === "salesman") {
-      if (profile?.dealer_id) {
-        window.location.href = "https://xdrive.my/salesman";
-      } else {
-        window.location.href = "https://xdrive.my/salesman-lite";
-      }
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      const at = sess?.access_token;
+      const rt = sess?.refresh_token;
+      const target = profile?.dealer_id ? "salesman" : "salesman-lite";
+      const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : "";
+      window.location.href = `https://xdrive.my/${target}${suffix}`;
     } else {
-      window.location.href = "https://xdrive.my/salesman";
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      const at = sess?.access_token;
+      const rt = sess?.refresh_token;
+      const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : "";
+      window.location.href = `https://xdrive.my/salesman${suffix}`;
     }
   };
 

@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
         if (subdomain) {
           const accessToken = session.access_token;
           const refreshToken = session.refresh_token;
-          window.location.href = `https://${subdomain}.xdrive.my?access_token=${accessToken}&refresh_token=${refreshToken}`;
+          window.location.href = `https://${subdomain}.xdrive.my/dashboard?access_token=${accessToken}&refresh_token=${refreshToken}`;
         } else {
           navigate('/dashboard');
         }
