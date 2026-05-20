@@ -857,9 +857,10 @@ export default function MarketplacePage() {
             .btc-scroll::-webkit-scrollbar { display: none; }
             @media (max-width: 768px) {
               .btc-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
+              .btc-inner { padding: 0 8px !important; }
             }
           `}</style>
-          <div style={{ maxWidth: 1360, margin: '0 auto', padding: '0 36px' }}>
+          <div className="btc-inner" style={{ maxWidth: 1360, margin: '0 auto', padding: '0 36px' }}>
             <div style={{ marginBottom: 24 }}>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Browse by Category</p>
               <h2 style={{ margin: 0, fontSize: 'clamp(22px,3vw,32px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>Shop by Body Type</h2>
