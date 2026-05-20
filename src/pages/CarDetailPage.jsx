@@ -51,9 +51,10 @@ import { calcMonthly } from "../utils/financing";
 const fmt = (n) => Number(n).toLocaleString("en-MY");
 const fmtPrice = (n) => `RM ${fmt(n)}`;
 const fmtFinancing = (car) => {
-  if (car.financing_type === "cash") return "Cash Only";
-  if (car.financing_type === "sambung_bayar") return "Sambung Bayar";
-  if (car.financing_type === "loan") return "Loan Available";
+  const pt = car.payment_type || car.financing_type;
+  if (pt === "cash") return "Cash Only";
+  if (pt === "sambung_bayar") return "Sambung Bayar";
+  if (pt === "loan") return "Loan Available";
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
 
