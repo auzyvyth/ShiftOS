@@ -848,10 +848,12 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   }, [profile?.id, listing]);
 
   useEffect(() => {
-    if (!profile?.id || listing) return;
+    // Do not auto-save while the banner is visible — the user hasn't decided
+    // yet, and saving now would overwrite the real draft with the empty form.
+    if (!profile?.id || listing || draftBanner) return;
     const t = setTimeout(() => cfSaveDraft(profile.id, form, step), 800);
     return () => clearTimeout(t);
-  }, [form, step, profile?.id, listing]);
+  }, [form, step, profile?.id, listing, draftBanner]);
 
   // Load saved section order from profile
   useEffect(() => {
@@ -2576,9 +2578,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       {/* Draft resume banner */}
       {draftBanner && !listing && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "'DM Sans',sans-serif" }}>
-          <span style={{ fontSize: 13 }}>📝</span>
           <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have an unsaved draft.</p>
-          <button onClick={() => { const d = cfLoadDraft(profile?.id); if (d) { setForm(d.form); } setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
+          <button onClick={() => {
+            const d = cfLoadDraft(profile?.id);
+            if (d) {
+              setForm(d.form);
+              setStep(d.step || 1);
+              // Re-hydrate image previews from saved URLs so the photo step isn't empty
+              if (Array.isArray(d.form?.images) && d.form.images.length > 0) {
+                setPreviews(d.form.images);
+              }
+            }
+            setDraftBanner(false);
+          }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
           <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
         </div>
       )}
