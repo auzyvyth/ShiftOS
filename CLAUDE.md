@@ -79,3 +79,4 @@ Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketp
 - Never write more than 80 lines of instructions per prompt
 - Always read the target file first before editing
 - One concern per session: data OR layout OR styling OR mobile
+- Never use emojis in UI code, commit messages, or responses
