@@ -465,8 +465,8 @@ export default function MarketplacePage() {
     },
     carsGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-      gap: '20px',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+      gap: '14px',
       paddingBottom: '40px',
     },
     emptyState: {
