@@ -2827,7 +2827,7 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               Add your first car using the button above.
             </p>
             <button
-              onClick={() => setEditListing({})}
+              onClick={() => setShowAddForm(true)}
               style={{ marginTop: 14, fontSize: 13, fontWeight: 600, padding: "9px 20px", borderRadius: 9, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer" }}
             >
               + Add Listing
