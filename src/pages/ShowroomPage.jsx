@@ -51,7 +51,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i);
 
 const CAR_FIELDS   = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at';
-const DEALER_JOIN  = 'dealer:profiles!car_listings_dealer_id_fkey(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
+const DEALER_JOIN  = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Sanitisers ──────────────────────────────────────────────────────────── */
 const sanitize = {
@@ -143,7 +143,7 @@ export default function ShowroomPage() {
     setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
-      let query = supabase.from('car_listings')
+      let query = supabase.from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
         .eq('status','available');
       if (q) {
@@ -167,7 +167,7 @@ export default function ShowroomPage() {
       if (transmission) query = query.in('transmission', transmission==='Auto' ? ['Auto','Automatic','AT'] : ['Manual','MT']);
       if (fuelType)   query = query.eq('fuel_type', fuelType);
       if (colour)     query = query.ilike('colour', `%${colour}%`);
-      if (sellerType) query = query.filter('profiles!car_listings_dealer_id_fkey.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
+      if (sellerType) query = query.filter('profiles!dealer_id.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
       if (sort==='price_asc')  query = query.order('selling_price', { ascending:true });

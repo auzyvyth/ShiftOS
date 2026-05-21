@@ -102,9 +102,9 @@ export default function MarketplacePage() {
   useEffect(() => {
     async function fetchStats() {
       const [listingsRes, dealersRes, hotRes] = await Promise.all([
-        supabase.from('car_listings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
-        supabase.from('car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available').limit(2000),
-        supabase.from('car_listings').select('*', { count: 'exact', head: true })
+        supabase.from('public_car_listings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+        supabase.from('public_car_listings').select('dealer_id', { count: 'exact', head: false }).eq('status', 'available').limit(2000),
+        supabase.from('public_car_listings').select('*', { count: 'exact', head: true })
           .eq('status', 'available')
           .not('original_price', 'is', null)
           .gt('original_price', 0),
@@ -131,7 +131,7 @@ export default function MarketplacePage() {
       Promise.all(
         types.map(type =>
           supabase
-            .from('car_listings')
+            .from('public_car_listings')
             .select(CAR_FIELDS)
             .eq('status', 'available')
             .eq('body_type', type)
@@ -159,7 +159,7 @@ export default function MarketplacePage() {
       const to   = from + PER_PAGE - 1;
 
       let query = supabase
-        .from('car_listings')
+        .from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
         .eq('status', 'available');
 
@@ -187,7 +187,7 @@ export default function MarketplacePage() {
       }
       if (fuelType)   query = query.eq('fuel_type', fuelType);
       if (colour)     query = query.ilike('colour', `%${colour}%`);
-      if (sellerType) query = query.filter('profiles!car_listings_dealer_id_fkey.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
+      if (sellerType) query = query.filter('profiles!dealer_id.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
 

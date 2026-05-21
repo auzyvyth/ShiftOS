@@ -125,7 +125,7 @@ export default function ComparePage() {
 
   useEffect(() => {
     if (!ids.length) { setLoading(false); return; }
-    supabase.from('car_listings').select(SELECT_COLS).in('id', ids)
+    supabase.from('public_car_listings').select(SELECT_COLS).in('id', ids)
       .then(({ data }) => {
         setCars(ids.map(id => (data || []).find(c => c.id === id)).filter(Boolean));
         setLoading(false);

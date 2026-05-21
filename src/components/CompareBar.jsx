@@ -39,7 +39,7 @@ export default function CompareBar() {
     const missing = compareIds.filter((id) => !cars[id]);
     if (!missing.length) return;
     supabase
-      .from('car_listings')
+      .from('public_car_listings')
       .select('id, year, brand, model, selling_price, images')
       .in('id', missing)
       .then(({ data }) => {

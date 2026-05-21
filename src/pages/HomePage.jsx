@@ -248,9 +248,9 @@ const HomePage = () => {
     if (tenant === undefined) return;
     const load = async () => {
       let query = supabase
-        .from("car_listings")
+        .from("public_car_listings")
         .select(
-          `${CAR_FIELDS}, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
+          `${CAR_FIELDS}, dealer:profiles!dealer_id(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)`,
           { count: "exact" },
         )
         .eq("status", "available")
@@ -281,7 +281,7 @@ const HomePage = () => {
     };
     const fetchSoldCount = async () => {
       let query = supabase
-        .from("car_listings")
+        .from("public_car_listings")
         .select("id", { count: "exact", head: true })
         .eq("status", "sold");
       if (tenant?.id) {

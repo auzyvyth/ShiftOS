@@ -48,14 +48,14 @@ export default function SalesmanProfilePage() {
       setProfile(p);
 
       const [ownedRes, assignedRes, soldOwnedRes, soldAssignedRes] = await Promise.all([
-        supabase.from('car_listings')
+        supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
           .eq('dealer_id', p.id).eq('status', 'available').order('created_at', { ascending: false }),
-        supabase.from('car_listings')
+        supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour')
           .eq('assigned_to', p.id).eq('status', 'available').order('created_at', { ascending: false }),
-        supabase.from('car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
-        supabase.from('car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
+        supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('dealer_id', p.id).eq('status', 'sold'),
+        supabase.from('public_car_listings').select('id', { count: 'exact', head: true }).eq('assigned_to', p.id).eq('status', 'sold'),
       ]);
 
       if (p.dealer_id) {
