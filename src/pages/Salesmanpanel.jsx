@@ -5088,6 +5088,27 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   const cvrColor = cvrNum >= 10 ? "#4ade80" : cvrNum >= 5 ? "#fbbf24" : "#f87171";
   const cvrD = viewsD.map((v, i) => v > 0 ? (waD[i] / v) * 100 : 0);
 
+  const now2 = new Date();
+  const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+  const leadsThisMonth = leads.filter(l => l.created_at && new Date(l.created_at) >= monthStart).length;
+  const apptThisMonth = appointments.filter(a => a.appointment_date && new Date(a.appointment_date) >= monthStart).length;
+  const enqThisMonth = enquiries.filter(e => e.created_at && new Date(e.created_at) >= monthStart).length;
+  const monthlyTarget = profile?.monthly_target || 5;
+  const targetPct = Math.min(100, (thisMonthSales / monthlyTarget) * 100);
+  const targetHit = thisMonthSales >= monthlyTarget;
+
+  const cvrRows = myListings
+   .map(car => {
+    const s = carStatsMap[car.id] ?? {};
+    const views = s.views || 0;
+    const enqs = s.enquiries || 0;
+    const c = views > 0 ? ((enqs / views) * 100).toFixed(1) : null;
+    return { car, views, enqs, cvr: c };
+   })
+   .sort((a, b) => b.views - a.views);
+  const top3 = cvrRows.slice(0, 3);
+  const maxViews = top3.length > 0 ? top3[0].views : 1;
+
   const KPI = ({ label, value, data, color, sub }) => (
    <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 16px 12px", position: "relative", overflow: "hidden" }}>
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80, background: `radial-gradient(ellipse at top left, ${color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
@@ -5102,6 +5123,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    <div>
     <p style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Performance Overview</p>
 
+    {/* Sparkline KPI grid */}
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
      <KPI label="Listing Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
      <KPI label="WA Taps" value={totalWA} data={waD} color="#4ade80" sub="All time" />
@@ -5111,23 +5133,64 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      <KPI label="Commission" value={commission !== null ? `RM ${Number(commission).toLocaleString()}` : "—"} data={Array(7).fill(0)} color="#4ade80" sub="All time" />
     </div>
 
-    <div style={{ background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 12, padding: "16px 20px", marginBottom: 16, display: "flex", gap: 28, flexWrap: "wrap", alignItems: "center" }}>
-     <div>
-      <p style={{ margin: 0, fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>This Month</p>
-      <p style={{ margin: "3px 0 0", fontSize: 40, fontFamily: "'Bebas Neue',sans-serif", color: "#fbbf24", lineHeight: 1 }}>{thisMonthSales} <span style={{ fontSize: 16, color: "#6b7280" }}>sold</span></p>
-     </div>
-     {commission !== null && (
-      <div>
-       <p style={{ margin: 0, fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Total Commission</p>
-       <p style={{ margin: "3px 0 0", fontSize: 40, fontFamily: "'Bebas Neue',sans-serif", color: "#4ade80", lineHeight: 1 }}>RM {Number(commission).toLocaleString()}</p>
+    {/* This Month KPI strip */}
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 8 : 12, marginBottom: 16 }}>
+     {[
+      { label: "Leads added", val: leadsThisMonth, color: "#60a5fa", Icon: Users },
+      { label: "Appointments", val: apptThisMonth, color: "#c084fc", Icon: Clock },
+      { label: "Enquiries", val: enqThisMonth, color: "#3b82f6", Icon: MessageSquare },
+      { label: "Cars sold", val: thisMonthSales, color: "#22c55e", Icon: Car },
+     ].map(({ label, val, color, Icon }) => (
+      <div key={label} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 14px" }}>
+       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>{label}</span>
+        <Icon size={13} color={color} />
+       </div>
+       <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color, lineHeight: 1, fontFamily: "'Bebas Neue',sans-serif" }}>{val}</p>
       </div>
-     )}
-     <div>
-      <p style={{ margin: 0, fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>All Time</p>
-      <p style={{ margin: "3px 0 0", fontSize: 40, fontFamily: "'Bebas Neue',sans-serif", color: "#e5e7eb", lineHeight: 1 }}>{soldCount} <span style={{ fontSize: 16, color: "#6b7280" }}>cars</span></p>
+     ))}
+    </div>
+
+    {/* Monthly target progress */}
+    <div style={{ background: "#0d1117", border: targetHit ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+       <TrendingUp size={13} color={targetHit ? "#22c55e" : "#3b82f6"} />
+       <span style={{ fontSize: 12, color: "#64748b" }}>Monthly target</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+       {targetHit && <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>Target hit!</span>}
+       <span style={{ fontSize: 13, fontWeight: 700, color: targetHit ? "#4ade80" : "#f1f5f9" }}>{thisMonthSales} / {monthlyTarget} cars</span>
+      </div>
+     </div>
+     <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+      <div style={{ height: "100%", width: `${targetPct}%`, background: targetHit ? "#22c55e" : "#3b82f6", borderRadius: 99, transition: "width 0.4s" }} />
      </div>
     </div>
 
+    {/* Top Listings by Views */}
+    {top3.length > 0 && (
+     <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+      <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Top listings by views</p>
+      {top3.map(({ car, views }, i) => {
+       const barW = maxViews > 0 ? (views / maxViews) * 100 : 0;
+       const barColors = ["#3b82f6", "#6366f1", "#8b5cf6"];
+       return (
+        <div key={car.id} style={{ marginBottom: i < top3.length - 1 ? 14 : 0 }}>
+         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+          <span style={{ fontSize: 12, color: "#d1d5db" }}>{["#1", "#2", "#3"][i]} {[car.year, car.brand, car.model].filter(Boolean).join(" ")}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#60a5fa" }}>{views} views</span>
+         </div>
+         <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${barW}%`, background: barColors[i], borderRadius: 99 }} />
+         </div>
+        </div>
+       );
+      })}
+     </div>
+    )}
+
+    {/* Listing Performance CVR table */}
     {myListings.length > 0 && (
      <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
       <div style={{ padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -5135,24 +5198,19 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Listing Performance</p>
        <span style={{ fontSize: 9, marginLeft: "auto", color: "#374151" }}>All time</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 60px", padding: "6px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-       {["Car", "Views", "WA", "CVR"].map(h => (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 60px 60px", padding: "6px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+       {["Car", "Views", "Enquiries", "CVR"].map(h => (
         <p key={h} style={{ margin: 0, fontSize: 9, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", textAlign: h !== "Car" ? "center" : "left" }}>{h}</p>
        ))}
       </div>
-      {myListings.length === 0 ? (
-       <p style={{ margin: 0, padding: "20px 0", textAlign: "center", fontSize: 12, color: "#374151" }}>No listings yet.</p>
-      ) : myListings.map(car => {
-       const s = carStatsMap[car.id] ?? {};
-       const v = s.views || 0;
-       const w = s.enquiries || 0;
-       const c = v > 0 ? ((w / v) * 100).toFixed(1) : null;
-       const cc = c !== null ? (Number(c) >= 10 ? "#4ade80" : Number(c) >= 5 ? "#fbbf24" : "#f87171") : "#374151";
+      {cvrRows.map(({ car, views, enqs, cvr: c }) => {
+       const cNum = c !== null ? Number(c) : null;
+       const cc = cNum !== null ? (cNum >= 10 ? "#4ade80" : cNum >= 5 ? "#fbbf24" : "#f87171") : "#374151";
        return (
-        <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 50px 60px", padding: "9px 16px", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+        <div key={car.id} style={{ display: "grid", gridTemplateColumns: "1fr 50px 60px 60px", padding: "9px 16px", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
          <p style={{ margin: 0, fontSize: 11, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>
-         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#93c5fd", textAlign: "center" }}>{v}</p>
-         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#4ade80", textAlign: "center" }}>{w}</p>
+         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#93c5fd", textAlign: "center" }}>{views}</p>
+         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#fbbf24", textAlign: "center" }}>{enqs}</p>
          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: cc, textAlign: "center" }}>{c !== null ? `${c}%` : "—"}</p>
         </div>
        );
@@ -5160,15 +5218,21 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      </div>
     )}
 
+    {/* Commission breakdown (with dates) */}
     {commissionDetails.length > 0 && (
      <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-       <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Recent Sales</p>
+       <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Commission Breakdown</p>
       </div>
       {commissionDetails.map((c, i) => (
-       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-        <span style={{ fontSize: 12, color: "#e5e7eb" }}>{[c.year, c.brand, c.model].filter(Boolean).join(" ")}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#4ade80" }}>+RM {Number(c.commission_amount || 0).toLocaleString()}</span>
+       <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 12, padding: "10px 16px", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+        <span style={{ fontSize: 12, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[c.year, c.brand, c.model].filter(Boolean).join(" ") || "—"}</span>
+        <span style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap" }}>
+         {c.sold_at ? new Date(c.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+         RM {Number(c.commission_amount || 0).toLocaleString("en-MY")}
+        </span>
        </div>
       ))}
      </div>
