@@ -145,6 +145,8 @@ export default function MarketplacePage() {
         results.forEach(([type, data]) => { map[type] = data; });
         setBodyTypeCars(map);
         setBodyTypeLoading(false);
+      }).catch(() => {
+        setBodyTypeLoading(false);
       });
     }, { rootMargin: '200px' });
     obs.observe(el);
@@ -161,7 +163,7 @@ export default function MarketplacePage() {
 
       let query = supabase
         .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count: 'exact' })
+        .select(CAR_FIELDS, { count: 'exact' })
         .eq('status', 'available');
 
       if (q) {
@@ -188,7 +190,6 @@ export default function MarketplacePage() {
       }
       if (fuelType)   query = query.eq('fuel_type', fuelType);
       if (colour)     query = query.ilike('colour', `%${colour}%`);
-      if (sellerType) query = query.filter('profiles!dealer_id.role', 'eq', sellerType === 'agent' ? 'salesman' : 'dealer');
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
 
@@ -201,13 +202,29 @@ export default function MarketplacePage() {
       const { data, error: err, count } = await query;
       if (err) throw err;
 
+      const rows = data || [];
+
+      /* Fetch dealer profiles for seller badges — best-effort, non-fatal */
+      let dealerMap = {};
+      const ids = [...new Set(rows.map(c => c.dealer_id).filter(Boolean))];
+      if (ids.length) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role')
+          .in('id', ids);
+        (profiles || []).forEach(p => { dealerMap[p.id] = p; });
+      }
+
+      const enriched = rows.map(c => ({ ...c, dealer: dealerMap[c.dealer_id] ?? null }));
+
       if (loadPage === 1) {
-        setCars(dedupe(data || []));
+        setCars(dedupe(enriched));
       } else {
-        setCars(prev => dedupe([...prev, ...(data || [])]));
+        setCars(prev => dedupe([...prev, ...enriched]));
       }
       setTotal(count || 0);
     } catch (e) {
+      console.error('[fetchCars]', e?.message || e?.code || e);
       setError('Failed to load listings. Please try again.');
     } finally {
       setLoading(false);
