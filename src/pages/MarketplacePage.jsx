@@ -524,79 +524,129 @@ export default function MarketplacePage() {
       </Helmet>
 
       <style>{`
-        @keyframes mp-shimmer {
-          0%   { background-position: -200% 0 }
-          100% { background-position:  200% 0 }
+        /* ── Animations ── */
+        @keyframes mp-shimmer     { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        @keyframes mp-fade-up     { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes mp-slide-right { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes mp-pulse-ring  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.6)} }
+
+        /* ── Utility ── */
+        .mp-brand-scroll::-webkit-scrollbar { display:none }
+        .mp-brand-pill:hover  { opacity:.85; transform:translateY(-1px) }
+        .mp-reset-btn:hover   { color:#111827 !important; border-color:rgba(0,0,0,.25) !important }
+        .mp-chip-x:hover      { opacity:.7 }
+        .mp-select:focus      { border-color:rgba(220,38,38,.5) !important; box-shadow:0 0 0 3px rgba(220,38,38,.12) }
+        .mp-filter-toggle:hover { background:rgba(0,0,0,.05) !important }
+        .mp-next-prev:hover:not(:disabled) { background:rgba(0,0,0,.05) !important; color:#111827 !important }
+        .mp-page-btn:hover    { background:rgba(0,0,0,.05) !important }
+        .mp-pulse-dot         { width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;animation:mp-pulse-ring 2s ease-in-out infinite }
+        .mp-anim-fade         { animation:mp-fade-up .6s cubic-bezier(.22,1,.36,1) both }
+        .mp-anim-d1           { animation-delay:.1s }
+        .mp-anim-d2           { animation-delay:.22s }
+        .mp-anim-d3           { animation-delay:.34s }
+        .mp-card-slide        { animation:mp-slide-right .5s cubic-bezier(.22,1,.36,1) both }
+        .mp-sidebar::-webkit-scrollbar { width:3px }
+        .mp-sidebar::-webkit-scrollbar-thumb { background:#d1d0cc;border-radius:2px }
+        .mp-adv-modal::-webkit-scrollbar { width:4px }
+        .mp-adv-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15);border-radius:2px }
+
+        /* ── Featured cards ── */
+        .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
+        .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) }
+        .mp-feat-img  { transition:transform .45s ease;width:100%;height:100%;object-fit:cover;display:block }
+        .mp-feat-card:hover .mp-feat-img { transform:scale(1.06) }
+
+        /* ── Listings search ── */
+        .mp-search-outer { transition:border-color .2s,box-shadow .2s }
+        .mp-search-outer:focus-within { border-color:rgba(220,38,38,.45) !important;box-shadow:0 4px 24px rgba(0,0,0,.1),0 0 0 3px rgba(220,38,38,.1) }
+        .mp-search-btn:hover { background:#b91c1c !important }
+
+        /* ════════════════════════════════════════
+           HERO — MOBILE FIRST
+           ════════════════════════════════════════ */
+        .mp-hero-section {
+          display: flex;
+          flex-direction: column;
+          min-height: 100svh;
+          background: #08090f;
+          position: relative;
+          overflow-x: hidden;
         }
-        .mp-brand-scroll::-webkit-scrollbar { display: none }
-        .mp-brand-pill:hover { opacity: 0.85; transform: translateY(-1px) }
-        .mp-reset-btn:hover  { color: #111827 !important; border-color: rgba(0,0,0,0.25) !important }
-        .mp-chip-x:hover     { opacity: 0.7 }
-        .mp-select:focus     { border-color: rgba(220,38,38,0.5) !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.12) }
-        .mp-filter-toggle:hover { background: rgba(0,0,0,0.05) !important }
-        .mp-next-prev:hover:not(:disabled) { background: rgba(0,0,0,0.05) !important; color: #111827 !important }
-        .mp-page-btn:hover { background: rgba(0,0,0,0.05) !important }
-        .mp-hero-glow {
-          position: absolute;
-          width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(220,38,38,0.06) 0%, transparent 70%);
-          top: -200px; left: 50%; transform: translateX(-50%);
-          pointer-events: none;
+        .mp-hero-main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          padding: 28px 16px 20px;
+          position: relative;
+          z-index: 1;
         }
-        .mp-sidebar::-webkit-scrollbar { width: 3px; }
-        .mp-sidebar::-webkit-scrollbar-thumb { background: #d1d0cc; border-radius: 2px; }
-        .mp-filter-fab { display: none; }
-        @media(max-width:1024px){
-          .mp-desktop-sidebar { display: none !important; }
-          .mp-filter-fab { display: flex !important; }
-          .mp-cars-layout { flex-direction: column !important; }
+        .mp-hero-left  { width: 100%; }
+        .mp-hero-right { display: none; }
+
+        /* Tabs — scrollable on mobile */
+        .mp-hero-tabs {
+          display: flex;
+          gap: 4px;
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 12px;
+          padding: 4px;
+          margin-bottom: 20px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          width: 100%;
         }
-        @keyframes mp-fade-up   { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes mp-slide-right{ from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes mp-pulse-ring { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.6)} }
-        .mp-pulse-dot { width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;animation:mp-pulse-ring 2s ease-in-out infinite; }
-        .mp-anim-fade { animation:mp-fade-up 0.6s cubic-bezier(0.22,1,0.36,1) both; }
-        .mp-anim-d1   { animation-delay:0.1s; }
-        .mp-anim-d2   { animation-delay:0.22s; }
-        .mp-anim-d3   { animation-delay:0.34s; }
-        .mp-card-slide { animation:mp-slide-right 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-        /* Featured cards */
-        .mp-feat-card { transition:transform 0.25s ease,border-color 0.25s ease,box-shadow 0.25s ease; }
-        .mp-feat-card:hover { transform:translateY(-5px); border-color:rgba(220,38,38,0.4) !important; box-shadow:0 16px 40px rgba(0,0,0,0.14); }
-        .mp-feat-img  { transition:transform 0.45s ease; width:100%; height:100%; object-fit:cover; display:block; }
-        .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
-        /* Hero section — full viewport height */
-        .mp-hero-section { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
-        /* Two-column hero layout */
-        .mp-hero-main { flex: 1; display: flex; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; width: 100%; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); position: relative; z-index: 1; }
-        .mp-hero-left { flex: 1; min-width: 0; }
-        .mp-hero-right { flex: 1; min-width: 0; }
-        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-        .mp-budget-item { display: block; text-decoration: none; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.2s ease, border-color 0.2s ease; }
-        .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,0.45) !important; }
-        /* Listings search bar */
-        .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
-        .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
-        .mp-search-btn:hover { background:#b91c1c !important; }
-        /* Adv modal scrollbar */
-        .mp-adv-modal::-webkit-scrollbar { width: 4px; }
-        .mp-adv-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
-        /* Responsive */
-        @media(max-width:900px){
-          .mp-hero-section  { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; }
-          .mp-hero-main     { flex-direction: column !important; padding: 28px 16px 16px !important; gap: 0 !important; align-items: stretch !important; }
-          .mp-hero-right    { display: none !important; }
-          .mp-trust-grid    { grid-template-columns: 1fr 1fr !important; gap: 10px 0 !important; }
-          .mp-trust-item    { border-right: none !important; padding: 8px 12px !important; }
-          .mp-trust-strip   { padding: 12px 16px !important; }
+        .mp-hero-tabs::-webkit-scrollbar { display: none }
+
+        /* Trust strip */
+        .mp-trust-strip { padding: 10px 16px; border-top: 1px solid rgba(255,255,255,.07); flex-shrink: 0; position: relative; z-index: 1; }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; }
+        .mp-trust-item  { padding: 4px 10px; }
+
+        /* Budget cards */
+        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+        .mp-budget-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
+        .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45) !important; }
+
+        /* Results layout — column on mobile */
+        .mp-filter-fab      { display: none; }
+        .mp-desktop-sidebar { display: none; }
+        .mp-cars-layout     { flex-direction: column; }
+        .mp-featured-strip  { grid-template-columns: 1fr 1fr; }
+
+        /* ── Tablet ≥600px ── */
+        @media(min-width:600px) {
+          .mp-hero-main { padding: 36px 24px 24px; }
         }
-        @media(max-width:768px){
-          .mp-featured-strip { grid-template-columns:1fr 1fr !important; }
-          .mp-search-outer   { flex-direction:column !important; border-radius:16px !important; }
-          .mp-search-field   { border-right:none !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; padding:12px 18px !important; }
-          .mp-search-btn     { padding:14px !important; justify-content:center; border-radius:0 0 14px 14px !important; }
+
+        /* ── Desktop ≥900px ── */
+        @media(min-width:900px) {
+          .mp-hero-section  { height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
+          .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); }
+          .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
+          .mp-hero-right    { display: block; flex: 1; min-width: 0; }
+          .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
+          .mp-trust-strip   { padding: 14px 24px; }
+          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); }
+          .mp-trust-item    { padding: 0 28px; }
+          .mp-budget-grid   { gap: 10px; }
+          .mp-filter-fab    { display: flex; }
+          .mp-cars-layout   { flex-direction: row; }
         }
-        @media(max-width:480px){
+
+        /* ── Large desktop ≥1024px ── */
+        @media(min-width:1024px) {
+          .mp-filter-fab      { display: none; }
+          .mp-desktop-sidebar { display: flex !important; }
+        }
+
+        /* ── Listings search bar collapse on small screens ── */
+        @media(max-width:640px) {
+          .mp-search-outer { flex-direction:column !important;border-radius:16px !important; }
+          .mp-search-field { border-right:none !important;border-bottom:1px solid rgba(0,0,0,.08) !important;padding:12px 18px !important; }
+          .mp-search-btn   { padding:14px !important;justify-content:center;border-radius:0 0 14px 14px !important; }
           .mp-featured-strip { grid-template-columns:1fr !important; }
         }
       `}</style>
@@ -625,16 +675,16 @@ export default function MarketplacePage() {
 
             {/* LEFT: headline + subtitle + tabs + search */}
             <div className="mp-hero-left">
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 16px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(48px,6vw,96px)', color:'#ffffff' }}>
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 14px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(38px,10vw,96px)', color:'#ffffff' }}>
                 FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
               </h1>
 
-              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.45)', margin:'0 0 28px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+              <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'rgba(255,255,255,0.45)', margin:'0 0 24px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
                 New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
               </p>
 
               {/* Tabs */}
-              <div style={{ display:'flex', gap:'4px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'4px', marginBottom:'22px', width:'fit-content' }}>
+              <div className="mp-hero-tabs">
                 {[
                   { label:'Find a Car', action:() => setHeroTab(0) },
                   { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
@@ -734,18 +784,18 @@ export default function MarketplacePage() {
 
           </div>
 
-          {/* ── Trust strip — fixed at bottom of hero ── */}
-          <div className="mp-trust-strip" style={{ flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.07)', padding:'14px 24px', position:'relative', zIndex:1 }}>
-            <div className="mp-trust-grid" style={{ maxWidth:'1360px', margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
+          {/* ── Trust strip — bottom of hero ── */}
+          <div className="mp-trust-strip">
+            <div className="mp-trust-grid">
               {[
                 { number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
                 { number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
                 { number:'100%', label:'Docs required' },
                 { number:'0', label:'Phantom listings' },
               ].map((s,i) => (
-                <div key={s.label} className="mp-trust-item" style={{ padding:'0 28px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-                  <div style={{ fontSize:'20px', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'3px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
-                  <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
+                <div key={s.label} className="mp-trust-item" style={{ borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                  <div style={{ fontSize:'clamp(15px,3vw,20px)', fontWeight:'500', color:'#ffffff', lineHeight:1, marginBottom:'2px', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.02em' }}>{s.number}</div>
+                  <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -753,9 +803,9 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Quick-filter strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '0 20px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <section style={{ background: '#F7F6F2', padding: '16px 16px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '2px' }}>
               {[
                 { groupLabel: 'Condition', pills: [
                   { label: 'Used',          paramKey: 'condition', paramVal: 'used' },
