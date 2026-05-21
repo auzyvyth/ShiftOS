@@ -567,6 +567,13 @@ export default function MarketplacePage() {
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
         /* Hero section — full viewport height */
         .mp-hero-section { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
+        /* Two-column hero layout */
+        .mp-hero-main { flex: 1; display: flex; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; width: 100%; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); position: relative; z-index: 1; }
+        .mp-hero-left { flex: 1; min-width: 0; }
+        .mp-hero-right { flex: 1; min-width: 0; }
+        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        .mp-budget-item { display: block; text-decoration: none; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.2s ease, border-color 0.2s ease; }
+        .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,0.45) !important; }
         /* Listings search bar */
         .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
         .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
@@ -577,10 +584,8 @@ export default function MarketplacePage() {
         /* Responsive */
         @media(max-width:900px){
           .mp-hero-section  { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; }
-          .mp-hero-two-col  { flex-direction: column !important; padding: 20px 16px 16px !important; gap: 14px !important; align-items: stretch !important; }
-          .mp-hero-illus    { display: none !important; }
-          .mp-hero-desc     { display: none !important; }
-          .mp-hero-search   { width: 100% !important; flex-shrink: 1 !important; }
+          .mp-hero-main     { flex-direction: column !important; padding: 28px 16px 16px !important; gap: 0 !important; align-items: stretch !important; }
+          .mp-hero-right    { display: none !important; }
           .mp-trust-grid    { grid-template-columns: 1fr 1fr !important; gap: 10px 0 !important; }
           .mp-trust-item    { border-right: none !important; padding: 8px 12px !important; }
           .mp-trust-strip   { padding: 12px 16px !important; }
@@ -615,99 +620,118 @@ export default function MarketplacePage() {
           {/* Red glow */}
           <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
-          {/* Centered hero content */}
-          <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'clamp(72px,10vh,130px) clamp(24px,5vw,60px) 52px', display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', position:'relative', zIndex:1 }}>
+          {/* Two-column hero content */}
+          <div className="mp-hero-main">
 
-            {/* Badge */}
-            <div style={{ display:'inline-flex', alignItems:'center', gap:'7px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'11px', fontWeight:'600', padding:'5px 13px', borderRadius:'100px', marginBottom:'22px', fontFamily:"'Outfit',sans-serif" }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Malaysia's first fully-verified car marketplace
-            </div>
+            {/* LEFT: headline + subtitle + tabs + search */}
+            <div className="mp-hero-left">
+              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 16px', lineHeight:'0.92', letterSpacing:'-0.01em', fontSize:'clamp(48px,6vw,96px)', color:'#ffffff' }}>
+                FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
+              </h1>
 
-            {/* Headline */}
-            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 16px', lineHeight:'0.93', letterSpacing:'-0.01em', fontSize:'clamp(52px,9vw,106px)', color:'#ffffff', textAlign:'center' }}>
-              FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
-            </h1>
+              <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.45)', margin:'0 0 28px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
+                New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
+              </p>
 
-            {/* Subtitle */}
-            <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.45)', margin:'0 0 36px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'520px' }}>
-              New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
-            </p>
-
-            {/* Tabs */}
-            <div style={{ display:'flex', gap:'4px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'4px', marginBottom:'28px' }}>
-              {[
-                { label:'Find a Car', action:() => setHeroTab(0) },
-                { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
-                { label:'Finance Calculator', action:() => { setHeroTab(2); navigate('/calculator'); } },
-              ].map(({ label, action }, i) => (
-                <button
-                  key={label}
-                  onClick={() => action()}
-                  style={{
-                    padding:'9px 20px', borderRadius:'9px', fontSize:'13px', fontWeight:'600',
-                    fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
-                    background: heroTab === i ? '#dc2626' : 'transparent',
-                    color: heroTab === i ? '#fff' : 'rgba(255,255,255,0.5)',
-                    transition:'all 0.2s', whiteSpace:'nowrap',
-                  }}
-                >{label}</button>
-              ))}
-            </div>
-
-            {/* Search bar */}
-            <form onSubmit={e => {
-              e.preventDefault();
-              const p = new URLSearchParams();
-              if (heroQ)      p.set('q', heroQ);
-              if (heroBudget) p.set('max_price', heroBudget);
-              if (heroState)  p.set('state', heroState);
-              navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
-            }} style={{ width:'100%', maxWidth:'700px' }}>
-
-              <div style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'12px' }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <SearchAutocomplete
-                    dark
-                    value={heroQ}
-                    onChange={setHeroQ}
-                    placeholder="Search make, model or variant…"
-                    navigateTo="/showroom"
-                    onSubmit={val => setHeroQ(val)}
-                    inputStyle={{ padding:'12px 14px', fontSize:'14px' }}
-                  />
-                </div>
-                <button type="submit"
-                  style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 28px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'7px', borderRadius:'10px' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
-                  onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                ><Search size={14}/> Find Cars</button>
+              {/* Tabs */}
+              <div style={{ display:'flex', gap:'4px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'4px', marginBottom:'22px', width:'fit-content' }}>
+                {[
+                  { label:'Find a Car', action:() => setHeroTab(0) },
+                  { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
+                  { label:'Finance Calculator', action:() => { setHeroTab(2); navigate('/calculator'); } },
+                ].map(({ label, action }, i) => (
+                  <button
+                    key={label}
+                    onClick={() => action()}
+                    style={{
+                      padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
+                      fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
+                      background: heroTab === i ? '#dc2626' : 'transparent',
+                      color: heroTab === i ? '#fff' : 'rgba(255,255,255,0.5)',
+                      transition:'all 0.2s', whiteSpace:'nowrap',
+                    }}
+                  >{label}</button>
+                ))}
               </div>
 
-              {/* Budget + State + Advanced row */}
-              <div style={{ display:'flex', gap:'8px', justifyContent:'center', alignItems:'center', flexWrap:'wrap' }}>
-                <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                  <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
-                    style={{ border:'none', outline:'none', padding:'9px 28px 9px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                    <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                    {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
-                  </select>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+              {/* Search bar */}
+              <form onSubmit={e => {
+                e.preventDefault();
+                const p = new URLSearchParams();
+                if (heroQ)      p.set('q', heroQ);
+                if (heroBudget) p.set('max_price', heroBudget);
+                if (heroState)  p.set('state', heroState);
+                navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
+              }}>
+                <div style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <SearchAutocomplete
+                      dark
+                      value={heroQ}
+                      onChange={setHeroQ}
+                      placeholder="Search make, model or variant…"
+                      navigateTo="/showroom"
+                      onSubmit={val => setHeroQ(val)}
+                      inputStyle={{ padding:'11px 14px', fontSize:'14px' }}
+                    />
+                  </div>
+                  <button type="submit"
+                    style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 22px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'6px', borderRadius:'10px' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                    onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
+                  ><Search size={14}/> Find Cars</button>
                 </div>
-                <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                  <select value={heroState} onChange={e=>setHeroState(e.target.value)}
-                    style={{ border:'none', outline:'none', padding:'9px 28px 9px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                    <option value="" style={{ background:'#0d1117' }}>Any state</option>
-                    {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
-                  </select>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+
+                <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                    <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      <option value="" style={{ background:'#0d1117' }}>Any budget</option>
+                      {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                    </select>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                    <select value={heroState} onChange={e=>setHeroState(e.target.value)}
+                      style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                      <option value="" style={{ background:'#0d1117' }}>Any state</option>
+                      {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                    </select>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <button type="button" onClick={() => setAdvancedOpen(true)}
+                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'8px 12px', color:'rgba(255,255,255,0.4)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                    <SlidersHorizontal size={11}/> More filters
+                  </button>
                 </div>
-                <button type="button" onClick={() => setAdvancedOpen(true)}
-                  style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'9px 12px', color:'rgba(255,255,255,0.4)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-                  <SlidersHorizontal size={11}/> More filters
-                </button>
+              </form>
+            </div>
+
+            {/* RIGHT: Browse by Budget */}
+            <div className="mp-hero-right">
+              <p style={{ margin:'0 0 4px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.16em', color:'rgba(220,38,38,0.8)', fontFamily:"'Outfit',sans-serif" }}>Shop Smarter</p>
+              <h2 style={{ margin:'0 0 16px', fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(26px,3vw,44px)', color:'#ffffff', letterSpacing:'0.02em', lineHeight:1 }}>BROWSE BY BUDGET</h2>
+              <div className="mp-budget-grid">
+                {[
+                  { label:'Under RM 30k',  value:'30000',  img:'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=160&auto=format&fit=crop&q=70' },
+                  { label:'Under RM 50k',  value:'50000',  img:'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=300&h=160&auto=format&fit=crop&q=70' },
+                  { label:'Under RM 80k',  value:'80000',  img:'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300&h=160&auto=format&fit=crop&q=70' },
+                  { label:'Under RM 120k', value:'120000', img:'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=300&h=160&auto=format&fit=crop&q=70' },
+                  { label:'Under RM 200k', value:'200000', img:'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=300&h=160&auto=format&fit=crop&q=70' },
+                  { label:'Open Budget',   value:'',       img:'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&h=160&auto=format&fit=crop&q=70' },
+                ].map(({ label, value, img }) => (
+                  <Link key={label} to={value ? `/cars?max_price=${value}` : '/cars'} className="mp-budget-item">
+                    <div style={{ height:'88px', overflow:'hidden' }}>
+                      <img src={img} alt={label} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} loading="lazy" />
+                    </div>
+                    <div style={{ padding:'8px 10px 10px' }}>
+                      <span style={{ fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </form>
+            </div>
+
           </div>
 
           {/* ── Trust strip — fixed at bottom of hero ── */}
@@ -848,43 +872,6 @@ export default function MarketplacePage() {
                   </button>
                 );
               })}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Browse by Budget ── */}
-        <section style={{ background: '#F7F6F2', padding: '40px 20px 52px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <style>{`.budget-card:hover { transform: translateY(-5px) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.13) !important; } .budget-card:hover .budget-card-inner { border-color: rgba(220,38,38,0.35) !important; }`}</style>
-          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
-            <div style={{ marginBottom: '28px' }}>
-              <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Shop Smarter</p>
-              <h2 style={{ margin: 0, fontSize: 'clamp(28px,5vw,52px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>BROWSE BY BUDGET</h2>
-            </div>
-            <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '6px' }}>
-              {[
-                { label: 'Under RM 30k',  value: '30000',  img: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=420&h=240&auto=format&fit=crop&q=70' },
-                { label: 'Under RM 50k',  value: '50000',  img: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=420&h=240&auto=format&fit=crop&q=70' },
-                { label: 'Under RM 80k',  value: '80000',  img: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=420&h=240&auto=format&fit=crop&q=70' },
-                { label: 'Under RM 120k', value: '120000', img: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=420&h=240&auto=format&fit=crop&q=70' },
-                { label: 'Under RM 200k', value: '200000', img: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=420&h=240&auto=format&fit=crop&q=70' },
-                { label: 'Open Budget',   value: '',        img: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=420&h=240&auto=format&fit=crop&q=70' },
-              ].map(({ label, value, img }) => (
-                <Link
-                  key={label}
-                  to={value ? `/cars?max_price=${value}` : '/cars'}
-                  className="budget-card"
-                  style={{ flexShrink: 0, width: '210px', textDecoration: 'none', transition: 'transform 0.2s ease', display: 'block' }}
-                >
-                  <div className="budget-card-inner" style={{ borderRadius: '16px', overflow: 'hidden', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', transition: 'border-color 0.2s ease' }}>
-                    <div style={{ height: '144px', overflow: 'hidden', background: '#f3f3f1' }}>
-                      <img src={img} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} loading="lazy" />
-                    </div>
-                    <div style={{ padding: '14px 16px 16px' }}>
-                      <span style={{ fontSize: '15px', fontWeight: '700', color: '#111827', fontFamily: "'Outfit',sans-serif" }}>{label}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
             </div>
           </div>
         </section>
