@@ -281,8 +281,9 @@ function bucketGPByMonth(units, months = 6) {
   const result = Array(months).fill(0);
   const now = new Date();
   units.forEach(u => {
-    if (!u.sold_at || !u.sold_price) return;
-    const d = new Date(u.sold_at);
+    const soldAt = u.sold_date || u.sold_at;
+    if (!soldAt || !u.sold_price) return;
+    const d = new Date(soldAt);
     const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
     if (monthsAgo >= 0 && monthsAgo < months) {
       const gp = (u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0);
@@ -4303,7 +4304,9 @@ function StockTab({ userId, listings }) {
 
   const grossProfit = (u) => {
     if (!u.sold_price) return null;
-    return (Number(u.sold_price) || 0) - (Number(u.purchase_price) || 0) - (Number(u.recon_cost) || 0);
+    const pp = Number(u.purchase_price) || Number(u.car_listings?.purchase_price) || 0;
+    const rc = Number(u.recon_cost) || Number(u.car_listings?.recon_cost) || 0;
+    return (Number(u.sold_price) || 0) - pp - rc;
   };
 
   const now = new Date();
@@ -4317,15 +4320,17 @@ function StockTab({ userId, listings }) {
   });
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
-  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.purchase_price) || 0), 0);
-  const avgDays = activeUnits.length
-    ? Math.round(activeUnits.reduce((s, u) => {
-        if (!u.purchase_date) return s;
-        return s + Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000);
-      }, 0) / activeUnits.length)
+  const totalValue = activeUnits.reduce((s, u) =>
+    s + (Number(u.purchase_price) || Number(u.car_listings?.purchase_price) || 0), 0);
+
+  const unitDateRef = (u) => u.purchase_date || u.created_at;
+  const unitsWithDate = activeUnits.filter(u => unitDateRef(u));
+  const avgDays = unitsWithDate.length
+    ? Math.round(unitsWithDate.reduce((s, u) =>
+        s + Math.floor((Date.now() - new Date(unitDateRef(u))) / 86400000), 0) / unitsWithDate.length)
     : 0;
   const agingUnits = activeUnits.filter(u =>
-    u.purchase_date && Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) > 60
+    unitDateRef(u) && Math.floor((Date.now() - new Date(unitDateRef(u))) / 86400000) > 60
   );
   const gpSparkData = bucketGPByMonth(units);
 
