@@ -227,7 +227,7 @@ function ResponseTimeDot({ minutes }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function RevOpsPage({ userId }) {
+export default function RevOpsPage({ userId, onGoToStock }) {
   // ── Revenue data ────────────────────────────────────────────────────────────
   const [revData, setRevData] = useState(null);
   const [revLoading, setRevLoading] = useState(true);
@@ -355,8 +355,6 @@ export default function RevOpsPage({ userId }) {
         }, 0);
         avgResponseMin = Math.round(totalMin / responded.length);
       }
-      // TODO: if first_response_at column doesn't exist on leads, avgResponseMin stays null
-
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
       setLeadLoading(false);
     };
@@ -544,8 +542,7 @@ export default function RevOpsPage({ userId }) {
     const fetch = async () => {
       const newAlerts = [];
 
-      // Alert 1 — Unresponded leads (only if first_response_at column exists)
-      // We'll attempt the query and ignore gracefully if the column doesn't exist
+      // Alert 1 — Unresponded leads older than 30 min with no first_response_at
       try {
         const thirtyMinsAgo = new Date(Date.now() - 30 * 60000).toISOString();
         const { data: unresponded, error: respErr } = await supabase
@@ -830,9 +827,8 @@ export default function RevOpsPage({ userId }) {
                 </div>
               </>
             ) : (
-              <span style={{ fontSize: 12, color: "#4b5563" }}>
-                {/* TODO: add first_response_at column to leads table to enable this metric */}
-                No data
+              <span style={{ fontSize: 12, color: "#6b7280" }}>
+                No responded leads yet
               </span>
             )}
           </div>
@@ -1150,12 +1146,12 @@ export default function RevOpsPage({ userId }) {
                   <div
                     className="grid gap-2 px-3 py-2 hidden sm:grid"
                     style={{
-                      gridTemplateColumns: "1fr 1fr 60px 90px 100px",
+                      gridTemplateColumns: onGoToStock ? "1fr 1fr 60px 90px 100px 20px" : "1fr 1fr 60px 90px 100px",
                       borderBottom: "1px solid rgba(255,255,255,0.05)",
                       background: "rgba(255,255,255,0.02)",
                     }}
                   >
-                    {["Brand", "Model", "Year", "Days", "Asking"].map((h) => (
+                    {["Brand", "Model", "Year", "Days", "Asking", ...(onGoToStock ? [""] : [])].map((h) => (
                       <span
                         key={h}
                         style={{
@@ -1176,15 +1172,18 @@ export default function RevOpsPage({ userId }) {
                     return (
                       <div
                         key={u.id}
-                        // TODO: link to stock unit when detail view is available
+                        onClick={() => onGoToStock?.()}
                         className="grid gap-2 px-3 py-2.5 items-center"
                         style={{
-                          gridTemplateColumns: "1fr 1fr 60px 90px 100px",
+                          gridTemplateColumns: onGoToStock ? "1fr 1fr 60px 90px 100px 20px" : "1fr 1fr 60px 90px 100px",
                           borderLeft: `3px solid ${borderColor}`,
                           borderBottom: "1px solid rgba(255,255,255,0.04)",
                           background: "transparent",
-                          cursor: "default",
+                          cursor: onGoToStock ? "pointer" : "default",
+                          transition: "background 0.15s",
                         }}
+                        onMouseEnter={e => { if (onGoToStock) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                       >
                         <span
                           style={{
@@ -1222,6 +1221,9 @@ export default function RevOpsPage({ userId }) {
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
                           {u.asking_price ? fmtRM(u.asking_price) : "—"}
                         </span>
+                        {onGoToStock && (
+                          <ChevronRight size={13} style={{ color: "#4b5563", justifySelf: "end" }} />
+                        )}
                       </div>
                     );
                   })}
