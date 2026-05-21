@@ -149,6 +149,8 @@ export default function SalesmanPanel() {
  const [openAiReplyId, setOpenAiReplyId] = useState(null);
  const [aiDrafts, setAiDrafts] = useState({});
  const [aiLoading, setAiLoading] = useState(false);
+ const [editingReminder, setEditingReminder] = useState(null);
+ const [reminderMsg, setReminderMsg] = useState("");
 
  // Leads
  const [leads, setLeads] = useState([]);
@@ -3681,301 +3683,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderBookings = () => {
- const todayStr = new Date().toDateString();
- const todayAppts = appointments.filter(
- (a) => new Date(a.appointment_date).toDateString() === todayStr,
- );
- const upcomingAppts = appointments.filter(
- (a) =>
- new Date(a.appointment_date) > new Date() &&
- new Date(a.appointment_date).toDateString()!== todayStr,
- );
- const confirmedCount = appointments.filter(
- (a) => a.status === "confirmed",
- ).length;
- const pendingCount = appointments.filter(
- (a) => a.status === "pending",
- ).length;
-
- const SECTION_LABEL = (text) => (
- <p
- style={{
- margin: "0 0 8px",
- fontSize: 10,
- fontWeight: 700,
- color: "#374151",
- letterSpacing: "0.1em",
- textTransform: "uppercase",
- }}
- >
- {text}
- </p>
- );
-
- const BTN = (label, color, bg, border, onClick) => (
- <button
- onClick={onClick}
- style={{
- fontSize: 10,
- padding: "3px 9px",
- borderRadius: 5,
- background: bg,
- border: `1px solid ${border}`,
- color,
- cursor: "pointer",
- fontWeight: 500,
- }}
- >
- {label}
- </button>
- );
-
- const renderApptCard = (appt, i, groupTotal) => {
- const isToday =
- new Date(appt.appointment_date).toDateString() === todayStr;
- const hasDeposit = appt.deposit_amount > 0;
- const bookingTypeLabel = appt.booking_type
-? appt.booking_type
- .replace(/_/g, " ")
- .replace(/\b\w/g, (c) => c.toUpperCase())
- : null;
- return (
- <div
- key={appt.id}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- marginBottom: 8,
- overflow: "hidden",
- }}
- >
- {/* badges row above the renderAppt content */}
- {(bookingTypeLabel || hasDeposit) && (
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 6,
- padding: "8px 14px 0",
- }}
- >
- {bookingTypeLabel && (
- <span
- style={{
- fontSize: 10,
- fontWeight: 600,
- background: "rgba(99,102,241,0.12)",
- border: "1px solid rgba(99,102,241,0.25)",
- color: "#a5b4fc",
- borderRadius: 99,
- padding: "2px 8px",
- }}
- >
- {bookingTypeLabel}
- </span>
- )}
- {hasDeposit && (
- <span
- style={{
- fontSize: 10,
- fontWeight: 600,
- background: "rgba(34,197,94,0.12)",
- border: "1px solid rgba(34,197,94,0.25)",
- color: "#4ade80",
- borderRadius: 99,
- padding: "2px 8px",
- }}
- >Deposit: RM{" "}
- {Number(appt.deposit_amount).toLocaleString("en-MY")}
- </span>
- )}
- </div>
- )}
- {/* existing appointment row (unchanged) */}
- <div style={{ padding: "0 6px" }}>
- {renderAppt(appt, 0, 1, isToday)}
- </div>
- {/* status action buttons */}
- {(appt.status === "pending" || appt.status === "confirmed") && (
- <div
- style={{
- display: "flex",
- gap: 6,
- padding: "0 14px 12px",
- flexWrap: "wrap",
- }}
- >
- {appt.status === "pending" && (
- <>
- {BTN(
- "Confirm",
- "#4ade80",
- "rgba(34,197,94,0.1)",
- "rgba(34,197,94,0.3)",
- () => updateApptStatus(appt.id, "confirmed"),
- )}
- {BTN(
- "Cancel",
- "#f87171",
- "rgba(239,68,68,0.08)",
- "rgba(239,68,68,0.25)",
- () => updateApptStatus(appt.id, "cancelled"),
- )}
- </>
- )}
- {appt.status === "confirmed" && (
- <>
- {BTN(
- "Mark Done",
- "#4ade80",
- "rgba(34,197,94,0.1)",
- "rgba(34,197,94,0.3)",
- () => updateApptStatus(appt.id, "done"),
- )}
- {BTN(
- "Reschedule",
- "#fbbf24",
- "rgba(251,191,36,0.08)",
- "rgba(251,191,36,0.25)",
- () => updateApptStatus(appt.id, "rescheduled"),
- )}
- </>
- )}
- </div>
- )}
- </div>
- );
- };
-
- return (
- <div>
- <p
- style={{
- margin: "0 0 12px",
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Bookings
- </p>
-
- {appointments.length === 0? (
- <div
- style={{
- display: "flex",
- flexDirection: "column",
- alignItems: "center",
- justifyContent: "center",
- gap: 12,
- padding: "52px 24px",
- background: "#0d1117",
- border: "1px dashed rgba(255,255,255,0.1)",
- borderRadius: 14,
- }}
- >
- <div
- style={{
- width: 52,
- height: 52,
- borderRadius: "50%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.08)",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- }}
- >
- <Clock size={24} color="#374151" />
- </div>
- <p
- style={{
- margin: 0,
- fontSize: 15,
- fontWeight: 600,
- color: "#4b5563",
- }}
- >No upcoming bookings
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- color: "#374151",
- textAlign: "center",
- maxWidth: 280,
- lineHeight: 1.6,
- }}
- >When customers book a test drive, they'll appear here.
- </p>
- </div>
- ) : (
- <>
- {/* Summary strip */}
- <div
- style={{
- display: "flex",
- alignItems: "center",
- gap: 8,
- flexWrap: "wrap",
- marginBottom: 16,
- padding: "10px 14px",
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- }}
- >
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#4ade80", fontWeight: 600 }}>
- {confirmedCount}
- </span>{" "}
- confirmed
- </span>
- <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
- ·
- </span>
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#60a5fa", fontWeight: 600 }}>
- {pendingCount}
- </span>{" "}
- pending
- </span>
- <span style={{ color: "rgba(255,255,255,0.12)", fontSize: 14 }}>
- ·
- </span>
- <span style={{ fontSize: 12, color: "#94a3b8" }}>
- <span style={{ color: "#f1f5f9", fontWeight: 600 }}>
- {todayAppts.length}
- </span>{" "}
- today
- </span>
- </div>
-
- {/* Today section */}
- {todayAppts.length > 0 && (
- <div style={{ marginBottom: 20 }}>
- {SECTION_LABEL("Today")}
- {todayAppts.map((appt, i) =>
- renderApptCard(appt, i, todayAppts.length),
- )}
- </div>
- )}
-
- {/* Upcoming section */}
- {upcomingAppts.length > 0 && (
- <div>
- {SECTION_LABEL("Upcoming")}
- {upcomingAppts.map((appt, i) =>
- renderApptCard(appt, i, upcomingAppts.length),
- )}
- </div>
- )}
- </>
- )}
- </div>
- );
- };
 
  const renderLogCallModal = () => logCallLeadId && (() => {
  const lead = leads.find((l) => l.id === logCallLeadId);
@@ -4814,220 +4521,187 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderEnquiries = () => (
+ const renderEnquiries = () => {
+ const statusColors = {
+ confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
+ pending: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
+ cancelled: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", tx: "#f87171" },
+ rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+ };
+ const isToday = (iso) => {
+ if (!iso) return false;
+ const d = new Date(iso), t = new Date();
+ return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+ };
+ const isNewAppt = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
+ const todayApts = appointments.filter(a => isToday(a.appointment_date));
+ const upcomingApts = appointments.filter(a => !isToday(a.appointment_date));
+
+ const renderApptCard = (apt) => {
+ const car = apt.car_listings;
+ const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
+ const dateStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—";
+ const timeStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
+ const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`;
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const hasDeposit = apt.deposit_amount > 0;
+ const bookingTypeLabel = apt.booking_type ? apt.booking_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
+ return (
+ <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+ {(bookingTypeLabel || hasDeposit) && (
+ <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+ {bookingTypeLabel && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", borderRadius: 99, padding: "2px 8px" }}>{bookingTypeLabel}</span>}
+ {hasDeposit && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>Deposit: RM {Number(apt.deposit_amount).toLocaleString("en-MY")}</span>}
+ </div>
+ )}
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "—"}</p>
+ {isNewAppt(apt.created_at) && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", flexShrink: 0, letterSpacing: "0.05em" }}>NEW</span>}
+ </div>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{apt.status || "pending"}</span>
+ </div>
+ {apt.created_at && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
+ <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>{dateStr}{timeStr && ` · ${timeStr}`}</p>
+ {car && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+ {apt.buyer_phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>{apt.buyer_phone}</p>}
+ {apt.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: apt.buyer_phone ? 6 : 0 }}>
+ {apt.status !== "confirmed" && <button onClick={() => updateApptStatus(apt.id, "confirmed")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>Confirm</button>}
+ {apt.status === "confirmed" && <button onClick={() => updateApptStatus(apt.id, "done")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>Mark Done</button>}
+ {apt.status !== "cancelled" && <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>Cancel</button>}
+ {apt.status !== "rescheduled" && <button onClick={() => updateApptStatus(apt.id, "rescheduled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>Reschedule</button>}
+ </div>
+ {apt.buyer_phone && (editingReminder === apt.id ? (
+ <div style={{ marginTop: 4 }}>
+ <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5, marginBottom: 6 }} />
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { const ph = apt.buyer_phone.replace(/\D/g, ""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer"); setEditingReminder(null); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send</button>
+ <button onClick={() => setEditingReminder(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+ </div>
+ </div>
+ ) : (
+ <button onClick={() => { setEditingReminder(apt.id); setReminderMsg(defaultReminder); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA Reminder</button>
+ ))}
+ </div>
+ );
+ };
+
+ return (
  <div>
- <p
- style={{
- margin: "0 0 16px",
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Enquiries ({enquiries.length})
- </p>
- {enquiries.length === 0? (
- <div
- style={{ textAlign: "center", padding: "48px 0", color: "#374151" }}
- >No enquiries yet.
+ {/* ENQUIRIES */}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Enquiries ({enquiries.length})</p>
+ {enquiries.filter(e => e.status === "new").length > 0 && (
+ <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{enquiries.filter(e => e.status === "new").length} new</span>
+ )}
+ </div>
+ {enquiries.length === 0 ? (
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+ <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+ <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
  </div>
  ) : (
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {enquiries.map((enq) => {
  const car = enq.car_listings;
- const carName = car
-? [car.year, car.brand, car.model].filter(Boolean).join(" ")
- : null;
- const phone = (enq.buyer_phone || "").replace(/\D/g, "");
  return (
- <div
- key={enq.id}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- padding: "14px 16px",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "flex-start",
- justifyContent: "space-between",
- marginBottom: 6,
- }}
- >
- <div>
- <p
- style={{
- margin: 0,
- fontSize: 13,
- fontWeight: 600,
- color: "#e5e7eb",
- }}
- >
- {enq.buyer_name || "—"}
- </p>
- {carName && (
- <p
- style={{
- margin: "2px 0 0",
- fontSize: 11,
- color: "#60a5fa",
- }}
- >
- {carName}
- </p>
- )}
+ <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: enq.status === "new" ? "rgba(96,165,250,0.12)" : enq.status === "converted" ? "rgba(34,197,94,0.12)" : "rgba(74,222,128,0.08)", border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : enq.status === "converted" ? "rgba(34,197,94,0.3)" : "rgba(74,222,128,0.2)"}`, color: enq.status === "new" ? "#93c5fd" : "#4ade80", textTransform: "capitalize" }}>{enq.status || "new"}</span>
  </div>
- <span style={{ fontSize: 10, color: "#374151" }}>
- {timeAgo(enq.created_at)}
- </span>
- </div>
- {enq.buyer_message && (
- <p
- style={{
- margin: "0 0 10px",
- fontSize: 12,
- color: "#6b7280",
- fontStyle: "italic",
- }}
- >
- "{enq.buyer_message}"
- </p>
- )}
+ {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+ {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>{enq.buyer_phone}</p>}
+ {enq.buyer_message && <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{enq.buyer_message}"</p>}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- {phone && (
- <button
- onClick={() =>
- window.open(
- `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}`,
- "_blank",
- )
- }
- style={{
- fontSize: 11,
- padding: "5px 10px",
- borderRadius: 7,
- background: "rgba(37,211,102,0.1)",
- border: "1px solid rgba(37,211,102,0.25)",
- color: "#4ade80",
- cursor: "pointer",
- }}
- >WhatsApp
- </button>
+ {enq.buyer_phone && (
+ <button onClick={() => { const ph = (enq.buyer_phone).replace(/\D/g, ""); const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${car ? `${car.brand} ${car.model}` : "kereta"}. I'm here to help — when would be a good time to chat?`); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${msg}`, "_blank", "noopener,noreferrer"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA Reply</button>
  )}
- <button
- onClick={() =>
- setOpenTemplateId(
- openTemplateId === enq.id? null : enq.id,
- )
- }
- style={{
- fontSize: 11,
- padding: "5px 10px",
- borderRadius: 7,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.1)",
- color: "#9ca3af",
- cursor: "pointer",
- }}
- >Templates
- </button>
- <button
- onClick={() => {
- setOpenAiReplyId(enq.id);
- generateAiReply(enq);
- }}
- style={{
- fontSize: 11,
- padding: "5px 10px",
- borderRadius: 7,
- background: "rgba(168,85,247,0.1)",
- border: "1px solid rgba(168,85,247,0.25)",
- color: "#c084fc",
- cursor: "pointer",
- }}
- >AI Reply
- </button>
+ <button onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: openTemplateId === enq.id ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#c084fc" : "#6b7280", cursor: "pointer" }}>Templates</button>
+ <button onClick={() => { setOpenAiReplyId(enq.id); generateAiReply(enq); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>AI Reply</button>
+ {enq.status === "new" && (
+ <button onClick={async () => { await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "responded" } : e)); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Mark Responded</button>
+ )}
+ {enq.status !== "converted" ? (
+ <button onClick={async () => { await supabase.from("leads").insert({ salesman_id: userId, dealer_id: profile?.dealer_id, buyer_name: enq.buyer_name, phone: enq.buyer_phone, notes: enq.buyer_message, car_listing_id: enq.listing_id || null, stage: "new", lead_source: "enquiry", is_deleted: false }); await supabase.from("whatsapp_enquiries").update({ status: "converted" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "converted" } : e)); toast.success("Added to lead pipeline!"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", color: "#93c5fd", cursor: "pointer" }}>→ Pipeline</button>
+ ) : (
+ <span style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80" }}>In Pipeline</span>
+ )}
  </div>
  {openTemplateId === enq.id && (
- <div
- style={{
- marginTop: 10,
- display: "flex",
- flexDirection: "column",
- gap: 6,
- }}
- >
+ <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
  {WA_TEMPLATES.map((tpl, ti) => (
- <button
- key={ti}
- onClick={() => fireTemplate(enq, tpl)}
- style={{
- textAlign: "left",
- fontSize: 11,
- padding: "6px 10px",
- borderRadius: 7,
- background:
- templateToast === enq.id
-? "rgba(34,197,94,0.1)"
- : "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.08)",
- color:
- templateToast === enq.id? "#4ade80" : "#9ca3af",
- cursor: "pointer",
- }}
- >
- {tpl.label}
+ <button key={ti} onClick={() => fireTemplate(enq, tpl)} style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === enq.id ? "#4ade80" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+ <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", flexShrink: 0 }} />
+ {templateToast === enq.id ? "Sent!" : tpl.label}
  </button>
  ))}
  </div>
  )}
  {openAiReplyId === enq.id && (
  <div style={{ marginTop: 10 }}>
- {aiLoading? (
- <div
- className="caption-skeleton"
- style={{ height: 60, width: "100%" }}
- />
- ) : aiDrafts[enq.id]? (
+ {aiLoading ? (
+ <div className="caption-skeleton" style={{ height: 60, width: "100%" }} />
+ ) : aiDrafts[enq.id] ? (
  <div>
- <p
- style={{
- margin: "0 0 6px",
- fontSize: 12,
- color: "#9ca3af",
- whiteSpace: "pre-wrap",
- }}
- >
- {aiDrafts[enq.id]}
- </p>
- <button
- onClick={() =>
- navigator.clipboard.writeText(aiDrafts[enq.id])
- }
- style={{
- fontSize: 11,
- padding: "4px 10px",
- borderRadius: 6,
- background: "rgba(168,85,247,0.1)",
- border: "1px solid rgba(168,85,247,0.25)",
- color: "#c084fc",
- cursor: "pointer",
- }}
- >Copy
- </button>
+ <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af", whiteSpace: "pre-wrap" }}>{aiDrafts[enq.id]}</p>
+ <button onClick={() => navigator.clipboard.writeText(aiDrafts[enq.id])} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>Copy</button>
  </div>
  ) : null}
  </div>
  )}
+ <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
  </div>
  );
  })}
  </div>
  )}
+
+ {/* BOOKINGS */}
+ <div style={{ marginTop: 28 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Bookings ({appointments.length})</p>
+ <div style={{ display: "flex", gap: 6 }}>
+ {["confirmed", "pending"].map(s => {
+ const count = appointments.filter(a => a.status === s).length;
+ if (!count) return null;
+ const sc = statusColors[s];
+ return <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{count} {s}</span>;
+ })}
+ </div>
+ </div>
+ {appointments.length === 0 ? (
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+ <Calendar size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+ <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+ </div>
+ ) : (
+ <>
+ {todayApts.length > 0 && (
+ <div style={{ marginBottom: 20 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={11} />Today ({todayApts.length})
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {todayApts.map(renderApptCard)}
+ </div>
+ </div>
+ )}
+ {upcomingApts.length > 0 && (
+ <div>
+ {todayApts.length > 0 && <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Upcoming</p>}
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ {upcomingApts.map(renderApptCard)}
+ </div>
+ </div>
+ )}
+ </>
+ )}
+ </div>
  </div>
  );
+ };
 
  const renderAnalytics = () => {
   const Spark = ({ data, color }) => {
@@ -5990,12 +5664,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  badge: myListings.length || null,
  },
  {
- tab: "bookings",
- label: "Bookings",
- icon: <Clock size={18} />,
- badge: appointments.length || null,
- },
- {
  tab: "leads",
  label: "Leads",
  icon: <User size={18} />,
@@ -6011,7 +5679,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  tab: "enquiries",
  label: "Enquiries",
  icon: <MessageSquare size={18} />,
- badge: enquiries.filter((e) => e.status === "new").length || null,
+ badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
  },
  {
  tab: "loans",
@@ -6189,12 +5857,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  icon: <Car style={{ width: 14, height: 14, flexShrink: 0 }} />,
  badge: myListings.length || null,
  },
- {
- tab: "bookings",
- label: "Bookings",
- icon: <Clock style={{ width: 14, height: 14, flexShrink: 0 }} />,
- badge: appointments.length || null,
- },
  ].map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
@@ -6276,7 +5938,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  style={{ width: 14, height: 14, flexShrink: 0 }}
  />
  ),
- badge: enquiries.filter((e) => e.status === "new").length || null,
+ badge: (enquiries.filter((e) => e.status === "new").length + appointments.filter(a => a.status === "pending").length) || null,
  },
  {
  tab: "loans",
@@ -6774,57 +6436,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  {activeTab === "dashboard" && renderDashboard()}
  {activeTab === "listings" && renderListings()}
- {activeTab === "bookings" && renderBookings()}
  {activeTab === "leads" && renderLeads()}
  {activeTab === "analytics" && renderAnalytics()}
- {activeTab === "enquiries" && (
-  <div>
-   {renderEnquiries()}
-   {appointments.length > 0 && (
-    <div style={{ marginTop: 8 }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 10px" }}>
-      <Calendar size={13} color="#4b5563" />
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.1em" }}>Appointments ({appointments.length})</p>
-     </div>
-     {appointments.slice(0, 20).map(apt => {
-      const car = apt.car_listings;
-      const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
-      const dateStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }) : "—";
-      const timeStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
-      const isToday = aptDate && aptDate.toDateString() === new Date().toDateString();
-      const sc = { confirmed: "#4ade80", pending: "#fbbf24", cancelled: "#f87171", rescheduled: "#c084fc" }[apt.status] || "#fbbf24";
-      return (
-       <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
-           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{apt.buyer_name || "—"}</p>
-           {isToday && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd" }}>Today</span>}
-           <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 99, background: `${sc}18`, border: `1px solid ${sc}40`, color: sc }}>{apt.status || "pending"}</span>
-          </div>
-          {car && <p style={{ margin: "0 0 3px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
-          <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</p>
-         </div>
-         {apt.buyer_phone && (
-          <a
-           href={`https://wa.me/${apt.buyer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${apt.buyer_name || ""}! Reminder: your appointment is on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`)}`}
-           target="_blank"
-           rel="noopener noreferrer"
-           style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(74,222,124,0.08)", border: "1px solid rgba(74,222,124,0.2)", color: "#4ade80", fontSize: 11, fontWeight: 600, textDecoration: "none", flexShrink: 0 }}
-          >
-           <Phone size={11} />
-           WA
-          </a>
-         )}
-        </div>
-        {apt.notes && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#6b7280", fontStyle: "italic" }}>{apt.notes}</p>}
-       </div>
-      );
-     })}
-    </div>
-   )}
-  </div>
- )}
+ {activeTab === "enquiries" && renderEnquiries()}
  {activeTab === "loans" && renderLoans()}
  {activeTab === "team" && renderTeam()}
  {activeTab === "settings" && renderSettings()}
