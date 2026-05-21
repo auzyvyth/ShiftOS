@@ -130,7 +130,7 @@ export default function MarketplaceHeader() {
               <Phone size={13} /> +60 17-415 5191
             </a>
             <a href="/login" className="mh-signin">Sign In</a>
-            <a href="/login" className="mh-cta">List Your Car</a>
+            <a href="/onboarding" className="mh-cta">List Your Car</a>
             <button className="mh-hamburger" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -160,7 +160,7 @@ export default function MarketplaceHeader() {
           </button>
           <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> +60 17-415 5191</a>
           <a href="/login" className="mh-mobile-link" style={{ color:'#9ca3af', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
-          <a href="/login" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
+          <a href="/onboarding" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
         </div>
       </header>
       <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />
