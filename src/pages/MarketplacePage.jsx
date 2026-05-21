@@ -780,16 +780,16 @@ export default function MarketplacePage() {
               <h2 style={{ margin:'0 0 16px', fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(26px,3vw,44px)', color:'#ffffff', letterSpacing:'0.02em', lineHeight:1 }}>BROWSE BY BUDGET</h2>
               <div className="mp-budget-grid">
                 {[
-                  { label:'Under RM 30k',  value:'30000',  img:'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=160&auto=format&fit=crop&q=70' },
-                  { label:'Under RM 50k',  value:'50000',  img:'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=300&h=160&auto=format&fit=crop&q=70' },
-                  { label:'Under RM 80k',  value:'80000',  img:'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300&h=160&auto=format&fit=crop&q=70' },
-                  { label:'Under RM 120k', value:'120000', img:'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=300&h=160&auto=format&fit=crop&q=70' },
-                  { label:'Under RM 200k', value:'200000', img:'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=300&h=160&auto=format&fit=crop&q=70' },
-                  { label:'Open Budget',   value:'',       img:'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&h=160&auto=format&fit=crop&q=70' },
-                ].map(({ label, value, img }) => (
+                  { label:'Under RM 30k',  value:'30000',  iconColor:'#6b7280', bg:'rgba(107,114,128,0.10)' },
+                  { label:'Under RM 50k',  value:'50000',  iconColor:'#94a3b8', bg:'rgba(148,163,184,0.10)' },
+                  { label:'Under RM 80k',  value:'80000',  iconColor:'#cbd5e1', bg:'rgba(203,213,225,0.10)' },
+                  { label:'Under RM 120k', value:'120000', iconColor:'#f87171', bg:'rgba(220,38,38,0.12)'   },
+                  { label:'Under RM 200k', value:'200000', iconColor:'#ef4444', bg:'rgba(220,38,38,0.18)'   },
+                  { label:'Open Budget',   value:'',       iconColor:'#ffffff', bg:'rgba(255,255,255,0.10)' },
+                ].map(({ label, value, iconColor, bg }) => (
                   <Link key={label} to={value ? `/cars?max_price=${value}` : '/cars'} className="mp-budget-item">
-                    <div style={{ height:'88px', overflow:'hidden' }}>
-                      <img src={img} alt={label} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} loading="lazy" />
+                    <div style={{ height:'80px', display:'flex', alignItems:'center', justifyContent:'center', background: bg }}>
+                      <Car size={40} color={iconColor} strokeWidth={1.25} />
                     </div>
                     <div style={{ padding:'8px 10px 10px' }}>
                       <span style={{ fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
