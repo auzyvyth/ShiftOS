@@ -186,6 +186,11 @@ export default function OnboardingPage() {
 
   const advance = async () => {
     if (!canAdvance()) return;
+    if (stage.id === "sub") {
+      const ok = await checkSubdomain();
+      if (ok) goNext();
+      return;
+    }
     if (stage.id === "payment") {
       if (!userId) return;
       setLoading(true); setError("");
@@ -239,9 +244,10 @@ export default function OnboardingPage() {
             }
           : {
               id: userId, email: v.email || userEmail, full_name: v.fullName.trim(),
-              phone: v.phone, dealership: v.dealerName.trim(),
+              phone: v.phone !== "+60" ? v.phone : null,
+              dealership: v.dealerName.trim(),
               location: v.city ? `${v.city}, ${v.state}` : v.state,
-              role: "dealer", is_active: true, onboarding_complete: true,
+              role: "dealer", plan: "dealer_full", is_active: true, onboarding_complete: true,
               subdomain: v.subdomain, ssm_number: v.ssmNumber || null,
               ic: v.ic || null, ic_submitted: !!v.ic,
               ic_deadline: v.ic ? null : new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
@@ -256,10 +262,35 @@ export default function OnboardingPage() {
           setLoading(false);
           goNext();
         }
-      } catch (e) { setError(e.message); setLoading(false); }
+      } catch (e) {
+        const msg = e.message || "";
+        if (msg.includes("profiles_subdomain_key")) {
+          setError("That subdomain is already taken. Go back and choose a different one.");
+        } else {
+          setError(msg);
+        }
+        setLoading(false);
+      }
       return;
     }
     goNext();
+  };
+
+  // Async check for subdomain availability — called from advance() on the "sub" stage
+  const checkSubdomain = async () => {
+    setLoading(true); setError("");
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("subdomain", v.subdomain)
+      .neq("id", userId || "00000000-0000-0000-0000-000000000000")
+      .maybeSingle();
+    setLoading(false);
+    if (data) {
+      setError("That subdomain is already taken. Please choose a different one.");
+      return false;
+    }
+    return true;
   };
 
   useEffect(() => {
