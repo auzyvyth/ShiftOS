@@ -69,6 +69,7 @@ export default function MarketplacePage() {
   const [heroBudget,   setHeroBudget]   = useState('');
   const [heroState,    setHeroState]    = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [heroTab, setHeroTab] = useState(0);
 
   /* Data state */
   const [cars, setCars]           = useState([]);
@@ -614,124 +615,99 @@ export default function MarketplacePage() {
           {/* Red glow */}
           <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
-          {/* ── Two-column hero ── fills remaining height via flex:1 */}
-          <div className="mp-hero-two-col" style={{ flex:1, minHeight:0, maxWidth:'1360px', width:'100%', margin:'0 auto', padding:'0 clamp(24px,5vw,60px)', display:'flex', alignItems:'center', gap:'clamp(32px,5vw,72px)', position:'relative', zIndex:1 }}>
+          {/* Centered hero content */}
+          <div style={{ maxWidth:'1360px', margin:'0 auto', padding:'clamp(72px,10vh,130px) clamp(24px,5vw,60px) 52px', display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', position:'relative', zIndex:1 }}>
 
-            {/* LEFT: copy + trust card */}
-            <div style={{ flex:'1 1 0', minWidth:0 }}>
-              <div style={{ display:'inline-flex', alignItems:'center', gap:'7px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'11px', fontWeight:'600', padding:'5px 13px', borderRadius:'100px', marginBottom:'14px', fontFamily:"'Outfit',sans-serif" }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Malaysia's first fully-verified car marketplace
-              </div>
+            {/* Badge */}
+            <div style={{ display:'inline-flex', alignItems:'center', gap:'7px', background:'rgba(220,38,38,0.1)', border:'0.5px solid rgba(220,38,38,0.28)', color:'#f87171', fontSize:'11px', fontWeight:'600', padding:'5px 13px', borderRadius:'100px', marginBottom:'22px', fontFamily:"'Outfit',sans-serif" }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Malaysia's first fully-verified car marketplace
+            </div>
 
-              <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 10px', lineHeight:'0.95', letterSpacing:'-0.02em', fontSize:'clamp(36px,4.5vw,76px)', textAlign:'left' }}>
-                <span style={{ display:'block', color:'#ffffff' }}>New. Used. Recon.</span>
-                <span style={{ display:'block', color:'#dc2626' }}>Find it here.</span>
-              </h1>
+            {/* Headline */}
+            <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", margin:'0 0 16px', lineHeight:'0.93', letterSpacing:'-0.01em', fontSize:'clamp(52px,9vw,106px)', color:'#ffffff', textAlign:'center' }}>
+              FIND YOUR NEXT<br/><span style={{ color:'#dc2626' }}>CAR IN MALAYSIA</span>
+            </h1>
 
-              <p className="mp-hero-desc" style={{ fontSize:'13px', color:'rgba(255,255,255,0.45)', maxWidth:'380px', margin:'0 0 18px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", fontWeight:'400' }}>
-                Every type of car, every budget — from verified dealers across Malaysia. Full docs, real photos, zero phantom listings.
-              </p>
+            {/* Subtitle */}
+            <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.45)', margin:'0 0 36px', lineHeight:'1.7', fontFamily:"'Outfit',sans-serif", maxWidth:'520px' }}>
+              New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
+            </p>
 
-              {/* Trust card — hidden on mobile via .mp-hero-illus */}
-              <div className="mp-hero-illus" style={{ width:'auto' }}>
-                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'14px', padding:'16px 18px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'9px', marginBottom:'14px' }}>
-                    <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:'rgba(220,38,38,0.15)', border:'0.5px solid rgba(220,38,38,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(220,38,38,0.2)" stroke="#f87171" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <div>
-                      <p style={{ margin:0, fontSize:'9px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Every listing includes</p>
-                      <p style={{ margin:0, fontSize:'12px', fontWeight:'600', color:'rgba(255,255,255,0.75)', fontFamily:"'Outfit',sans-serif" }}>Full transparency, guaranteed</p>
-                    </div>
-                  </div>
-                  {[
-                    { label:'Full ownership docs', desc:'Grant, roadtax & insurance verified', iconBg:'rgba(34,197,94,0.15)', iconBorder:'rgba(34,197,94,0.25)', icon:<path d="M9 12h6M9 16h6M5 8h14M5 4h14v16H5V4z" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/> },
-                    { label:'Service history', desc:'Complete maintenance records included', iconBg:'rgba(59,130,246,0.15)', iconBorder:'rgba(59,130,246,0.25)', icon:<><path d="M12 8v4l3 3" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="12" r="9" stroke="#60a5fa" strokeWidth="1.5"/></> },
-                    { label:'Verified dealer badge', desc:'All dealers certified and background-checked', iconBg:'rgba(245,158,11,0.15)', iconBorder:'rgba(245,158,11,0.25)', icon:<><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></> },
-                  ].map(({ label, desc, iconBg, iconBorder, icon }) => (
-                    <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:'10px', marginBottom:'10px' }}>
-                      <div style={{ width:'28px', height:'28px', borderRadius:'7px', background:iconBg, border:`0.5px solid ${iconBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">{icon}</svg>
-                      </div>
-                      <div>
-                        <p style={{ margin:'0 0 1px', fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.88)', fontFamily:"'Outfit',sans-serif" }}>{label}</p>
-                        <p style={{ margin:0, fontSize:'10px', color:'rgba(255,255,255,0.35)', fontFamily:"'Outfit',sans-serif", lineHeight:'1.4' }}>{desc}</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Tabs */}
+            <div style={{ display:'flex', gap:'4px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'4px', marginBottom:'28px' }}>
+              {[
+                { label:'Find a Car', action:() => setHeroTab(0) },
+                { label:'Browse Hot Deals', action:() => { setHeroTab(1); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
+                { label:'Finance Calculator', action:() => { setHeroTab(2); navigate('/calculator'); } },
+              ].map(({ label, action }, i) => (
+                <button
+                  key={label}
+                  onClick={() => action()}
+                  style={{
+                    padding:'9px 20px', borderRadius:'9px', fontSize:'13px', fontWeight:'600',
+                    fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
+                    background: heroTab === i ? '#dc2626' : 'transparent',
+                    color: heroTab === i ? '#fff' : 'rgba(255,255,255,0.5)',
+                    transition:'all 0.2s', whiteSpace:'nowrap',
+                  }}
+                >{label}</button>
+              ))}
+            </div>
+
+            {/* Search bar */}
+            <form onSubmit={e => {
+              e.preventDefault();
+              const p = new URLSearchParams();
+              if (heroQ)      p.set('q', heroQ);
+              if (heroBudget) p.set('max_price', heroBudget);
+              if (heroState)  p.set('state', heroState);
+              navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
+            }} style={{ width:'100%', maxWidth:'700px' }}>
+
+              <div style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'12px' }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <SearchAutocomplete
+                    dark
+                    value={heroQ}
+                    onChange={setHeroQ}
+                    placeholder="Search make, model or variant…"
+                    navigateTo="/showroom"
+                    onSubmit={val => setHeroQ(val)}
+                    inputStyle={{ padding:'12px 14px', fontSize:'14px' }}
+                  />
                 </div>
+                <button type="submit"
+                  style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', padding:'0 28px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:'7px', borderRadius:'10px' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                  onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
+                ><Search size={14}/> Find Cars</button>
               </div>
-            </div>
 
-            {/* RIGHT: Search card */}
-            <div className="mp-hero-search" style={{ flexShrink:0, width:'clamp(300px,30vw,400px)' }}>
-              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'16px', padding:'20px', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
-                <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'700', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:"'Outfit',sans-serif" }}>Find your next car</p>
-
-                <form onSubmit={e => {
-                  e.preventDefault();
-                  const p = new URLSearchParams();
-                  if (heroQ)      p.set('q', heroQ);
-                  if (heroBudget) p.set('max_price', heroBudget);
-                  if (heroState)  p.set('state', heroState);
-                  navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
-                }}>
-                  <div style={{ marginBottom:'8px' }}>
-                    <SearchAutocomplete
-                      dark
-                      value={heroQ}
-                      onChange={setHeroQ}
-                      placeholder="Make, model, or variant…"
-                      navigateTo="/showroom"
-                      onSubmit={val => setHeroQ(val)}
-                      inputStyle={{ padding: '12px 12px', fontSize: '13px' }}
-                    />
-                  </div>
-
-                  {/* Budget + State row */}
-                  <div style={{ display:'flex', gap:'8px', marginBottom:'8px' }}>
-                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                      <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
-                        style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                        <option value="" style={{ background:'#0d1117' }}>Any budget</option>
-                        {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
-                      </select>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                    </div>
-                    <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                      <select value={heroState} onChange={e=>setHeroState(e.target.value)}
-                        style={{ flex:1, border:'none', outline:'none', padding:'11px 26px 11px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
-                        <option value="" style={{ background:'#0d1117' }}>Any state</option>
-                        {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
-                      </select>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
-                    </div>
-                  </div>
-
-                  {/* Find Cars button — full width */}
-                  <button type="submit"
-                    style={{ width:'100%', background:'#dc2626', color:'#fff', border:'none', padding:'11px', fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px', marginBottom:'8px' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
-                    onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                  ><Search size={13}/> Find Cars</button>
-
-                  {/* Hot deals shortcut */}
-                  <button type="button"
-                    onClick={() => { setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); }}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.45)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:'0 0 4px', width:'100%' }}>
-                    Browse hot deals →
-                  </button>
-
-                  {/* Advanced search trigger → opens modal */}
-                  <button type="button" onClick={() => setAdvancedOpen(true)}
-                    style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'none', color:'rgba(255,255,255,0.28)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", padding:0 }}>
-                    <SlidersHorizontal size={11}/>
-                    Advanced search
-                  </button>
-                </form>
+              {/* Budget + State + Advanced row */}
+              <div style={{ display:'flex', gap:'8px', justifyContent:'center', alignItems:'center', flexWrap:'wrap' }}>
+                <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                  <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
+                    style={{ border:'none', outline:'none', padding:'9px 28px 9px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                    <option value="" style={{ background:'#0d1117' }}>Any budget</option>
+                    {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
+                  </select>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
+                  <select value={heroState} onChange={e=>setHeroState(e.target.value)}
+                    style={{ border:'none', outline:'none', padding:'9px 28px 9px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
+                    <option value="" style={{ background:'#0d1117' }}>Any state</option>
+                    {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
+                  </select>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <button type="button" onClick={() => setAdvancedOpen(true)}
+                  style={{ display:'flex', alignItems:'center', gap:'5px', background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'9px 12px', color:'rgba(255,255,255,0.4)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                  <SlidersHorizontal size={11}/> More filters
+                </button>
               </div>
-            </div>
+            </form>
           </div>
 
           {/* ── Trust strip — fixed at bottom of hero ── */}
@@ -748,56 +724,6 @@ export default function MarketplacePage() {
                   <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'Outfit',sans-serif" }}>{s.label}</div>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Brand strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '28px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {[
-                { label: 'All',        brandVal: '',              initials: 'ALL', color: '#DC2626' },
-                { label: 'Perodua',    brandVal: 'Perodua',    logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
-                { label: 'Proton',     brandVal: 'Proton',     logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg' },
-                { label: 'Toyota',     brandVal: 'Toyota',     logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg' },
-                { label: 'Honda',      brandVal: 'Honda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-                { label: 'Nissan',     brandVal: 'Nissan',     logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg' },
-                { label: 'Mazda',      brandVal: 'Mazda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg' },
-                { label: 'Mitsubishi', brandVal: 'Mitsubishi', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
-                { label: 'BMW',        brandVal: 'BMW',        logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
-                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg' },
-                { label: 'Hyundai',    brandVal: 'Hyundai',    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg' },
-              ].map(({ label, brandVal, logo, initials, color }) => {
-                const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
-                return (
-                  <button
-                    key={label}
-                    onClick={() => {
-                      setParam('brand', brandVal);
-                      document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                  >
-                    <div style={{
-                      width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
-                      background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
-                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.08)' : '#ffffff'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      {logo ? (
-                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
-                      ) : null}
-                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#6b7280', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
-                  </button>
-                );
-              })}
             </div>
           </div>
         </section>
@@ -872,6 +798,93 @@ export default function MarketplacePage() {
               <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(0,0,0,0.09)', margin: '4px 0' }} />
               <BodyTypeCarousel title="SUVs"           eyebrow="Spacious & Versatile"     bodyType="SUV"       cars={bodyTypeCars.SUV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
               <BodyTypeCarousel title="MPVs"           eyebrow="Family People Carriers"   bodyType="MPV"       cars={bodyTypeCars.MPV}      loading={bodyTypeLoading} ctaContext={ctaCtx} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Brand strip ── */}
+        <section style={{ background: '#F7F6F2', padding: '28px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {[
+                { label: 'All',        brandVal: '',              initials: 'ALL', color: '#DC2626' },
+                { label: 'Perodua',    brandVal: 'Perodua',    logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
+                { label: 'Proton',     brandVal: 'Proton',     logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg' },
+                { label: 'Toyota',     brandVal: 'Toyota',     logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg' },
+                { label: 'Honda',      brandVal: 'Honda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
+                { label: 'Nissan',     brandVal: 'Nissan',     logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg' },
+                { label: 'Mazda',      brandVal: 'Mazda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg' },
+                { label: 'Mitsubishi', brandVal: 'Mitsubishi', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
+                { label: 'BMW',        brandVal: 'BMW',        logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
+                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg' },
+                { label: 'Hyundai',    brandVal: 'Hyundai',    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg' },
+              ].map(({ label, brandVal, logo, initials, color }) => {
+                const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
+                return (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      setParam('brand', brandVal);
+                      document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  >
+                    <div style={{
+                      width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
+                      background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
+                      border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.2s, border-color 0.2s, transform 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(220,38,38,0.08)' : '#ffffff'; e.currentTarget.style.borderColor = isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {logo ? (
+                        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                      ) : null}
+                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#6b7280', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Browse by Budget ── */}
+        <section style={{ background: '#F7F6F2', padding: '40px 20px 52px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <style>{`.budget-card:hover { transform: translateY(-5px) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.13) !important; } .budget-card:hover .budget-card-inner { border-color: rgba(220,38,38,0.35) !important; }`}</style>
+          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '28px' }}>
+              <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#DC2626', fontFamily: "'Outfit',sans-serif" }}>Shop Smarter</p>
+              <h2 style={{ margin: 0, fontSize: 'clamp(28px,5vw,52px)', fontWeight: 700, color: '#111827', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.02em' }}>BROWSE BY BUDGET</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: '6px' }}>
+              {[
+                { label: 'Under RM 30k',  value: '30000',  img: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=420&h=240&auto=format&fit=crop&q=70' },
+                { label: 'Under RM 50k',  value: '50000',  img: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=420&h=240&auto=format&fit=crop&q=70' },
+                { label: 'Under RM 80k',  value: '80000',  img: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=420&h=240&auto=format&fit=crop&q=70' },
+                { label: 'Under RM 120k', value: '120000', img: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=420&h=240&auto=format&fit=crop&q=70' },
+                { label: 'Under RM 200k', value: '200000', img: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=420&h=240&auto=format&fit=crop&q=70' },
+                { label: 'Open Budget',   value: '',        img: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=420&h=240&auto=format&fit=crop&q=70' },
+              ].map(({ label, value, img }) => (
+                <Link
+                  key={label}
+                  to={value ? `/cars?max_price=${value}` : '/cars'}
+                  className="budget-card"
+                  style={{ flexShrink: 0, width: '210px', textDecoration: 'none', transition: 'transform 0.2s ease', display: 'block' }}
+                >
+                  <div className="budget-card-inner" style={{ borderRadius: '16px', overflow: 'hidden', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', transition: 'border-color 0.2s ease' }}>
+                    <div style={{ height: '144px', overflow: 'hidden', background: '#f3f3f1' }}>
+                      <img src={img} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} loading="lazy" />
+                    </div>
+                    <div style={{ padding: '14px 16px 16px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: '700', color: '#111827', fontFamily: "'Outfit',sans-serif" }}>{label}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
