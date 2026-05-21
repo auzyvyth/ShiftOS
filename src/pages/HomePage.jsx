@@ -246,7 +246,6 @@ const HomePage = () => {
 
   useEffect(() => {
     if (tenant === undefined) return;
-    let ch, soldCh;
     const load = async () => {
       let query = supabase
         .from("car_listings")
@@ -295,26 +294,7 @@ const HomePage = () => {
     load();
     // sold count is below-fold — defer until after first paint
     setTimeout(fetchSoldCount, 800);
-    ch = supabase
-      .channel("home")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "car_listings" },
-        load,
-      )
-      .subscribe();
-    soldCh = supabase
-      .channel("home_sold")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "car_listings" },
-        fetchSoldCount,
-      )
-      .subscribe();
-    return () => {
-      if (ch) supabase.removeChannel(ch);
-      if (soldCh) supabase.removeChannel(soldCh);
-    };
+    return () => {};
   }, [tenant]);
 
   useEffect(() => {

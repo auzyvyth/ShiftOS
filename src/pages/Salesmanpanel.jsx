@@ -429,7 +429,7 @@ export default function SalesmanPanel() {
  .channel("salesman_sold")
  .on(
  "postgres_changes",
- { event: "UPDATE", schema: "public", table: "car_listings" },
+ { event: "UPDATE", schema: "public", table: "car_listings", filter: `assigned_to=eq.${userId}` },
  fetchSold,
  )
  .subscribe();
@@ -450,7 +450,7 @@ export default function SalesmanPanel() {
  .channel("my_listings_" + userId)
  .on(
  "postgres_changes",
- { event: "*", schema: "public", table: "car_listings" },
+ { event: "*", schema: "public", table: "car_listings", filter: `assigned_to=eq.${userId}` },
  fetchMyListings,
  )
  .subscribe();

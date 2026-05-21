@@ -151,17 +151,6 @@ const CarsPage = () => {
   useEffect(() => {
     if (tenantLoading) return;
     load();
-    const ch = supabase.channel('cars_page')
-      .on('postgres_changes', { event:'*', schema:'public', table:'car_listings' }, payload => {
-        setAllCars(cur => {
-          if (payload.eventType === 'INSERT') return [payload.new, ...cur];
-          if (payload.eventType === 'UPDATE') return cur.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c);
-          if (payload.eventType === 'DELETE') return cur.filter(c => c.id !== payload.old.id);
-          return cur;
-        });
-      })
-      .subscribe();
-    return () => supabase.removeChannel(ch);
   }, [tenant, tenantLoading]);
 
   useEffect(() => {
