@@ -133,7 +133,7 @@ const CarsPage = () => {
     setLoading(true);
     let query = supabase
       .from('car_listings')
-      .select('*, dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)')
+      .select('id,slug,brand,model,variant,year,selling_price,original_price,previous_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,dealer_id,loan_eligible,warranty_months,deposit_amount,included_services,dealer:profiles!car_listings_dealer_id_fkey(dealership, site_name, subdomain, whatsapp_number, site_logo_url, brand_color)')
       .eq('status', 'available')
       .order('created_at', { ascending: false });
 

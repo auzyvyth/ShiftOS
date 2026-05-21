@@ -640,8 +640,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [showDanger, setShowDanger] = useState(false);
   const [tgToken, setTgToken] = useState(profile?.telegram_bot_token || "");
   const [tgChannel, setTgChannel] = useState(profile?.telegram_channel_id || "");
   const [tgAutoPost, setTgAutoPost] = useState(profile?.telegram_auto_post || false);
@@ -1472,67 +1470,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
       {/* ── 6. Services & Add-ons ── */}
       <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} />
 
-      {/* ── 7. Danger Zone ── */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{
-          border: "1px solid rgba(59,130,246,0.22)",
-          background: "rgba(59,130,246,0.03)",
-        }}
-      >
-        <button
-          onClick={() => setShowDanger((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-blue-500/[0.04] transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{
-                background: "rgba(59,130,246,0.12)",
-                border: "1px solid rgba(59,130,246,0.22)",
-              }}
-            >
-              <AlertTriangle className="w-4 h-4 text-blue-400" />
-            </div>
-            <p className="text-blue-400 text-sm font-semibold">Danger Zone</p>
-          </div>
-          {showDanger ? (
-            <ChevronUp className="w-4 h-4 text-blue-500/50" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-blue-500/50" />
-          )}
-        </button>
-
-        {showDanger && (
-          <div
-            className="px-5 pb-5 space-y-4"
-            style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}
-          >
-            <p className="text-gray-500 text-xs pt-4">
-              Deleting your account is permanent and cannot be undone. All your
-              listings, team, and data will be removed.
-            </p>
-            <SettingsField label={`Type "DELETE" to confirm`}>
-              <input
-                value={deleteConfirm}
-                onChange={(e) => setDeleteConfirm(e.target.value)}
-                placeholder="DELETE"
-                className={iCls}
-              />
-            </SettingsField>
-            <button
-              disabled={deleteConfirm !== "DELETE"}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-30 transition-all"
-              style={{
-                background: "linear-gradient(135deg,#3b82f6,#1e40af)",
-                border: "1px solid rgba(59,130,246,0.3)",
-              }}
-            >
-              Permanently Delete Account
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -2791,11 +2728,12 @@ function TeamTab({ managerDealership, dealerId }) {
   }, [managerDealership]);
 
   useEffect(() => {
-    if (!managerDealership) return;
+    if (!managerDealership || !dealerId) return;
     const fetchSold = async () => {
       const { count } = await supabase
         .from("car_listings")
         .select("id", { count: "exact", head: true })
+        .eq("dealer_id", dealerId)
         .eq("status", "sold");
       setTeamSoldCount(count || 0);
     };
@@ -2804,12 +2742,12 @@ function TeamTab({ managerDealership, dealerId }) {
       .channel("team_sold")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "car_listings" },
+        { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
         fetchSold,
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [managerDealership]);
+  }, [managerDealership, dealerId]);
 
   const fetchTeam = async () => {
     if (!managerDealership) {
@@ -4402,7 +4340,7 @@ function StockTab({ userId, listings }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => navigate('/dashboard/import-stock')} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
+            <button disabled title="CSV import coming soon" className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg opacity-40 cursor-not-allowed" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>

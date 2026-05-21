@@ -138,11 +138,13 @@ export default function LeadsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: profile } = await supabase
-        .from('profiles').select('dealership').eq('id', user.id).single();
-      if (!profile?.dealership) return;
+        .from('profiles').select('id, role, dealer_id').eq('id', user.id).single();
+      if (!profile) return;
+      const dealerId = ['manager', 'admin'].includes(profile.role) ? profile.dealer_id : profile.id;
+      if (!dealerId) return;
       const { data } = await supabase
         .from('profiles').select('id, full_name')
-        .eq('role', 'salesman').eq('dealership', profile.dealership);
+        .eq('role', 'salesman').eq('dealer_id', dealerId);
       setTeamMembers(data || []);
     }
     load();

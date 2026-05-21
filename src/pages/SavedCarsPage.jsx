@@ -21,7 +21,7 @@ export default function SavedCarsPage() {
     setLoading(true);
     supabase
       .from('car_listings')
-      .select('*')
+      .select('id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners')
       .in('id', ids)
       .then(({ data }) => {
         if (data) {
