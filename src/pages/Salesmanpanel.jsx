@@ -226,6 +226,7 @@ export default function SalesmanPanel() {
  // Per-listing analytics
  const [carStatsMap, setCarStatsMap] = useState({});
  const [rawEvents, setRawEvents] = useState([]);
+ const [dealerSubdomain, setDealerSubdomain] = useState(null);
 
  // Manager notes
  const [managerNotes, setManagerNotes] = useState([]);
@@ -343,6 +344,14 @@ export default function SalesmanPanel() {
 
  setProfile(profileData);
  setLoading(false);
+ if (profileData.dealer_id) {
+  supabase
+   .from("profiles")
+   .select("subdomain")
+   .eq("id", profileData.dealer_id)
+   .maybeSingle()
+   .then(({ data }) => setDealerSubdomain(data?.subdomain || null));
+ }
 
  if (profileData.slug) {
  const { data: evts } = await supabase
@@ -843,9 +852,12 @@ Rules:
  window.location.href = "https://xdrive.my/login";
  };
 
+ const _siteBase = dealerSubdomain
+  ? `https://${dealerSubdomain}.xdrive.my`
+  : "https://xdrive.my";
  const uniqueLink = profile?.slug
-? `https://xdrive.my/cars?ref=${profile.slug}`
- : null;
+  ? `${_siteBase}/cars?ref=${profile.slug}`
+  : null;
 
  const handleCopy = () => {
  if (!uniqueLink) return;
@@ -865,7 +877,8 @@ Rules:
  };
 
  const handleListingCopy = (car, type) => {
- const link = `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}`;
+ const _base = dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my";
+ const link = `${_base}/cars/${car.slug}?ref=${profile?.slug || ""}`;
  let text = link;
  if (type === "wa") {
  const price = Number(car.selling_price || 0);
@@ -1159,7 +1172,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const price = car.selling_price
 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
  : null;
- const link = car.slug? `https://xdrive.my/cars/${car.slug}` : null;
+ const link = car.slug ? `${_siteBase}/cars/${car.slug}` : null;
  const msg = [
  `Hi! Tengok ni — ${name} dah ada dalam lineup kita!`,
  price? `Harga: ${price}` : null,
@@ -1648,8 +1661,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  >
  {[
  ["overview", "Overview"],
- ["performance", "Performance"],
- ["month", "This month"],
  ].map(([key, label]) => (
  <button
  key={key}
@@ -1675,11 +1686,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  );
 
- // Overview 
+ // Overview
  if (subTab === "overview")
  return (
  <>
- {SUBTABS_UI}
 
  {/* AI: What to do today */}
  <div
@@ -2247,571 +2257,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </>
  );
 
- // Performance 
- if (subTab === "performance") {
- const cvrRows = myListings
- .map((car) => {
- const s = carStatsMap[car.id]?? {};
- const views = s.views || 0;
- const enqs = s.enquiries || 0;
- const cvr = views > 0? ((enqs / views) * 100).toFixed(1) : null;
- return { car, views, enqs, cvr };
- })
- .sort((a, b) => b.views - a.views);
-
- const top3 = cvrRows.slice(0, 3);
- const maxViews = top3.length > 0? top3[0].views : 1;
-
- return (
- <>
- {SUBTABS_UI}
-
- {/* Per-listing CVR table */}
- <div style={{ ...CARD, marginBottom: 16 }}>
- <p
- style={{
- margin: "0 0 14px",
- fontSize: 13,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Listing performance
- </p>
- {cvrRows.length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No listings assigned yet.
- </p>
- ) : (
- <div style={{ overflowX: "auto" }}>
- <table
- style={{
- width: "100%",
- borderCollapse: "collapse",
- fontSize: 12,
- }}
- >
- <thead>
- <tr
- style={{
- borderBottom: "1px solid rgba(255,255,255,0.06)",
- }}
- >
- {["Car", "Views", "Enquiries", "CVR"].map((h) => (
- <th
- key={h}
- style={{
- padding: "6px 10px",
- textAlign: "left",
- fontSize: 10,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.1em",
- fontWeight: 600,
- whiteSpace: "nowrap",
- }}
- >
- {h}
- </th>
- ))}
- </tr>
- </thead>
- <tbody>
- {cvrRows.map(({ car, views, enqs, cvr }) => {
- const cvrNum = parseFloat(cvr);
- return (
- <tr
- key={car.id}
- style={{
- borderBottom: "1px solid rgba(255,255,255,0.04)",
- }}
- >
- <td
- style={{
- padding: "9px 10px",
- color: "#e5e7eb",
- fontWeight: 500,
- maxWidth: 180,
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {[car.year, car.brand, car.model]
- .filter(Boolean)
- .join(" ")}
- </td>
- <td
- style={{
- padding: "9px 10px",
- color: "#60a5fa",
- fontWeight: 600,
- }}
- >
- {views}
- </td>
- <td
- style={{
- padding: "9px 10px",
- color: "#fbbf24",
- fontWeight: 600,
- }}
- >
- {enqs}
- </td>
- <td
- style={{
- padding: "9px 10px",
- fontWeight: 700,
- color:
- cvr === null
-? "#374151"
- : cvrNum > 6
-? "#4ade80"
- : cvrNum > 2
-? "#fbbf24"
- : "#9ca3af",
- }}
- >
- {cvr!== null? `${cvr}%` : "—"}
- </td>
- </tr>
- );
- })}
- </tbody>
- </table>
- </div>
- )}
- </div>
-
- {/* Top 3 by views — inline bar chart */}
- <div style={{ ...CARD, marginBottom: 16 }}>
- <p
- style={{
- margin: "0 0 14px",
- fontSize: 13,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Top listings by views
- </p>
- {top3.length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No view data yet.
- </p>
- ) : (
- top3.map(({ car, views }, i) => {
- const barW = maxViews > 0? (views / maxViews) * 100 : 0;
- const medals = ["", "", ""];
- return (
- <div
- key={car.id}
- style={{ marginBottom: i < top3.length - 1? 14 : 0 }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 5,
- }}
- >
- <span style={{ fontSize: 12, color: "#d1d5db" }}>
- {medals[i]}{" "}
- {[car.year, car.brand, car.model]
- .filter(Boolean)
- .join(" ")}
- </span>
- <span
- style={{
- fontSize: 12,
- fontWeight: 700,
- color: "#60a5fa",
- }}
- >
- {views} views
- </span>
- </div>
- <div
- style={{
- height: 5,
- background: "rgba(255,255,255,0.05)",
- borderRadius: 99,
- overflow: "hidden",
- }}
- >
- <div
- style={{
- height: "100%",
- width: `${barW}%`,
- background:
- i === 0
-? "#3b82f6"
- : i === 1
-? "#6366f1"
- : "#8b5cf6",
- borderRadius: 99,
- }}
- />
- </div>
- </div>
- );
- })
- )}
- </div>
-
- {/* Commission breakdown */}
- <div style={CARD}>
- <p
- style={{
- margin: "0 0 14px",
- fontSize: 13,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Commission breakdown
- </p>
- {commissionDetails.length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No sold cars yet.
- </p>
- ) : (
- <div style={{ overflowX: "auto" }}>
- <table
- style={{
- width: "100%",
- borderCollapse: "collapse",
- fontSize: 12,
- }}
- >
- <thead>
- <tr
- style={{
- borderBottom: "1px solid rgba(255,255,255,0.06)",
- }}
- >
- {["Car", "Sold date", "Commission"].map((h) => (
- <th
- key={h}
- style={{
- padding: "6px 10px",
- textAlign: "left",
- fontSize: 10,
- color: "#4b5563",
- textTransform: "uppercase",
- letterSpacing: "0.1em",
- fontWeight: 600,
- whiteSpace: "nowrap",
- }}
- >
- {h}
- </th>
- ))}
- </tr>
- </thead>
- <tbody>
- {commissionDetails.map((c, i) => (
- <tr
- key={i}
- style={{
- borderBottom: "1px solid rgba(255,255,255,0.04)",
- }}
- >
- <td
- style={{
- padding: "9px 10px",
- color: "#e5e7eb",
- fontWeight: 500,
- }}
- >
- {[c.year, c.brand, c.model]
- .filter(Boolean)
- .join(" ") || "—"}
- </td>
- <td style={{ padding: "9px 10px", color: "#9ca3af" }}>
- {c.sold_at
-? new Date(c.sold_at).toLocaleDateString("en-MY", {
- day: "numeric",
- month: "short",
- year: "numeric",
- })
- : "—"}
- </td>
- <td
- style={{
- padding: "9px 10px",
- fontFamily: "'Bebas Neue', sans-serif",
- fontSize: 15,
- color: "#4ade80",
- fontWeight: 700,
- letterSpacing: "0.04em",
- }}
- >RM{" "}
- {Number(c.commission_amount || 0).toLocaleString(
- "en-MY",
- )}
- </td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- )}
- </div>
- </>
- );
- }
-
- // This month 
- return (
- <>
- {SUBTABS_UI}
-
- <div
- style={{
- display: "grid",
- gridTemplateColumns: isMobile? "repeat(2,1fr)" : "repeat(4,1fr)",
- gap: isMobile? 8 : 14,
- marginBottom: 20,
- }}
- >
- {[
- {
- label: "Leads added",
- val: leadsThisMonth,
- color: "#60a5fa",
- Icon: () => <Users size={14} color="#60a5fa" />,
- },
- {
- label: "Appointments",
- val: apptThisMonth,
- color: "#c084fc",
- Icon: () => <Clock size={14} color="#c084fc" />,
- },
- {
- label: "Enquiries",
- val: enqThisMonth,
- color: "#3b82f6",
- Icon: () => <MessageSquare size={14} color="#3b82f6" />,
- },
- {
- label: "Cars sold",
- val: thisMonthSales,
- color: "#22c55e",
- Icon: () => <Car size={14} color="#22c55e" />,
- },
- ].map(({ label, val, color, Icon }) => (
- <div
- key={label}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- padding: isMobile? 12 : "16px 18px",
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 10,
- }}
- >
- <span
- style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}
- >
- {label}
- </span>
- <Icon />
- </div>
- <p
- style={{
- margin: 0,
- fontSize: isMobile? 22 : 30,
- fontWeight: 700,
- color,
- lineHeight: 1,
- fontFamily: "'Bebas Neue', sans-serif",
- letterSpacing: "0.02em",
- }}
- >
- {val}
- </p>
- </div>
- ))}
- </div>
-
- {/* Monthly target recap */}
- <div
- style={{
- background: "#0d1117",
- border: targetHit
-? "1px solid rgba(34,197,94,0.25)"
- : "1px solid rgba(255,255,255,0.07)",
- borderRadius: 12,
- padding: isMobile? "12px 14px" : "14px 18px",
- marginBottom: 16,
- }}
- >
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 8,
- }}
- >
- <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <Target size={14} color={targetHit? "#22c55e" : "#3b82f6"} />
- <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Monthly target
- </span>
- </div>
- <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- {targetHit && (
- <span
- style={{
- fontSize: 10,
- fontWeight: 700,
- background: "rgba(34,197,94,0.12)",
- border: "1px solid rgba(34,197,94,0.3)",
- color: "#4ade80",
- borderRadius: 99,
- padding: "2px 8px",
- }}
- >Target hit!
- </span>
- )}
- <span
- style={{
- fontSize: 13,
- fontWeight: 700,
- color: targetHit? "#4ade80" : "#f1f5f9",
- }}
- >
- {thisMonthSales} / {monthlyTarget} cars
- </span>
- </div>
- </div>
- <div
- style={{
- height: 6,
- background: "rgba(255,255,255,0.06)",
- borderRadius: 99,
- overflow: "hidden",
- }}
- >
- <div
- style={{
- height: "100%",
- width: `${targetPct}%`,
- background: targetHit? "#22c55e" : "#3b82f6",
- borderRadius: 99,
- transition: "width 0.4s",
- }}
- />
- </div>
- </div>
-
- {/* Leads added this month list */}
- <div style={CARD}>
- <p
- style={{
- margin: "0 0 12px",
- fontSize: 13,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >Leads added this month
- </p>
- {leads.filter(
- (l) => l.created_at && new Date(l.created_at) >= monthStart,
- ).length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No leads added this month yet.
- </p>
- ) : (
- leads
- .filter(
- (l) => l.created_at && new Date(l.created_at) >= monthStart,
- )
- .slice(0, 8)
- .map((lead) => (
- <div
- key={lead.id}
- style={{
- display: "flex",
- alignItems: "center",
- gap: 10,
- padding: "8px 0",
- borderBottom: "1px solid rgba(255,255,255,0.04)",
- }}
- >
- <div
- style={{
- width: 28,
- height: 28,
- borderRadius: "50%",
- background: "rgba(37,99,235,0.15)",
- border: "1px solid rgba(37,99,235,0.25)",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- fontSize: 11,
- fontWeight: 700,
- color: "#93c5fd",
- flexShrink: 0,
- }}
- >
- {(lead.buyer_name || "?")[0].toUpperCase()}
- </div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p
- style={{
- margin: 0,
- fontSize: 13,
- color: "#e5e7eb",
- fontWeight: 500,
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
- {lead.buyer_name || "—"}
- </p>
- {lead.phone && (
- <p
- style={{
- margin: "1px 0 0",
- fontSize: 11,
- color: "#4b5563",
- }}
- >
- {lead.phone}
- </p>
- )}
- </div>
- <span
- style={{ fontSize: 10, color: "#374151", flexShrink: 0 }}
- >
- {timeAgo(lead.created_at)}
- </span>
- <span
- style={{
- fontSize: 10,
- fontWeight: 600,
- padding: "2px 7px",
- borderRadius: 99,
- background: "rgba(255,255,255,0.05)",
- color: "#6b7280",
- textTransform: "capitalize",
- flexShrink: 0,
- }}
- >
- {(lead.stage || "new").replace("_", " ")}
- </span>
- </div>
- ))
- )}
- </div>
- </>
- );
+ return null;
  };
+
 
  const renderCarDetailPopup = () => {
  const car = selectedCar;
