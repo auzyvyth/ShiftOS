@@ -7617,6 +7617,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  />
  </div>
  )}
+
+ {renderWAModal()}
+ {renderLogCallModal()}
+ {renderFollowUpModal()}
+ {renderBatchWAModal()}
  </div>
  </>
  );
