@@ -54,6 +54,7 @@ import {
  Voicemail,
  Calendar,
  BarChart2,
+ MessageCircle,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -151,6 +152,15 @@ export default function SalesmanPanel() {
  const [aiLoading, setAiLoading] = useState(false);
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
+ const [inboxSubTab, setInboxSubTab] = useState("enquiries");
+ const [reschedulingAptId, setReschedulingAptId] = useState(null);
+ const [rescheduleDate, setRescheduleDate] = useState("");
+ const [cancelConfirmId, setCancelConfirmId] = useState(null);
+ const [reminderPickerAptId, setReminderPickerAptId] = useState(null);
+ const [selectedRemindAt, setSelectedRemindAt] = useState(null);
+ const [reminderSaving, setReminderSaving] = useState(false);
+ const [pastOpen, setPastOpen] = useState(false);
+ const [telegramSetupModal, setTelegramSetupModal] = useState(false);
 
  // Leads
  const [leads, setLeads] = useState([]);
@@ -872,10 +882,37 @@ Rules:
  setAppointments((prev) =>
  prev.map((a) => (a.id === apptId? { ...a, status: newStatus } : a)),
  );
- await supabase
- .from("appointments")
- .update({ status: newStatus })
- .eq("id", apptId);
+ await supabase.from("appointments").update({ status: newStatus }).eq("id", apptId);
+ };
+
+ const scheduleAptReminder = async (apt) => {
+ if (!apt.appointment_date) return;
+ const remindAt = new Date(new Date(apt.appointment_date).getTime() - 60 * 60 * 1000).toISOString();
+ await supabase.from("appointments").update({ remind_at: remindAt, remind_sent: false }).eq("id", apt.id);
+ setAppointments((p) => p.map((a) => a.id === apt.id ? { ...a, remind_at: remindAt, remind_sent: false } : a));
+ };
+
+ const autoUpsertLeadFromAppt = async (apt) => {
+ const phone = (apt.buyer_phone || "").replace(/\D/g, "");
+ if (!phone) return;
+ const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+ if (existing) {
+ const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
+ const curIdx = STAGES.indexOf(existing.stage);
+ if (curIdx < STAGES.indexOf("viewing_booked")) {
+ await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
+ setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
+ toast.success("Lead moved to Viewing Booked!");
+ }
+ } else {
+ const { data: newLead } = await supabase.from("leads").insert({
+ salesman_id: userId, dealer_id: profile?.dealer_id || null,
+ buyer_name: apt.buyer_name || "Unknown", phone: apt.buyer_phone || "",
+ car_listing_id: apt.car_listing_id || null,
+ stage: "viewing_booked", lead_source: "manual", is_deleted: false,
+ }).select().single();
+ if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Lead created at Viewing Booked!"); }
+ }
  };
 
  const handleListingCopy = (car, type) => {
@@ -4521,80 +4558,13 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderEnquiries = () => {
- const statusColors = {
- confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
- pending: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
- cancelled: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", tx: "#f87171" },
- rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
- };
- const isToday = (iso) => {
- if (!iso) return false;
- const d = new Date(iso), t = new Date();
- return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
- };
- const isNewAppt = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
- const todayApts = appointments.filter(a => isToday(a.appointment_date));
- const upcomingApts = appointments.filter(a => !isToday(a.appointment_date));
-
- const renderApptCard = (apt) => {
- const car = apt.car_listings;
- const aptDate = apt.appointment_date ? new Date(apt.appointment_date) : null;
- const dateStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—";
- const timeStr = aptDate && !isNaN(aptDate) ? aptDate.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "";
- const defaultReminder = `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`;
- const sc = statusColors[apt.status] || statusColors.pending;
- const hasDeposit = apt.deposit_amount > 0;
- const bookingTypeLabel = apt.booking_type ? apt.booking_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
- return (
- <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
- {(bookingTypeLabel || hasDeposit) && (
- <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
- {bookingTypeLabel && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", borderRadius: 99, padding: "2px 8px" }}>{bookingTypeLabel}</span>}
- {hasDeposit && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>Deposit: RM {Number(apt.deposit_amount).toLocaleString("en-MY")}</span>}
- </div>
- )}
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "—"}</p>
- {isNewAppt(apt.created_at) && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", flexShrink: 0, letterSpacing: "0.05em" }}>NEW</span>}
- </div>
- <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{apt.status || "pending"}</span>
- </div>
- {apt.created_at && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
- <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 600, color: "#93c5fd" }}>{dateStr}{timeStr && ` · ${timeStr}`}</p>
- {car && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
- {apt.buyer_phone && <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563" }}>{apt.buyer_phone}</p>}
- {apt.notes && <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
- <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: apt.buyer_phone ? 6 : 0 }}>
- {apt.status !== "confirmed" && <button onClick={() => updateApptStatus(apt.id, "confirmed")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>Confirm</button>}
- {apt.status === "confirmed" && <button onClick={() => updateApptStatus(apt.id, "done")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>Mark Done</button>}
- {apt.status !== "cancelled" && <button onClick={() => updateApptStatus(apt.id, "cancelled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", cursor: "pointer" }}>Cancel</button>}
- {apt.status !== "rescheduled" && <button onClick={() => updateApptStatus(apt.id, "rescheduled")} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>Reschedule</button>}
- </div>
- {apt.buyer_phone && (editingReminder === apt.id ? (
- <div style={{ marginTop: 4 }}>
- <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 11, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", resize: "vertical", lineHeight: 1.5, marginBottom: 6 }} />
- <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => { const ph = apt.buyer_phone.replace(/\D/g, ""); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(reminderMsg)}`, "_blank", "noopener,noreferrer"); setEditingReminder(null); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>Send</button>
- <button onClick={() => setEditingReminder(null)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
- </div>
- </div>
- ) : (
- <button onClick={() => { setEditingReminder(apt.id); setReminderMsg(defaultReminder); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA Reminder</button>
- ))}
- </div>
- );
- };
-
+ const renderEnquiriesSection = () => {
+ const newCount = enquiries.filter(e => e.status === "new").length;
  return (
  <div>
- {/* ENQUIRIES */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
  <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Enquiries ({enquiries.length})</p>
- {enquiries.filter(e => e.status === "new").length > 0 && (
- <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{enquiries.filter(e => e.status === "new").length} new</span>
- )}
+ {newCount > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{newCount} new</span>}
  </div>
  {enquiries.length === 0 ? (
  <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
@@ -4612,21 +4582,22 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: enq.status === "new" ? "rgba(96,165,250,0.12)" : enq.status === "converted" ? "rgba(34,197,94,0.12)" : "rgba(74,222,128,0.08)", border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : enq.status === "converted" ? "rgba(34,197,94,0.3)" : "rgba(74,222,128,0.2)"}`, color: enq.status === "new" ? "#93c5fd" : "#4ade80", textTransform: "capitalize" }}>{enq.status || "new"}</span>
  </div>
  {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
- {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>{enq.buyer_phone}</p>}
+ {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
  {enq.buyer_message && <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{enq.buyer_message}"</p>}
+ <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
  {enq.buyer_phone && (
- <button onClick={() => { const ph = (enq.buyer_phone).replace(/\D/g, ""); const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${car ? `${car.brand} ${car.model}` : "kereta"}. I'm here to help — when would be a good time to chat?`); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${msg}`, "_blank", "noopener,noreferrer"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}>WA Reply</button>
+ <button onClick={() => { const ph = (enq.buyer_phone).replace(/\D/g, ""); const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${car ? `${car.brand} ${car.model}` : "kereta"}. I'm here to help — when would be a good time to chat?`); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${msg}`, "_blank", "noopener,noreferrer"); }} style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><MessageCircle size={12} /> WA Reply</button>
  )}
- <button onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: openTemplateId === enq.id ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#c084fc" : "#6b7280", cursor: "pointer" }}>Templates</button>
- <button onClick={() => { setOpenAiReplyId(enq.id); generateAiReply(enq); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>AI Reply</button>
+ <button onClick={() => setOpenTemplateId(openTemplateId === enq.id ? null : enq.id)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: openTemplateId === enq.id ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id ? "#c084fc" : "#6b7280", cursor: "pointer" }}>Templates</button>
+ <button onClick={() => { setOpenAiReplyId(enq.id); generateAiReply(enq); }} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>AI Reply</button>
  {enq.status === "new" && (
- <button onClick={async () => { await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "responded" } : e)); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Mark Responded</button>
+ <button onClick={async () => { await supabase.from("whatsapp_enquiries").update({ status: "responded" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "responded" } : e)); }} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Mark Responded</button>
  )}
  {enq.status !== "converted" ? (
- <button onClick={async () => { await supabase.from("leads").insert({ salesman_id: userId, dealer_id: profile?.dealer_id, buyer_name: enq.buyer_name, phone: enq.buyer_phone, notes: enq.buyer_message, car_listing_id: enq.listing_id || null, stage: "new", lead_source: "enquiry", is_deleted: false }); await supabase.from("whatsapp_enquiries").update({ status: "converted" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "converted" } : e)); toast.success("Added to lead pipeline!"); }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", color: "#93c5fd", cursor: "pointer" }}>→ Pipeline</button>
+ <button onClick={async () => { await supabase.from("leads").insert({ salesman_id: userId, dealer_id: profile?.dealer_id, buyer_name: enq.buyer_name, phone: enq.buyer_phone, notes: enq.buyer_message, car_listing_id: enq.listing_id || null, stage: "new", lead_source: "enquiry", is_deleted: false }); await supabase.from("whatsapp_enquiries").update({ status: "converted" }).eq("id", enq.id); setEnquiries(p => p.map(e => e.id === enq.id ? { ...e, status: "converted" } : e)); toast.success("Added to lead pipeline!"); }} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", color: "#93c5fd", cursor: "pointer" }}>→ Pipeline</button>
  ) : (
- <span style={{ fontSize: 10, padding: "3px 9px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80" }}>In Pipeline</span>
+ <span style={{ fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80" }}>In Pipeline</span>
  )}
  </div>
  {openTemplateId === enq.id && (
@@ -4641,9 +4612,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  {openAiReplyId === enq.id && (
  <div style={{ marginTop: 10 }}>
- {aiLoading ? (
- <div className="caption-skeleton" style={{ height: 60, width: "100%" }} />
- ) : aiDrafts[enq.id] ? (
+ {aiLoading ? <div className="caption-skeleton" style={{ height: 60, width: "100%" }} /> : aiDrafts[enq.id] ? (
  <div>
  <p style={{ margin: "0 0 6px", fontSize: 12, color: "#9ca3af", whiteSpace: "pre-wrap" }}>{aiDrafts[enq.id]}</p>
  <button onClick={() => navigator.clipboard.writeText(aiDrafts[enq.id])} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#c084fc", cursor: "pointer" }}>Copy</button>
@@ -4651,57 +4620,244 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ) : null}
  </div>
  )}
- <p style={{ margin: "6px 0 0", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
  </div>
  );
  })}
  </div>
  )}
+ </div>
+ );
+ };
 
- {/* BOOKINGS */}
- <div style={{ marginTop: 28 }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Bookings ({appointments.length})</p>
+ const renderBookingsSection = () => {
+ const statusColors = {
+ pending:     { bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.3)",  tx: "#fbbf24" },
+ confirmed:   { bg: "rgba(34,197,94,0.12)",   border: "rgba(34,197,94,0.3)",   tx: "#4ade80" },
+ rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
+ cancelled:   { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.3)",   tx: "#f87171" },
+ completed:   { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
+ };
+ const aptIsToday = (iso) => {
+ if (!iso) return false;
+ const d = new Date(iso), t = new Date();
+ return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+ };
+ const aptIsNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
+ const fmtAptDate = (iso) => {
+ if (!iso) return { dateStr: "—", timeStr: "" };
+ const d = new Date(iso);
+ if (isNaN(d)) return { dateStr: "—", timeStr: "" };
+ return {
+ dateStr: d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }),
+ timeStr: d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }),
+ };
+ };
+ const buildReminderMsg = (apt) => {
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ return `Hi ${apt.buyer_name || ""}! Just a reminder for your appointment on ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. See you then!`;
+ };
+ const saveReminder = async (apt, remindAt) => {
+ setReminderSaving(true);
+ const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
+ setReminderSaving(false);
+ if (error) { toast.error("Failed to set reminder"); return; }
+ setAppointments(p => p.map(a => a.id === apt.id ? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
+ setReminderPickerAptId(null); setSelectedRemindAt(null);
+ toast.success("Reminder set — fires " + remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }));
+ };
+ const clearReminder = async (apt) => {
+ await supabase.from("appointments").update({ remind_at: null, remind_sent: false }).eq("id", apt.id);
+ setAppointments(p => p.map(a => a.id === apt.id ? { ...a, remind_at: null } : a));
+ };
+ const calcRemindAt = (apt, key) => {
+ const base = new Date(apt.appointment_date);
+ if (key === "day_before") { const d = new Date(base); d.setDate(d.getDate()-1); d.setHours(9,0,0,0); return d; }
+ if (key === "two_days") { const d = new Date(base); d.setDate(d.getDate()-2); d.setHours(9,0,0,0); return d; }
+ const mins = { "1h": -60, "2h": -120 };
+ return new Date(base.getTime() + (mins[key] ?? -60) * 60000);
+ };
+ const byDate = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
+ const byBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+ const todayApts = appointments.filter(a => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(byDate);
+ const upcomingApts = appointments.filter(a => { if (!a.appointment_date) return false; const d = new Date(a.appointment_date); return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date(); }).sort(byBooked);
+ const pastApts = appointments.filter(a => { if (!a.appointment_date) return false; const d = new Date(a.appointment_date); return !isNaN(d) && !aptIsToday(a.appointment_date) && d < new Date(); }).sort((a,b) => new Date(b.appointment_date)-new Date(a.appointment_date));
+
+ const renderApptCard = (apt) => {
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ const isRescheduling = reschedulingAptId === apt.id;
+ const isReminderPicking = reminderPickerAptId === apt.id;
+ const isCancelConfirm = cancelConfirmId === apt.id;
+ const notCancelled = apt.status !== "cancelled" && apt.status !== "completed";
+ const hasDeposit = apt.deposit_amount > 0;
+ const bookingTypeLabel = apt.booking_type ? apt.booking_type.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : null;
+ return (
+ <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+ {(bookingTypeLabel || hasDeposit) && (
+ <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+ {bookingTypeLabel && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", borderRadius: 99, padding: "2px 8px" }}>{bookingTypeLabel}</span>}
+ {hasDeposit && <span style={{ fontSize: 10, fontWeight: 600, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", borderRadius: 99, padding: "2px 8px" }}>Deposit: RM {Number(apt.deposit_amount).toLocaleString("en-MY")}</span>}
+ </div>
+ )}
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "—"}</p>
+ {aptIsNew(apt.created_at) && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0 }}>NEW</span>}
+ <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{apt.status}</span>
+ </div>
+ <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>📅 {dateStr}{timeStr && ` · ${timeStr}`}</p>
+ {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+ {apt.buyer_phone && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#4b5563" }}>📞 {apt.buyer_phone}</p>}
+ {apt.notes && <p style={{ margin: "0 0 4px", fontSize: 10, color: "#4b5563", fontStyle: "italic" }}>"{apt.notes}"</p>}
+ {apt.created_at && <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>Booked {timeAgo(apt.created_at)}</p>}
+ {apt.remind_at && !apt.remind_sent ? (
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 8 }}>
+ <Bell size={11} color="#4ade80" />
+ <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY",{weekday:"short",day:"numeric",month:"short"})} {new Date(apt.remind_at).toLocaleTimeString("en-MY",{hour:"2-digit",minute:"2-digit"})}</span>
+ <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
+ </div>
+ ) : apt.remind_sent ? (
+ <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px" }}>✓ Reminder sent</p>
+ ) : null}
+ {isRescheduling && (
+ <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 6px", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
+ <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans',sans-serif", marginBottom: 8 }} />
  <div style={{ display: "flex", gap: 6 }}>
- {["confirmed", "pending"].map(s => {
- const count = appointments.filter(a => a.status === s).length;
- if (!count) return null;
- const sc = statusColors[s];
- return <span key={s} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{count} {s}</span>;
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+ <button onClick={async () => { if (!rescheduleDate) return; const newDate = new Date(rescheduleDate); await supabase.from("appointments").update({ appointment_date: newDate.toISOString(), status: "rescheduled" }).eq("id", apt.id); setAppointments(p => p.map(a => a.id === apt.id ? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled" } : a)); setReschedulingAptId(null); setRescheduleDate(""); toast.success("Appointment rescheduled!"); }} style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>Save New Time</button>
+ </div>
+ </div>
+ )}
+ {isReminderPicking && (
+ <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Set WA Reminder</p>
+ <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+ {[{key:"1h",label:"1h before"},{key:"2h",label:"2h before"},{key:"day_before",label:"Day before 9am"},{key:"two_days",label:"2 days before"}].map(({key,label}) => {
+ const t = calcRemindAt(apt, key);
+ const active = selectedRemindAt && t.getTime() === selectedRemindAt.getTime();
+ return <button key={key} onClick={() => setSelectedRemindAt(t)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer", background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)", border: active ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)", color: active ? "#93c5fd" : "#6b7280" }}>{label}</button>;
  })}
  </div>
+ <input type="datetime-local" value={selectedRemindAt ? selectedRemindAt.toISOString().slice(0,16) : ""} onChange={e => e.target.value && setSelectedRemindAt(new Date(e.target.value))} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }} />
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+ <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)} disabled={!selectedRemindAt || reminderSaving} style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: selectedRemindAt ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)", border: selectedRemindAt ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)", color: selectedRemindAt ? "#4ade80" : "#374151", cursor: selectedRemindAt ? "pointer" : "not-allowed", opacity: reminderSaving ? 0.6 : 1 }}>{reminderSaving ? "Saving…" : "Set Reminder"}</button>
+ </div>
+ </div>
+ )}
+ {isCancelConfirm && (
+ <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+ <div style={{ display: "flex", gap: 6 }}>
+ <button onClick={() => setCancelConfirmId(null)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Keep it</button>
+ <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }} style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>Yes, cancel appt</button>
+ </div>
+ </div>
+ )}
+ {notCancelled && !isRescheduling && !isCancelConfirm && (
+ <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+ {apt.buyer_phone && (
+ <button onClick={() => { const ph = apt.buyer_phone.replace(/\D/g,""); const msg = buildReminderMsg(apt); window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(msg)}`,"_blank","noopener,noreferrer"); if (apt.status === "pending") { updateApptStatus(apt.id,"confirmed"); autoUpsertLeadFromAppt(apt); scheduleAptReminder(apt); } }} style={{ flex: 2, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ <MessageCircle size={12} /> WA Reminder
+ </button>
+ )}
+ {apt.status !== "confirmed" && (
+ <button onClick={async () => { await updateApptStatus(apt.id,"confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer" }}>✓ Confirm</button>
+ )}
+ <button onClick={() => { const existing = apt.appointment_date ? new Date(apt.appointment_date) : new Date(); const pad = n => String(n).padStart(2,"0"); const local = `${existing.getFullYear()}-${pad(existing.getMonth()+1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`; setRescheduleDate(local); setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null); }} style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#c084fc", cursor: "pointer" }}>↺ Move</button>
+ <button onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }} style={{ flex: 1, fontSize: 11, padding: "7px 0", borderRadius: 7, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", cursor: "pointer" }}>✕ Cancel</button>
+ <button onClick={() => { setReminderPickerAptId(isReminderPicking ? null : apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); }} style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: apt.remind_at ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: apt.remind_at ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: apt.remind_at ? "#fbbf24" : "#4b5563" }}>
+ <Bell size={13} />
+ </button>
+ </div>
+ )}
+ </div>
+ );
+ };
+
+ return (
+ <div>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Bookings ({appointments.length})</p>
  </div>
  {appointments.length === 0 ? (
  <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <Calendar size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
  <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+ <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>Share a Listing →</button>
  </div>
  ) : (
- <>
+ <div>
  {todayApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} />Today ({todayApts.length})
+ <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
- {todayApts.map(renderApptCard)}
- </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{todayApts.map(renderApptCard)}</div>
  </div>
  )}
  {upcomingApts.length > 0 && (
- <div>
- {todayApts.length > 0 && <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Upcoming</p>}
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {upcomingApts.map(renderApptCard)}
- </div>
+ <div style={{ marginBottom: 20 }}>
+ <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
+ <Calendar size={11} color="#60a5fa" /> Upcoming ({upcomingApts.length})
+ </p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{upcomingApts.map(renderApptCard)}</div>
  </div>
  )}
- </>
+ {pastApts.length > 0 && (
+ <div style={{ marginTop: 8 }}>
+ <button onClick={() => setPastOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}>
+ <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>Past ({pastApts.length})</span>
+ <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen ? "▲" : "▼"}</span>
+ </button>
+ {pastOpen && (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+ {pastApts.map(apt => {
+ const car = apt.car_listings;
+ const { dateStr, timeStr } = fmtAptDate(apt.appointment_date);
+ const sc = statusColors[apt.status] || statusColors.pending;
+ return (
+ <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "—"}</p>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>{apt.status}</span>
+ </div>
+ <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280" }}>📅 {dateStr}{timeStr && ` · ${timeStr}`}</p>
+ {car && <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}{apt.buyer_phone ? `  ·  📞 ${apt.buyer_phone}` : ""}</p>}
+ </div>
+ );
+ })}
+ </div>
  )}
  </div>
+ )}
+ </div>
+ )}
  </div>
  );
  };
+
+ const renderEnquiries = () => {
+ const newEnqCount = enquiries.filter(e => e.status === "new").length;
+ const pendingAptCount = appointments.filter(a => a.status === "pending").length;
+ return (
+ <div>
+ {/* Sub-tab switcher */}
+ <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+ {[{ key: "enquiries", label: "Enquiries", badge: newEnqCount }, { key: "bookings", label: "Bookings", badge: pendingAptCount }].map(({ key, label, badge }) => (
+ <button key={key} onClick={() => setInboxSubTab(key)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${inboxSubTab === key ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`, color: inboxSubTab === key ? "#f87171" : "#6b7280", display: "flex", alignItems: "center", gap: 6 }}>
+ {label}
+ {badge > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#dc2626", color: "#fff", borderRadius: 99, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>}
+ </button>
+ ))}
+ </div>
+ {inboxSubTab === "enquiries" ? renderEnquiriesSection() : renderBookingsSection()}
+ </div>
+ );
+ };
+
 
  const renderAnalytics = () => {
   const Spark = ({ data, color }) => {
