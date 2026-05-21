@@ -16,7 +16,7 @@ const EMPTY = {
   notes:          '',
   assigned_to:    '',
   stage:          'new',
-  follow_up_date: '',
+  follow_up_at: '',
 };
 
 export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
@@ -77,7 +77,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
         income_bracket: form.income_bracket  || null,
         assigned_to:    form.assigned_to     || null,
         notes:          form.notes.trim()    || null,
-        follow_up_date: form.follow_up_date  || null,
+        follow_up_at:   form.follow_up_at    || null,
       };
       await onAdd(payload);
       onClose();
@@ -205,8 +205,8 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
             <label className="text-xs font-medium text-gray-400 block mb-1.5">Follow-up Date (optional)</label>
             <input
               type="datetime-local"
-              value={form.follow_up_date}
-              onChange={e => set('follow_up_date', e.target.value)}
+              value={form.follow_up_at}
+              onChange={e => set('follow_up_at', e.target.value)}
               className={inp}
               style={{ colorScheme: 'dark' }}
             />

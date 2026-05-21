@@ -227,7 +227,7 @@ function ResponseTimeDot({ minutes }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function RevOpsPage({ userId }) {
+export default function RevOpsPage({ userId, onNavigateToStock }) {
   // ── Revenue data ────────────────────────────────────────────────────────────
   const [revData, setRevData] = useState(null);
   const [revLoading, setRevLoading] = useState(true);
@@ -322,7 +322,7 @@ export default function RevOpsPage({ userId }) {
 
       const { data: leads } = await supabase
         .from("leads")
-        .select("id, stage, source, created_at, first_response_at")
+        .select("id, stage, lead_source, created_at, first_response_at")
         .eq("dealer_id", userId)
         .gte("created_at", since);
 
@@ -332,7 +332,7 @@ export default function RevOpsPage({ userId }) {
       // Source breakdown — top 3
       const srcMap = {};
       all.forEach((l) => {
-        const src = l.source || "Unknown";
+        const src = l.lead_source || "Unknown";
         srcMap[src] = (srcMap[src] || 0) + 1;
       });
       const topSources = Object.entries(srcMap)
@@ -1176,14 +1176,14 @@ export default function RevOpsPage({ userId }) {
                     return (
                       <div
                         key={u.id}
-                        // TODO: link to stock unit when detail view is available
+                        onClick={() => onNavigateToStock && onNavigateToStock()}
                         className="grid gap-2 px-3 py-2.5 items-center"
                         style={{
                           gridTemplateColumns: "1fr 1fr 60px 90px 100px",
                           borderLeft: `3px solid ${borderColor}`,
                           borderBottom: "1px solid rgba(255,255,255,0.04)",
                           background: "transparent",
-                          cursor: "default",
+                          cursor: onNavigateToStock ? "pointer" : "default",
                         }}
                       >
                         <span

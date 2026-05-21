@@ -570,7 +570,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                             padding: "2px 8px",
                           }}
                         >
-                          {e.source || e.ref_slug || "—"}
+                          {e.lead_source || e.ref_slug || "—"}
                         </span>
                       </td>
                       <td style={{ padding: "12px 14px" }}>
@@ -743,7 +743,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         )
                       : "—",
                   ],
-                  ["Source", selected.source || selected.ref_slug || "—"],
+                  ["Source", selected.lead_source || selected.ref_slug || "—"],
                   [
                     "Price",
                     selected.listing?.selling_price

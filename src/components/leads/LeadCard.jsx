@@ -45,7 +45,7 @@ export default function LeadCard({ lead, onOpen, onMoveNext, onMovePrev }) {
   const carLabel = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : null;
   const carPrice = car?.selling_price ? `RM ${car.selling_price.toLocaleString()}` : null;
 
-  const followUp   = lead.follow_up_date || lead.followup_date;
+  const followUp   = lead.follow_up_at;
   const fuStyle    = followUpStyle(followUp);
   const assignedName = lead.assigned_profile?.full_name;
 

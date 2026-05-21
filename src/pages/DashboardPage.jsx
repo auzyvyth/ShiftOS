@@ -6611,7 +6611,7 @@ export default function DashboardPage() {
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
           )}
           {activeTab === "revops" && userId && (
-            <RevOpsPage userId={userId} />
+            <RevOpsPage userId={userId} onNavigateToStock={() => setActiveTab("stock")} />
           )}
           {activeTab === "services" && userId && (
             <ServicesPage userId={userId} />

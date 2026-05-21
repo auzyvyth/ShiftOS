@@ -71,7 +71,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [lead, setLead]               = useState(initialLead);
   const [editingField, setEditingField] = useState(null); // 'name' | 'phone'
   const [editVal, setEditVal]         = useState('');
-  const [followUpDate, setFollowUpDate] = useState(initialLead?.follow_up_date || initialLead?.followup_date || '');
+  const [followUpDate, setFollowUpDate] = useState(initialLead?.follow_up_at || '');
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [assignedTo, setAssignedTo]   = useState(initialLead?.assigned_to || '');
   const [notes, setNotes]             = useState(initialLead?.notes || '');
@@ -108,7 +108,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // Sync when parent updates
   useEffect(() => {
     setLead(initialLead);
-    setFollowUpDate(initialLead?.follow_up_date || initialLead?.followup_date || '');
+    setFollowUpDate(initialLead?.follow_up_at || '');
     setAssignedTo(initialLead?.assigned_to || '');
     setNotes(initialLead?.notes || '');
   }, [initialLead]);
@@ -243,7 +243,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     setFollowUpDate(val);
     setSavingFollowUp(true);
     try {
-      const updated = await onUpdate(lead.id, { follow_up_date: val || null });
+      const updated = await onUpdate(lead.id, { follow_up_at: val || null });
       if (updated) setLead(updated);
       toast.success('Follow-up saved');
     } catch { toast.error('Error saving'); }
