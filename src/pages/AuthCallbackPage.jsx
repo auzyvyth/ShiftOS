@@ -38,7 +38,11 @@ export default function AuthCallbackPage() {
           navigate('/dashboard');
         }
       } else if (role === 'salesman') {
-        navigate(dealer_id ? '/salesman' : '/salesman-lite');
+        const at = session.access_token;
+        const rt = session.refresh_token;
+        const target = dealer_id ? 'salesman' : 'salesman-lite';
+        const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : '';
+        window.location.href = `https://xdrive.my/${target}${suffix}`;
       } else if (role === 'manager') {
         navigate('/manager');
       } else if (role === 'accountant') {
