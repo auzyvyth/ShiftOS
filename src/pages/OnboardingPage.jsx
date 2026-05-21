@@ -50,6 +50,8 @@ function buildStages(accountType, hasUser) {
       { id: "scity",  field: "salesmanCity",  q: "City or area?",        type: "text", ph: "e.g. Cheras", opt: true },
     );
   s.push({ id: "review", q: "Ready to activate.", type: "review" });
+  if (accountType === "dealership")
+    s.push({ id: "payment", q: "One Last Step.", type: "payment" });
   return s;
 }
 
@@ -173,8 +175,9 @@ export default function OnboardingPage() {
       case "sbrand": return v.salesmanBrand.trim().length >= 2;
       case "sslug":  return /^[a-z0-9]{3,20}$/.test(v.salesmanSlug);
       case "sstate": return !!v.salesmanState;
-      case "review": return !loading;
-      default:       return true;
+      case "review":   return !loading;
+      case "payment":  return !loading;
+      default:         return true;
     }
   };
 
@@ -183,6 +186,20 @@ export default function OnboardingPage() {
 
   const advance = async () => {
     if (!canAdvance()) return;
+    if (stage.id === "payment") {
+      if (!userId) return;
+      setLoading(true); setError("");
+      const { error: err } = await supabase.from("profiles")
+        .update({ payment_status: "pending" }).eq("id", userId);
+      if (!err) {
+        setDone(true);
+        setTimeout(() => navigate("/dashboard"), 2600);
+      } else {
+        setError(err.message);
+        setLoading(false);
+      }
+      return;
+    }
     if (stage.id === "cpw") {
       setLoading(true); setError("");
       const { data, error: err } = await supabase.auth.signUp({
@@ -232,8 +249,13 @@ export default function OnboardingPage() {
             };
         const { error: err } = await supabase.from("profiles").upsert(payload);
         if (err) throw err;
-        setDone(true);
-        setTimeout(() => navigate(isS ? "/salesman-lite" : "/dashboard"), 2600);
+        if (isS) {
+          setDone(true);
+          setTimeout(() => navigate("/salesman-lite"), 2600);
+        } else {
+          setLoading(false);
+          goNext();
+        }
       } catch (e) { setError(e.message); setLoading(false); }
       return;
     }
@@ -322,6 +344,7 @@ export default function OnboardingPage() {
   const isAutoAdv = ["cards","pills","sel"].includes(stage.type);
   const isReview = stage.id === "review";
   const isLegal = stage.type === "legal";
+  const isPayment = stage.type === "payment";
 
   return (
     <>
@@ -344,11 +367,13 @@ export default function OnboardingPage() {
             <p className="ob-eyebrow">
               {stage.opt
                 ? "OPTIONAL"
-                : isReview
-                  ? v.accountType === "salesman" ? "FREE FOREVER — NO CARD REQUIRED" : "14-DAY FREE TRIAL — NO CARD REQUIRED"
-                  : isLegal
-                    ? "PDPA 2010 COMPLIANCE — REQUIRED"
-                    : stage.id === "type" ? "WELCOME" : "QUESTION"}
+                : isPayment
+                  ? "FINAL STEP — SUBSCRIPTION"
+                  : isReview
+                    ? v.accountType === "salesman" ? "FREE FOREVER — NO CARD REQUIRED" : "14-DAY FREE TRIAL — NO CARD REQUIRED"
+                    : isLegal
+                      ? "PDPA 2010 COMPLIANCE — REQUIRED"
+                      : stage.id === "type" ? "WELCOME" : "QUESTION"}
             </p>
             <h1 className="ob-q">{stage.q}</h1>
 
@@ -486,6 +511,27 @@ export default function OnboardingPage() {
               </div>
             )}
 
+            {/* Payment */}
+            {isPayment && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "24px 22px", marginBottom: 16 }}>
+                  <p style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 10, letterSpacing: "2px", color: "rgba(232,237,245,0.4)", textTransform: "uppercase", marginBottom: 14 }}>Contact to activate</p>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: "#E8EDF5", marginBottom: 12 }}>Mr. Airy</p>
+                  <a
+                    href="https://wa.me/60174155191"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.3)", borderRadius: 8, textDecoration: "none", color: "#4ade80", fontWeight: 700, fontSize: 14, fontFamily: "'DM Sans',sans-serif" }}
+                  >
+                    WhatsApp: 017-4155191
+                  </a>
+                </div>
+                <p style={{ fontSize: 12, color: "rgba(232,237,245,0.35)", lineHeight: 1.75 }}>
+                  Reach out to Mr. Airy on WhatsApp to complete your subscription setup. Once you have contacted him, click the button below to continue to your dashboard.
+                </p>
+              </div>
+            )}
+
             {stage.hint && <p className="ob-hint">{stage.hint}</p>}
             {error && <p className="ob-err">⚠ {error}</p>}
           </div>
@@ -498,6 +544,10 @@ export default function OnboardingPage() {
               emailConfirmed
                 ? <button className="ob-btn-act" onClick={advance} disabled={loading}>{loading ? "ACTIVATING…" : "ACTIVATE NOW ⚡"}</button>
                 : <button className="ob-btn-verify" onClick={() => setConfirmSent(true)}>VERIFY EMAIL FIRST ✉</button>
+            ) : isPayment ? (
+              <button className="ob-btn-act" onClick={advance} disabled={loading}>
+                {loading ? "SAVING…" : "I'VE CONTACTED — DONE"}
+              </button>
             ) : (
               <div className="ob-enter"
                 style={{ opacity: canAdvance() ? 1 : 0.25, pointerEvents: canAdvance() ? "auto" : "none" }}

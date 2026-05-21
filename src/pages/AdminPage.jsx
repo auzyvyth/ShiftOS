@@ -48,7 +48,7 @@ export default function AdminPage() {
     // Load dealers
     const { data: dealerData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type")
+      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status")
       .eq("role", "dealer")
       .order("created_at", { ascending: false });
 
@@ -834,7 +834,12 @@ export default function AdminPage() {
                               style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: d.is_active === false ? 0.45 : 1 }}>
                               {/* Dealer */}
                               <td style={{ padding: "10px 14px" }}>
-                                <div style={{ fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{d.dealership || d.full_name || "—"}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 2 }}>
+                                  <span style={{ fontWeight: 600, color: "#f0f0f0" }}>{d.dealership || d.full_name || "—"}</span>
+                                  {d.payment_status === "pending" && (
+                                    <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>PAYMENT PENDING</span>
+                                  )}
+                                </div>
                                 <div style={{ fontSize: 11, color: "#6b7280" }}>{d.email}</div>
                                 {d.city && <div style={{ fontSize: 10, color: "#4b5563" }}>{d.city}{d.state ? ", " + d.state : ""}</div>}
                               </td>
@@ -930,6 +935,12 @@ export default function AdminPage() {
                                           style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
                                           ✓ Mark as Active (Paid)
                                         </button>
+                                        {d.payment_status === "pending" && (
+                                          <button onClick={() => { saveField(d.id, "payment_status", "received"); updateLocal(d.id, "payment_status", "received"); }}
+                                            style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24", padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, textAlign: "left" }}>
+                                            ✓ Mark Payment Received
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
