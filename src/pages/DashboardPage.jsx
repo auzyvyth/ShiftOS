@@ -4495,7 +4495,7 @@ function StockTab({ userId, listings }) {
                         <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
-                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: String(Number(u.asking_price) || Number(u.car_listings?.selling_price) || ''), sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                           </td>
                         ) : (
                           <>
