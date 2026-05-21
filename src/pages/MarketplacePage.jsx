@@ -565,7 +565,7 @@ export default function MarketplacePage() {
         .mp-feat-img  { transition:transform 0.45s ease; width:100%; height:100%; object-fit:cover; display:block; }
         .mp-feat-card:hover .mp-feat-img { transform:scale(1.06); }
         /* Hero section — full viewport height */
-        .mp-hero-section { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: visible; }
+        .mp-hero-section { height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; }
         /* Listings search bar */
         .mp-search-outer { transition:border-color 0.2s,box-shadow 0.2s; }
         .mp-search-outer:focus-within { border-color:rgba(220,38,38,0.45) !important; box-shadow:0 4px 24px rgba(0,0,0,0.1), 0 0 0 3px rgba(220,38,38,0.1); }
@@ -609,11 +609,10 @@ export default function MarketplacePage() {
         {/* ── Hero ── */}
         <section className="mp-hero-section" style={{ background:'#08090f', position:'relative' }}>
 
-          {/* BG decorations — own overflow:hidden so they don't bleed outside section */}
-          <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none', zIndex:0 }}>
-            <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px' }}/>
-            <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)' }}/>
-          </div>
+          {/* BG grid */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
+          {/* Red glow */}
+          <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
 
           {/* ── Two-column hero ── fills remaining height via flex:1 */}
           <div className="mp-hero-two-col" style={{ flex:1, minHeight:0, maxWidth:'1360px', width:'100%', margin:'0 auto', padding:'0 clamp(24px,5vw,60px)', display:'flex', alignItems:'center', gap:'clamp(32px,5vw,72px)', position:'relative', zIndex:1 }}>
