@@ -5026,13 +5026,16 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
 // ─── Outreach Hub ─────────────────────────────────────────────────────────────
 function OutreachHub({ dealerId, listings }) {
-  const [enquiries, setEnquiries] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [segment, setSegment]     = useState('hot');
-  const [selectedId, setSelectedId] = useState(null);
-  const [template, setTemplate]   = useState('followup');
-  const [sentToday, setSentToday] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [enquiries, setEnquiries]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [segment, setSegment]         = useState('hot');
+  const [selectedId, setSelectedId]   = useState(null);
+  const [template, setTemplate]       = useState('followup');
+  const [msgOverride, setMsgOverride] = useState('');
+  const [sentToday, setSentToday]     = useState(0);
+  const [refreshKey, setRefreshKey]   = useState(0);
+  const [mobilePanel, setMobilePanel] = useState('list'); // 'list' | 'detail'
+  const [copied, setCopied]           = useState(false);
 
   useEffect(() => {
     if (!dealerId) return;
@@ -5049,7 +5052,6 @@ function OutreachHub({ dealerId, listings }) {
   const now  = Date.now();
   const DAY  = 86400000;
 
-  // Dedupe by normalised phone — keep the newest per buyer
   const deduped = useMemo(() => {
     const seen = new Map();
     (enquiries || []).forEach(e => {
@@ -5059,7 +5061,6 @@ function OutreachHub({ dealerId, listings }) {
     return Array.from(seen.values());
   }, [enquiries]);
 
-  // Attach score + urgency
   const scored = useMemo(() => deduped.map(e => {
     const ageDays  = (now - new Date(e.created_at).getTime()) / DAY;
     const ageHours = ageDays * 24;
@@ -5074,10 +5075,10 @@ function OutreachHub({ dealerId, listings }) {
   }), [deduped]);
 
   const SEGS = {
-    hot:  { label: 'Hot',   color: '#ef4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   Icon: Flame,      filter: e => e.ageDays < 1 },
-    warm: { label: 'Warm',  color: '#f97316', bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.2)',  Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
-    cold: { label: 'Cold',  color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.2)',  Icon: Snowflake,  filter: e => e.ageDays >= 7 },
-    all:  { label: 'All',   color: '#94a3b8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.15)', Icon: Clipboard,  filter: () => true },
+    hot:  { label: 'Hot',  color: '#ef4444', Icon: Flame,       filter: e => e.ageDays < 1 },
+    warm: { label: 'Warm', color: '#f97316', Icon: TrendingUp,  filter: e => e.ageDays >= 1 && e.ageDays < 7 },
+    cold: { label: 'Cold', color: '#60a5fa', Icon: Snowflake,   filter: e => e.ageDays >= 7 },
+    all:  { label: 'All',  color: '#94a3b8', Icon: Clipboard,   filter: () => true },
   };
 
   const visibleLeads = useMemo(() =>
@@ -5113,6 +5114,8 @@ function OutreachHub({ dealerId, listings }) {
     return `${Math.round(e.ageDays)}d ago`;
   };
 
+  const getMsg = (lead) => msgOverride || TEMPLATES[template]?.gen(lead) || '';
+
   const openWA = (lead, msg) => {
     const raw = (lead.buyer_phone || '').replace(/\D/g, '');
     if (!raw) { toast.error('No phone number'); return; }
@@ -5129,13 +5132,26 @@ function OutreachHub({ dealerId, listings }) {
     toast.success(`Launching ${batch.length} WhatsApp chats…`);
   };
 
-  // Pulse numbers
-  const hotCount  = scored.filter(e => e.ageDays < 1).length;
+  const copyMsg = (msg) => {
+    navigator.clipboard.writeText(msg).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+
+  const selectLead = (lead) => {
+    const isActive = selectedId === lead.id;
+    setSelectedId(isActive ? null : lead.id);
+    setMsgOverride('');
+    if (!isActive) setMobilePanel('detail');
+  };
+
+  const hotCount   = scored.filter(e => e.ageDays < 1).length;
   const staleCount = scored.filter(e => e.ageDays >= 7).length;
-  const critCount = scored.filter(e => e.urgency === 'critical').length;
+  const critCount  = scored.filter(e => e.urgency === 'critical').length;
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, color:'#4b5563', fontSize:13, gap:10 }}>
+    <div className="flex items-center justify-center min-h-[320px] gap-3 text-gray-500 text-sm">
       <RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }} /> Loading contacts…
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
@@ -5144,31 +5160,33 @@ function OutreachHub({ dealerId, listings }) {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", animation:'slideUp 0.3s ease' }}>
 
-      {/* ── Top pulse bar ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+      {/* ── Stat cards: 2×2 mobile, 4×1 desktop ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-5">
         {[
-          { label:'Total Contacts',  val: scored.length,  sub:'Unique enquiries', color:'#60a5fa', Icon: Users,       pulse:false },
-          { label:'Hot Right Now',   val: hotCount,        sub:'Enquired < 24h',   color:'#ef4444', Icon: Flame,        pulse: critCount > 0 },
-          { label:'Need Re-engage',  val: staleCount,      sub:'Silent 7+ days',   color:'#a78bfa', Icon: Snowflake,    pulse:false },
-          { label:'Sent Today',      val: sentToday,       sub:'This session',      color:'#34d399', Icon: CheckCircle2, pulse:false },
-        ].map(({ label, val, sub, color, Icon, pulse }) => (
-          <div key={label} className="card-top" style={{ background:`${color}0d`, border:`1px solid ${color}20`, borderRadius:14, padding:'16px 18px', position:'relative', overflow:'hidden' }}>
+          { label:'Total Contacts', val: scored.length, sub:'Unique enquiries', color:'#60a5fa', Icon: Users,       pulse:false },
+          { label:'Hot Right Now',  val: hotCount,       sub:'Enquired < 24h',  color:'#ef4444', Icon: Flame,        pulse: critCount > 0 },
+          { label:'Need Re-engage', val: staleCount,     sub:'Silent 7+ days',  color:'#a78bfa', Icon: Snowflake,    pulse:false },
+          { label:'Sent Today',     val: sentToday,      sub:'This session',    color:'#34d399', Icon: CheckCircle2, pulse:false },
+        ].map(({ label, val, sub, color, Icon: Ic, pulse }) => (
+          <div key={label} className="card-top" style={{ background:`${color}0d`, border:`1px solid ${color}20`, borderRadius:14, padding:'14px 16px', position:'relative', overflow:'hidden' }}>
             {pulse && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${color},transparent)`, animation:'hotpulse 2s ease-in-out infinite' }} />}
-            <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:10 }}>
-              <Icon size={15} color={color} />
-              <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.15em', color:'#374151', fontWeight:700 }}>{label}</p>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+              <Ic size={13} color={color} />
+              <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.12em', color:'#9ca3af', fontWeight:700 }}>{label}</p>
             </div>
-            <p style={{ fontSize:30, fontWeight:800, color, lineHeight:1, marginBottom:3 }}>{val}</p>
-            <p style={{ fontSize:11, color:'#4b5563' }}>{sub}</p>
+            <p style={{ fontSize:26, fontWeight:800, color, lineHeight:1, marginBottom:2 }}>{val}</p>
+            <p style={{ fontSize:11, color:'#6b7280' }}>{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Two-column body ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'340px 1fr', gap:14, marginBottom:14 }}>
+      {/* ── Body: stacked on mobile, side-by-side on desktop ── */}
+      <div className="flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-3 mb-3">
 
-        {/* LEFT — Lead list */}
-        <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* LEFT — Lead list (hidden on mobile when detail is open) */}
+        <div className={`${mobilePanel === 'detail' ? 'hidden lg:flex' : 'flex'} flex-col`}
+          style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, overflow:'hidden' }}>
+
           {/* Segment tabs */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
             {Object.entries(SEGS).map(([key, seg]) => {
@@ -5176,22 +5194,22 @@ function OutreachHub({ dealerId, listings }) {
               const active = segment === key;
               return (
                 <button key={key} onClick={() => setSegment(key)}
-                  style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#374151', fontFamily:"'DM Sans',sans-serif", cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, transition:'all 0.15s' }}>
-                  <seg.Icon size={14} />
+                  style={{ padding:'10px 6px 11px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#6b7280', fontFamily:"'DM Sans',sans-serif", cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, transition:'all 0.15s' }}>
+                  <seg.Icon size={13} />
                   <span style={{ fontSize:10, fontWeight: active ? 700 : 500 }}>{seg.label}</span>
-                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : 'rgba(255,255,255,0.04)', color: active ? seg.color : '#374151' }}>{count}</span>
+                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : 'rgba(255,255,255,0.04)', color: active ? seg.color : '#6b7280' }}>{count}</span>
                 </button>
               );
             })}
           </div>
 
           {/* Lead scroll */}
-          <div style={{ overflowY:'auto', flex:1, maxHeight:440, padding:8 }}>
+          <div style={{ overflowY:'auto', flex:1, maxHeight:460, padding:8 }}>
             {visibleLeads.length === 0 ? (
-              <div style={{ padding:'40px 16px', textAlign:'center', color:'#374151', fontSize:13 }}>
-                {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: SEGS[segment].color } })}
-                <p>No {SEGS[segment].label.toLowerCase()} leads</p>
-                <p style={{ fontSize:11, marginTop:4, color:'#1e293b' }}>Enquiries appear here as they come in</p>
+              <div style={{ padding:'40px 16px', textAlign:'center' }}>
+                {React.createElement(SEGS[segment].Icon, { size:28, style:{ color: SEGS[segment].color, display:'block', margin:'0 auto 8px' } })}
+                <p style={{ color:'#9ca3af', fontSize:13 }}>No {SEGS[segment].label.toLowerCase()} leads</p>
+                <p style={{ fontSize:11, marginTop:4, color:'#6b7280' }}>Enquiries appear here as they come in</p>
               </div>
             ) : visibleLeads.map(lead => {
               const isActive = selectedId === lead.id;
@@ -5199,9 +5217,8 @@ function OutreachHub({ dealerId, listings }) {
               const circumference = 2 * Math.PI * 14;
               const dash = (lead.score / 100) * circumference;
               return (
-                <button key={lead.id} onClick={() => setSelectedId(isActive ? null : lead.id)}
+                <button key={lead.id} onClick={() => selectLead(lead)}
                   style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:10, background: isActive ? 'rgba(59,130,246,0.1)' : 'transparent', border: isActive ? '1px solid rgba(59,130,246,0.28)' : '1px solid transparent', cursor:'pointer', textAlign:'left', transition:'all 0.15s', marginBottom:3 }}>
-                  {/* SVG score ring */}
                   <div style={{ flexShrink:0, position:'relative', width:34, height:34 }}>
                     <svg width="34" height="34" viewBox="0 0 34 34" style={{ transform:'rotate(-90deg)' }}>
                       <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
@@ -5214,43 +5231,55 @@ function OutreachHub({ dealerId, listings }) {
                       <span style={{ fontSize:13, fontWeight:600, color:'#f9fafb', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.buyer_name || 'Unknown'}</span>
                       <span style={{ fontSize:9, fontWeight:700, color:uc, flexShrink:0, padding:'1px 6px', background:`${uc}14`, borderRadius:4 }}>{fmtAge(lead)}</span>
                     </div>
-                    <span style={{ fontSize:11, color:'#4b5563', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
+                    <span style={{ fontSize:11, color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
                       {lead.listing ? `${lead.listing.brand} ${lead.listing.model}` : 'Car enquiry'}
                     </span>
                   </div>
+                  <ChevronRight size={13} style={{ color:'#4b5563', flexShrink:0 }} />
                 </button>
               );
             })}
           </div>
 
-          {/* Refresh footer */}
+          {/* Footer */}
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:11, color:'#1e293b' }}>{scored.length} unique contacts</span>
-            <button onClick={() => { setLoading(true); setRefreshKey(k => k + 1); }} style={{ background:'none', border:'none', color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:"'DM Sans',sans-serif", padding:'2px 6px', borderRadius:6, transition:'color 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.color='#94a3b8'} onMouseLeave={e => e.currentTarget.style.color='#374151'}>
+            <span style={{ fontSize:11, color:'#6b7280' }}>{scored.length} unique contacts</span>
+            <button onClick={() => { setLoading(true); setRefreshKey(k => k + 1); }}
+              style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:"'DM Sans',sans-serif", padding:'2px 6px', borderRadius:6 }}>
               <RefreshCw size={11} /> Refresh
             </button>
           </div>
         </div>
 
-        {/* RIGHT — Message Studio */}
-        <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
+        {/* RIGHT — Message Studio (hidden on mobile when list is showing and nothing selected) */}
+        <div className={`${mobilePanel === 'list' && !selected ? 'hidden lg:flex' : 'flex'} flex-col gap-4`}
+          style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:18 }}>
+
+          {/* Mobile back button */}
+          {mobilePanel === 'detail' && (
+            <button className="flex lg:hidden items-center gap-2 text-sm text-gray-400 self-start"
+              onClick={() => { setMobilePanel('list'); setSelectedId(null); setMsgOverride(''); }}
+              style={{ background:'none', border:'none', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", padding:0 }}>
+              <ChevronLeft size={15} /> Back to list
+            </button>
+          )}
+
           {!selected ? (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, minHeight:340, gap:14, color:'#374151' }}>
-              <div style={{ width:56, height:56, borderRadius:16, background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26 }}>💬</div>
+            <div className="flex flex-col items-center justify-center flex-1 min-h-[300px] gap-4">
+              <div style={{ width:52, height:52, borderRadius:14, background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24 }}>💬</div>
               <div style={{ textAlign:'center' }}>
-                <p style={{ fontSize:14, fontWeight:600, color:'#6b7280', marginBottom:6 }}>Select a contact</p>
-                <p style={{ fontSize:12, color:'#374151', lineHeight:1.7 }}>Choose a lead from the list,<br/>pick a message template,<br/>and open WhatsApp with one click.</p>
+                <p style={{ fontSize:14, fontWeight:600, color:'#9ca3af', marginBottom:4 }}>Select a contact</p>
+                <p style={{ fontSize:12, color:'#6b7280', lineHeight:1.7 }}>Choose a lead from the list,<br/>pick a template, then send via WhatsApp.</p>
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:260 }}>
+              <div className="flex flex-col gap-2 w-full max-w-[260px]">
                 {[
                   { icon:'🔥', text:'Hot leads need replies within 30 min' },
-                  { icon:'⚡', text:'Personalized messages per buyer & car' },
+                  { icon:'⚡', text:'Personalised messages per buyer & car' },
                   { icon:'📈', text:'Campaign blast up to 10 contacts at once' },
                 ].map(({ icon, text }) => (
                   <div key={text} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8, border:'1px solid rgba(255,255,255,0.06)' }}>
                     <span style={{ fontSize:14 }}>{icon}</span>
-                    <span style={{ fontSize:11, color:'#4b5563' }}>{text}</span>
+                    <span style={{ fontSize:11, color:'#6b7280' }}>{text}</span>
                   </div>
                 ))}
               </div>
@@ -5258,58 +5287,67 @@ function OutreachHub({ dealerId, listings }) {
           ) : (
             <>
               {/* Contact header */}
-              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.18)', borderRadius:12 }}>
-                <div style={{ width:40, height:40, borderRadius:'50%', background:'linear-gradient(135deg,rgba(59,130,246,0.8),rgba(99,102,241,0.8))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, fontWeight:800, color:'white', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.18)', borderRadius:12 }}>
+                <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,rgba(59,130,246,0.8),rgba(99,102,241,0.8))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:'white', flexShrink:0 }}>
                   {(selected.buyer_name || '?')[0].toUpperCase()}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:700, color:'white', marginBottom:2 }}>{selected.buyer_name || 'Unknown'}</p>
+                  <p style={{ fontSize:14, fontWeight:700, color:'white', marginBottom:1 }}>{selected.buyer_name || 'Unknown'}</p>
                   <p style={{ fontSize:11, color:'#6b7280' }}>{selected.buyer_phone} · {fmtAge(selected)}</p>
                 </div>
                 {selected.listing && (
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <p style={{ fontSize:11, color:'#60a5fa', marginBottom:1 }}>{selected.listing.brand} {selected.listing.model}</p>
-                    {selected.listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:'white' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
+                    {selected.listing.selling_price && <p style={{ fontSize:12, fontWeight:700, color:'white' }}>RM {selected.listing.selling_price.toLocaleString()}</p>}
                   </div>
                 )}
               </div>
 
               {/* Intent score bar */}
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, flexShrink:0 }}>Intent Score</p>
-                <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.06)', borderRadius:3, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${selected.score}%`, background:`linear-gradient(90deg, ${urgencyColor[selected.urgency]}, ${urgencyColor[selected.urgency]}cc)`, borderRadius:3, transition:'width 0.4s ease' }} />
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:'#6b7280', fontWeight:700, flexShrink:0 }}>Intent</p>
+                <div style={{ flex:1, height:5, background:'rgba(255,255,255,0.06)', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${selected.score}%`, background:`linear-gradient(90deg,${urgencyColor[selected.urgency]},${urgencyColor[selected.urgency]}cc)`, borderRadius:3, transition:'width 0.4s ease' }} />
                 </div>
                 <span style={{ fontSize:12, fontWeight:700, color:urgencyColor[selected.urgency], flexShrink:0 }}>{selected.score}/100</span>
               </div>
 
               {/* Template picker */}
               <div>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, marginBottom:8 }}>Message Template</p>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:'#6b7280', fontWeight:700, marginBottom:8 }}>Template</p>
+                <div className="grid grid-cols-2 gap-1.5">
                   {Object.entries(TEMPLATES).map(([key, t]) => (
-                    <button key={key} onClick={() => setTemplate(key)}
-                      style={{ padding:'9px 12px', borderRadius:9, background: template===key ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)', border: template===key ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(255,255,255,0.07)', color: template===key ? '#93c5fd' : '#6b7280', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, transition:'all 0.15s', textAlign:'left' }}>
+                    <button key={key} onClick={() => { setTemplate(key); setMsgOverride(''); }}
+                      style={{ padding:'8px 10px', borderRadius:8, background: template===key ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)', border: template===key ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(255,255,255,0.07)', color: template===key ? '#93c5fd' : '#9ca3af', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, transition:'all 0.15s', textAlign:'left' }}>
                       <span>{t.icon}</span> {t.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Message preview */}
+              {/* Editable message */}
               <div style={{ flex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview</p>
-                  <span style={{ fontSize:10, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:5, padding:'2px 8px', color:'#4ade80', fontWeight:600 }}>WhatsApp</span>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                  <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:'#6b7280', fontWeight:700 }}>Message</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:10, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:5, padding:'2px 7px', color:'#4ade80', fontWeight:600 }}>WhatsApp</span>
+                    <button onClick={() => copyMsg(getMsg(selected))}
+                      style={{ fontSize:10, display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:5, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color: copied ? '#4ade80' : '#9ca3af', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", transition:'color 0.2s' }}>
+                      {copied ? <><Check size={10}/> Copied</> : <><Copy size={10}/> Copy</>}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ background:'#0c1018', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:200, overflowY:'auto' }}>
-                  <p style={{ fontSize:13, color:'#94a3b8', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{TEMPLATES[template]?.gen(selected)}</p>
-                </div>
+                <textarea
+                  value={msgOverride || TEMPLATES[template]?.gen(selected) || ''}
+                  onChange={e => setMsgOverride(e.target.value)}
+                  rows={6}
+                  style={{ width:'100%', background:'#0c1018', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'12px 14px', fontSize:13, color:'#94a3b8', lineHeight:1.75, fontFamily:"'DM Sans',sans-serif", resize:'vertical', outline:'none', boxSizing:'border-box' }}
+                />
               </div>
 
               {/* Send */}
-              <button onClick={() => openWA(selected, TEMPLATES[template].gen(selected))} className="btn-shimmer"
-                style={{ width:'100%', padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <button onClick={() => openWA(selected, getMsg(selected))} className="btn-shimmer"
+                style={{ width:'100%', padding:'13px', borderRadius:12, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', boxShadow:'0 4px 20px rgba(34,197,94,0.25)', color:'white', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
             </>
@@ -5318,41 +5356,43 @@ function OutreachHub({ dealerId, listings }) {
       </div>
 
       {/* ── Bulk Campaign strip ── */}
-      <div style={{ background:'rgba(167,139,250,0.06)', border:'1px solid rgba(167,139,250,0.18)', borderRadius:14, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', position:'relative', overflow:'hidden' }}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3"
+        style={{ background:'rgba(167,139,250,0.06)', border:'1px solid rgba(167,139,250,0.18)', borderRadius:14, padding:'14px 18px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(167,139,250,0.4),transparent)' }} />
-        <Megaphone size={18} style={{ color:'#a78bfa', flexShrink:0 }} />
-        <div style={{ flex:1, minWidth:200 }}>
-          <p style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>Bulk Campaign · {React.createElement(SEGS[segment].Icon, { size: 13 })} {SEGS[segment].label} Leads</p>
+        <Megaphone size={17} style={{ color:'#a78bfa', flexShrink:0 }} />
+        <div style={{ flex:1 }}>
+          <p style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>
+            Bulk Campaign · {React.createElement(SEGS[segment].Icon, { size:12 })} {SEGS[segment].label} Leads
+          </p>
           <p style={{ fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
-            Send the selected template to all {SEGS[segment].label.toLowerCase()} leads.
-            {' '}<span style={{ color:'#a78bfa', fontWeight:600 }}>{Math.min(visibleLeads.length, 10)} WhatsApp chats</span> will open one by one (browser must allow popups).
+            Send to all {SEGS[segment].label.toLowerCase()} leads.{' '}
+            <span style={{ color:'#a78bfa', fontWeight:600 }}>{Math.min(visibleLeads.length, 10)} WhatsApp chats</span> will open one by one (allow popups).
           </p>
         </div>
-        <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-          {/* Template quick-pick in campaign */}
+        <div className="flex gap-2 w-full sm:w-auto">
           <select value={template} onChange={e => setTemplate(e.target.value)}
-            style={{ padding:'9px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:9, color:'#d1d5db', fontSize:12, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', outline:'none' }}>
+            style={{ flex:1, padding:'8px 10px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, color:'#d1d5db', fontSize:12, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', outline:'none' }}>
             {Object.entries(TEMPLATES).map(([k, t]) => <option key={k} value={k} style={{ background:'#111118' }}>{t.icon} {t.label}</option>)}
           </select>
           <button onClick={launchCampaign}
-            style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#c4b5fd', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.28)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.18)'; }}>
+            style={{ padding:'8px 16px', borderRadius:8, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#c4b5fd', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', transition:'background 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(167,139,250,0.28)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='rgba(167,139,250,0.18)'; }}>
             <Send size={13} /> Launch ({Math.min(visibleLeads.length, 10)})
           </button>
         </div>
       </div>
 
-      {/* Tips bar */}
-      <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+      {/* Tips */}
+      <div className="flex flex-col sm:flex-row gap-2">
         {[
           { icon:'⚡', tip:'Leads contacted within 5 minutes convert 8× more' },
           { icon:'🔁', tip:'Re-engage cold leads every 2 weeks with a new angle' },
           { icon:'📊', tip:'Price drop alerts have the highest open rate of any template' },
         ].map(({ icon, tip }) => (
-          <div key={tip} style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:8, flex:'1 1 auto' }}>
+          <div key={tip} style={{ display:'flex', alignItems:'center', gap:7, padding:'7px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:8, flex:'1 1 auto' }}>
             <span style={{ fontSize:13, flexShrink:0 }}>{icon}</span>
-            <span style={{ fontSize:11, color:'#374151', lineHeight:1.4 }}>{tip}</span>
+            <span style={{ fontSize:11, color:'#6b7280', lineHeight:1.4 }}>{tip}</span>
           </div>
         ))}
       </div>
