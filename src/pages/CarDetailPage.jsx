@@ -665,8 +665,15 @@ export default function CarDetailPage() {
     window.location.href = `tel:+${phone}`;
   }
 
-  async function handleEnquirySubmit() {
-    setEnquirySubmitting(true);
+  function handleEnquirySubmit() {
+    // Open WhatsApp immediately — must happen synchronously in the click handler
+    // before any await, otherwise popup blockers will intercept window.open.
+    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
+    window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
+    setShowEnquiryModal(false);
+    setEnquiryForm({ name: "", phone: "", state: "" });
+
+    // Fire analytics + backend record non-blocking after WhatsApp is already open
     trackEvent(supabase, "whatsapp_click", {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
@@ -674,35 +681,17 @@ export default function CarDetailPage() {
       salesman_slug: getSlugFromURL() || car.salesman_slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
-    try {
-      const res = await fetch("/api/enquiry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carId: car.id,
-          name: enquiryForm.name,
-          phone: enquiryForm.phone,
-          state: enquiryForm.state || null,
-          refSlug: getRef() || null,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 429) {
-          alert("Too many enquiries. Please wait a moment and try again.");
-          setEnquirySubmitting(false);
-          return;
-        }
-        console.error("[handleEnquirySubmit]", data.error);
-      }
-    } catch (err) {
-      console.error("[handleEnquirySubmit] fetch error:", err);
-    }
-    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}. My number is ${enquiryForm.phone}.`;
-    window.open(buildWaUrl(ctaCtx, contactPhone, message), "_blank");
-    setShowEnquiryModal(false);
-    setEnquirySubmitting(false);
-    setEnquiryForm({ name: "", phone: "", state: "" });
+    fetch("/api/enquiry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        carId: car.id,
+        name: enquiryForm.name,
+        phone: enquiryForm.phone,
+        state: enquiryForm.state || null,
+        refSlug: getRef() || null,
+      }),
+    }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
   }
 
   async function handleBook(e) {
