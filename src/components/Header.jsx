@@ -361,13 +361,13 @@ export default function Header() {
   const navLinks = onSub
     ? [
         { name: t("nav.home"),       path: "/",              key: "home" },
-        { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
+        { name: t("nav.browseCars"), path: "/showroom",      key: "cars" },
         { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
         { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
       ]
     : [
         { name: t("nav.home"),       path: "/",              key: "home" },
-        { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
+        { name: t("nav.browseCars"), path: "/showroom",      key: "cars" },
         { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
         { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
         { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },

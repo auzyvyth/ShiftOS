@@ -803,7 +803,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
           Browse verified vehicles with transparent pricing and no hidden fees.
         </p>
         <Link
-          to="/cars"
+          to="/showroom"
           style={{
             background: "rgba(220,38,38,0.15)",
             backdropFilter: "blur(16px)",
@@ -978,7 +978,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                     onSubmit={(e) => {
                       e.preventDefault();
                       const q = heroSearch.trim();
-                      if (q) navigate(`/cars?q=${encodeURIComponent(q)}`);
+                      if (q) navigate(`/showroom?q=${encodeURIComponent(q)}`);
                     }}
                   >
                     <Search className="hc-search-icon" />

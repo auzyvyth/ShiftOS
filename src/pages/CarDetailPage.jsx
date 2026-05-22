@@ -756,7 +756,7 @@ export default function CarDetailPage() {
           This listing is no longer available.
         </p>
         <Link
-          to="/cars"
+          to="/showroom"
           style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
         >
           ← Browse all cars

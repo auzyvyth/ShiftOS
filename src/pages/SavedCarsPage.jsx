@@ -57,7 +57,7 @@ export default function SavedCarsPage() {
         }}
       >
         <Link
-          to="/cars"
+          to="/showroom"
           style={{
             color: 'rgba(255,255,255,0.4)',
             display: 'flex',
@@ -148,7 +148,7 @@ export default function SavedCarsPage() {
               Tap the heart icon on any car listing to save it here for easy access later.
             </p>
             <Link
-              to="/cars"
+              to="/showroom"
               style={{
                 marginTop: 8,
                 display: 'inline-flex',

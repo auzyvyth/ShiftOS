@@ -154,7 +154,7 @@ const Footer = () => {
   const hasSocials = facebook || instagram || tiktok;
 
   const quickLinks = [
-    { label: "Browse Cars",    to: "/cars" },
+    { label: "Browse Cars",    to: "/showroom" },
     { label: "Calculator",     to: "/calculator" },
     { label: "How It Works",   to: "/#how-it-works" },
     { label: "For Dealers",    to: "/for-dealers" },
