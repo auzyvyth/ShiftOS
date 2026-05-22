@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Instagram, Facebook, Mail, Shield, Zap, BookOpen, Car, Users, BarChart3, ArrowUpRight } from 'lucide-react';
+import { isSubdomain } from '../hooks/useTenant';
 
 const NAV = [
   {
     heading: 'For Buyers',
     links: [
       { label: 'Browse All Cars',       to: '/showroom' },
-      { label: 'Search by Brand',       to: '/showroom?brand=' },
+      { label: 'Search by Brand',       to: '/showroom' },
       { label: 'Hot Deals',             to: '/marketplace?hot_deals=true' },
       { label: 'Compare Cars',          to: '/compare' },
       { label: 'Saved Listings',        to: '/saved' },
@@ -19,7 +20,7 @@ const NAV = [
     heading: 'For Dealers',
     links: [
       { label: 'List Your Inventory',   to: '/signup' },
-      { label: 'ShiftOS DMS',           href: '#shiftos' },
+      { label: 'ShiftOS DMS',           to: '/shiftos' },
       { label: 'Dealer Pricing',        to: '/signup' },
       { label: 'Partner with XDrive',   to: '/signup' },
     ],
@@ -44,6 +45,8 @@ const TRUST = [
 ];
 
 export default function MarketplaceFooter() {
+  if (isSubdomain()) return null;
+
   return (
     <footer className="bg-white border-t border-gray-100" style={{ fontFamily: "'Outfit', sans-serif" }}>
 
@@ -165,11 +168,11 @@ export default function MarketplaceFooter() {
           <p className="text-gray-600 text-[11px]">
             © {new Date().getFullYear()} XDrive Malaysia Sdn Bhd. All rights reserved.
           </p>
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+          <Link to="/shiftos" className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-400 transition-colors" style={{ textDecoration: 'none' }}>
             <span>Powered by</span>
             <span className="text-white font-bold tracking-wide">ShiftOS</span>
             <Zap size={10} className="text-red-500" />
-          </div>
+          </Link>
         </div>
       </div>
 
