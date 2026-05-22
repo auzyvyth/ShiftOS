@@ -649,14 +649,13 @@ export default function SalesmanLite() {
       });
 
       // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
-      const slug = profileData.slug;
-      if (slug) {
-        const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        supabase
-          .from("analytics_events")
-          .select("event_type, car_id, car_name, created_at, session_id")
-          .eq("salesman_slug", slug)
-          .gte("created_at", cutoff30)
+      // Scope by dealer_id (salesman-lite acts as their own dealer; salesman_slug is null on direct visits)
+      const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      supabase
+        .from("analytics_events")
+        .select("event_type, car_id, car_name, created_at, session_id")
+        .eq("dealer_id", uid)
+        .gte("created_at", cutoff30)
           .then(({ data: allEvts, error: evtsErr }) => {
             if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
             const evts = allEvts || [];
@@ -685,7 +684,6 @@ export default function SalesmanLite() {
             });
             setCarStatsMap(map);
           });
-      }
 
       // fetch leads
       supabase

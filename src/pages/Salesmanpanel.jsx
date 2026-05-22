@@ -377,11 +377,19 @@ export default function SalesmanPanel() {
    .then(({ data }) => setDealerSubdomain(data?.subdomain || null));
  }
 
- if (profileData.slug) {
+ // Fetch assigned car IDs first, then scope analytics to those cars
+ // (dealer-linked salesmen share dealer_id with others; salesman_slug is null on direct visits)
+ const { data: assignedCars } = await supabase
+   .from("car_listings")
+   .select("id")
+   .or(`assigned_to.eq.${userId},dealer_id.eq.${userId}`);
+ const assignedCarIds = (assignedCars || []).map((c) => c.id);
+
+ if (assignedCarIds.length > 0) {
  const { data: evts } = await supabase
  .from("analytics_events")
  .select("event_type, created_at")
- .eq("salesman_slug", profileData.slug);
+ .in("car_id", assignedCarIds);
  if (evts) {
  setRawEvents(evts);
  setMyClicks(
@@ -399,11 +407,11 @@ export default function SalesmanPanel() {
  );
  }
 
- // Per-listing analytics — must run here where profileData is guaranteed
+ // Per-listing analytics map
  supabase
  .from("analytics_events")
  .select("car_id, event_type")
- .eq("salesman_slug", profileData.slug)
+ .in("car_id", assignedCarIds)
  .then(({ data: evtData }) => {
  const map = {};
  (evtData || []).forEach((e) => {

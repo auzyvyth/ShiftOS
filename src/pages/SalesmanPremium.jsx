@@ -470,13 +470,11 @@ export default function SalesmanPremium() {
  setMyListings(merged);
  });
 
- // fetch analytics events (30d, scoped by salesman slug)
- const slug = profileData.slug;
- if (slug) {
+ // fetch analytics events (30d, scoped by dealer_id — premium acts as own dealer)
  supabase
  .from("analytics_events")
  .select("event_type, car_id, car_name, created_at")
- .eq("salesman_slug", slug)
+ .eq("dealer_id", uid)
  .gte(
  "created_at",
  new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -487,7 +485,7 @@ export default function SalesmanPremium() {
  supabase
  .from("analytics_events")
  .select("car_id, event_type")
- .eq("salesman_slug", slug)
+ .eq("dealer_id", uid)
  .then(({ data: evtData }) => {
  const map = {};
  (evtData || []).forEach((e) => {
@@ -500,7 +498,6 @@ export default function SalesmanPremium() {
  });
  setCarStatsMap(map);
  });
- }
 
  // fetch leads
  supabase
