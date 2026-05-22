@@ -584,7 +584,6 @@ export default function MarketplacePage() {
         .mp-hero-section {
           display: flex;
           flex-direction: column;
-          min-height: 100svh;
           background: #08090f;
           position: relative;
           overflow-x: hidden;
@@ -599,7 +598,7 @@ export default function MarketplacePage() {
           z-index: 1;
         }
         .mp-hero-left  { width: 100%; }
-        .mp-hero-right { display: none; }
+        .mp-hero-right { display: block; width: 100%; margin-top: 24px; }
 
         /* Tabs — scrollable on mobile */
         .mp-hero-tabs {
@@ -623,8 +622,9 @@ export default function MarketplacePage() {
         .mp-trust-item  { padding: 4px 10px; }
 
         /* Budget cards */
-        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-        .mp-budget-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
+        .mp-budget-grid { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 4px; }
+        .mp-budget-grid::-webkit-scrollbar { display: none; }
+        .mp-budget-item { display: block; flex-shrink: 0; width: 120px; text-decoration: none; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
         .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45) !important; }
 
         /* Results layout — column on mobile */
@@ -643,12 +643,13 @@ export default function MarketplacePage() {
           .mp-hero-section  { height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
           .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(32px,4vw,72px); max-width: 1360px; margin: 0 auto; padding: 0 clamp(24px,5vw,60px); }
           .mp-hero-left     { flex: 1; min-width: 0; width: auto; }
-          .mp-hero-right    { display: block; flex: 1; min-width: 0; }
+          .mp-hero-right    { flex: 1; min-width: 0; margin-top: 0; }
           .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
           .mp-trust-strip   { padding: 14px 24px; }
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); }
           .mp-trust-item    { padding: 0 28px; }
-          .mp-budget-grid   { gap: 10px; }
+          .mp-budget-grid   { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; overflow-x: visible; }
+          .mp-budget-item   { width: auto; }
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
         }
