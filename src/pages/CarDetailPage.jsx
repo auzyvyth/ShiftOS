@@ -44,7 +44,7 @@ import CarCard from "../components/CarCard";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
-import { trackEvent } from "../utils/analytics";
+import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { calcMonthly } from "../utils/financing";
 
 /* ─── helpers ─── */
@@ -294,7 +294,7 @@ export default function CarDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [bookingConsent, setBookingConsent] = useState({ appear: false, whatsapp: false });
+  const [bookingConsent, setBookingConsent] = useState({ appear: true, whatsapp: true });
   const bookingRef = useRef(null);
 
   /* enquiry modal */
@@ -561,6 +561,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
       page_path: window.location.pathname,
       metadata: { price: car.selling_price, colour: car.colour },
     });
@@ -658,6 +659,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
       metadata: { source: "car_detail" },
     });
     window.location.href = `tel:+${phone}`;
@@ -669,6 +671,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
+      salesman_slug: getSlugFromURL() || car.salesman_slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
     try {
@@ -758,7 +761,7 @@ export default function CarDetailPage() {
       });
     setSubmitting(false);
     setBooked(true);
-    setBookingConsent({ appear: false, whatsapp: false });
+    setBookingConsent({ appear: true, whatsapp: true });
   }
 
   /* ── early returns ── */
@@ -1495,6 +1498,7 @@ export default function CarDetailPage() {
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
                 setBooked(false);
+                setBookingConsent({ appear: true, whatsapp: true });
                 setShowBookingModal(true);
               }}
               style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
@@ -2860,6 +2864,7 @@ export default function CarDetailPage() {
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
                 setBooked(false);
+                setBookingConsent({ appear: true, whatsapp: true });
                 setShowBookingModal(true);
               }}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
