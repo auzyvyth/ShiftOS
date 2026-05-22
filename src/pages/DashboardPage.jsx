@@ -5373,6 +5373,15 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
 
+    // Strip tokens passed via URL (cross-domain session handoff) immediately.
+    const _params = new URLSearchParams(window.location.search);
+    const _at = _params.get('access_token');
+    const _rt = _params.get('refresh_token');
+    if (_at && _rt) {
+      supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     // Shared loader — called on first mount AND on every auth state change so
     // switching accounts always loads the correct owner's data.
     const loadSession = async (session) => {

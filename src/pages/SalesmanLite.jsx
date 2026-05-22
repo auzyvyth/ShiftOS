@@ -504,9 +504,18 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
-    // getSession() properly awaits any in-progress token refresh before returning,
-    // so it always reflects the true final auth state — no login flash.
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    // If tokens were passed via URL (cross-domain session handoff), establish
+    // the session then strip them from the address bar immediately.
+    const _params = new URLSearchParams(window.location.search);
+    const _at = _params.get('access_token');
+    const _rt = _params.get('refresh_token');
+    const sessionPromise = _at && _rt
+      ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
+          .then(() => { window.history.replaceState({}, '', window.location.pathname); })
+          .then(() => supabase.auth.getSession())
+      : supabase.auth.getSession();
+
+    sessionPromise.then(async ({ data, error }) => {
       try {
       if (error || !data.session) {
         if (error) console.error("getSession:", error);
