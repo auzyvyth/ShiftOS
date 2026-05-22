@@ -68,12 +68,32 @@ function EnquiriesTab({ userId, onOpenDoc }) {
 
   const fetchEnquiries = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error: err } = await supabase
       .from("whatsapp_enquiries")
-      .select(`*, listing:car_listings(brand, model, variant, selling_price)`)
+      .select(`*, listing:public_car_listings(brand, model, variant, selling_price)`)
       .eq("dealer_id", userId)
       .order("created_at", { ascending: false });
-    setEnquiries(data || []);
+    if (err) {
+      console.error("[EnquiriesTab] fetch error:", err.message, err);
+      setLoading(false);
+      return;
+    }
+    const rows = data || [];
+
+    /* Auto-progress enquiries stuck in "new" for > 2 days */
+    const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
+    const staleIds = rows
+      .filter(e => (!e.status || e.status === "new") && Date.now() - new Date(e.created_at).getTime() > TWO_DAYS)
+      .map(e => e.id);
+    if (staleIds.length) {
+      await supabase.from("whatsapp_enquiries").update({ status: "contacted" }).in("id", staleIds);
+      staleIds.forEach(id => {
+        const row = rows.find(e => e.id === id);
+        if (row) row.status = "contacted";
+      });
+    }
+
+    setEnquiries(rows);
     setLoading(false);
   };
 
