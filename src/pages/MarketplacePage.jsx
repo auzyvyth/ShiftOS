@@ -902,16 +902,16 @@ export default function MarketplacePage() {
             <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
                 { label: 'All',        brandVal: '',              initials: 'ALL', color: '#DC2626' },
-                { label: 'Perodua',    brandVal: 'Perodua',    logo: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
-                { label: 'Proton',     brandVal: 'Proton',     logo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg' },
-                { label: 'Toyota',     brandVal: 'Toyota',     logo: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg' },
-                { label: 'Honda',      brandVal: 'Honda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-                { label: 'Nissan',     brandVal: 'Nissan',     logo: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg' },
-                { label: 'Mazda',      brandVal: 'Mazda',      logo: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg' },
-                { label: 'Mitsubishi', brandVal: 'Mitsubishi', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
-                { label: 'BMW',        brandVal: 'BMW',        logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
-                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg' },
-                { label: 'Hyundai',    brandVal: 'Hyundai',    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg' },
+                { label: 'Perodua',    brandVal: 'Perodua',       logo: '/brands/perodua.svg' },
+                { label: 'Proton',     brandVal: 'Proton',        logo: '/brands/proton.svg' },
+                { label: 'Toyota',     brandVal: 'Toyota',        logo: '/brands/toyota.svg' },
+                { label: 'Honda',      brandVal: 'Honda',         logo: '/brands/honda.svg' },
+                { label: 'Nissan',     brandVal: 'Nissan',        logo: '/brands/nissan.svg' },
+                { label: 'Mazda',      brandVal: 'Mazda',         logo: '/brands/mazda.svg' },
+                { label: 'Mitsubishi', brandVal: 'Mitsubishi',    logo: '/brands/mitsubishi.svg' },
+                { label: 'BMW',        brandVal: 'BMW',           logo: '/brands/bmw.svg' },
+                { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: '/brands/mercedes.svg' },
+                { label: 'Hyundai',    brandVal: 'Hyundai',       logo: '/brands/hyundai.svg' },
               ].map(({ label, brandVal, logo, initials, color }) => {
                 const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
                 return (

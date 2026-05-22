@@ -337,16 +337,16 @@ export default function ShowroomPage() {
 
   const BRAND_LOGOS = [
     { label:'All',         to:'/showroom',                          initials:'ALL', color:'#DC2626' },
-    { label:'Perodua',     to:'/showroom?brand=Perodua',      logo:'https://upload.wikimedia.org/wikipedia/commons/3/31/Perodua_Logo_%282008_-_Present%29.svg' },
-    { label:'Proton',      to:'/showroom?brand=Proton',       logo:'https://upload.wikimedia.org/wikipedia/commons/9/99/Proton_AG_Logo_02.svg',           invert:true },
-    { label:'Toyota',      to:'/showroom?brand=Toyota',       logo:'https://upload.wikimedia.org/wikipedia/commons/7/78/Toyota_Logo.svg',                 invert:true },
-    { label:'Honda',       to:'/showroom?brand=Honda',        logo:'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-    { label:'Nissan',      to:'/showroom?brand=Nissan',       logo:'https://upload.wikimedia.org/wikipedia/commons/2/23/Nissan_2020_logo.svg',            invert:true },
-    { label:'Mazda',       to:'/showroom?brand=Mazda',        logo:'https://upload.wikimedia.org/wikipedia/commons/4/46/Mazda_logo_2024.svg',             invert:true },
-    { label:'Mitsubishi',  to:'/showroom?brand=Mitsubishi',   logo:'https://upload.wikimedia.org/wikipedia/commons/5/5a/Mitsubishi_logo.svg' },
-    { label:'BMW',         to:'/showroom?brand=BMW',          logo:'https://upload.wikimedia.org/wikipedia/commons/f/f4/BMW_logo_%28gray%29.svg' },
-    { label:'Mercedes',    to:'/showroom?brand=Mercedes-Benz',logo:'https://upload.wikimedia.org/wikipedia/commons/9/9e/Mercedes-Benz_%282025%29.svg',    invert:true },
-    { label:'Hyundai',     to:'/showroom?brand=Hyundai',      logo:'https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg',  invert:true },
+    { label:'Perodua',     to:'/showroom?brand=Perodua',      logo:'/brands/perodua.svg' },
+    { label:'Proton',      to:'/showroom?brand=Proton',       logo:'/brands/proton.svg',     invert:true },
+    { label:'Toyota',      to:'/showroom?brand=Toyota',       logo:'/brands/toyota.svg',     invert:true },
+    { label:'Honda',       to:'/showroom?brand=Honda',        logo:'/brands/honda.svg' },
+    { label:'Nissan',      to:'/showroom?brand=Nissan',       logo:'/brands/nissan.svg',     invert:true },
+    { label:'Mazda',       to:'/showroom?brand=Mazda',        logo:'/brands/mazda.svg',      invert:true },
+    { label:'Mitsubishi',  to:'/showroom?brand=Mitsubishi',   logo:'/brands/mitsubishi.svg' },
+    { label:'BMW',         to:'/showroom?brand=BMW',          logo:'/brands/bmw.svg' },
+    { label:'Mercedes',    to:'/showroom?brand=Mercedes-Benz',logo:'/brands/mercedes.svg',   invert:true },
+    { label:'Hyundai',     to:'/showroom?brand=Hyundai',      logo:'/brands/hyundai.svg',    invert:true },
   ];
 
   if (isSubdomain()) return <Navigate to="/" replace />;
