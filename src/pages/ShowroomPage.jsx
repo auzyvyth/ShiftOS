@@ -235,7 +235,7 @@ export default function ShowroomPage() {
         </button>
       </FG>
       <FG title="Brand">
-        <select style={sel} value={brand||''} onChange={e=>{
+        <select aria-label="Filter by brand" style={sel} value={brand||''} onChange={e=>{
           const n=new URLSearchParams(searchParams);
           e.target.value?n.set('brand',e.target.value):n.delete('brand');
           n.delete('model'); n.delete('page');
@@ -246,7 +246,7 @@ export default function ShowroomPage() {
         </select>
       </FG>
       <FG title="Model">
-        <select style={{ ...sel, opacity: brand?1:0.45 }} value={model||''} onChange={e=>setParam('model',e.target.value)} disabled={!brand}>
+        <select aria-label="Filter by model" style={{ ...sel, opacity: brand?1:0.45 }} value={model||''} onChange={e=>setParam('model',e.target.value)} disabled={!brand}>
           <option value="">{brand ? 'All Models' : 'Select brand first'}</option>
           {(CAR_DATA[brand]||[]).map(m=><option key={m} value={m}>{m}</option>)}
         </select>
@@ -274,18 +274,18 @@ export default function ShowroomPage() {
         />
       </FG>
       <FG title="Location">
-        <select style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
+        <select aria-label="Filter by state" style={sel} value={state||''} onChange={e=>setParam('state',e.target.value)}>
           <option value="">All States</option>
           {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
       </FG>
       <FG title="Year">
         <div style={{ display:'flex', gap:'8px' }}>
-          <select style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
+          <select aria-label="Year from" style={{ ...sel, flex:1 }} value={yearFrom||''} onChange={e=>setParam('year_from',e.target.value)}>
             <option value="">From</option>
             {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
           </select>
-          <select style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
+          <select aria-label="Year to" style={{ ...sel, flex:1 }} value={yearTo||''} onChange={e=>setParam('year_to',e.target.value)}>
             <option value="">To</option>
             {YEARS.map(y=><option key={y} value={y} >{y}</option>)}
           </select>
@@ -307,7 +307,7 @@ export default function ShowroomPage() {
         </div>
       </FG>
       <FG title="Max Mileage">
-        <select style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
+        <select aria-label="Filter by max mileage" style={sel} value={mileageMax||''} onChange={e=>setParam('mileage_max',e.target.value)}>
           <option value="">Any Mileage</option>
           {MILEAGE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -396,7 +396,7 @@ export default function ShowroomPage() {
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length>0 && <span style={{ background:'#dc2626', color:'white', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>}
           </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background:'rgba(0,0,0,0.05)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex' }}><X size={16}/></button>
+          <button onClick={()=>setDrawerOpen(false)} aria-label="Close filters" style={{ background:'rgba(0,0,0,0.05)', border:'none', cursor:'pointer', color:'#6b7280', borderRadius:'8px', padding:'6px', display:'flex' }}><X size={16}/></button>
         </div>
         <div className="sr-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}><Filters/></div>
         <div style={{ padding:'16px 20px', borderTop:'1px solid rgba(0,0,0,0.08)', display:'flex', gap:'10px' }}>
@@ -405,7 +405,7 @@ export default function ShowroomPage() {
         </div>
       </div>
 
-      <div style={{ background:'#F7F6F2', minHeight:'100vh', fontFamily:"'Outfit',sans-serif" }}>
+      <main style={{ background:'#F7F6F2', minHeight:'100vh', fontFamily:"'Outfit',sans-serif" }}>
 
         {/* ── Top bar ── */}
         <div style={{ background:'rgba(247,246,242,0.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.07)', padding:'10px 0', position:'sticky', top:'64px', zIndex:20 }}>
@@ -424,7 +424,7 @@ export default function ShowroomPage() {
                 }}
               />
               {/* Sort */}
-              <select value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', padding:'7px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>
+              <select aria-label="Sort listings" value={sort} onChange={e=>setParam('sort',e.target.value)} style={{ background:'#ffffff', border:'1px solid rgba(0,0,0,0.1)', borderRadius:'9px', padding:'7px 12px', color:'#111827', fontSize:'13px', fontWeight:'600', cursor:'pointer', appearance:'none', fontFamily:"'Outfit',sans-serif", flexShrink:0 }}>
                 {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               {/* Mobile filter */}
@@ -558,11 +558,11 @@ export default function ShowroomPage() {
 
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Mobile FAB */}
       <div className="sr-fab" style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:30 }}>
-        <button onClick={()=>setDrawerOpen(true)} style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', padding:'13px 24px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 24px rgba(220,38,38,0.4)', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}>
+        <button aria-label="Open filters" onClick={()=>setDrawerOpen(true)} style={{ display:'flex', alignItems:'center', gap:'8px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'white', fontSize:'13px', fontWeight:'700', padding:'13px 24px', borderRadius:'50px', cursor:'pointer', boxShadow:'0 8px 24px rgba(220,38,38,0.4)', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}>
           <SlidersHorizontal size={14}/>
           Filters {activeChips.length>0&&`(${activeChips.length})`}
         </button>
