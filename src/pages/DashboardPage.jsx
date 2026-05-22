@@ -5436,37 +5436,50 @@ export default function DashboardPage() {
       }
     };
 
-    // Fast initial load: if cross-domain tokens in URL, await setSession first
+    // Establish session first (cross-domain handoff or existing session) BEFORE
+    // subscribing to auth events. A stale localStorage session on the subdomain
+    // can trigger SIGNED_OUT during its failed auto-refresh — if we're already
+    // subscribed when that fires, we'd redirect to xdrive.my/login before our
+    // new tokens even get a chance to run.
     const _params = new URLSearchParams(window.location.search);
     const _at = _params.get('_at');
     const _rt = _params.get('_rt');
-    const sessionReady = _at && _rt
-      ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
-          .then(() => { window.history.replaceState({}, '', window.location.pathname); })
-          .then(() => supabase.auth.getSession())
-      : supabase.auth.getSession();
-    sessionReady.then(({ data }) => {
-      const s = data?.session;
-      if (s?.user?.id && s.user.id === loadedUidRef.current) return;
-      loadSession(s);
-    });
+    let unsubscribe = () => {};
 
-    // Re-run the full loader on every auth event so account-switching is safe.
-    // Guard: skip SIGNED_IN for the same user (fires on tab return / token refresh)
-    // to prevent the app from wiping state and showing the loading/banner again.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN") {
-          if (session?.user?.id && session.user.id === loadedUidRef.current) return;
-          loadSession(session);
-        }
-        else if (event === "SIGNED_OUT") { window.location.href = "https://xdrive.my/login"; }
+    (async () => {
+      let session;
+      if (_at && _rt) {
+        window.history.replaceState({}, '', window.location.pathname);
+        const { data } = await supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
+        if (!active) return;
+        session = data?.session ?? null;
+      } else {
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+        session = data?.session ?? null;
       }
-    );
+
+      if (!active) return;
+      if (!(session?.user?.id && session.user.id === loadedUidRef.current)) {
+        loadSession(session);
+      }
+
+      // Subscribe AFTER session is established so stale-session SIGNED_OUT
+      // events can't fire into the handler during the setup window.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+        if (event === 'SIGNED_IN') {
+          if (s?.user?.id && s.user.id === loadedUidRef.current) return;
+          loadSession(s);
+        } else if (event === 'SIGNED_OUT') {
+          window.location.href = 'https://xdrive.my/login';
+        }
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    })();
 
     return () => {
       active = false;
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [navigate]);
 
