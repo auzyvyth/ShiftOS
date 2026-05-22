@@ -49,8 +49,8 @@ export default function useTenant() {
 
     async function resolve() {
       const params = new URLSearchParams(window.location.search);
-      const accessToken = params.get("access_token");
-      const refreshToken = params.get("refresh_token");
+      const accessToken = params.get("_at");
+      const refreshToken = params.get("_rt");
 
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({

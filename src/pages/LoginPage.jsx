@@ -126,7 +126,7 @@ export default function LoginPage() {
         } = await supabase.auth.getSession();
         const accessToken = session.access_token;
         const refreshToken = session.refresh_token;
-        window.location.href = `https://${subdomain}.xdrive.my/dashboard?access_token=${accessToken}&refresh_token=${refreshToken}`;
+        window.location.href = `https://${subdomain}.xdrive.my/dashboard?_at=${accessToken}&_rt=${refreshToken}`;
       } else {
         window.location.href = "https://xdrive.my/dashboard";
       }
@@ -135,13 +135,13 @@ export default function LoginPage() {
       const at = sess?.access_token;
       const rt = sess?.refresh_token;
       const target = profile?.dealer_id ? "salesman" : "salesman-lite";
-      const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : "";
+      const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : "";
       window.location.href = `https://xdrive.my/${target}${suffix}`;
     } else {
       const { data: { session: sess } } = await supabase.auth.getSession();
       const at = sess?.access_token;
       const rt = sess?.refresh_token;
-      const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : "";
+      const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : "";
       window.location.href = `https://xdrive.my/salesman${suffix}`;
     }
   };

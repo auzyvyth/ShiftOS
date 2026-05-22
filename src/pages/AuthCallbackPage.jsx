@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
         if (subdomain) {
           const accessToken = session.access_token;
           const refreshToken = session.refresh_token;
-          window.location.href = `https://${subdomain}.xdrive.my/dashboard?access_token=${accessToken}&refresh_token=${refreshToken}`;
+          window.location.href = `https://${subdomain}.xdrive.my/dashboard?_at=${accessToken}&_rt=${refreshToken}`;
         } else {
           navigate('/dashboard');
         }
@@ -41,7 +41,7 @@ export default function AuthCallbackPage() {
         const at = session.access_token;
         const rt = session.refresh_token;
         const target = dealer_id ? 'salesman' : 'salesman-lite';
-        const suffix = at && rt ? `?access_token=${at}&refresh_token=${rt}` : '';
+        const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : '';
         window.location.href = `https://xdrive.my/${target}${suffix}`;
       } else if (role === 'manager') {
         navigate('/manager');

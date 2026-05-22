@@ -5438,8 +5438,8 @@ export default function DashboardPage() {
 
     // Fast initial load: if cross-domain tokens in URL, await setSession first
     const _params = new URLSearchParams(window.location.search);
-    const _at = _params.get('access_token');
-    const _rt = _params.get('refresh_token');
+    const _at = _params.get('_at');
+    const _rt = _params.get('_rt');
     const sessionReady = _at && _rt
       ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
           .then(() => { window.history.replaceState({}, '', window.location.pathname); })
