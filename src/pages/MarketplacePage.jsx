@@ -83,6 +83,7 @@ export default function MarketplacePage() {
   const [bodyTypeLoading, setBodyTypeLoading] = useState(false);
   const carouselSectionRef = useRef(null);
   const carouselFetched = useRef(false);
+  const heroSearchBarRef = useRef(null);
 
   /* Sentinel for auto-load */
   const sentinelRef = useRef(null);
@@ -731,7 +732,7 @@ export default function MarketplacePage() {
                 if (heroState)  p.set('state', heroState);
                 navigate(`/showroom${p.toString() ? `?${p}` : ''}`);
               }}>
-                <div style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                <div ref={heroSearchBarRef} style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
                       dark
@@ -741,6 +742,7 @@ export default function MarketplacePage() {
                       navigateTo="/showroom"
                       onSubmit={val => setHeroQ(val)}
                       inputStyle={{ padding:'11px 14px', fontSize:'14px' }}
+                      anchorRef={heroSearchBarRef}
                     />
                   </div>
                   <button type="submit"

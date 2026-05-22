@@ -13,6 +13,7 @@ export default function SearchAutocomplete({
   inputStyle = {},
   wrapStyle = {},
   dark = false,
+  anchorRef = null,
 }) {
   const navigate                       = useNavigate();
   const [suggestions, setSuggestions]  = useState([]);
@@ -23,10 +24,11 @@ export default function SearchAutocomplete({
   const wrapRef                        = useRef(null);
 
   const updatePos = useCallback(() => {
-    if (!wrapRef.current) return;
-    const r = wrapRef.current.getBoundingClientRect();
+    const el = (anchorRef?.current) || wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
     setDropPos({ top: r.bottom + 5, left: r.left, width: r.width });
-  }, []);
+  }, [anchorRef]);
 
   // Query RPC with 300 ms debounce
   const query = useCallback((text) => {
