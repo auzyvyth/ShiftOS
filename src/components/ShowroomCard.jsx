@@ -167,7 +167,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         </h3>
 
         {/* Row 3: specs */}
-        <p className="sc-spec-line" style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 6px', lineHeight: '1.5', whiteSpace: 'normal', wordBreak: 'break-word', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+        <p className="sc-spec-line" style={{ fontSize: '11px', color: '#4b5563', margin: '0 0 6px', lineHeight: '1.5', whiteSpace: 'normal', wordBreak: 'break-word', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {specParts.join('  •  ')}
         </p>
 
@@ -191,7 +191,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Row 5: monthly estimate */}
         {monthly && (
           <p style={{ fontSize: '10px', color: '#4b5563', margin: '0 0 6px', lineHeight: 1 }}>
-            est. <span style={{ color: '#6b7280', fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
+            est. <span style={{ color: '#4b5563', fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
           </p>
         )}
 
@@ -206,7 +206,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               supabase.from('whatsapp_enquiries').insert({ dealer_id: car.dealer_id || null, listing_id: car.id || null, buyer_name: null, buyer_phone: null, buyer_message: waText, source: 'showroom_card', status: 'new', ref_slug: getRef() || null }).then(() => {});
               trackEvent(supabase, 'whatsapp_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
             }}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : 'rgba(37,211,102,0.08)', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid rgba(37,211,102,0.25)', color: isSold ? '#9ca3af' : '#16a34a', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#16a34a', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #15803d', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
           >
             <MessageCircle size={13} /> WhatsApp
           </a>

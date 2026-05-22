@@ -222,7 +222,7 @@ export default function ShowroomPage() {
   };
   const FG = ({ title, children }) => (
     <div style={{ marginBottom:'14px', paddingBottom:'14px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'#6b7280', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
+      <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', letterSpacing:'0.12em', textTransform:'uppercase', margin:'0 0 10px', fontFamily:"'Outfit',sans-serif" }}>{title}</p>
       {children}
     </div>
   );
