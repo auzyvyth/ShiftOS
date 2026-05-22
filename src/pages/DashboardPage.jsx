@@ -5373,15 +5373,6 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
 
-    // Strip tokens passed via URL (cross-domain session handoff) immediately.
-    const _params = new URLSearchParams(window.location.search);
-    const _at = _params.get('access_token');
-    const _rt = _params.get('refresh_token');
-    if (_at && _rt) {
-      supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-
     // Shared loader — called on first mount AND on every auth state change so
     // switching accounts always loads the correct owner's data.
     const loadSession = async (session) => {
@@ -5392,6 +5383,9 @@ export default function DashboardPage() {
         return;
       }
       const uid = session.user.id;
+      // Set ref immediately so onAuthStateChange SIGNED_IN guard works
+      // even if setSession fires the event before this async fn completes.
+      loadedUidRef.current = uid;
 
       // Reset to a clean slate before populating for this session.
       // Prevents any previous owner's branding from bleeding through.
@@ -5415,7 +5409,6 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
-        loadedUidRef.current = uid;
         // Correct dealer ID for manager/admin roles (their uid ≠ dealer_id)
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
@@ -5443,8 +5436,20 @@ export default function DashboardPage() {
       }
     };
 
-    // Fast initial load from cached session
-    supabase.auth.getSession().then(({ data }) => loadSession(data.session));
+    // Fast initial load: if cross-domain tokens in URL, await setSession first
+    const _params = new URLSearchParams(window.location.search);
+    const _at = _params.get('access_token');
+    const _rt = _params.get('refresh_token');
+    const sessionReady = _at && _rt
+      ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
+          .then(() => { window.history.replaceState({}, '', window.location.pathname); })
+          .then(() => supabase.auth.getSession())
+      : supabase.auth.getSession();
+    sessionReady.then(({ data }) => {
+      const s = data?.session;
+      if (s?.user?.id && s.user.id === loadedUidRef.current) return;
+      loadSession(s);
+    });
 
     // Re-run the full loader on every auth event so account-switching is safe.
     // Guard: skip SIGNED_IN for the same user (fires on tab return / token refresh)
