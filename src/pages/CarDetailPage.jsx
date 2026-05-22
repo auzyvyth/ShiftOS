@@ -993,9 +993,11 @@ export default function CarDetailPage() {
         /* ── header actions ── */
         .cdp-header-actions { display: flex; align-items: center; gap: 8px; }
         .cdp-mobile-enquire { display: none !important; }
+        .cdp-mobile-share   { display: none !important; }
         @media (max-width: 900px) {
           .cdp-header-actions { display: none; }
           .cdp-mobile-enquire { display: inline-flex !important; }
+          .cdp-mobile-share   { display: inline-flex !important; }
         }
 
         /* ── lightbox ── */
@@ -1083,6 +1085,13 @@ export default function CarDetailPage() {
             </button>
             <button className="cdp-enquire-btn" onClick={handleWhatsApp}>Enquire</button>
           </div>
+          <button
+            className="cdp-mobile-share"
+            onClick={handleShare}
+            style={{ alignItems: 'center', gap: 5, background: shareCopied ? 'rgba(22,163,74,0.1)' : th.card2, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.35)' : th.border}`, borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", color: shareCopied ? '#16a34a' : th.textSec, transition: 'all 0.18s', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {shareCopied ? <Check size={13}/> : <Share2 size={13}/>}
+            {shareCopied ? 'Copied!' : 'Share'}
+          </button>
           <button className="cdp-enquire-btn cdp-mobile-enquire" onClick={handleWhatsApp}>Enquire</button>
           <div className="cdp-header-redline" />
         </header>
