@@ -622,10 +622,10 @@ export default function MarketplacePage() {
         .mp-trust-item  { padding: 4px 10px; }
 
         /* Budget cards */
-        .mp-budget-grid { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 4px; }
-        .mp-budget-grid::-webkit-scrollbar { display: none; }
-        .mp-budget-item { display: block; flex-shrink: 0; width: 120px; text-decoration: none; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
+        .mp-budget-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+        .mp-budget-item { display: block; width: auto; text-decoration: none; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); transition: transform .2s ease, border-color .2s ease; }
         .mp-budget-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.45) !important; }
+        .mp-budget-icon { height: 52px; display: flex; align-items: center; justify-content: center; }
 
         /* Results layout — column on mobile */
         .mp-filter-fab      { display: none; }
@@ -648,8 +648,8 @@ export default function MarketplacePage() {
           .mp-trust-strip   { padding: 14px 24px; }
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); }
           .mp-trust-item    { padding: 0 28px; }
-          .mp-budget-grid   { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; overflow-x: visible; }
-          .mp-budget-item   { width: auto; }
+          .mp-budget-grid   { gap: 10px; }
+          .mp-budget-icon   { height: 80px; }
           .mp-filter-fab    { display: flex; }
           .mp-cars-layout   { flex-direction: row; }
         }
@@ -789,11 +789,11 @@ export default function MarketplacePage() {
                   { label:'Open Budget',   value:'',       iconColor:'#ffffff', bg:'rgba(255,255,255,0.10)' },
                 ].map(({ label, value, iconColor, bg }) => (
                   <Link key={label} to={value ? `/cars?max_price=${value}` : '/cars'} className="mp-budget-item">
-                    <div style={{ height:'80px', display:'flex', alignItems:'center', justifyContent:'center', background: bg }}>
-                      <Car size={40} color={iconColor} strokeWidth={1.25} />
+                    <div className="mp-budget-icon" style={{ background: bg }}>
+                      <Car size={28} color={iconColor} strokeWidth={1.25} />
                     </div>
-                    <div style={{ padding:'8px 10px 10px' }}>
-                      <span style={{ fontSize:'12px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
+                    <div style={{ padding:'5px 8px 7px' }}>
+                      <span style={{ fontSize:'11px', fontWeight:'700', color:'rgba(255,255,255,0.9)', fontFamily:"'Outfit',sans-serif" }}>{label}</span>
                     </div>
                   </Link>
                 ))}
