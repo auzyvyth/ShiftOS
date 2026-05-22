@@ -70,10 +70,15 @@ Never use session.user.id / user.id in queries — always derive via getDealerId
 Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
   Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
 
-## Git
-- ALWAYS push to both branches after every commit:
-  git push origin main && git push origin main:Shiftos --force
-- Vercel deploys from Shiftos branch
+## Git — single branch, always in sync
+- ONE branch: `main`. Vercel deploys from `main`. Local = origin/main = live site.
+- After EVERY commit, push immediately:
+  git push origin main
+- Never push to Shiftos or any other branch.
+- Before starting any work: git status → must say "up to date with origin/main"
+- If git status shows divergence, STOP and warn the user before doing anything else.
+- Never use --force on main without warning the user.
+- Never run git reset --hard without warning the user that local changes will be lost.
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
