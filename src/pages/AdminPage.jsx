@@ -3,6 +3,39 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 
+function MktSection({ label, hint, children }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "20px 24px" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: hint ? 6 : 16 }}>{label}</p>
+      {hint && <p style={{ fontSize: 11, color: "#4b5563", marginBottom: 14 }}>{hint}</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{children}</div>
+    </div>
+  );
+}
+
+function MktField({ label, hint, children }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ minWidth: 190 }}>
+        <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500, margin: 0 }}>{label}</p>
+        {hint && <p style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MktToggle({ label, value, onChange }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <button onClick={() => onChange(!value)} style={{ width: 36, height: 20, borderRadius: 10, background: value ? "rgba(220,38,38,0.7)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+        <span style={{ position: "absolute", top: 2, left: value ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "white", transition: "left 0.2s", display: "block" }} />
+      </button>
+      <span style={{ fontSize: 13, color: "#9ca3af" }}>{label}</span>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const [dealers, setDealers] = useState([]);
@@ -233,32 +266,6 @@ export default function AdminPage() {
       setTimeout(() => setMktSaved(false), 2500);
     }
   }
-
-  // Inner helpers for marketplace form
-  const MktSection = ({ label, hint, children }) => (
-    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "20px 24px" }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: hint ? 6 : 16 }}>{label}</p>
-      {hint && <p style={{ fontSize: 11, color: "#4b5563", marginBottom: 14 }}>{hint}</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{children}</div>
-    </div>
-  );
-  const MktField = ({ label, hint, children }) => (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-      <div style={{ minWidth: 190 }}>
-        <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500, margin: 0 }}>{label}</p>
-        {hint && <p style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-  const MktToggle = ({ label, value, onChange }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <button onClick={() => onChange(!value)} style={{ width: 36, height: 20, borderRadius: 10, background: value ? "rgba(220,38,38,0.7)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-        <span style={{ position: "absolute", top: 2, left: value ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "white", transition: "left 0.2s", display: "block" }} />
-      </button>
-      <span style={{ fontSize: 13, color: "#9ca3af" }}>{label}</span>
-    </div>
-  );
 
   const StatCard = ({ label, value, sub, color = "#e5e7eb" }) => (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "20px 24px" }}>
