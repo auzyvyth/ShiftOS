@@ -313,18 +313,42 @@ export default function CarDetailPage() {
   const handleShare = async () => {
     const url = window.location.href;
     const title = carTitle;
-    const text = [
-      carTitle,
+    const infoLines = [
       car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString('en-MY')}` : null,
-      car?.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
-      car?.colour,
-      car?.transmission,
+      car?.mileage       ? `${Number(car.mileage).toLocaleString('en-MY')} km`        : null,
       [car?.city, car?.state].filter(Boolean).join(', ') || null,
-    ].filter(Boolean).join(' · ');
+      car?.body_type     || null,
+      car?.transmission  || null,
+    ].filter(Boolean);
+    const text = `${title}\n${infoLines.join(' · ')}`;
+
+    /* attribute share to the listing's dealer/agent */
+    trackEvent(supabase, 'share', {
+      car_id:       car?.id,
+      dealer_id:    car?.dealer_id,
+      salesman_slug: car?.salesman_slug || null,
+      metadata: { brand: car?.brand, model: car?.model, year: car?.year, price: car?.selling_price },
+    });
+
     if (navigator.share) {
+      /* try with thumbnail */
+      const thumb = car?.images?.[0];
+      if (thumb && !thumb.startsWith('/') && typeof navigator.canShare === 'function') {
+        try {
+          const resp = await fetch(thumb);
+          const blob = await resp.blob();
+          const file = new File([blob], 'car.jpg', { type: blob.type });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ title, text: infoLines.join(' · '), url, files: [file] });
+            return;
+          }
+        } catch {} // CORS or unsupported — fall through
+      }
       try { await navigator.share({ title, text, url }); return; } catch {}
     }
-    await navigator.clipboard.writeText(url);
+
+    /* clipboard fallback */
+    await navigator.clipboard.writeText(`${title}\n${infoLines.join(' · ')}\n${url}`);
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2000);
   };
