@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { X, Flame, Menu, Phone, Heart, Car, Sparkles, RefreshCw } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import SavedCarsPanel from './SavedCarsPanel';
+import AnnouncementBar from './AnnouncementBar';
+import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
 
 export default function MarketplaceHeader() {
   const [scrolled, setScrolled]      = useState(false);
@@ -10,6 +12,7 @@ export default function MarketplaceHeader() {
   const [conditionOpen, setCondOpen] = useState(false);
   const [savedOpen, setSavedOpen]    = useState(false);
   const { savedIds }                 = useSavedCars();
+  const { settings }                 = useMarketplaceSettings();
   const menuRef = useRef(null);
   const { pathname, search } = useLocation();
   const sp = new URLSearchParams(search);
@@ -33,6 +36,7 @@ export default function MarketplaceHeader() {
 
   return (
     <>
+      <AnnouncementBar />
       <style>{`
         .mh-root { position:sticky; top:0; z-index:100; transition:background 0.25s,box-shadow 0.25s; }
         .mh-root.scrolled { background:rgba(12,12,14,0.9)!important; backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 1px 0 rgba(255,255,255,0.06); }
@@ -126,8 +130,8 @@ export default function MarketplaceHeader() {
           </nav>
 
           <div style={{ display:'flex', alignItems:'center', gap:'12px', flexShrink:0 }}>
-            <a href="tel:+60174155191" className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
-              <Phone size={13} /> +60 17-415 5191
+            <a href={`tel:+${settings.support_whatsapp}`} className="mh-desktop-nav" style={{ display:'flex', alignItems:'center', gap:'6px', color:'#6b7280', fontSize:'13px', fontWeight:'500', textDecoration:'none', fontFamily:"'Outfit',sans-serif" }}>
+              <Phone size={13} /> {settings.support_phone}
             </a>
             <a href="/login" className="mh-signin">Sign In</a>
             <a href="/onboarding" className="mh-cta">List Your Car</a>
@@ -158,7 +162,7 @@ export default function MarketplaceHeader() {
             <Heart size={15} fill={savedIds.size > 0 ? '#f87171' : 'none'} stroke="currentColor" />
             Saved Cars {savedIds.size > 0 && `(${savedIds.size})`}
           </button>
-          <a href="tel:+60174155191" className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> +60 17-415 5191</a>
+          <a href={`tel:+${settings.support_whatsapp}`} className="mh-mobile-link" style={{ display:'flex', alignItems:'center', gap:'8px' }}><Phone size={14} /> {settings.support_phone}</a>
           <a href="/login" className="mh-mobile-link" style={{ color:'#9ca3af', borderBottom:'none' }} onClick={() => setMenuOpen(false)}>Sign In →</a>
           <a href="/onboarding" className="mh-mobile-cta" onClick={() => setMenuOpen(false)}>List Your Car</a>
         </div>

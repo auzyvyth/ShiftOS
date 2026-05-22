@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -29,6 +30,14 @@ export default function AdminPage() {
   const [blastModal, setBlastModal] = useState(false);
   const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
   const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
+
+  // Marketplace settings tab
+  const [mktSettings, setMktSettings] = useState(null);
+  const [mktLoading,  setMktLoading]  = useState(false);
+  const [mktSaving,   setMktSaving]   = useState(false);
+  const [mktSaved,    setMktSaved]    = useState(false);
+
+  const MKT_ID = '00000000-0000-0000-0000-000000000001';
 
   useEffect(() => {
     async function init() {
@@ -201,6 +210,56 @@ export default function AdminPage() {
       .some(v => v?.toLowerCase().includes(salesmanSearch.toLowerCase()))
   );
 
+  // Load marketplace settings when tab is first opened
+  useEffect(() => {
+    if (activeTab === 'marketplace' && !mktSettings && !mktLoading) {
+      setMktLoading(true);
+      supabase.from('marketplace_settings').select('*')
+        .eq('id', MKT_ID).maybeSingle()
+        .then(({ data }) => { setMktSettings(data || { ...MARKETPLACE_FALLBACK }); setMktLoading(false); });
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function saveMarketplaceSettings() {
+    setMktSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('marketplace_settings')
+      .update({ ...mktSettings, updated_at: new Date().toISOString(), updated_by: user.id })
+      .eq('id', MKT_ID);
+    setMktSaving(false);
+    if (!error) {
+      setMktSaved(true);
+      invalidateMarketplaceSettingsCache();
+      setTimeout(() => setMktSaved(false), 2500);
+    }
+  }
+
+  // Inner helpers for marketplace form
+  const MktSection = ({ label, hint, children }) => (
+    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "20px 24px" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: hint ? 6 : 16 }}>{label}</p>
+      {hint && <p style={{ fontSize: 11, color: "#4b5563", marginBottom: 14 }}>{hint}</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{children}</div>
+    </div>
+  );
+  const MktField = ({ label, hint, children }) => (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ minWidth: 190 }}>
+        <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500, margin: 0 }}>{label}</p>
+        {hint && <p style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+  const MktToggle = ({ label, value, onChange }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <button onClick={() => onChange(!value)} style={{ width: 36, height: 20, borderRadius: 10, background: value ? "rgba(220,38,38,0.7)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+        <span style={{ position: "absolute", top: 2, left: value ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "white", transition: "left 0.2s", display: "block" }} />
+      </button>
+      <span style={{ fontSize: 13, color: "#9ca3af" }}>{label}</span>
+    </div>
+  );
+
   const StatCard = ({ label, value, sub, color = "#e5e7eb" }) => (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "20px 24px" }}>
       <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
@@ -214,7 +273,8 @@ export default function AdminPage() {
     { id: "salesman", label: `Salesmen (${salesmen.length})` },
     { id: "approvals", label: "Approvals", badge: pendingListings.length },
     { id: "waitlist", label: `Waitlist (${waitlist.length})` },
-    { id: "platform", label: "Platform Stats" },
+    { id: "platform",    label: "Platform Stats" },
+    { id: "marketplace", label: "Marketplace" },
   ];
 
   return (
@@ -782,6 +842,196 @@ export default function AdminPage() {
                 );
               })()}
             </>
+
+          ) : activeTab === "marketplace" ? (
+            /* ── MARKETPLACE TAB ── */
+            <div style={{ maxWidth: 760 }}>
+              <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>Marketplace Settings</p>
+                  <p style={{ fontSize: 12, color: "#6b7280" }}>Controls what appears on xdrive.my — changes go live immediately after saving.</p>
+                </div>
+                <button
+                  onClick={saveMarketplaceSettings}
+                  disabled={mktSaving || !mktSettings}
+                  className="adm-btn"
+                  style={{ fontSize: 13, padding: "9px 22px", background: mktSaved ? "rgba(34,197,94,0.15)" : "rgba(220,38,38,0.15)", border: `1px solid ${mktSaved ? "rgba(34,197,94,0.35)" : "rgba(220,38,38,0.35)"}`, color: mktSaved ? "#4ade80" : "#f87171", opacity: mktSaving || !mktSettings ? 0.6 : 1, cursor: mktSaving || !mktSettings ? "not-allowed" : "pointer" }}>
+                  {mktSaved ? "✓ Saved" : mktSaving ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
+
+              {mktLoading || !mktSettings ? (
+                <div style={{ textAlign: "center", padding: 60, color: "#4b5563" }}>Loading settings…</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                  {/* Branding */}
+                  <MktSection label="Branding">
+                    <MktField label="Brand Tagline" hint="Shown in footer brand column">
+                      <textarea
+                        value={mktSettings.brand_tagline || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, brand_tagline: e.target.value }))}
+                        rows={3}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240, resize: "vertical", lineHeight: 1.5 }}
+                      />
+                    </MktField>
+                  </MktSection>
+
+                  {/* Support Contacts */}
+                  <MktSection label="Support Contacts">
+                    <MktField label="Support Email">
+                      <input
+                        type="email"
+                        value={mktSettings.support_email || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, support_email: e.target.value }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                      />
+                    </MktField>
+                    <MktField label="WhatsApp Number" hint="Digits only, no + sign (e.g. 60174155191)">
+                      <input
+                        type="text"
+                        value={mktSettings.support_whatsapp || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, support_whatsapp: e.target.value.replace(/\D/g, "") }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="60174155191"
+                      />
+                    </MktField>
+                    <MktField label="Phone Display Text" hint="Human-readable format shown in header/footer">
+                      <input
+                        type="text"
+                        value={mktSettings.support_phone || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, support_phone: e.target.value }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="+60 17-415 5191"
+                      />
+                    </MktField>
+                  </MktSection>
+
+                  {/* Social Links */}
+                  <MktSection label="Social Links">
+                    <MktField label="Instagram URL">
+                      <input
+                        type="url"
+                        value={mktSettings.social_instagram || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, social_instagram: e.target.value }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="https://instagram.com/xdrive.my"
+                      />
+                    </MktField>
+                    <MktField label="Facebook URL">
+                      <input
+                        type="url"
+                        value={mktSettings.social_facebook || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, social_facebook: e.target.value }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="https://facebook.com/xdrive.my"
+                      />
+                    </MktField>
+                    <MktField label="TikTok URL" hint="Leave blank to hide the TikTok icon">
+                      <input
+                        type="url"
+                        value={mktSettings.social_tiktok || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, social_tiktok: e.target.value || null }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="https://tiktok.com/@xdrive.my"
+                      />
+                    </MktField>
+                  </MktSection>
+
+                  {/* Trust Bar */}
+                  <MktSection label="Trust Bar" hint="4 badges shown below the header on xdrive.my">
+                    {(mktSettings.trust_badges || []).map((badge, i) => (
+                      <MktField key={i} label={`Badge ${i + 1}`}>
+                        <input
+                          type="text"
+                          value={badge.text || ""}
+                          onChange={e => {
+                            const badges = [...(mktSettings.trust_badges || [])];
+                            badges[i] = { ...badges[i], text: e.target.value };
+                            setMktSettings(s => ({ ...s, trust_badges: badges }));
+                          }}
+                          className="adm-input"
+                          style={{ flex: 1, minWidth: 240 }}
+                        />
+                      </MktField>
+                    ))}
+                  </MktSection>
+
+                  {/* Footer */}
+                  <MktSection label="Footer" hint="Use {year} as a placeholder for the current year">
+                    <MktField label="Copyright Text">
+                      <input
+                        type="text"
+                        value={mktSettings.footer_copyright || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, footer_copyright: e.target.value }))}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240 }}
+                        placeholder="© {year} XDrive Malaysia Sdn Bhd. All rights reserved."
+                      />
+                    </MktField>
+                  </MktSection>
+
+                  {/* ShiftOS DMS Band */}
+                  <MktSection label="ShiftOS DMS Band" hint="The dark promotional band at the bottom of the footer">
+                    <MktToggle
+                      label="Show ShiftOS DMS promotional band in footer"
+                      value={!!mktSettings.shiftos_band_enabled}
+                      onChange={val => setMktSettings(s => ({ ...s, shiftos_band_enabled: val }))}
+                    />
+                  </MktSection>
+
+                  {/* Announcement Bar */}
+                  <MktSection label="Announcement Bar" hint="Dismissible red banner shown above the navigation on xdrive.my">
+                    <MktToggle
+                      label="Show announcement bar"
+                      value={!!mktSettings.announcement_enabled}
+                      onChange={val => setMktSettings(s => ({ ...s, announcement_enabled: val }))}
+                    />
+                    <MktField label="Announcement Text">
+                      <input
+                        type="text"
+                        value={mktSettings.announcement_text || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, announcement_text: e.target.value || null }))}
+                        disabled={!mktSettings.announcement_enabled}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240, opacity: mktSettings.announcement_enabled ? 1 : 0.4 }}
+                        placeholder="e.g. Ramadan sale — all listings verified this week"
+                      />
+                    </MktField>
+                    <MktField label="Link (optional)" hint="Makes the bar clickable — leave blank for no link">
+                      <input
+                        type="url"
+                        value={mktSettings.announcement_link || ""}
+                        onChange={e => setMktSettings(s => ({ ...s, announcement_link: e.target.value || null }))}
+                        disabled={!mktSettings.announcement_enabled}
+                        className="adm-input"
+                        style={{ flex: 1, minWidth: 240, opacity: mktSettings.announcement_enabled ? 1 : 0.4 }}
+                        placeholder="https://xdrive.my/…"
+                      />
+                    </MktField>
+                  </MktSection>
+
+                  {/* Bottom Save */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8 }}>
+                    <button
+                      onClick={saveMarketplaceSettings}
+                      disabled={mktSaving}
+                      className="adm-btn"
+                      style={{ fontSize: 13, padding: "9px 28px", background: mktSaved ? "rgba(34,197,94,0.15)" : "rgba(220,38,38,0.15)", border: `1px solid ${mktSaved ? "rgba(34,197,94,0.35)" : "rgba(220,38,38,0.35)"}`, color: mktSaved ? "#4ade80" : "#f87171", opacity: mktSaving ? 0.6 : 1, cursor: mktSaving ? "not-allowed" : "pointer" }}>
+                      {mktSaved ? "✓ Saved" : mktSaving ? "Saving…" : "Save Changes"}
+                    </button>
+                  </div>
+
+                </div>
+              )}
+            </div>
 
           ) : (
             /* ── DEALERS TAB ── */
