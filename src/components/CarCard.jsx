@@ -17,7 +17,7 @@ const getAgeDays = (createdAt) => {
 
 const XDRIVE_PHONE = '60174155191';
 
-const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
+const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }) => {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -45,10 +45,17 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
   const isReserved  = status === 'reserved';
   const isRecon     = car.is_recon || car.condition === 'recon' || false;
 
-  const image = !imgError && (
+  const rawImage = !imgError && (
     (Array.isArray(car.images) && car.images[0]) ||
     car.image_url || car.photo_url || null
   );
+
+  const toThumb = (url) => {
+    if (!url || !url.includes('/storage/v1/object/public/')) return url;
+    return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
+  };
+
+  const image = toThumb(rawImage);
 
   const auctionGrade  = car.auction_grade || null;
   const interiorGrade = car.interior_grade || null;
@@ -212,7 +219,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext }) => {
               <img
                 src={image}
                 alt={`${year} ${brand} ${model}`}
-                loading="lazy"
+                loading={priority ? 'eager' : 'lazy'}
+                fetchPriority={priority ? 'high' : 'auto'}
                 onError={() => setImgError(true)}
                 onLoad={() => setImgLoaded(true)}
                 style={{

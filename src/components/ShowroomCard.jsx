@@ -31,7 +31,12 @@ const XDRIVE_WA = '60174155191';
 //   inCompare  — bool: whether this car is in the compare tray
 //   compareFull — bool: compare tray at max capacity
 //   onCompare  — callback to add/remove from compare
-export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare }) {
+const toThumb = (url) => {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'width=520&quality=75&format=webp';
+};
+
+export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -52,7 +57,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const isHot        = hasDiscount && discountPct >= 3;
   const photoCount   = Array.isArray(car.images) ? car.images.length : 0;
 
-  const image      = !imgError && (Array.isArray(car.images) && car.images[0] || null);
+  const image      = !imgError && toThumb(Array.isArray(car.images) && car.images[0] || null);
   const normalTx   = ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' : ['Manual', 'MT'].includes(transmission) ? 'Manual' : transmission || null;
   const waText     = `Hi, I'm interested in the ${year} ${brand} ${model}${variant ? ' ' + variant : ''}. Can you share more details?`;
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
@@ -90,6 +95,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             <img
               src={image}
               alt={`${year} ${brand} ${model}`}
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : 'auto'}
               onError={() => setImgError(true)}
               onLoad={() => setImgLoaded(true)}
               style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s', filter: isSold ? 'grayscale(60%)' : 'none' }}

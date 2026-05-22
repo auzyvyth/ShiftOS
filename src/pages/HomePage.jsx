@@ -763,8 +763,8 @@ const HomePage = () => {
             <div className="car-grid-hp">
               {loading
                 ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-                : hotDeals.map((c) => (
-                    <CarCard key={c.id} car={c} ctaContext={ctaCtx} />
+                : hotDeals.map((c, i) => (
+                    <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
                   ))}
             </div>
           </div>
@@ -797,8 +797,8 @@ const HomePage = () => {
           <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
             {loading
               ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
-              : featured.map((c) => (
-                  <CarCard key={c.id} car={c} ctaContext={ctaCtx} />
+              : featured.map((c, i) => (
+                  <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
                 ))}
           </div>
           <div style={{ textAlign: "center" }}>

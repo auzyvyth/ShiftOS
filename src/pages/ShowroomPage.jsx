@@ -528,7 +528,7 @@ export default function ShowroomPage() {
                           <button onClick={resetAll} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 28px', borderRadius:'50px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Browse All Cars</button>
                         </div>
                       )
-                      : cars.map(car=>{
+                      : cars.map((car,i)=>{
                           const inCompare=isInCompare(car.id), compareFull=compareIds.length>=4&&!inCompare;
                           return (
                             <ShowroomCard
@@ -538,6 +538,7 @@ export default function ShowroomPage() {
                               inCompare={inCompare}
                               compareFull={compareFull}
                               onCompare={()=>{ inCompare?removeFromCompare(car.id):addToCompare(car.id); }}
+                              priority={i===0}
                             />
                           );
                         })
