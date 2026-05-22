@@ -33,6 +33,8 @@ import MarketplacePage from "./pages/MarketplacePage";
 import ShowroomPage from "./pages/ShowroomPage";
 import GuidesPage from "./pages/GuidesPage";
 import WaitlistPage from "./pages/WaitlistPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
@@ -103,6 +105,8 @@ function App() {
         <Route path="/shiftos" element={<ShiftOSPage />} />
         <Route path="/mindmap" element={<MindMapPage />} />
         <Route path="/waitlist" element={<WaitlistPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         {/* Dealer slug catch-all — redirects to subdomain */}
         <Route path="/s/:slug" element={<SalesmanProfilePage />} />

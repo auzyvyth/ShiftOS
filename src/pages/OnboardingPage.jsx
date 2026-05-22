@@ -636,7 +636,7 @@ function LegalContent() {
         <LP>To access the dealer dashboard you must register and provide accurate, complete information. You agree to: provide truthful registration information including your name, IC number, and business details; maintain the security of your login credentials and not share them with unauthorised persons; notify us immediately of any unauthorised access; ensure your use complies with all applicable Malaysian laws and regulations. We reserve the right to suspend or terminate accounts that provide false information or violate these Terms.</LP>
 
         <LH>3. SUBSCRIPTION PLANS AND PAYMENT</LH>
-        <LP>Standard Plan: RM 1,000/month. Premium Plan: RM 2,500/month. Salesman Lite: Free (limited features, subject to fair use). All prices are in MYR and exclusive of applicable taxes. New dealer accounts receive a 14-day free trial with full platform access. No payment information is required during the trial. Subscriptions are billed monthly in advance. You may cancel at any time by contacting Auzyvyth@gmail.com. Cancellation takes effect at the end of the current billing period. No refunds for partial months. Data remains accessible for 30 days after cancellation before deletion.</LP>
+        <LP>Standard Plan: RM 1,000/month. Premium Plan: RM 2,500/month. Salesman Lite: Free (limited features, subject to fair use). All prices are in MYR and exclusive of applicable taxes. New dealer accounts receive a 14-day free trial with full platform access. No payment information is required during the trial. Subscriptions are billed monthly in advance. You may cancel at any time by contacting legal@xdrive.my. Cancellation takes effect at the end of the current billing period. No refunds for partial months. Data remains accessible for 30 days after cancellation before deletion.</LP>
 
         <LH>4. ACCEPTABLE USE</LH>
         <LP>You agree not to: upload fraudulent, stolen, or non-existent vehicle listings; misrepresent vehicle condition, mileage, ownership history, or specifications; collect or process customer data without appropriate consent; violate any applicable Malaysian law including the Road Transport Act 1987, Consumer Protection Act 1999, or PDPA 2010; attempt to circumvent, reverse engineer, or compromise the Platform's security; use the Platform to harass, defraud, or deceive any person; upload defamatory, obscene, or intellectual-property-infringing content. Violation may result in immediate account suspension without refund.</LP>
@@ -666,7 +666,7 @@ function LegalContent() {
         <LP>We may update these Terms from time to time with at least 14 days notice of material changes via in-app notification or email. Continued use after the effective date constitutes acceptance.</LP>
 
         <LH>13. CONTACT</LH>
-        <LP>For questions regarding these Terms: Email: Auzyvyth@gmail.com · Website: https://xdrive.my</LP>
+        <LP>For questions regarding these Terms: Email: legal@xdrive.my · Website: https://xdrive.my</LP>
       </LegalSection>
 
       {/* ── PRIVACY POLICY ── */}
@@ -674,7 +674,7 @@ function LegalContent() {
         <LP>Effective Date: 20 May 2026. This Privacy Policy describes how ShiftOS collects, uses, stores, and protects personal data in connection with the ShiftOS platform and xdrive.my marketplace. Prepared in compliance with the Personal Data Protection Act 2010 (PDPA) of Malaysia.</LP>
 
         <LH>1. WHO WE ARE</LH>
-        <LP>ShiftOS (operated by Airy, sole proprietor) operates ShiftOS, a SaaS platform for independent used car dealerships in Malaysia, accessible at https://xdrive.my. For data protection enquiries: Auzyvyth@gmail.com.</LP>
+        <LP>ShiftOS (operated by Airy, sole proprietor) operates ShiftOS, a SaaS platform for independent used car dealerships in Malaysia, accessible at https://xdrive.my. For data protection enquiries: legal@xdrive.my.</LP>
 
         <LH>2. DATA WE COLLECT</LH>
         <LP>Dealer and Salesman accounts: full name, email address, phone number, IC (MyKad) number (for account verification), dealership name, SSM registration number, business address, profile photo, subdomain, and platform usage data.</LP>
@@ -691,13 +691,13 @@ function LegalContent() {
         <LP>We do not sell, rent or trade your personal data. We may share data with: Supabase Inc. (database and authentication infrastructure); Vercel Inc. (hosting and edge network); Telegram (if you opt in to notifications, your chat ID is used to deliver alerts); Malaysian regulatory authorities if required by law or court order. All third-party providers maintain appropriate security and confidentiality obligations.</LP>
 
         <LH>6. DATA RETENTION</LH>
-        <LP>Account data: retained for the duration of your subscription plus 12 months after termination. Customer lead and enquiry data: retained as long as your dealer account is active. Analytics data: retained for 24 months on a rolling basis. Error logs: retained for 90 days. You may request deletion at any time by contacting Auzyvyth@gmail.com. Deletion requests will be actioned within 30 days, subject to legal retention obligations.</LP>
+        <LP>Account data: retained for the duration of your subscription plus 12 months after termination. Customer lead and enquiry data: retained as long as your dealer account is active. Analytics data: retained for 24 months on a rolling basis. Error logs: retained for 90 days. You may request deletion at any time by contacting legal@xdrive.my. Deletion requests will be actioned within 30 days, subject to legal retention obligations.</LP>
 
         <LH>7. DATA SECURITY</LH>
         <LP>We implement: Row Level Security (RLS) on all database tables; encrypted data transmission via HTTPS/TLS; access controls limiting data access to authorised roles only; regular security audits and policy reviews. No method of transmission or storage is 100% secure. You are responsible for maintaining the confidentiality of your login credentials.</LP>
 
         <LH>8. YOUR RIGHTS UNDER PDPA 2010</LH>
-        <LP>As a data subject under the Personal Data Protection Act 2010, you have the right to: access the personal data we hold about you; correct inaccurate or incomplete personal data; withdraw consent for processing where consent is the legal basis; request deletion of your personal data (subject to legal obligations); object to processing for purposes beyond what you were informed of. To exercise these rights, contact Auzyvyth@gmail.com. We will respond within 21 days.</LP>
+        <LP>As a data subject under the Personal Data Protection Act 2010, you have the right to: access the personal data we hold about you; correct inaccurate or incomplete personal data; withdraw consent for processing where consent is the legal basis; request deletion of your personal data (subject to legal obligations); object to processing for purposes beyond what you were informed of. To exercise these rights, contact legal@xdrive.my. We will respond within 21 days.</LP>
 
         <LH>9. COOKIES AND LOCAL STORAGE</LH>
         <LP>ShiftOS does not use third-party tracking cookies. We use browser localStorage to maintain your authenticated session while logged in. This data is cleared when you log out. We do not use advertising or analytics cookies.</LP>
@@ -709,7 +709,7 @@ function LegalContent() {
         <LP>We will notify registered dealers of material changes via in-app notification or email at least 14 days before changes take effect. Continued use of the platform after the effective date constitutes acceptance.</LP>
 
         <LH>12. CONTACT</LH>
-        <LP>For questions, concerns or data access requests: Email: Auzyvyth@gmail.com · Website: https://xdrive.my</LP>
+        <LP>For questions, concerns or data access requests: Email: legal@xdrive.my · Website: https://xdrive.my</LP>
       </LegalSection>
 
       {/* ── DATA PROCESSING AGREEMENT ── */}
@@ -745,7 +745,7 @@ function LegalContent() {
         <LP>This DPA is governed by the laws of Malaysia. Any disputes shall be subject to the jurisdiction of the Malaysian courts.</LP>
 
         <LH>10. CONTACT FOR DATA PROTECTION MATTERS</LH>
-        <LP>For any data protection queries or to exercise rights under this DPA, contact ShiftOS at Auzyvyth@gmail.com.</LP>
+        <LP>For any data protection queries or to exercise rights under this DPA, contact ShiftOS at legal@xdrive.my.</LP>
 
         <LP style={{ marginTop: 20, padding: "12px 14px", background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 2 }}>
           By scrolling to the bottom and clicking "I Agree — Continue", you confirm that you have read, understood, and agree to the Terms of Service, Privacy Policy, and Data Processing Agreement above. Your consent is recorded with a timestamp in compliance with the Personal Data Protection Act 2010 (Malaysia).

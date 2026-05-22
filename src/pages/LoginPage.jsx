@@ -646,7 +646,10 @@ export default function LoginPage() {
             Don't have an account? <strong>Create for free →</strong>
           </a>
           <p className="lr-tagline">
-            Free for salesmen · 14-day trial for dealers
+            Free for salesmen · 14-day trial for dealers ·{" "}
+            <a href="/terms" style={{ color: "inherit", textDecoration: "underline" }}>Terms</a>
+            {" · "}
+            <a href="/privacy" style={{ color: "inherit", textDecoration: "underline" }}>Privacy</a>
           </p>
         </div>
       </div>
