@@ -788,7 +788,7 @@ export default function MarketplacePage() {
                   { label:'Under RM 200k', value:'200000', iconColor:'#ef4444', bg:'rgba(220,38,38,0.18)'   },
                   { label:'Open Budget',   value:'',       iconColor:'#ffffff', bg:'rgba(255,255,255,0.10)' },
                 ].map(({ label, value, iconColor, bg }) => (
-                  <Link key={label} to={value ? `/cars?max_price=${value}` : '/cars'} className="mp-budget-item">
+                  <Link key={label} to={value ? `/showroom?max_price=${value}` : '/showroom'} className="mp-budget-item">
                     <div className="mp-budget-icon" style={{ background: bg }}>
                       <Car size={28} color={iconColor} strokeWidth={1.25} />
                     </div>
