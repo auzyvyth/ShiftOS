@@ -61,9 +61,9 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
         </div>
         <Link
           to={`/showroom?body_type=${bodyType}`}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#9ca3af', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0, transition: 'color 0.15s' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#374151', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0, transition: 'color 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
-          onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}
+          onMouseLeave={e => e.currentTarget.style.color = '#374151'}
         >
           View All <ArrowRight size={11} />
         </Link>
@@ -71,7 +71,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
 
       <div style={{ position: 'relative' }}>
         {canLeft && (
-          <button onClick={() => scroll(-1)} style={{
+          <button onClick={() => scroll(-1)} aria-label={`Scroll ${title} left`} style={{
             position: 'absolute', left: -16, top: '50%', transform: 'translateY(-50%)',
             zIndex: 10, width: 32, height: 32, borderRadius: '50%',
             background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
@@ -106,7 +106,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
         </div>
 
         {canRight && !isEmpty && !loading && (
-          <button onClick={() => scroll(1)} style={{
+          <button onClick={() => scroll(1)} aria-label={`Scroll ${title} right`} style={{
             position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)',
             zIndex: 10, width: 32, height: 32, borderRadius: '50%',
             background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
