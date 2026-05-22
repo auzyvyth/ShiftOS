@@ -101,7 +101,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
     monthly:     '#64748B',
     cellBg:      '#F1F5F9',
     cellBorder:  '#E2E8F0',
-    cellLabel:   '#94A3B8',
+    cellLabel:   '#475569',
     cellValue:   '#1E293B',
     divider:     '#E2E8F0',
     waBtn:       isSold ? { bg:'#F1F5F9', border:'1px solid #E2E8F0', color:'#94A3B8' }
@@ -251,6 +251,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           {!isSold && (
             <button
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}
+              aria-label={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
               title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
               style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 10,
@@ -417,6 +418,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={`WhatsApp enquiry for ${year} ${brand} ${model}`}
               className="cc-wa"
               onClick={e => {
                 e.stopPropagation();

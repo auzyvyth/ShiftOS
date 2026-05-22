@@ -680,7 +680,7 @@ export default function MarketplacePage() {
         onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
       />
 
-      <div style={S.page}>
+      <main style={S.page}>
         {/* ── Hero ── */}
         <section className="mp-hero-section" style={{ background:'#08090f', position:'relative' }}>
 
@@ -754,7 +754,7 @@ export default function MarketplacePage() {
 
                 <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
                   <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                    <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)}
+                    <select value={heroBudget} onChange={e=>setHeroBudget(e.target.value)} aria-label="Budget"
                       style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroBudget?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                       <option value="" style={{ background:'#0d1117' }}>Any budget</option>
                       {PRICE_STEPS.filter(s=>s.value).map(o => <option key={o.value} value={o.value} style={{ background:'#0d1117' }}>{o.label}</option>)}
@@ -762,7 +762,7 @@ export default function MarketplacePage() {
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="2.5" strokeLinecap="round" style={{ position:'absolute', right:9, pointerEvents:'none' }}><path d="M6 9l6 6 6-6"/></svg>
                   </div>
                   <div style={{ position:'relative', display:'flex', alignItems:'center', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', overflow:'hidden' }}>
-                    <select value={heroState} onChange={e=>setHeroState(e.target.value)}
+                    <select value={heroState} onChange={e=>setHeroState(e.target.value)} aria-label="State"
                       style={{ border:'none', outline:'none', padding:'8px 26px 8px 12px', fontSize:'12px', color:heroState?'#fff':'rgba(255,255,255,0.36)', background:'transparent', fontFamily:"'Outfit',sans-serif", cursor:'pointer', appearance:'none' }}>
                       <option value="" style={{ background:'#0d1117' }}>Any state</option>
                       {MY_STATES.map(s => <option key={s} value={s} style={{ background:'#0d1117' }}>{s}</option>)}
@@ -844,7 +844,7 @@ export default function MarketplacePage() {
                 ]},
               ].map(({ groupLabel, pills }) => (
                 <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
                   {pills.map(({ label, paramKey, paramVal }) => {
                     const isActive = searchParams.get(paramKey) === paramVal;
                     return (
@@ -938,7 +938,7 @@ export default function MarketplacePage() {
                       ) : null}
                       <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
                     </div>
-                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#6b7280', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
+                    <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#374151', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
                   </button>
                 );
               })}
@@ -978,7 +978,7 @@ export default function MarketplacePage() {
                   {loading ? 'Loading…' : `${totalCount.toLocaleString()} car${totalCount !== 1 ? 's' : ''} found`}
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                  <label htmlFor="sort-select" style={{ fontSize:'14px', color:'#6b7280', whiteSpace:'nowrap' }}>Sort by</label>
+                  <label htmlFor="sort-select" style={{ fontSize:'14px', color:'#374151', whiteSpace:'nowrap' }}>Sort by</label>
                   <select id="sort-select" className="mp-select" style={{ ...S.select, width:'auto', fontSize:'14px', padding:'9px 14px' }} value={sort} onChange={e => setParam('sort', e.target.value)}>
                     {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background:'#fff' }}>{o.label}</option>)}
                   </select>
@@ -1084,7 +1084,7 @@ export default function MarketplacePage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <MarketplaceFooter />
     </>
