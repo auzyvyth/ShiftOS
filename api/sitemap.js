@@ -22,8 +22,9 @@ function xmlEscape(s) {
     .replace(/"/g, "&quot;");
 }
 
-function buildSitemap(baseUrl, staticRoutes, cars) {
+function buildSitemap(baseUrl, staticRoutes, cars, isSubdomain) {
   const today = new Date().toISOString().split("T")[0];
+  const carBase = isSubdomain ? "/cars/" : "/showroom/";
 
   const staticUrls = staticRoutes
     .map(
@@ -52,7 +53,7 @@ function buildSitemap(baseUrl, staticRoutes, cars) {
         : "";
       return `
   <url>
-    <loc>${xmlEscape(baseUrl + "/cars/" + slug)}</loc>
+    <loc>${xmlEscape(baseUrl + carBase + slug)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>${imageTag}
@@ -83,11 +84,17 @@ export default async function handler(req) {
   const subdomain = getSubdomain(host);
   const baseUrl = `https://${host}`;
 
-  const staticRoutes = [
-    { path: "/", changefreq: "daily", priority: "1.0" },
-    { path: "/cars", changefreq: "daily", priority: "0.9" },
-    { path: "/calculator", changefreq: "monthly", priority: "0.6" },
-  ];
+  const staticRoutes = subdomain
+    ? [
+        { path: "/",            changefreq: "daily",   priority: "1.0" },
+        { path: "/cars",        changefreq: "daily",   priority: "0.9" },
+        { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
+      ]
+    : [
+        { path: "/",            changefreq: "daily",   priority: "1.0" },
+        { path: "/showroom",    changefreq: "daily",   priority: "0.9" },
+        { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
+      ];
 
   let cars = [];
 
@@ -117,7 +124,7 @@ export default async function handler(req) {
   // Filter out any rows with no slug
   cars = cars.filter((c) => c.slug);
 
-  return new Response(buildSitemap(baseUrl, staticRoutes, cars), {
+  return new Response(buildSitemap(baseUrl, staticRoutes, cars, !!subdomain), {
     status: 200,
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
