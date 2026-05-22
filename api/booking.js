@@ -26,7 +26,9 @@ export default async function handler(req, res) {
   }
 
   const dt = new Date(appointmentDate);
-  if (isNaN(dt.getTime()) || dt < new Date()) {
+  const todayUTC = new Date();
+  todayUTC.setUTCHours(0, 0, 0, 0);
+  if (isNaN(dt.getTime()) || dt < todayUTC) {
     return res.status(400).json({ error: 'Invalid appointment date' });
   }
 
