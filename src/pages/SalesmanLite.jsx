@@ -815,6 +815,25 @@ export default function SalesmanLite() {
                 if (payload.eventType === "UPDATE") setEnquiries((p) => p.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e));
               },
             )
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings", filter: `dealer_id=eq.${uid}` },
+              (payload) => {
+                setMyListings((p) => p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                writeCache(`slite_listings_${uid}`, myListings.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                if (payload.new.status === "available" && payload.old?.status === "pending_approval") {
+                  setFilterStatus("available");
+                  toast.success("Listing approved!", { description: `${payload.new.brand} ${payload.new.model} is now live.` });
+                }
+                if (payload.new.status === "rejected" && payload.old?.status === "pending_approval") {
+                  setFilterStatus("rejected");
+                  toast.error("Listing rejected", { description: `${payload.new.brand} ${payload.new.model} was not approved.` });
+                }
+              },
+            )
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings", filter: `assigned_to=eq.${uid}` },
+              (payload) => {
+                setMyListings((p) => p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+              },
+            )
             .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `salesman_id=eq.${uid}` },
               async (payload) => {
                 if (payload.eventType === "INSERT") {
