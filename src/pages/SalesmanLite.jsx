@@ -559,7 +559,7 @@ export default function SalesmanLite() {
       }
 
       // Premium standalone accounts go to their own page
-      if (profileData.plan === "salesman_premium") {
+      if (profileData.plan === "salesman_full") {
         navigate("/salesman-premium", { replace: true });
         return;
       }
