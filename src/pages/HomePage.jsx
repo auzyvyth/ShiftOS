@@ -34,6 +34,7 @@ import {
   getSlugFromURL,
   trackEvent,
 } from "../utils/analytics";
+import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
 
@@ -183,6 +184,7 @@ const glassCard = {
 
 // ── HomePage ──────────────────────────────────────────────────────────────────
 const HomePage = () => {
+  useMarketplaceTracking(!isSubdomain());
   const { t } = useTranslation();
   const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant, loading: tenantLoading } = useTenant();

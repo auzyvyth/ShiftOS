@@ -8,6 +8,7 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
+import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import { PriceDrumPicker, PRICE_STEPS } from '../components/PriceDrumPicker';
 import { CAR_DATA } from '../components/CarForm';
@@ -75,6 +76,7 @@ const sanitize = {
 
 /* ── Main ────────────────────────────────────────────────────────────────── */
 export default function ShowroomPage() {
+  useMarketplaceTracking();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const ctaCtx = useCTAContext();

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +13,7 @@ import { motion } from 'framer-motion';
 import { isSubdomain } from '../hooks/useTenant';
 
 const CalculatorPage = () => {
+  useMarketplaceTracking();
   const [searchParams] = useSearchParams();
   const [initialPrice,   setInitialPrice]   = useState(85000);
   const [engineCcParam,  setEngineCcParam]  = useState(null);

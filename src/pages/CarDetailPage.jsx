@@ -45,6 +45,7 @@ import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { isSubdomain } from "../hooks/useTenant";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
+import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly } from "../utils/financing";
 
 /* ─── helpers ─── */
@@ -226,6 +227,7 @@ function useCarSchema(listing) {
 /* ─── main ─── */
 export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
+  useMarketplaceTracking(isXdrive);
 
   /* ── Light-theme colour tokens (xdrive.my only) ── */
   const th = isXdrive ? {
