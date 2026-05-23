@@ -5635,6 +5635,8 @@ export default function DashboardPage() {
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
+  const [visibleCount, setVisibleCount] = useState(30);
+  const sentinelRef = useRef(null);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [salesmen,         setSalesmen]         = useState([]);
@@ -5959,6 +5961,21 @@ export default function DashboardPage() {
       (l.vin_number || "").toLowerCase().includes(q)
     );
   }, [listings, searchQuery, statusFilter]);
+
+  // Reset visible window whenever the filtered set changes
+  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery]);
+
+  // Infinite scroll — expand visible window when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + 20); },
+      { rootMargin: '300px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [activeTab]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6757,7 +6774,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredListings.map((l) => {
+                          {filteredListings.slice(0, visibleCount).map((l) => {
                             const isSold = l.status === 'sold';
                             const extGC = gradeColor(String(l.auction_grade));
                             const sp = l.selling_price || l.price || 0;
@@ -6840,7 +6857,7 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden">
-                      {filteredListings.map((l) => {
+                      {filteredListings.slice(0, visibleCount).map((l) => {
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
@@ -6899,6 +6916,9 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+                    {visibleCount < filteredListings.length && (
+                      <div ref={sentinelRef} style={{ height: 1 }} />
+                    )}
                   </>
                 )}
                 </div>
