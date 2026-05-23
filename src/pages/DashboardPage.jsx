@@ -2704,7 +2704,7 @@ function MarketplaceAnalyticsTab({ profile }) {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsOwner(user?.email === 'fasttrackautos05@gmail.com');
+      setIsOwner(user?.id === '1e7bf24e-5b71-4c64-8d03-b60db5e59316');
     });
   }, []);
 
