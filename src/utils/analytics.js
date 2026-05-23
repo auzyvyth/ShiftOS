@@ -31,3 +31,37 @@ export async function trackEvent(supabase, eventType, payload = {}) {
     console.warn("Analytics error:", e);
   }
 }
+
+/**
+ * Track a marketplace page visit with time-on-page.
+ * Fires page_view immediately; fires page_exit with time_spent on cleanup.
+ * Returns a cleanup function — call it on component unmount.
+ */
+export function trackPageView(supabase, overridePath) {
+  const start = Date.now();
+  const path = overridePath || window.location.pathname;
+
+  trackEvent(supabase, "page_view", {
+    page_path: path,
+    dealer_id: null,
+  });
+
+  let fired = false;
+  function fireExit() {
+    if (fired) return;
+    fired = true;
+    const secs = Math.round((Date.now() - start) / 1000);
+    if (secs < 1) return; // ignore React StrictMode double-invoke in dev
+    trackEvent(supabase, "page_exit", {
+      page_path: path,
+      dealer_id: null,
+      time_spent: secs,
+    });
+  }
+
+  window.addEventListener("beforeunload", fireExit, { once: true });
+  return () => {
+    window.removeEventListener("beforeunload", fireExit);
+    fireExit();
+  };
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
@@ -6,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import CarCard from '../components/CarCard';
 
 export default function SavedCarsPage() {
+  useMarketplaceTracking();
   const { savedIds, ready } = useSavedCars();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { useSearchParams, Link } from 'react-router-dom';
 import { X, Share2, Check, ExternalLink, Flame, Trophy, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -109,6 +110,7 @@ function Row({ label, values, highlight, renderCell }) {
 const PARAM_KEYS = ['a', 'b', 'c', 'd'];
 
 export default function ComparePage() {
+  useMarketplaceTracking();
   const [searchParams, setSearchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
