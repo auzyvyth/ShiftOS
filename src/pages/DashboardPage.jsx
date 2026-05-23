@@ -5414,8 +5414,9 @@ function OutreachHub({ dealerId, listings }) {
         ))}
       </div>
 
+      <style>{`.outreach-body{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px}@media(max-width:768px){.outreach-body{grid-template-columns:1fr}}`}</style>
       {/* ── Two-column body ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'340px 1fr', gap:14, marginBottom:14 }}>
+      <div className="outreach-body">
 
         {/* LEFT — Lead list */}
         <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -5436,7 +5437,7 @@ function OutreachHub({ dealerId, listings }) {
           </div>
 
           {/* Lead scroll */}
-          <div style={{ overflowY:'auto', flex:1, maxHeight:440, padding:8 }}>
+          <div style={{ overflowY:'auto', flex:1, maxHeight:'min(440px, 55vw)', padding:8 }}>
             {visibleLeads.length === 0 ? (
               <div style={{ padding:'40px 16px', textAlign:'center', color:'#374151', fontSize:13 }}>
                 {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: SEGS[segment].color } })}
@@ -5715,7 +5716,7 @@ export default function DashboardPage() {
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", uid)   // always scoped to the live session user
+        .eq("id", uid)
         .maybeSingle();
       if (!active) return;
 
@@ -5726,7 +5727,6 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
-        // Correct dealer ID for manager/admin roles (their uid ≠ dealer_id)
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
       } else {
@@ -5735,19 +5735,20 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const { data: cars, error: carsError } = await supabase
-        .from("car_listings")
-        .select("*")
-        .eq("dealer_id", dealerId)
-        .order("created_at", { ascending: false });
-      if (active) setListings(carsError ? [] : cars || []);
-
-      const { data: sm } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .eq("role", "salesman")
-        .eq("dealer_id", dealerId);
+      const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
+        supabase
+          .from("car_listings")
+          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners")
+          .eq("dealer_id", dealerId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .eq("role", "salesman")
+          .eq("dealer_id", dealerId),
+      ]);
       if (active) {
+        setListings(carsError ? [] : cars || []);
         setSalesmen(sm || []);
         setLoading(false);
       }
