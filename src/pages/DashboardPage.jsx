@@ -2677,7 +2677,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
 
 // ─── MarketplaceAnalyticsTab ──────────────────────────────────────────────────
 function normalizePath(p) {
-  if (!p) return "(unknown)";
+  if (!p) return null;
   if (/^\/showroom\/.+/.test(p)) return "/showroom/:slug";
   if (/^\/cars\/.+/.test(p)) return "/cars/:slug";
   if (/^\/s\/.+/.test(p)) return "/s/:slug";
@@ -2700,11 +2700,16 @@ function MarketplaceAnalyticsTab({ profile }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(30);
-
-  const isSuperadmin = ["superadmin", "owner"].includes(profile?.role);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    if (!isSuperadmin) return;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsOwner(user?.email === 'fasttrackautos05@gmail.com');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOwner) return;
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -2722,7 +2727,7 @@ function MarketplaceAnalyticsTab({ profile }) {
     }
     load();
     return () => { cancelled = true; };
-  }, [range, isSuperadmin]);
+  }, [range, isOwner]);
 
   const pageEvents = useMemo(
     () => events.filter(e => e.event_type === "page_view" || e.event_type === "store_visit"),
@@ -2757,6 +2762,7 @@ function MarketplaceAnalyticsTab({ profile }) {
     const map = {};
     pageEvents.forEach(e => {
       const p = normalizePath(e.page_path);
+      if (!p) return;
       if (!map[p]) map[p] = { visits: 0, sessions: new Set() };
       map[p].visits++;
       if (e.session_id) map[p].sessions.add(e.session_id);
@@ -2764,6 +2770,7 @@ function MarketplaceAnalyticsTab({ profile }) {
     const timeMap = {};
     exitEvents.forEach(e => {
       const p = normalizePath(e.page_path);
+      if (!p) return;
       if (!timeMap[p]) timeMap[p] = [];
       timeMap[p].push(e.time_spent);
     });
@@ -2825,11 +2832,11 @@ function MarketplaceAnalyticsTab({ profile }) {
   const labelCls = "text-[10px] text-gray-500 uppercase tracking-widest font-medium mb-3";
   const pageMax = pageBreakdown[0]?.visits || 1;
 
-  if (!isSuperadmin) {
+  if (!isOwner) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
         <Shield className="w-8 h-8 text-gray-700" />
-        <p className="text-gray-500 text-sm">Marketplace analytics is only available to platform admins.</p>
+        <p className="text-gray-500 text-sm">Access restricted.</p>
       </div>
     );
   }
