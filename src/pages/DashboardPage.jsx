@@ -10,23 +10,23 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import CarForm from "../components/CarForm";
-import CarFormFast from "../components/CarFormFast";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
-import FinancingCalculator from "../components/FinancingCalculator";
-import LeadsPage from "./LeadsPage";
-import CRMPanel from "./CRMPanel";
 import SciFiLoader from "../components/SciFiLoader";
-import HeroSlidesPage from "./xdrive/HeroSlidesPage";
-import RevOpsPage from "./RevOpsPage";
-import ServicesPage from "./ServicesPage";
+const CarForm          = React.lazy(() => import("../components/CarForm"));
+const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
+const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
+const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
+const LeadsPage        = React.lazy(() => import("./LeadsPage"));
+const CRMPanel         = React.lazy(() => import("./CRMPanel"));
+const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
+const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
+const ServicesPage     = React.lazy(() => import("./ServicesPage"));
+const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
-import AISalesManager from '../components/AISalesManager';
 import {
   Car,
   PlusCircle,
@@ -2381,7 +2381,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" />
+                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -2465,7 +2465,7 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" />
+                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
@@ -4205,7 +4205,7 @@ function ListingDetailDrawer({
                       onClick={() => setImgIdx(i)}
                       style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
                     </div>
                   ))}
                 </div>
@@ -5135,7 +5135,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
-                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
                           <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
@@ -5174,7 +5174,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
                           >
                             {l.images?.[0] ? (
-                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                             ) : (
                               <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
@@ -6775,7 +6775,7 @@ export default function DashboardPage() {
                                 {/* Thumbnail */}
                                 <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
                                   {l.images?.[0]
-                                    ? <img src={l.images[0]} alt="" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
@@ -6855,7 +6855,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                               {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                 : <div style={{ width: 80, height: 60, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}
@@ -6906,6 +6906,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
               <CarForm onCreate={handleNew} />
@@ -6969,6 +6970,7 @@ export default function DashboardPage() {
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
           )}
+          </React.Suspense>
         </div>
       </main>
 

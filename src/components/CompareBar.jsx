@@ -157,7 +157,7 @@ export default function CompareBar() {
                   >
                     <div style={{ width: 48, height: 36, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.06)' }}>
                       {img
-                        ? <img src={img} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ? <img src={img} alt={name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car size={18} color="#4b5563" /></div>
                       }
                     </div>

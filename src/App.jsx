@@ -5,12 +5,14 @@ import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
 
-// Eager — public pages that must load instantly
+// Eager — only true above-the-fold entry points
 import HomePage from "./pages/HomePage";
 import ShowroomPage from "./pages/ShowroomPage";
-import MarketplacePage from "./pages/MarketplacePage";
-import CarsPage from "./pages/CarsPage";
-import CarDetailPage from "./pages/CarDetailPage";
+
+// Lazy — navigated to, not landed on directly
+const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
+const CarsPage        = lazy(() => import("./pages/CarsPage"));
+const CarDetailPage   = lazy(() => import("./pages/CarDetailPage"));
 
 // Lazy — everything else
 const CalculatorPage     = lazy(() => import("./pages/CalculatorPage"));

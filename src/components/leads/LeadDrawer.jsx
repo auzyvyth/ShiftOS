@@ -484,7 +484,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           {car ? (
             <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden', marginBottom: 6 }}>
               {carThumb && (
-                <img src={carThumb} alt={carLabel} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', filter: 'brightness(0.85)' }} />
+                <img src={carThumb} alt={carLabel} loading="lazy" decoding="async" style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', filter: 'brightness(0.85)' }} />
               )}
               <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div>
