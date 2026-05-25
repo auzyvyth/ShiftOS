@@ -31,6 +31,7 @@ import DamageMap from "./DamageMap";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
+import { lookupMYCar, isMYBrand } from "../data/malayCars";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -43,6 +44,9 @@ const initialListing = {
   transmission: "Auto",
   condition: "used",
   engineCc: "",
+  horsepower: "",
+  doors: "",
+  seats: "",
   mileage: "",
   colour: "",
   registrationDate: "",
@@ -934,6 +938,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         transmission: listing.transmission || "Auto",
         condition: listing.condition || "used",
         engineCc: listing.engine_cc ? String(listing.engine_cc) : "",
+        horsepower: listing.horsepower ? String(listing.horsepower) : "",
+        doors: listing.doors ? String(listing.doors) : "",
+        seats: listing.seats ? String(listing.seats) : "",
         mileage: listing.mileage ? String(listing.mileage) : "",
         colour: listing.colour || "",
         registrationDate: listing.registration_date || "",
@@ -986,6 +993,56 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       setStep(1);
     }
   }, [listing]);
+
+  // ── Auto-fill specs when brand + model + year are known ────────────────────
+  const [autoFilled, setAutoFilled] = useState(false);
+  useEffect(() => {
+    if (!form.brand || !form.model || !form.year || listing) return;
+    const y = parseInt(form.year);
+    if (!y || y < 2000) return;
+
+    const cacheKey = `carspec_${form.brand}_${form.model}_${y}`.toLowerCase().replace(/\s+/g, "_");
+
+    const applySpec = (spec) => {
+      if (!spec) return;
+      setForm((f) => ({
+        ...f,
+        ...(spec.engine_cc  && !f.engineCc   ? { engineCc:    String(spec.engine_cc)   } : {}),
+        ...(spec.transmission && (!f.transmission || f.transmission === "Auto") ? { transmission: spec.transmission } : {}),
+        ...(spec.fuel_type  && !f.fuelType    ? { fuelType:    spec.fuel_type            } : {}),
+        ...(spec.body_type  && !f.bodyType    ? { bodyType:    spec.body_type            } : {}),
+        ...(spec.horsepower && !f.horsepower  ? { horsepower:  String(spec.horsepower)  } : {}),
+        ...(spec.doors      && !f.doors       ? { doors:       String(spec.doors)       } : {}),
+        ...(spec.seats      && !f.seats       ? { seats:       String(spec.seats)       } : {}),
+      }));
+      setAutoFilled(true);
+    };
+
+    // 1. Try local Malaysian brands first (no network cost)
+    if (isMYBrand(form.brand)) {
+      const local = lookupMYCar(form.brand, form.model, y);
+      if (local) { applySpec(local); return; }
+    }
+
+    // 2. Check localStorage cache
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) { applySpec(JSON.parse(cached)); return; }
+    } catch (_) {}
+
+    // 3. Hit the serverless proxy
+    (async () => {
+      try {
+        const res = await fetch(`/api/car-specs?make=${encodeURIComponent(form.brand)}&model=${encodeURIComponent(form.model)}&year=${y}`);
+        if (!res.ok) return;
+        const { spec } = await res.json();
+        if (spec) {
+          try { localStorage.setItem(cacheKey, JSON.stringify(spec)); } catch (_) {}
+          applySpec(spec);
+        }
+      } catch (_) {}
+    })();
+  }, [form.brand, form.model, form.year]);
 
   // Fetch dealer products when picker is first opened
   useEffect(() => {
@@ -1387,6 +1444,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         selling_price: sellingPrice,
         original_price: originalPrice,
         engine_cc: engineCc,
+        horsepower: form.horsepower ? parseInt(form.horsepower) : null,
+        doors: form.doors ? parseInt(form.doors) : null,
+        seats: form.seats ? parseInt(form.seats) : null,
         images: imageUrls,
         year,
         transmission: form.transmission,
@@ -1842,6 +1902,12 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               className={inputCls}
             />
           </Field>
+          {autoFilled && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-900/30 border border-green-700/40 text-green-400 text-xs font-medium">
+              <Check size={12} />
+              Specs auto-filled — review Step 4 and adjust if needed
+            </div>
+          )}
         </div>
       );
       case 3: return (
@@ -1997,6 +2063,46 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               </div>
             </div>
           </Field>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Power (bhp)">
+              <div className="relative">
+                <input
+                  type="number"
+                  name="horsepower"
+                  value={form.horsepower}
+                  onChange={handleChange}
+                  placeholder="e.g. 130"
+                  min="0"
+                  className={`${inputCls} pr-14`}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">bhp</span>
+              </div>
+            </Field>
+            <Field label="Doors">
+              <input
+                type="number"
+                name="doors"
+                value={form.doors}
+                onChange={handleChange}
+                placeholder="e.g. 4"
+                min="2"
+                max="6"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Seats">
+              <input
+                type="number"
+                name="seats"
+                value={form.seats}
+                onChange={handleChange}
+                placeholder="e.g. 5"
+                min="1"
+                max="9"
+                className={inputCls}
+              />
+            </Field>
+          </div>
         </div>
       );
       case 5: return (
