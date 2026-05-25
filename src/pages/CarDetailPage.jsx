@@ -105,67 +105,78 @@ const inputStyle = (focused, th) => ({
 
 /* ─── skeleton ─── */
 function Skeleton() {
+  const isXdrive = !isSubdomain();
+  const pageBg    = isXdrive ? '#F7F6F2' : '#060c14';
+  const card      = isXdrive ? '#ffffff' : '#0a1220';
+  const shimmerGr = isXdrive
+    ? 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)'
+    : 'linear-gradient(90deg,#0a1220 25%,#111e30 50%,#0a1220 75%)';
+  const border    = isXdrive ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+  const headerBg  = isXdrive ? 'rgba(247,246,242,0.95)' : 'rgba(6,12,20,0.93)';
+  const mosaicGap = isXdrive ? '#ddd9d0' : '#000';
+
   return (
-    <div style={{ background: "#0d0d0d", minHeight: "100vh" }}>
+    <div style={{ background: pageBg, minHeight: '100vh' }}>
       <style>{`
-        @keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
-        .sk { background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
-              background-size: 600px 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+        @keyframes sk-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+        .sk-b { background:${shimmerGr}; background-size:600px 100%; animation:sk-shimmer 1.5s infinite; border-radius:4px; }
       `}</style>
-      <div
-        style={{
-          height: 52,
-          background: "rgba(8,12,20,0.92)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      />
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "20px 24px",
-          display: "flex",
-          gap: 32,
-          height: "calc(100vh - 52px)",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ flex: 1.3, display: "flex", gap: 8 }}>
-          <div className="sk" style={{ flex: 1 }} />
-          <div
-            style={{
-              width: 68,
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="sk" style={{ height: 50 }} />
+
+      {/* Header — matches .cdp-header */}
+      <div style={{ height:60, background:headerBg, borderBottom:`1px solid ${border}`, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', boxSizing:'border-box' }}>
+        <div className="sk-b" style={{ width:56, height:14 }} />
+        <div style={{ display:'flex', gap:8 }}>
+          <div className="sk-b" style={{ width:60, height:28, borderRadius:6 }} />
+          <div className="sk-b" style={{ width:80, height:28, borderRadius:6 }} />
+        </div>
+      </div>
+
+      {/* Mosaic — matches .cdp-mosaic-grid exactly */}
+      <div style={{ display:'grid', gridTemplateColumns:'1.65fr 1fr', gridTemplateRows:'1fr 1fr', gap:3, background:mosaicGap, height:'58vh', minHeight:400, maxHeight:660 }}>
+        <div className="sk-b" style={{ gridRow:'1/3', borderRadius:0 }} />
+        <div className="sk-b" style={{ borderRadius:0 }} />
+        <div className="sk-b" style={{ borderRadius:0 }} />
+      </div>
+
+      {/* Body — matches .cdp-body-wrap */}
+      <div style={{ maxWidth:1280, margin:'0 auto', padding:'40px 32px', display:'flex', gap:48, alignItems:'flex-start' }}>
+        {/* Left — matches .cdp-body-left (flex 1.55) */}
+        <div style={{ flex:1.55, minWidth:0 }}>
+          <div className="sk-b" style={{ height:10, width:'14%', marginBottom:10 }} />
+          <div className="sk-b" style={{ height:52, width:'72%', marginBottom:10 }} />
+          <div className="sk-b" style={{ height:13, width:'38%', marginBottom:20 }} />
+          <div className="sk-b" style={{ height:1, marginBottom:28 }} />
+          {/* Stats grid — matches .cdp-stats-grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden', marginBottom:32 }}>
+            {[...Array(8)].map((_,i) => (
+              <div key={i} className="sk-b" style={{ height:70, borderRadius:0 }} />
             ))}
           </div>
+          <div className="sk-b" style={{ height:10, width:'10%', marginBottom:14 }} />
+          <div className="sk-b" style={{ height:13, marginBottom:8 }} />
+          <div className="sk-b" style={{ height:13, width:'88%', marginBottom:8 }} />
+          <div className="sk-b" style={{ height:13, width:'74%' }} />
         </div>
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 16,
-          }}
-        >
-          <div className="sk" style={{ height: 14, width: "35%" }} />
-          <div className="sk" style={{ height: 44, width: "80%" }} />
-          <div className="sk" style={{ height: 12, width: "55%" }} />
-          <div
-            className="sk"
-            style={{ height: 1, width: "100%", marginTop: 8 }}
-          />
-          <div className="sk" style={{ height: 48, width: "60%" }} />
-          <div
-            className="sk"
-            style={{ height: 160, borderRadius: 12, marginTop: 16 }}
-          />
+
+        {/* Sidebar — matches .cdp-sidebar (360px) */}
+        <div style={{ width:360, flexShrink:0, background:card, border:`1px solid ${border}`, borderRadius:16, padding:'28px 24px', boxSizing:'border-box' }}>
+          <div className="sk-b" style={{ height:11, width:'36%', marginBottom:12 }} />
+          <div className="sk-b" style={{ height:46, width:'68%', marginBottom:8 }} />
+          <div className="sk-b" style={{ height:11, width:'50%', marginBottom:20 }} />
+          <div className="sk-b" style={{ height:1, marginBottom:16 }} />
+          <div className="sk-b" style={{ height:48, borderRadius:10, marginBottom:8 }} />
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
+            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
+          </div>
+          <div className="sk-b" style={{ height:1, margin:'14px 0' }} />
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <div className="sk-b" style={{ width:36, height:36, borderRadius:'50%', flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <div className="sk-b" style={{ height:12, width:'60%', marginBottom:6 }} />
+              <div className="sk-b" style={{ height:10, width:'40%' }} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -464,44 +475,8 @@ export default function CarDetailPage() {
         setLoading(false);
         return;
       }
-      let visibleServices = carData.included_services || [];
-      if (carData.dealer_id && visibleServices.length > 0) {
-        const { data: activeProducts } = await supabase
-          .from("dealer_products")
-          .select("id, is_active")
-          .eq("dealer_id", carData.dealer_id);
-        if (activeProducts && activeProducts.length > 0) {
-          const activeIds = new Set(
-            activeProducts
-              .filter((p) => p.is_active !== false)
-              .map((p) => p.id),
-          );
-          visibleServices = visibleServices.filter(
-            (s) => !s.id || activeIds.has(s.id),
-          );
-        }
-      }
-      setCar({ ...carData, included_services: visibleServices });
 
-      if (carData.dealer_id) {
-        const { data: d } = await supabase
-          .from("public_dealer_profiles")
-          .select(
-            "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug,subdomain",
-          )
-          .eq("id", carData.dealer_id)
-          .maybeSingle();
-        setDealer(d);
-        const { data: salesmanData } = await supabase
-          .from("profiles")
-          .select(
-            "full_name, avatar_url, job_title, whatsapp_number, slug, plan",
-          )
-          .eq("id", carData.dealer_id)
-          .eq("role", "salesman")
-          .maybeSingle();
-        setSalesmanProfile(salesmanData);
-      }
+      // Fire analytics immediately — no need to block page load on it
       const refSlug = getRef();
       if (refSlug && carData.dealer_id) {
         supabase
@@ -515,41 +490,94 @@ export default function CarDetailPage() {
           .then(() => {});
       }
 
-      {
-        const simFields =
-          "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
+      const simFields =
+        "id, slug, year, brand, model, variant, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, car_documents";
 
-        /* Same dealer + same brand first */
-        let similar = [];
-        if (carData.dealer_id) {
-          const { data } = await supabase
-            .from("public_car_listings")
-            .select(simFields)
-            .eq("dealer_id", carData.dealer_id)
-            .eq("brand", carData.brand)
-            .eq("status", "available")
-            .neq("id", carData.id)
-            .order("created_at", { ascending: false })
-            .limit(6);
-          similar = data || [];
-        }
+      const [visibleServices, dealerData, salesmanData, similarCarsData] =
+        await Promise.all([
+          // Filter included_services against active dealer_products
+          (async () => {
+            let services = carData.included_services || [];
+            if (carData.dealer_id && services.length > 0) {
+              const { data: activeProducts } = await supabase
+                .from("dealer_products")
+                .select("id, is_active")
+                .eq("dealer_id", carData.dealer_id);
+              if (activeProducts && activeProducts.length > 0) {
+                const activeIds = new Set(
+                  activeProducts
+                    .filter((p) => p.is_active !== false)
+                    .map((p) => p.id),
+                );
+                services = services.filter((s) => !s.id || activeIds.has(s.id));
+              }
+            }
+            return services;
+          })(),
 
-        /* Not enough? supplement with same brand from any dealer */
-        if (similar.length < 3) {
-          const seen = new Set([carData.id, ...similar.map(c => c.id)]);
-          const { data } = await supabase
-            .from("public_car_listings")
-            .select(simFields)
-            .eq("brand", carData.brand)
-            .eq("status", "available")
-            .neq("id", carData.id)
-            .order("created_at", { ascending: false })
-            .limit(9);
-          similar = [...similar, ...(data || []).filter(c => !seen.has(c.id))].slice(0, 6);
-        }
+          // Dealer profile
+          carData.dealer_id
+            ? supabase
+                .from("public_dealer_profiles")
+                .select(
+                  "dealership,site_name,whatsapp_number,avatar_url,site_logo_url,slug,subdomain",
+                )
+                .eq("id", carData.dealer_id)
+                .maybeSingle()
+                .then((r) => r.data)
+            : Promise.resolve(null),
 
-        setSimilarCars(similar);
-      }
+          // Salesman profile
+          carData.dealer_id
+            ? supabase
+                .from("profiles")
+                .select(
+                  "full_name, avatar_url, job_title, whatsapp_number, slug, plan",
+                )
+                .eq("id", carData.dealer_id)
+                .eq("role", "salesman")
+                .maybeSingle()
+                .then((r) => r.data)
+            : Promise.resolve(null),
+
+          // Similar cars (2-step chain internally)
+          (async () => {
+            let similar = [];
+            if (carData.dealer_id) {
+              const { data } = await supabase
+                .from("public_car_listings")
+                .select(simFields)
+                .eq("dealer_id", carData.dealer_id)
+                .eq("brand", carData.brand)
+                .eq("status", "available")
+                .neq("id", carData.id)
+                .order("created_at", { ascending: false })
+                .limit(6);
+              similar = data || [];
+            }
+            if (similar.length < 3) {
+              const seen = new Set([carData.id, ...similar.map((c) => c.id)]);
+              const { data } = await supabase
+                .from("public_car_listings")
+                .select(simFields)
+                .eq("brand", carData.brand)
+                .eq("status", "available")
+                .neq("id", carData.id)
+                .order("created_at", { ascending: false })
+                .limit(9);
+              similar = [
+                ...similar,
+                ...(data || []).filter((c) => !seen.has(c.id)),
+              ].slice(0, 6);
+            }
+            return similar;
+          })(),
+        ]);
+
+      setCar({ ...carData, included_services: visibleServices });
+      setDealer(dealerData);
+      setSalesmanProfile(salesmanData);
+      setSimilarCars(similarCarsData);
       setLoading(false);
     }
     load();
