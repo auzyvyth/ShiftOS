@@ -4,11 +4,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import authRoutes from './routes/auth.js';
-import carRoutes from './routes/cars.js';
-import invitesRoutes from './routes/invites.js';
-import createSalesmanRoute from './routes/createSalesman.js';
-import generateCaptionsRoute from './routes/generateCaptions.js';
 import anthropicRoute from './routes/anthropic.js';
 
 const app = express();
@@ -20,18 +15,12 @@ app.use(cors({
     'https://www.xdrive.my',
     'https://drevo.my',
     'https://www.drevo.my',
-    // subdomains handled via regex
     /^https:\/\/[a-z0-9-]+\.xdrive\.my$/,
   ],
   credentials: true,
 }));
-app.use(bodyParser.json({ limit: '10mb' })); // allow base64 image payloads
+app.use(bodyParser.json({ limit: '10mb' }));
 
-app.use('/auth', authRoutes);
-app.use('/cars', carRoutes);
-app.use('/invites', invitesRoutes);
-app.use('/create-salesman', createSalesmanRoute);
-app.use('/generate-captions', generateCaptionsRoute);
 app.use('/ai', anthropicRoute);
 
 const PORT = process.env.PORT || 4000;
