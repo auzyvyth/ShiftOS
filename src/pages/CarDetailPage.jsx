@@ -120,9 +120,11 @@ function Skeleton() {
       <style>{`
         @keyframes sk-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
         .sk-b { background:${shimmerGr}; background-size:600px 100%; animation:sk-shimmer 1.5s infinite; border-radius:4px; }
+        @media (max-width:900px) { .sk-desktop { display:none !important; } }
+        @media (min-width:901px) { .sk-mobile  { display:none !important; } }
       `}</style>
 
-      {/* Header — matches .cdp-header */}
+      {/* Header — same on all breakpoints */}
       <div style={{ height:60, background:headerBg, borderBottom:`1px solid ${border}`, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', boxSizing:'border-box' }}>
         <div className="sk-b" style={{ width:56, height:14 }} />
         <div style={{ display:'flex', gap:8 }}>
@@ -131,22 +133,22 @@ function Skeleton() {
         </div>
       </div>
 
-      {/* Mosaic — matches .cdp-mosaic-grid exactly */}
-      <div style={{ display:'grid', gridTemplateColumns:'1.65fr 1fr', gridTemplateRows:'1fr 1fr', gap:3, background:mosaicGap, height:'58vh', minHeight:400, maxHeight:660 }}>
+      {/* ── DESKTOP (>900px) ── */}
+      {/* Mosaic — matches .cdp-mosaic-grid */}
+      <div className="sk-desktop" style={{ display:'grid', gridTemplateColumns:'1.65fr 1fr', gridTemplateRows:'1fr 1fr', gap:3, background:mosaicGap, height:'58vh', minHeight:400, maxHeight:660 }}>
         <div className="sk-b" style={{ gridRow:'1/3', borderRadius:0 }} />
         <div className="sk-b" style={{ borderRadius:0 }} />
         <div className="sk-b" style={{ borderRadius:0 }} />
       </div>
 
       {/* Body — matches .cdp-body-wrap */}
-      <div style={{ maxWidth:1280, margin:'0 auto', padding:'40px 32px', display:'flex', gap:48, alignItems:'flex-start' }}>
-        {/* Left — matches .cdp-body-left (flex 1.55) */}
+      <div className="sk-desktop" style={{ maxWidth:1280, margin:'0 auto', padding:'40px 32px', display:'flex', gap:48, alignItems:'flex-start' }}>
+        {/* Left — flex 1.55 */}
         <div style={{ flex:1.55, minWidth:0 }}>
           <div className="sk-b" style={{ height:10, width:'14%', marginBottom:10 }} />
           <div className="sk-b" style={{ height:52, width:'72%', marginBottom:10 }} />
           <div className="sk-b" style={{ height:13, width:'38%', marginBottom:20 }} />
           <div className="sk-b" style={{ height:1, marginBottom:28 }} />
-          {/* Stats grid — matches .cdp-stats-grid */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden', marginBottom:32 }}>
             {[...Array(8)].map((_,i) => (
               <div key={i} className="sk-b" style={{ height:70, borderRadius:0 }} />
@@ -158,7 +160,7 @@ function Skeleton() {
           <div className="sk-b" style={{ height:13, width:'74%' }} />
         </div>
 
-        {/* Sidebar — matches .cdp-sidebar (360px) */}
+        {/* Sidebar — 360px */}
         <div style={{ width:360, flexShrink:0, background:card, border:`1px solid ${border}`, borderRadius:16, padding:'28px 24px', boxSizing:'border-box' }}>
           <div className="sk-b" style={{ height:11, width:'36%', marginBottom:12 }} />
           <div className="sk-b" style={{ height:46, width:'68%', marginBottom:8 }} />
@@ -175,6 +177,47 @@ function Skeleton() {
             <div style={{ flex:1 }}>
               <div className="sk-b" style={{ height:12, width:'60%', marginBottom:6 }} />
               <div className="sk-b" style={{ height:10, width:'40%' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MOBILE (≤900px) ── */}
+      {/* M1 — full-width image */}
+      <div className="sk-mobile sk-b" style={{ height:'clamp(200px,50vw,360px)', borderRadius:0 }} />
+
+      {/* M2 — identity block */}
+      <div className="sk-mobile" style={{ padding:'20px 18px 0' }}>
+        <div className="sk-b" style={{ height:10, width:'18%', marginBottom:10 }} />
+        <div className="sk-b" style={{ height:44, width:'72%', marginBottom:8 }} />
+        <div className="sk-b" style={{ height:13, width:'42%', marginBottom:16 }} />
+        <div className="sk-b" style={{ height:38, width:'55%', marginBottom:4 }} />
+        <div className="sk-b" style={{ height:1, margin:'16px 0 20px' }} />
+      </div>
+
+      {/* M3 — 2-col stats grid */}
+      <div className="sk-mobile" style={{ padding:'0 18px', marginBottom:24 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden' }}>
+          {[...Array(8)].map((_,i) => (
+            <div key={i} className="sk-b" style={{ height:52, borderRadius:0 }} />
+          ))}
+        </div>
+      </div>
+
+      {/* M4 — CTA card */}
+      <div className="sk-mobile" style={{ padding:'0 18px', marginBottom:24 }}>
+        <div style={{ background:card, border:`1px solid ${border}`, borderRadius:14, padding:'20px' }}>
+          <div className="sk-b" style={{ height:48, borderRadius:10, marginBottom:8 }} />
+          <div style={{ display:'flex', gap:8 }}>
+            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
+            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
+          </div>
+          <div className="sk-b" style={{ height:1, margin:'14px 0' }} />
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <div className="sk-b" style={{ width:32, height:32, borderRadius:'50%', flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <div className="sk-b" style={{ height:12, width:'55%', marginBottom:6 }} />
+              <div className="sk-b" style={{ height:10, width:'38%' }} />
             </div>
           </div>
         </div>
@@ -455,7 +498,7 @@ export default function CarDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,base_price,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,base_price,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1858,15 +1901,19 @@ export default function CarDetailPage() {
             const cc = car.engine_cc || 0;
             const roadTaxMap = [[1000,20],[1200,55],[1400,70],[1600,90],[1800,200],[2000,280],[2500,380],[3000,880]];
             const roadTax = cc > 0 ? (roadTaxMap.find(([limit]) => cc <= limit)?.[1] ?? 1880) : null;
+            const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
             const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
             const totalFuelCost = Math.round(fuelDist * (consumption / 100) * 2.05);
             return (
               <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
                 <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:16 }}>Running Costs</p>
                 {roadTax && (
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:10, marginBottom:10 }}>
-                    <span style={{ fontSize:12, color: th.textSec }}>Road Tax (est.)</span>
-                    <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {roadTax}/yr</span>
+                  <div style={{ marginBottom:10, padding:'12px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
+                      <span style={{ fontSize:12, color: th.textSec }}>Road Tax (est.)</span>
+                      <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {roadTax}/yr</span>
+                    </div>
+                    {cc > 0 && <p style={{ fontSize:10, color: th.textMuted, margin:0 }}>Based on {fmt(cc)}cc engine displacement</p>}
                   </div>
                 )}
                 {car.co2_emissions && (
@@ -1881,6 +1928,21 @@ export default function CarDetailPage() {
                         return <div key={i} style={{ flex:1, background: isActive ? band.color : `${band.color}25`, borderRadius: i===0?'5px 0 0 5px':i===5?'0 5px 5px 0':0 }} />;
                       })}
                     </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color: th.textMuted, marginTop:4 }}>
+                      <span>0</span><span>100</span><span>130</span><span>150</span><span>170</span><span>200+</span>
+                    </div>
+                  </div>
+                )}
+                {insGrp && (
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:10, marginBottom:6 }}>
+                      <span style={{ fontSize:12, color: th.textSec }}>Insurance Group</span>
+                      <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>{insGrp} / 26</span>
+                    </div>
+                    <div style={{ background: th.card2, borderRadius:5, height:7, overflow:'hidden', marginBottom:4 }}>
+                      <div style={{ width:`${Math.min(100,(insGrp/26)*100)}%`, height:'100%', background:`hsl(${Math.round(120-(insGrp/26)*120)},75%,50%)`, borderRadius:5 }} />
+                    </div>
+                    <p style={{ fontSize:10, color: th.textMuted }}>{insGrp<=8?'Low cost to insure':insGrp<=16?'Moderate insurance cost':'Higher insurance cost'}</p>
                   </div>
                 )}
                 <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:10, padding:'14px 16px' }}>
@@ -1896,7 +1958,9 @@ export default function CarDetailPage() {
                     onChange={e => setFuelDist(Number(e.target.value))}
                     style={{ width:'100%', accentColor:'#dc2626', cursor:'pointer' }}
                   />
-                  <p style={{ fontSize:10, color: th.textMuted, marginTop:6 }}>~{consumption}L/100km estimated</p>
+                  <p style={{ fontSize:10, color: th.textMuted, marginTop:6 }}>
+                    {car.fuel_consumption ? `${car.fuel_consumption}L/100km (manufacturer figure)` : `~${consumption}L/100km estimated`}
+                  </p>
                 </div>
               </div>
             );
