@@ -2,10 +2,17 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
 	plugins: [
 		react(),
+		sentryVitePlugin({
+			org: process.env.SENTRY_ORG,
+			project: process.env.SENTRY_PROJECT,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			silent: true,
+		}),
 		VitePWA({
 			registerType: 'autoUpdate',
 			manifest: {
@@ -42,6 +49,7 @@ export default defineConfig({
 		},
 	},
 	build: {
+		sourcemap: true,
 		rollupOptions: {
 			output: {
 				manualChunks: {
