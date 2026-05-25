@@ -45,8 +45,10 @@ const initialListing = {
   condition: "used",
   engineCc: "",
   horsepower: "",
+  cylinders: "",
   doors: "",
   seats: "",
+  fuelEconomyKpl: "",
   mileage: "",
   colour: "",
   registrationDate: "",
@@ -939,8 +941,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         condition: listing.condition || "used",
         engineCc: listing.engine_cc ? String(listing.engine_cc) : "",
         horsepower: listing.horsepower ? String(listing.horsepower) : "",
+        cylinders: listing.cylinders ? String(listing.cylinders) : "",
         doors: listing.doors ? String(listing.doors) : "",
         seats: listing.seats ? String(listing.seats) : "",
+        fuelEconomyKpl: listing.fuel_consumption ? String(listing.fuel_consumption) : "",
         mileage: listing.mileage ? String(listing.mileage) : "",
         colour: listing.colour || "",
         registrationDate: listing.registration_date || "",
@@ -1015,9 +1019,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         ...(spec.transmission ? { transmission: spec.transmission      } : {}),
         ...(spec.fuel_type   ? { fuelType:    spec.fuel_type           } : {}),
         ...(spec.body_type   ? { bodyType:    spec.body_type           } : {}),
-        ...(spec.horsepower  ? { horsepower:  String(spec.horsepower) } : {}),
-        ...(spec.doors       ? { doors:       String(spec.doors)      } : {}),
-        ...(spec.seats       ? { seats:       String(spec.seats)      } : {}),
+        ...(spec.horsepower       ? { horsepower:     String(spec.horsepower)       } : {}),
+        ...(spec.cylinders        ? { cylinders:      String(spec.cylinders)        } : {}),
+        ...(spec.doors            ? { doors:          String(spec.doors)            } : {}),
+        ...(spec.seats            ? { seats:          String(spec.seats)            } : {}),
+        ...(spec.fuel_consumption ? { fuelEconomyKpl: String(spec.fuel_consumption) } : {}),
       }));
       setAutoFilled(true);
     };
@@ -1448,9 +1454,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         selling_price: sellingPrice,
         original_price: originalPrice,
         engine_cc: engineCc,
-        horsepower: form.horsepower ? parseInt(form.horsepower) : null,
-        doors: form.doors ? parseInt(form.doors) : null,
-        seats: form.seats ? parseInt(form.seats) : null,
+        horsepower:       form.horsepower     ? parseInt(form.horsepower)         : null,
+        cylinders:        form.cylinders      ? parseInt(form.cylinders)          : null,
+        doors:            form.doors          ? parseInt(form.doors)              : null,
+        seats:            form.seats          ? parseInt(form.seats)              : null,
+        fuel_consumption: form.fuelEconomyKpl ? parseFloat(form.fuelEconomyKpl)  : null,
         images: imageUrls,
         year,
         transmission: form.transmission,
@@ -2082,6 +2090,35 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">bhp</span>
               </div>
             </Field>
+            <Field label="Cylinders">
+              <input
+                type="number"
+                name="cylinders"
+                value={form.cylinders}
+                onChange={handleChange}
+                placeholder="e.g. 4"
+                min="1"
+                max="16"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Fuel Economy">
+              <div className="relative">
+                <input
+                  type="number"
+                  name="fuelEconomyKpl"
+                  value={form.fuelEconomyKpl}
+                  onChange={handleChange}
+                  placeholder="e.g. 15"
+                  min="1"
+                  step="0.1"
+                  className={`${inputCls} pr-14`}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium pointer-events-none">km/L</span>
+              </div>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Doors">
               <input
                 type="number"

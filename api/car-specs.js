@@ -17,6 +17,13 @@ const CLASS_TO_BODY = {
   "sports car":       "Coupe",
 };
 
+const MPG_TO_KPL = 0.425144;
+
+function mpgToKpl(mpg) {
+  if (!mpg) return null;
+  return Math.round(mpg * MPG_TO_KPL * 10) / 10;
+}
+
 function normalise(raw) {
   if (!raw) return null;
 
@@ -26,17 +33,25 @@ function normalise(raw) {
   const bodyRaw = (raw.class || "").toLowerCase();
   const bodyType = CLASS_TO_BODY[bodyRaw] || null;
 
+  const cityKpl    = mpgToKpl(raw.city_mpg);
+  const highwayKpl = mpgToKpl(raw.highway_mpg);
+  // combined kpl — average of city and highway when both available
+  const fuelConsumption = cityKpl && highwayKpl
+    ? Math.round(((cityKpl + highwayKpl) / 2) * 10) / 10
+    : cityKpl || highwayKpl || null;
+
   return {
-    engine_cc:    raw.displacement ? Math.round(raw.displacement * 1000) : null,
-    transmission: transMap[raw.transmission] || raw.transmission || null,
-    fuel_type:    fuelMap[raw.fuel_type] || raw.fuel_type || null,
-    body_type:    bodyType,
-    horsepower:   raw.horsepower || null,
-    doors:        raw.doors || null,
-    seats:        raw.seats || null,
-    cylinders:    raw.cylinders || null,
-    city_mpg:     raw.city_mpg || null,
-    highway_mpg:  raw.highway_mpg || null,
+    engine_cc:        raw.displacement ? Math.round(raw.displacement * 1000) : null,
+    transmission:     transMap[raw.transmission] || raw.transmission || null,
+    fuel_type:        fuelMap[raw.fuel_type] || raw.fuel_type || null,
+    body_type:        bodyType,
+    horsepower:       raw.horsepower || null,
+    doors:            raw.doors || null,
+    seats:            raw.seats || null,
+    cylinders:        raw.cylinders || null,
+    fuel_consumption: fuelConsumption,
+    city_kpl:         cityKpl,
+    highway_kpl:      highwayKpl,
   };
 }
 
