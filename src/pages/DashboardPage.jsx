@@ -4971,6 +4971,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }
   };
 
+  const escHtml = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+
   const renderDocHTML = (doc) => {
     const car = doc.car_listings || {};
     const m = doc.metadata || {};
@@ -4990,7 +4992,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     const hasFinancing = isSales && m.include_financing && m.loan_amount;
 
     const row = (label, value) =>
-      `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:180px;">${label}</td><td style="padding:5px 0;font-size:13px;">${value || '—'}</td></tr>`;
+      `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:180px;">${label}</td><td style="padding:5px 0;font-size:13px;">${escHtml(value) || '—'}</td></tr>`;
 
     const section = (title, content) =>
       `<div style="margin-bottom:22px;"><h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:1px solid #e5e5e5;padding-bottom:6px;margin:0 0 10px;">${title}</h3>${content}</div>`;
@@ -4998,13 +5000,13 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     return `
       <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
         <div style="text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #111;">
-          <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
+          <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${escHtml(doc.doc_type).toUpperCase()}</h1>
           <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
         </div>
 
         ${section('Vehicle Details', `
           <table style="width:100%;border-collapse:collapse;">
-            ${row('Vehicle', `<strong>${carLabel}</strong>`)}
+            ${row('Vehicle', `<strong>${escHtml(carLabel)}</strong>`)}
             ${row('Plate Number', carPlate)}
             ${row('Colour', carColour)}
             ${carMileage ? row('Mileage', `${Number(carMileage).toLocaleString()} km`) : ''}
@@ -5026,7 +5028,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           <table style="width:100%;border-collapse:collapse;">
             <tr style="border-bottom:1px solid #e5e5e5;"><th style="text-align:left;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Description</th><th style="text-align:right;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Amount</th></tr>
             ${isDeposit
-              ? `<tr><td style="padding:8px 0;font-size:13px;">Deposit for ${carLabel}</td><td style="text-align:right;font-size:13px;font-weight:600;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>`
+              ? `<tr><td style="padding:8px 0;font-size:13px;">Deposit for ${escHtml(carLabel)}</td><td style="text-align:right;font-size:13px;font-weight:600;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>`
               : `<tr><td style="padding:8px 0;font-size:13px;">Sale Price</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.sale_price||0).toLocaleString()}</td></tr>
                  <tr><td style="padding:8px 0;font-size:13px;">Deposit Paid</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>
                  <tr style="border-top:2px solid #111;"><td style="padding:8px 0;font-size:14px;font-weight:700;">Balance Due</td><td style="text-align:right;font-size:14px;font-weight:700;">RM ${Number(doc.balance_amount||0).toLocaleString()}</td></tr>`
@@ -5044,7 +5046,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
         ${isSales && services.length > 0 ? section('Included Services / Packages', `
           <table style="width:100%;border-collapse:collapse;">
-            ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${s.name || '—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
+            ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${escHtml(s.name) || '—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
           </table>`) : ''}
 
         ${isSales ? section('Sales Advisor', `
@@ -5057,12 +5059,12 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         <div style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
           <div style="border-top:1px solid #111;padding-top:8px;">
             <p style="font-size:12px;color:#555;margin:0 0 2px;">Buyer Signature</p>
-            <p style="font-size:11px;color:#aaa;margin:0;">${doc.buyer_name || ''}</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${escHtml(doc.buyer_name)}</p>
             <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
           </div>
           <div style="border-top:1px solid #111;padding-top:8px;">
             <p style="font-size:12px;color:#555;margin:0 0 2px;">Sales Advisor Signature</p>
-            <p style="font-size:11px;color:#aaa;margin:0;">${saName}</p>
+            <p style="font-size:11px;color:#aaa;margin:0;">${escHtml(saName)}</p>
             <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
           </div>
         </div>
@@ -5262,7 +5264,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${renderDocHTML(printDoc)}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
+                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${escHtml(printDoc.doc_type)}</title><style>@media print{body{margin:0;}}</style></head><body>${renderDocHTML(printDoc)}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>

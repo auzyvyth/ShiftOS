@@ -170,7 +170,7 @@ export default function MarketplacePage() {
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
         tokens.forEach(t => {
-          const s = t.replace(/[%_\\]/g, '');
+          const s = t.replace(/[^a-zA-Z0-9\s-]/g, '');
           if (s) query = query.or(`brand.ilike.%${s}%,model.ilike.%${s}%,variant.ilike.%${s}%`);
         });
       }
