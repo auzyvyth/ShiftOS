@@ -997,9 +997,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   // ── Auto-fill specs when brand + model + year are known ────────────────────
   const [autoFilled, setAutoFilled] = useState(false);
   useEffect(() => {
+    setAutoFilled(false);
+  }, [form.brand, form.model]);
+
+  useEffect(() => {
     if (!form.brand || !form.model || !form.year || listing) return;
     const y = parseInt(form.year);
-    if (!y || y < 2000) return;
+    if (!y || y < 1990) return;
 
     const cacheKey = `carspec_${form.brand}_${form.model}_${y}`.toLowerCase().replace(/\s+/g, "_");
 
@@ -1007,13 +1011,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       if (!spec) return;
       setForm((f) => ({
         ...f,
-        ...(spec.engine_cc  && !f.engineCc   ? { engineCc:    String(spec.engine_cc)   } : {}),
-        ...(spec.transmission && (!f.transmission || f.transmission === "Auto") ? { transmission: spec.transmission } : {}),
-        ...(spec.fuel_type  && !f.fuelType    ? { fuelType:    spec.fuel_type            } : {}),
-        ...(spec.body_type  && !f.bodyType    ? { bodyType:    spec.body_type            } : {}),
-        ...(spec.horsepower && !f.horsepower  ? { horsepower:  String(spec.horsepower)  } : {}),
-        ...(spec.doors      && !f.doors       ? { doors:       String(spec.doors)       } : {}),
-        ...(spec.seats      && !f.seats       ? { seats:       String(spec.seats)       } : {}),
+        ...(spec.engine_cc   ? { engineCc:    String(spec.engine_cc)  } : {}),
+        ...(spec.transmission ? { transmission: spec.transmission      } : {}),
+        ...(spec.fuel_type   ? { fuelType:    spec.fuel_type           } : {}),
+        ...(spec.body_type   ? { bodyType:    spec.body_type           } : {}),
+        ...(spec.horsepower  ? { horsepower:  String(spec.horsepower) } : {}),
+        ...(spec.doors       ? { doors:       String(spec.doors)      } : {}),
+        ...(spec.seats       ? { seats:       String(spec.seats)      } : {}),
       }));
       setAutoFilled(true);
     };
