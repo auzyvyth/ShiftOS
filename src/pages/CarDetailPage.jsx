@@ -498,7 +498,7 @@ export default function CarDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,base_price,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating";
+      const PUBLIC_FIELDS = "id,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,base_price,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,plate_number,video_url,salesman_slug,car_documents,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,included_services_cost,vin,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -1542,6 +1542,8 @@ export default function CarDetailPage() {
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
               { label:'Financing',    value: fmtFinancing(car) },
               ...(car.horsepower ? [{ label:'Power', value:`${car.horsepower} bhp` }] : []),
+              ...(car.cylinders ? [{ label:'Cylinders', value:`${car.cylinders}-cyl` }] : []),
+              ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
               ...(car.doors ? [{ label:'Doors', value:`${car.doors} doors` }] : []),
               ...(car.seats ? [{ label:'Seats', value:`${car.seats} seats` }] : []),
             ].map(({ label, value }) => (
@@ -1912,8 +1914,8 @@ export default function CarDetailPage() {
               return Math.round(2130 + (cc - 3000) * 4.50);
             })();
             const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
-            const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
-            const totalFuelCost = Math.round(fuelDist * (consumption / 100) * 2.05);
+            const consumption = car.fuel_consumption || (cc <= 1600 ? 14 : cc <= 2000 ? 10 : 7);
+            const totalFuelCost = Math.round((fuelDist / consumption) * 2.05);
             return (
               <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
                 <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:16 }}>Running Costs</p>
@@ -1969,7 +1971,7 @@ export default function CarDetailPage() {
                     style={{ width:'100%', accentColor:'#dc2626', cursor:'pointer' }}
                   />
                   <p style={{ fontSize:10, color: th.textMuted, marginTop:6 }}>
-                    {car.fuel_consumption ? `${car.fuel_consumption}L/100km (manufacturer figure)` : `~${consumption}L/100km estimated`}
+                    {car.fuel_consumption ? `${car.fuel_consumption} km/L (manufacturer figure)` : `~${consumption} km/L estimated`}
                   </p>
                 </div>
               </div>
@@ -2207,6 +2209,8 @@ export default function CarDetailPage() {
                   value: fmtFinancing(car),
                 },
                 ...(car.horsepower ? [{ label: "Power", value: `${car.horsepower} bhp` }] : []),
+                ...(car.cylinders ? [{ label: "Cylinders", value: `${car.cylinders}-cyl` }] : []),
+                ...(car.fuel_consumption ? [{ label: "Fuel Economy", value: `${car.fuel_consumption} km/L` }] : []),
                 ...(car.doors ? [{ label: "Doors", value: `${car.doors} doors` }] : []),
                 ...(car.seats ? [{ label: "Seats", value: `${car.seats} seats` }] : []),
               ].map(({ label, value }) => (
