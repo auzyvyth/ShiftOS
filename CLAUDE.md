@@ -70,15 +70,35 @@ Never use session.user.id / user.id in queries — always derive via getDealerId
 Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
   Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
 
-## Git — single branch, always in sync
-- ONE branch: `main`. Vercel deploys from `main`. Local = origin/main = live site.
-- After EVERY commit, push immediately:
-  git push origin main
-- Never push to Shiftos or any other branch.
+## Deployment pipeline — 3 stages
+```
+local (main) → staging branch → production (main on GitHub)
+```
+- **local main**: all development happens here, commits stay local until staged
+- **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **production**: NEVER push to origin/main directly — always via temp branch → PR → merge
+- NEVER deploy to production without explicit user instruction ("push to prod" / "go live")
+- Every feature or fix must go to staging first and be confirmed before production
+
+## Git workflow (web session — proxy restriction)
+This session's git proxy blocks direct push to origin/main. Use this workflow every time:
+1. Commit to local main
+2. `git push origin main:staging --force` → user reviews on Vercel preview
+3. When user says to push to prod:
+   a. `git checkout -b temp/<name> && git push -u origin temp/<name>`
+   b. Create PR via mcp__github__create_pull_request (base: main)
+   c. Merge via mcp__github__merge_pull_request (squash)
+   d. `git checkout main && git fetch origin main && git reset --hard origin/main`
+   e. Delete temp branch
 - Before starting any work: git status → must say "up to date with origin/main"
 - If git status shows divergence, STOP and warn the user before doing anything else.
 - Never use --force on main without warning the user.
 - Never run git reset --hard without warning the user that local changes will be lost.
+
+## DB migrations
+- Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
+- Always update public_car_listings VIEW after adding columns to car_listings
+- Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
