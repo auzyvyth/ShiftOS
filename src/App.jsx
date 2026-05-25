@@ -2,6 +2,9 @@ import React, { lazy, Suspense } from "react";
 import { Route, Routes, BrowserRouter as Router, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
+import * as Sentry from "@sentry/react";
+
+const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
 import CompareBar from "./components/CompareBar";
 import "./i18n/config";
@@ -70,7 +73,7 @@ function App() {
       />
       <CompareBarGate />
       <Suspense fallback={null}>
-        <Routes>
+        <SentryRoutes>
           {/* Public — XDrive */}
           <Route path="/" element={<HomePage />} />
           <Route path="/marketplace" element={<MarketplacePage />} />
@@ -117,7 +120,7 @@ function App() {
           {/* Dealer slug catch-all */}
           <Route path="/s/:slug" element={<SalesmanProfilePage />} />
           <Route path="/:dealerSlug" element={<DealerSlugRedirect />} />
-        </Routes>
+        </SentryRoutes>
       </Suspense>
       <Analytics />
     </Router>
