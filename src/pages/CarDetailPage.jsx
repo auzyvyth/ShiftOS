@@ -1899,8 +1899,18 @@ export default function CarDetailPage() {
           {/* Running Costs */}
           {(() => {
             const cc = car.engine_cc || 0;
-            const roadTaxMap = [[1000,20],[1200,55],[1400,70],[1600,90],[1800,200],[2000,280],[2500,380],[3000,880]];
-            const roadTax = cc > 0 ? (roadTaxMap.find(([limit]) => cc <= limit)?.[1] ?? 1880) : null;
+            const roadTax = (() => {
+              if (!cc || cc <= 0) return null;
+              if (cc <= 1000) return 20;
+              if (cc <= 1200) return 55;
+              if (cc <= 1400) return 70;
+              if (cc <= 1600) return 90;
+              if (cc <= 1800) return Math.round(200 + (cc - 1600) * 0.40);
+              if (cc <= 2000) return Math.round(280 + (cc - 1800) * 0.50);
+              if (cc <= 2500) return Math.round(380 + (cc - 2000) * 1.00);
+              if (cc <= 3000) return Math.round(880 + (cc - 2500) * 2.50);
+              return Math.round(2130 + (cc - 3000) * 4.50);
+            })();
             const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
             const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
             const totalFuelCost = Math.round(fuelDist * (consumption / 100) * 2.05);
@@ -1913,7 +1923,7 @@ export default function CarDetailPage() {
                       <span style={{ fontSize:12, color: th.textSec }}>Road Tax (est.)</span>
                       <span style={{ fontSize:14, color: th.text, fontWeight:600 }}>RM {roadTax}/yr</span>
                     </div>
-                    {cc > 0 && <p style={{ fontSize:10, color: th.textMuted, margin:0 }}>Based on {fmt(cc)}cc engine displacement</p>}
+                    {cc > 0 && <p style={{ fontSize:10, color: th.textMuted, margin:0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>}
                   </div>
                 )}
                 {car.co2_emissions && (
@@ -2741,8 +2751,18 @@ export default function CarDetailPage() {
             {/* ── RUNNING COSTS ── */}
             {(() => {
               const cc = car.engine_cc || 0;
-              const roadTaxMap = [[1000,20],[1200,55],[1400,70],[1600,90],[1800,200],[2000,280],[2500,380],[3000,880]];
-              const roadTax = cc > 0 ? (roadTaxMap.find(([limit]) => cc <= limit)?.[1] ?? 1880) : null;
+              const roadTax = (() => {
+                if (!cc || cc <= 0) return null;
+                if (cc <= 1000) return 20;
+                if (cc <= 1200) return 55;
+                if (cc <= 1400) return 70;
+                if (cc <= 1600) return 90;
+                if (cc <= 1800) return Math.round(200 + (cc - 1600) * 0.40);
+                if (cc <= 2000) return Math.round(280 + (cc - 1800) * 0.50);
+                if (cc <= 2500) return Math.round(380 + (cc - 2000) * 1.00);
+                if (cc <= 3000) return Math.round(880 + (cc - 2500) * 2.50);
+                return Math.round(2130 + (cc - 3000) * 4.50);
+              })();
               const co2 = car.co2_emissions;
               const insGrp = car.insurance_group ? Number(car.insurance_group) : null;
               const consumption = car.fuel_consumption || (cc <= 1600 ? 8 : cc <= 2000 ? 10 : 13);
@@ -2757,7 +2777,7 @@ export default function CarDetailPage() {
                         <span style={{ fontSize: 13, color: th.textSec }}>Road Tax (estimated)</span>
                         <span style={{ fontSize: 15, color: th.text, fontWeight: 600 }}>RM {roadTax} / year</span>
                       </div>
-                      <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>Based on {fmt(cc)}cc engine displacement</p>
+                      <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>JPJ private saloon rate — {fmt(cc)}cc</p>
                     </div>
                   )}
                   {co2 && (
