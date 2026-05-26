@@ -18,16 +18,31 @@ async function saveSubscription(userId, sub) {
   );
 }
 
+function keyBytesMatch(a, b) {
+  if (a.byteLength !== b.byteLength) return false;
+  const va = new Uint8Array(a), vb = new Uint8Array(b);
+  for (let i = 0; i < va.length; i++) if (va[i] !== vb[i]) return false;
+  return true;
+}
+
 async function doSubscribe(userId) {
   if (!VAPID_PUBLIC_KEY) return;
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
     const reg = await navigator.serviceWorker.ready;
+    const currentKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
     let sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const existingKey = sub.options?.applicationServerKey;
+      if (!existingKey || !keyBytesMatch(existingKey, currentKey.buffer)) {
+        await sub.unsubscribe();
+        sub = null;
+      }
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: currentKey,
       });
     }
     await saveSubscription(userId, sub);
