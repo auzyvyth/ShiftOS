@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 const SELECT_QUERY = `
@@ -11,25 +11,57 @@ export function useLeads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dealerId, setDealerId] = useState(null);
+  const channelRef = useRef(null);
+
+  useEffect(() => {
+    async function resolveDealer() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles').select('id,role,dealer_id').eq('id', user.id).single();
+      if (!profile) return;
+      const did = ['manager', 'admin'].includes(profile.role) ? profile.dealer_id : profile.id;
+      setDealerId(did || null);
+    }
+    resolveDealer();
+  }, []);
 
   const fetchLeads = useCallback(async () => {
+    if (!dealerId) return;
     setLoading(true);
     const { data, error: err } = await supabase
       .from('leads')
       .select(SELECT_QUERY)
+      .eq('dealer_id', dealerId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
-
     if (err) { setError(err); setLoading(false); return; }
     setLeads(data || []);
     setLoading(false);
-  }, []);
+  }, [dealerId]);
 
-  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  useEffect(() => {
+    if (!dealerId) return;
+    fetchLeads();
+
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+    channelRef.current = supabase
+      .channel('leads_dealer_' + dealerId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `dealer_id=eq.${dealerId}` }, fetchLeads)
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [dealerId, fetchLeads]);
 
   const addLead = useCallback(async (payload) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const row = { ...payload, dealer_id: user.id, stage: 'new' };
+    if (!dealerId) throw new Error('No dealer context');
+    const row = { ...payload, dealer_id: dealerId, stage: payload.stage || 'new' };
     const { data, error: err } = await supabase
       .from('leads')
       .insert(row)
@@ -38,16 +70,13 @@ export function useLeads() {
     const inserted = data?.[0];
     if (inserted) setLeads(prev => [inserted, ...prev]);
     return inserted;
-  }, []);
+  }, [dealerId]);
 
   const updateLeadStage = useCallback(async (id, stage) => {
-    const stagePayload = { stage, updated_at: new Date().toISOString() };
     const { error: err } = await supabase
       .from('leads')
-      .update(stagePayload)
+      .update({ stage, updated_at: new Date().toISOString() })
       .eq('id', id);
-    console.log('leads update error:', JSON.stringify(err));
-    console.log('leads update payload:', JSON.stringify(stagePayload));
     if (err) throw err;
     const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
     if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));
@@ -55,13 +84,10 @@ export function useLeads() {
   }, []);
 
   const updateLead = useCallback(async (id, patch) => {
-    const updatePayload = { ...patch, updated_at: new Date().toISOString() };
     const { error: err } = await supabase
       .from('leads')
-      .update(updatePayload)
+      .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('id', id);
-    console.log('leads update error:', JSON.stringify(err));
-    console.log('leads update payload:', JSON.stringify(updatePayload));
     if (err) throw err;
     const { data } = await supabase.from('leads').select(SELECT_QUERY).eq('id', id).single();
     if (data) setLeads(prev => prev.map(l => l.id === id ? data : l));
@@ -77,12 +103,10 @@ export function useLeads() {
     setLeads(prev => prev.filter(l => l.id !== id));
   }, []);
 
-  // Optimistic stage change — call this before the async Supabase update
   const optimisticStageChange = useCallback((id, newStage) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage: newStage } : l));
   }, []);
 
-  // Revert a stage change back to original (on Supabase error)
   const revertStageChange = useCallback((id, originalStage) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage: originalStage } : l));
   }, []);

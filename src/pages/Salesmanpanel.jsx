@@ -611,6 +611,26 @@ Rules:
  }
  });
 
+ // Leads realtime — refetch (without re-scoring) when any lead changes
+ const refetchLeads = () =>
+ supabase
+ .from("leads")
+ .select("*, car_listings(brand, model, year, selling_price)")
+ .eq("salesman_id", userId)
+ .eq("dealer_id", profile?.dealer_id)
+ .eq("is_deleted", false)
+ .order("updated_at", { ascending: false })
+ .then(({ data }) => { if (data) setLeads(data); });
+
+ const leadsCh = supabase
+ .channel("salesman_leads_" + userId)
+ .on(
+ "postgres_changes",
+ { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${userId}` },
+ refetchLeads,
+ )
+ .subscribe();
+
  // Notifications
  const loadNotifs = () =>
  supabase
@@ -656,10 +676,11 @@ Rules:
  supabase.removeChannel(notifCh);
  supabase.removeChannel(apptCh);
  supabase.removeChannel(listingsCh);
+ supabase.removeChannel(leadsCh);
  };
  }, [userId]);
 
- // loan data 
+ // loan data
  useEffect(() => {
  if (!profile?.id) return;
  const dealerId = getDealerIdFromProfile(profile);
@@ -667,6 +688,7 @@ Rules:
  .from("leads")
  .select("id, buyer_name, phone")
  .eq("dealer_id", dealerId)
+ .eq("salesman_id", profile.id)
  .eq("is_deleted", false)
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanLeads(data || []));
@@ -915,7 +937,7 @@ Rules:
  const autoUpsertLeadFromAppt = async (apt) => {
  const phone = (apt.buyer_phone || "").replace(/\D/g, "");
  if (!phone) return;
- const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+ const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", profile?.dealer_id).eq("phone", phone).maybeSingle();
  if (existing) {
  const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
  const curIdx = STAGES.indexOf(existing.stage);

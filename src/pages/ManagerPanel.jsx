@@ -138,6 +138,8 @@ export default function ManagerPanel() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   // ── Auth + fetch ──────────────────────────────────────────────────────────
+  const channelsRef = React.useRef([]);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
@@ -175,22 +177,26 @@ export default function ManagerPanel() {
         .order("created_at", { ascending: false })
         .then(({ data: d }) => setListings(d || []));
 
-      supabase
-        .from("appointments")
-        .select(
-          "*, car_listings(brand,model,year), profiles!salesman_id(full_name)",
-        )
-        .eq("dealer_id", did)
-        .order("created_at", { ascending: false })
-        .then(({ data: d }) => setBookings(d || []));
+      const loadAppts = () =>
+        supabase
+          .from("appointments")
+          .select(
+            "*, car_listings(brand,model,year), profiles!salesman_id(full_name)",
+          )
+          .eq("dealer_id", did)
+          .order("created_at", { ascending: false })
+          .then(({ data: d }) => setBookings(d || []));
+      loadAppts();
 
-      supabase
-        .from("leads")
-        .select("*, car_listings(brand,model,year,selling_price)")
-        .eq("dealer_id", did)
-        .eq("is_deleted", false)
-        .order("updated_at", { ascending: false })
-        .then(({ data: d }) => setLeads(d || []));
+      const loadLeads = () =>
+        supabase
+          .from("leads")
+          .select("*, car_listings(brand,model,year,selling_price)")
+          .eq("dealer_id", did)
+          .eq("is_deleted", false)
+          .order("updated_at", { ascending: false })
+          .then(({ data: d }) => setLeads(d || []));
+      loadLeads();
 
       supabase
         .from("analytics_events")
@@ -221,8 +227,23 @@ export default function ManagerPanel() {
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadOwnerMsgs)
         .subscribe();
 
-      return () => supabase.removeChannel(notifCh);
+      const leadsCh = supabase
+        .channel("manager_leads_" + did)
+        .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${did}` }, loadLeads)
+        .subscribe();
+
+      const apptsCh = supabase
+        .channel("manager_appts_" + did)
+        .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `dealer_id=eq.${did}` }, loadAppts)
+        .subscribe();
+
+      channelsRef.current = [notifCh, leadsCh, apptsCh];
     });
+
+    return () => {
+      channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+      channelsRef.current = [];
+    };
   }, [navigate]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
