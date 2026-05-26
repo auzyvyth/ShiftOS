@@ -146,6 +146,9 @@ export default function SalesmanPanel() {
  // Enquiries
  const [enquiries, setEnquiries] = useState([]);
  const [enquiriesLoading, setEnquiriesLoading] = useState(true);
+ const [unclaimedEnquiries, setUnclaimedEnquiries] = useState([]);
+ const [claimingId, setClaimingId] = useState(null);
+ const [dealerSalesmanIds, setDealerSalesmanIds] = useState([]);
  const [openTemplateId, setOpenTemplateId] = useState(null);
  const [templateToast, setTemplateToast] = useState(null);
  const [openAiReplyId, setOpenAiReplyId] = useState(null);
@@ -548,7 +551,7 @@ export default function SalesmanPanel() {
  // Leads assigned to this salesman
  supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
  .eq("salesman_id", userId)
  .eq("dealer_id", profile?.dealer_id)
  .eq("is_deleted", false)
@@ -611,7 +614,7 @@ Rules:
  const refetchLeads = () =>
  supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, selling_price)")
+ .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
  .eq("salesman_id", userId)
  .eq("dealer_id", profile?.dealer_id)
  .eq("is_deleted", false)
@@ -739,7 +742,59 @@ Rules:
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
  }, [profile?.id]);
- // 
+
+ // Fetch sibling salesman IDs so unclaimed push can reach all of them
+ useEffect(() => {
+ if (!profile?.dealer_id) return;
+ supabase
+ .from("profiles")
+ .select("id")
+ .eq("dealer_id", profile.dealer_id)
+ .eq("role", "salesman")
+ .then(({ data }) => setDealerSalesmanIds((data || []).map((p) => p.id)));
+ }, [profile?.dealer_id]);
+
+ // Unclaimed enquiry pool — dealer enquiries with no ref_slug (not yet owned by any salesman)
+ useEffect(() => {
+ if (!userId || !profile?.dealer_id) return;
+ const fetchUnclaimed = () =>
+ supabase
+ .from("whatsapp_enquiries")
+ .select("*, car_listings(brand, model, year, images)")
+ .eq("dealer_id", profile.dealer_id)
+ .is("ref_slug", null)
+ .neq("status", "converted")
+ .order("created_at", { ascending: false })
+ .limit(20)
+ .then(({ data }) => setUnclaimedEnquiries(data || []));
+ fetchUnclaimed();
+ const unclaimedCh = supabase
+ .channel("unclaimed_enq_" + userId)
+ .on(
+ "postgres_changes",
+ { event: "INSERT", schema: "public", table: "whatsapp_enquiries", filter: `dealer_id=eq.${profile.dealer_id}` },
+ (payload) => {
+ if (payload.new?.ref_slug) return;
+ fetchUnclaimed();
+ const allIds = [...new Set([userId, ...dealerSalesmanIds])];
+ sendPush({
+ userIds: allIds,
+ title: "New enquiry — unclaimed",
+ body: `${payload.new?.buyer_name || "Someone"} enquired — claim it now`,
+ url: "/salesman",
+ tag: `unclaimed-${payload.new?.id}`,
+ });
+ },
+ )
+ .on(
+ "postgres_changes",
+ { event: "UPDATE", schema: "public", table: "whatsapp_enquiries", filter: `dealer_id=eq.${profile.dealer_id}` },
+ () => fetchUnclaimed(),
+ )
+ .subscribe();
+ return () => supabase.removeChannel(unclaimedCh);
+ }, [userId, profile?.dealer_id]);
+ //
 
  const chartRefs = useRef({});
  const pendingStageRef = useRef({});
@@ -1078,6 +1133,35 @@ Rules:
  return `${Math.floor(s / 86400)}d ago`;
  };
 
+ const responseTimeBadge = (createdAt) => {
+ const mins = Math.floor((Date.now() - new Date(createdAt)) / 60000);
+ if (mins < 10) return { color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", label: mins < 1 ? "Just now" : `${mins}m ago` };
+ if (mins < 30) return { color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", label: `${mins}m ago` };
+ const hrs = Math.floor(mins / 60);
+ const label = hrs >= 1 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+ return { color: "#f87171", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", label: `${label} — follow up now` };
+ };
+
+ const claimEnquiry = async (enq) => {
+ setClaimingId(enq.id);
+ const { data, error } = await supabase
+ .from("whatsapp_enquiries")
+ .update({ ref_slug: profile.slug })
+ .eq("id", enq.id)
+ .is("ref_slug", null)
+ .select("*, car_listings(brand, model, year, images)")
+ .single();
+ setClaimingId(null);
+ if (error || !data) {
+ toast.error("Already claimed by someone else!");
+ setUnclaimedEnquiries((p) => p.filter((e) => e.id !== enq.id));
+ return;
+ }
+ setUnclaimedEnquiries((p) => p.filter((e) => e.id !== enq.id));
+ setEnquiries((p) => [data, ...p]);
+ toast.success("Enquiry claimed!");
+ };
+
  const generateAiReply = async (enquiry) => {
  const car = enquiry.car_listings;
  const carName = car
@@ -1343,7 +1427,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  dealer_id: dealerId,
  });
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
- if (["won", "deposit_taken"].includes(stage) && profile?.dealer_id) {
+ if (["won", "deposit_taken"].includes(stage)) {
+ const commission = lead?.car_listings?.commission_amount;
+ if (commission) {
+ toast.success(`Commission: RM ${Number(commission).toLocaleString("en-MY")}`, { duration: 6000 });
+ }
+ if (profile?.dealer_id) {
  const buyerName = lead?.buyer_name || "A lead";
  const stageLabel = stage === "won" ? "Won" : "Deposit Taken";
  sendPush({
@@ -1353,6 +1442,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  url: "/dashboard",
  tag: `lead-${stage}-${leadId}`,
  });
+ }
  }
  };
 
@@ -4182,6 +4272,54 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  </div>
 
+ {/* Loan status row */}
+ {(() => {
+ const LOAN_STATUS = {
+ none: null,
+ submitted: { label: "Loan Submitted", color: "#60a5fa", bg: "rgba(96,165,250,0.10)", border: "rgba(96,165,250,0.28)" },
+ approved: { label: "Loan Approved", color: "#4ade80", bg: "rgba(34,197,94,0.10)", border: "rgba(34,197,94,0.28)" },
+ rejected: { label: "Loan Rejected", color: "#f87171", bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.28)" },
+ cancelled: { label: "Loan Cancelled", color: "#9ca3af", bg: "rgba(107,114,128,0.10)", border: "rgba(107,114,128,0.28)" },
+ };
+ const ls = lead.loan_status && lead.loan_status !== "none" ? LOAN_STATUS[lead.loan_status] : null;
+ return (
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 14px 10px", flexWrap: "wrap" }}>
+ {ls && (
+ <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: ls.bg, border: `1px solid ${ls.border}`, color: ls.color }}>
+ {ls.label}{lead.loan_bank ? ` · ${lead.loan_bank}` : ""}
+ </span>
+ )}
+ <select
+ value={lead.loan_status || "none"}
+ onChange={async (e) => {
+ const val = e.target.value;
+ await supabase.from("leads").update({ loan_status: val, loan_updated_at: new Date().toISOString() }).eq("id", lead.id);
+ setLeads((p) => p.map((l) => l.id === lead.id ? { ...l, loan_status: val } : l));
+ }}
+ style={{ fontSize: 10, padding: "3px 6px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#6b7280", cursor: "pointer" }}
+ >
+ <option value="none">Loan: —</option>
+ <option value="submitted">Submitted</option>
+ <option value="approved">Approved</option>
+ <option value="rejected">Rejected</option>
+ <option value="cancelled">Cancelled</option>
+ </select>
+ {(lead.loan_status === "submitted" || lead.loan_status === "approved") && (
+ <input
+ placeholder="Bank name"
+ defaultValue={lead.loan_bank || ""}
+ onBlur={async (e) => {
+ const val = e.target.value.trim();
+ await supabase.from("leads").update({ loan_bank: val || null }).eq("id", lead.id);
+ setLeads((p) => p.map((l) => l.id === lead.id ? { ...l, loan_bank: val || null } : l));
+ }}
+ style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#9ca3af", width: 80 }}
+ />
+ )}
+ </div>
+ );
+ })()}
+
  {/* ACTIONS */}
  <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
  {lead.stage!== "won" && lead.stage!== "closed_won" && (
@@ -4649,31 +4787,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const renderEnquiriesSection = () => {
  const newCount = enquiries.filter(e => e.status === "new").length;
- return (
- <div>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Enquiries ({enquiries.length})</p>
- {newCount > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{newCount} new</span>}
- </div>
- {enquiries.length === 0 ? (
- <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
- <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
- </div>
- ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {enquiries.map((enq) => {
+ const renderEnqCard = (enq, isUnclaimed = false) => {
  const car = enq.car_listings;
+ const rtb = responseTimeBadge(enq.created_at);
  return (
- <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px" }}>
+ <div key={enq.id} style={{ background: "#0d1117", border: `1px solid ${isUnclaimed ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 10, padding: "12px 14px" }}>
  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
- <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: enq.status === "new" ? "rgba(96,165,250,0.12)" : enq.status === "converted" ? "rgba(34,197,94,0.12)" : "rgba(74,222,128,0.08)", border: `1px solid ${enq.status === "new" ? "rgba(96,165,250,0.3)" : enq.status === "converted" ? "rgba(34,197,94,0.3)" : "rgba(74,222,128,0.2)"}`, color: enq.status === "new" ? "#93c5fd" : "#4ade80", textTransform: "capitalize" }}>{enq.status || "new"}</span>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: rtb.bg, border: `1px solid ${rtb.border}`, color: rtb.color }}>{rtb.label}</span>
  </div>
  {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
  {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
  {enq.buyer_message && <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{enq.buyer_message}"</p>}
- <p style={{ margin: "0 0 8px", fontSize: 10, color: "#374151" }}>{timeAgo(enq.created_at)}</p>
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
  {enq.buyer_phone && (
  <button onClick={() => { const ph = (enq.buyer_phone).replace(/\D/g, ""); const msg = encodeURIComponent(`Hi ${enq.buyer_name || ""}! Thank you for your enquiry on the ${car ? `${car.brand} ${car.model}` : "kereta"}. I'm here to help — when would be a good time to chat?`); window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${msg}`, "_blank", "noopener,noreferrer"); }} style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}><MessageCircle size={12} /> WA Reply</button>
@@ -4709,9 +4834,44 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  ) : null}
  </div>
  )}
+ {isUnclaimed && (
+ <button
+ onClick={() => claimEnquiry(enq)}
+ disabled={claimingId === enq.id}
+ style={{ marginTop: 10, width: "100%", padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", cursor: "pointer", letterSpacing: "0.03em" }}
+ >
+ {claimingId === enq.id ? "Claiming..." : "Claim this enquiry"}
+ </button>
+ )}
  </div>
  );
- })}
+ };
+ return (
+ <div>
+ {unclaimedEnquiries.length > 0 && (
+ <div style={{ marginBottom: 18 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+ <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Unclaimed</span>
+ <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24" }}>{unclaimedEnquiries.length}</span>
+ </div>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ {unclaimedEnquiries.map((enq) => renderEnqCard(enq, true))}
+ </div>
+ <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", margin: "16px 0" }} />
+ </div>
+ )}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Enquiries ({enquiries.length})</p>
+ {newCount > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{newCount} new</span>}
+ </div>
+ {enquiries.length === 0 ? (
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+ <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+ <p style={{ margin: 0, fontSize: 13 }}>No enquiries yet.</p>
+ </div>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ {enquiries.map((enq) => renderEnqCard(enq, false))}
  </div>
  )}
  </div>

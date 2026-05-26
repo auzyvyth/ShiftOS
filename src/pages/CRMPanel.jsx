@@ -1267,6 +1267,8 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [rescheduleAptId, setRescheduleAptId] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [pastOpen, setPastOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(true);
 
   const statusMeta = {
     pending: {
@@ -1484,15 +1486,20 @@ function BookingsTab({ userId, listings, salesmen }) {
   });
 
   const todayStr = new Date().toDateString();
+  const now = Date.now();
   const todaysBookings = bookings.filter(
-    (b) =>
-      b.appointment_date &&
-      new Date(b.appointment_date).toDateString() === todayStr,
+    (b) => b.appointment_date && new Date(b.appointment_date).toDateString() === todayStr,
   );
-  const otherBookings = bookings.filter(
-    (b) =>
-      !b.appointment_date ||
-      new Date(b.appointment_date).toDateString() !== todayStr,
+  const upcomingBookings = bookings.filter(
+    (b) => b.appointment_date &&
+      new Date(b.appointment_date).toDateString() !== todayStr &&
+      new Date(b.appointment_date).getTime() > now,
+  );
+  const pastBookings = bookings.filter(
+    (b) => !b.appointment_date || (
+      new Date(b.appointment_date).toDateString() !== todayStr &&
+      new Date(b.appointment_date).getTime() <= now
+    ),
   );
 
   const scheduleReminder = async (b) => {
@@ -1729,22 +1736,35 @@ function BookingsTab({ userId, listings, salesmen }) {
           <p style={{ padding: "32px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>No bookings yet.</p>
         ) : view === "list" ? (
           <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-            {todaysBookings.length > 0 && (
+            {todaysBookings.length > 0 ? (
               <>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#60a5fa", boxShadow: "0 0 6px rgba(96,165,250,0.8)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px", borderRadius: 8, background: "rgba(220,38,38,0.06)", margin: "0 -4px", paddingLeft: 10 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#f87171", boxShadow: "0 0 6px rgba(248,113,113,0.9)", animation: "hotpulse 1.2s ease-in-out infinite", flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#f87171", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length} — needs attention</span>
                 </div>
                 {todaysBookings.map(b => renderBookingRow(b))}
-                {otherBookings.length > 0 && <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />}
+              </>
+            ) : (
+              <div style={{ padding: "10px 4px", fontSize: 12, color: "#4b5563" }}>No bookings today.</div>
+            )}
+            {upcomingBookings.length > 0 && (
+              <>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+                <button onClick={() => setUpcomingOpen(p => !p)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px", background: "none", border: "none", cursor: "pointer", width: "100%" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.12em", textTransform: "uppercase" }}>Upcoming · {upcomingBookings.length}</span>
+                  <span style={{ fontSize: 10, color: "#4b5563", marginLeft: "auto" }}>{upcomingOpen ? "▲" : "▼"}</span>
+                </button>
+                {upcomingOpen && upcomingBookings.map(b => renderBookingRow(b))}
               </>
             )}
-            {otherBookings.length > 0 && (
+            {pastBookings.length > 0 && (
               <>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.12em", textTransform: "uppercase" }}>Upcoming & Past · {otherBookings.length}</span>
-                </div>
-                {otherBookings.map(b => renderBookingRow(b))}
+                <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+                <button onClick={() => setPastOpen(p => !p)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px", background: "none", border: "none", cursor: "pointer", width: "100%" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>Past · {pastBookings.length}</span>
+                  <span style={{ fontSize: 10, color: "#4b5563", marginLeft: "auto" }}>{pastOpen ? "▲" : "▼"}</span>
+                </button>
+                {pastOpen && pastBookings.map(b => renderBookingRow(b))}
               </>
             )}
           </div>
