@@ -5664,6 +5664,7 @@ export default function DashboardPage() {
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
+  const [listingsVisible, setListingsVisible] = useState(20);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   useWebPush(userId);
@@ -5989,6 +5990,10 @@ export default function DashboardPage() {
       (l.vin_number || "").toLowerCase().includes(q)
     );
   }, [listings, searchQuery, statusFilter]);
+
+  useEffect(() => { setListingsVisible(20); }, [statusFilter, searchQuery]);
+
+  const pagedListings = filteredListings.slice(0, listingsVisible);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6787,7 +6792,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredListings.map((l) => {
+                          {pagedListings.map((l) => {
                             const isSold = l.status === 'sold';
                             const extGC = gradeColor(String(l.auction_grade));
                             const sp = l.selling_price || l.price || 0;
@@ -6870,7 +6875,7 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden">
-                      {filteredListings.map((l) => {
+                      {pagedListings.map((l) => {
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
@@ -6929,6 +6934,18 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+                    {filteredListings.length > listingsVisible && (
+                      <div style={{ padding: '16px 20px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <button
+                          onClick={() => setListingsVisible(p => p + 20)}
+                          style={{ padding: '10px 32px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'background .15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                        >
+                          See more · {filteredListings.length - listingsVisible} remaining
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
                 </div>
