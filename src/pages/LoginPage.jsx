@@ -3,35 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 
-const Field = ({ id, label, focused, children }) => (
-  <div className={`field ${focused === id ? "is-focused" : ""}`}>
-    <label>{label}</label>
-    {children}
-  </div>
-);
-
-const TextInput = ({
-  id,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  onFocusChange,
-}) => (
-  <div className="field-inner">
-    <input
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => onFocusChange(id)}
-      onBlur={() => onFocusChange("")}
-      autoComplete="off"
-    />
-    <div className="field-bar" />
-  </div>
-);
-
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -39,7 +10,6 @@ export default function LoginPage() {
   const [unconfirmed, setUnconfirmed] = useState(
     searchParams.get("unconfirmed") === "1",
   );
-  const [focused, setFocused] = useState("");
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,9 +33,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) redirectByRole(data.session.user);
-    });
   }, []);
 
   const handleMagicLink = async () => {
@@ -606,6 +573,7 @@ export default function LoginPage() {
                   type="email"
                   value={magicEmail}
                   onChange={(e) => setMagicEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleMagicLink()}
                 />
                 {magicSent ? (
                   <p className="lr-success">
@@ -626,7 +594,6 @@ export default function LoginPage() {
 
             {/* Submit */}
             <button type="submit" className="lr-submit" disabled={loading}>
-              <div className="lr-shimmer" />
               {loading ? (
                 <span className="lr-dots">
                   <span>·</span>
@@ -634,7 +601,10 @@ export default function LoginPage() {
                   <span>·</span>
                 </span>
               ) : (
-                "SIGN IN"
+                <>
+                  <div className="lr-shimmer" />
+                  SIGN IN
+                </>
               )}
             </button>
           </form>
