@@ -70,7 +70,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
     setLoading(true);
     const { data, error: err } = await supabase
       .from("whatsapp_enquiries")
-      .select(`*, listing:public_car_listings(brand, model, variant, selling_price)`)
+      .select(`*, listing:public_car_listings(brand, model, variant, selling_price), claimed_by:profiles!claimed_by_id(full_name)`)
       .eq("dealer_id", userId)
       .order("created_at", { ascending: false });
     if (err) {
@@ -388,7 +388,14 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                       >
                         {e.buyer_name || "Unknown buyer"}
                       </span>
-                      <StatusBadge status={e.status || "new"} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {e.claimed_by?.full_name && (
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#93c5fd", whiteSpace: "nowrap" }}>
+                            {e.claimed_by.full_name}
+                          </span>
+                        )}
+                        <StatusBadge status={e.status || "new"} />
+                      </div>
                     </div>
                     <div
                       style={{
@@ -590,7 +597,11 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                             padding: "2px 8px",
                           }}
                         >
-                          {e.lead_source || e.ref_slug || "—"}
+                          {e.claimed_by?.full_name
+                            ? `Claimed by ${e.claimed_by.full_name}`
+                            : e.ref_slug
+                            ? `ref: ${e.ref_slug}`
+                            : e.lead_source || "—"}
                         </span>
                       </td>
                       <td style={{ padding: "12px 14px" }}>

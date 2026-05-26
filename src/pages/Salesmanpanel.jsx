@@ -1146,7 +1146,7 @@ Rules:
  setClaimingId(enq.id);
  const { data, error } = await supabase
  .from("whatsapp_enquiries")
- .update({ ref_slug: profile.slug })
+ .update({ ref_slug: profile.slug, claimed_by_id: userId, status: "converted" })
  .eq("id", enq.id)
  .is("ref_slug", null)
  .select("*, car_listings(brand, model, year, images)")
@@ -1157,9 +1157,25 @@ Rules:
  setUnclaimedEnquiries((p) => p.filter((e) => e.id !== enq.id));
  return;
  }
+ const { data: newLead } = await supabase
+ .from("leads")
+ .insert({
+ salesman_id: userId,
+ dealer_id: profile?.dealer_id,
+ buyer_name: data.buyer_name,
+ phone: data.buyer_phone,
+ notes: data.buyer_message,
+ car_listing_id: data.listing_id || null,
+ stage: "new",
+ lead_source: "enquiry",
+ is_deleted: false,
+ })
+ .select("*, car_listings(brand, model, year, selling_price, commission_amount)")
+ .single();
  setUnclaimedEnquiries((p) => p.filter((e) => e.id !== enq.id));
- setEnquiries((p) => [data, ...p]);
- toast.success("Enquiry claimed!");
+ setEnquiries((p) => [{ ...data, status: "converted" }, ...p]);
+ if (newLead) setLeads((p) => [newLead, ...p]);
+ toast.success("Claimed and added to your pipeline!");
  };
 
  const generateAiReply = async (enquiry) => {
