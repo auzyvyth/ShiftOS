@@ -42,6 +42,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   const [coachLoading, setCoachLoading] = useState(false);
   const [stockData, setStockData] = useState(null);
   const [dealerProfile, setDealerProfile] = useState(null);
+  const [searchEnq, setSearchEnq] = useState("");
 
   const statusMeta = {
     new: {
@@ -303,46 +304,39 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     sendCoachMessage('Read this enquiry and give me your quick read of the situation and what I should do next.');
   }, [coachOpen, selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const filteredEnqs = !searchEnq
+    ? enquiries
+    : enquiries.filter(e => {
+        const q = searchEnq.toLowerCase();
+        return (
+          (e.buyer_name || "").toLowerCase().includes(q) ||
+          (e.buyer_phone || "").toLowerCase().includes(q) ||
+          (e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || "")).toLowerCase().includes(q)
+        );
+      });
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div
-          style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#f3f4f6",
-                margin: 0,
-              }}
-            >
-              Enquiries
-            </h2>
-            <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
-              {enquiries.length} total · tap a row to view details
-            </p>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#f3f4f6", margin: 0 }}>Enquiries</h2>
+              <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
+                {filteredEnqs.length} {searchEnq ? "matching" : "total"}
+              </p>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 6, padding: "3px 10px", flexShrink: 0 }}>
+              {enquiries.filter((e) => (e.status || "new") === "new").length} new
+            </span>
           </div>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#60a5fa",
-              background: "rgba(96,165,250,0.1)",
-              border: "1px solid rgba(96,165,250,0.2)",
-              borderRadius: 6,
-              padding: "3px 10px",
-            }}
-          >
-            {enquiries.filter((e) => (e.status || "new") === "new").length} new
-          </span>
+          <input
+            type="text"
+            value={searchEnq}
+            onChange={e => setSearchEnq(e.target.value)}
+            placeholder="Search buyer name, phone, car…"
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 12px", outline: "none", fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box" }}
+          />
         </div>
 
         {loading ? (
@@ -356,7 +350,12 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
           <>
             {/* Mobile cards */}
             <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 0 4px" }}>
-              {enquiries.map((e) => {
+              {filteredEnqs.length === 0 && (
+                <p style={{ padding: "20px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>
+                  {searchEnq ? `No results for "${searchEnq}"` : "No enquiries yet."}
+                </p>
+              )}
+              {filteredEnqs.map((e) => {
                 const m = statusMeta[e.status || "new"];
                 const carLabel = e.listing
                   ? `${e.listing.brand} ${e.listing.model}`
@@ -548,7 +547,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   </tr>
                 </thead>
                 <tbody>
-                  {enquiries.map((e) => (
+                  {filteredEnqs.map((e) => (
                     <tr
                       key={e.id}
                       style={{
@@ -796,7 +795,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   >
                     <p
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         color: "#6b7280",
                         textTransform: "uppercase",
                         letterSpacing: "0.1em",
@@ -830,7 +829,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 >
                   <p
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "#6b7280",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
@@ -854,7 +853,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
               <div style={{ marginBottom: 16 }}>
                 <p
                   style={{
-                    fontSize: 10,
+                    fontSize: 11,
                     color: "#6b7280",
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
@@ -896,7 +895,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
               <div style={{ marginBottom: 20 }}>
                 <p
                   style={{
-                    fontSize: 10,
+                    fontSize: 11,
                     color: "#6b7280",
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
@@ -931,7 +930,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 >
                   <p
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "#6b7280",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
@@ -940,6 +939,26 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   >
                     Follow-up Message
                   </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    {[
+                      { label: "Still interested?", text: `Hi {{name}}, just checking in — are you still interested in the {{car}}? I'd love to help. Let me know if you have any questions!` },
+                      { label: "Price update", text: `Hi {{name}}, great news! We have a new offer on the {{car}}. Reply to find out more details.` },
+                      { label: "Book test drive?", text: `Hi {{name}}, would you like to schedule a test drive for the {{car}}? We have availability this week — let me know!` },
+                      { label: "Following up", text: `Hi {{name}}, just following up on your enquiry about the {{car}}. Feel free to ask me anything!` },
+                    ].map(({ label, text }) => (
+                      <button
+                        key={label}
+                        onClick={() => setEditedMsg(
+                          text
+                            .replace(/\{\{name\}\}/g, selected?.buyer_name?.split(" ")[0] || "there")
+                            .replace(/\{\{car\}\}/g, selected?.listing ? `${selected.listing.brand} ${selected.listing.model}` : (selected?.car_info || "the vehicle"))
+                        )}
+                        style={{ fontSize: 12, color: "#93c5fd", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
                     value={editedMsg}
                     onChange={(e) => setEditedMsg(e.target.value)}
@@ -1003,7 +1022,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 >
                   <p
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "#6b7280",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
@@ -1285,6 +1304,9 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [pastOpen, setPastOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
+  const [receiptModal, setReceiptModal] = useState(null);
+  const [receiptAmt, setReceiptAmt] = useState("");
+  const [receiptCopied, setReceiptCopied] = useState(false);
 
   const statusMeta = {
     pending: {
@@ -1671,6 +1693,12 @@ function BookingsTab({ userId, listings, salesmen }) {
           {b.buyer_phone && notDone && (
             <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#4ade80", background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>WhatsApp</button>
           )}
+          <button
+            onClick={() => { setReceiptModal(b); setReceiptAmt(b.deposit_amount ? String(b.deposit_amount) : ""); setReceiptCopied(false); }}
+            style={{ fontSize: 10, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}
+          >
+            Receipt
+          </button>
           {notDone && dealerBkProfile?.telegram_bot_token && (
             <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#4ade80" : "#6b7280", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
               <Bell size={10} />{b.remind_at ? "Reminder set" : "Remind"}
@@ -2083,6 +2111,90 @@ function BookingsTab({ userId, listings, salesmen }) {
           </div>
         </div>
       )}
+
+      {/* Deposit Receipt Modal */}
+      {receiptModal && (() => {
+        const b = receiptModal;
+        const car = b.car_listings;
+        const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "Vehicle";
+        const today = new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" });
+        const buildReceipt = (amt) => [
+          `DEPOSIT RECEIPT`,
+          `──────────────────`,
+          `Date: ${today}`,
+          `Buyer: ${b.buyer_name || "—"}`,
+          b.buyer_phone ? `Contact: ${b.buyer_phone}` : null,
+          ``,
+          `Vehicle: ${carName}`,
+          `Deposit Paid: RM ${amt || "___"}`,
+          ``,
+          `This deposit confirms the buyer's intention to purchase the above vehicle. Balance payment terms to be agreed separately.`,
+          ``,
+          `Salesman: ${dealerBkProfile?.full_name || "—"}`,
+          dealerBkProfile?.dealership ? `Dealership: ${dealerBkProfile.dealership}` : null,
+        ].filter(s => s !== null).join("\n");
+
+        return (
+          <div
+            className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+            style={{ background: "rgba(0,0,0,0.78)" }}
+            onClick={() => setReceiptModal(null)}
+          >
+            <div
+              className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden"
+              style={{ background: "#0f1623", border: "1px solid rgba(255,255,255,0.08)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff" }}>Deposit Receipt</h3>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{b.buyer_name} · {carName}</p>
+                </div>
+                <button onClick={() => setReceiptModal(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4 }}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Deposit Amount (RM)</label>
+                  <input
+                    type="number"
+                    value={receiptAmt}
+                    onChange={e => setReceiptAmt(e.target.value)}
+                    placeholder="e.g. 500"
+                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#e5e7eb", fontSize: 14, padding: "9px 12px", outline: "none", fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box" }}
+                  />
+                </div>
+                <textarea
+                  readOnly
+                  value={buildReceipt(receiptAmt)}
+                  rows={11}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#d1d5db", fontSize: 12, padding: "10px 12px", fontFamily: "monospace", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(buildReceipt(receiptAmt)); setReceiptCopied(true); setTimeout(() => setReceiptCopied(false), 2500); }}
+                    style={{ flex: 1, padding: "10px", background: receiptCopied ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${receiptCopied ? "rgba(52,211,153,0.3)" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: receiptCopied ? "#34d399" : "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
+                  >
+                    {receiptCopied ? "Copied!" : "Copy Text"}
+                  </button>
+                  {b.buyer_phone && (
+                    <a
+                      href={`https://wa.me/${b.buyer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(buildReceipt(receiptAmt))}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", borderRadius: 10, color: "#4ade80", fontSize: 13, fontWeight: 600, textDecoration: "none", fontFamily: "'DM Sans',sans-serif" }}
+                    >
+                      <MessageCircle style={{ width: 14, height: 14 }} />
+                      Send via WA
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Booking Reminder Modal */}
       {reminderTarget && (
