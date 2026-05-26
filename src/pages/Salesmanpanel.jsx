@@ -506,12 +506,21 @@ export default function SalesmanPanel() {
  .channel("appts_" + userId)
  .on(
  "postgres_changes",
- {
- event: "*",
- schema: "public",
- table: "appointments",
- filter: `salesman_id=eq.${userId}`,
+ { event: "INSERT", schema: "public", table: "appointments", filter: `salesman_id=eq.${userId}` },
+ (payload) => {
+ fetchAppts();
+ sendPush({
+ userIds: [userId],
+ title: "New booking",
+ body: `${payload.new?.buyer_name || "Someone"} booked a viewing`,
+ url: "/salesman",
+ tag: `appt-${payload.new?.id}`,
+ });
  },
+ )
+ .on(
+ "postgres_changes",
+ { event: "UPDATE", schema: "public", table: "appointments", filter: `salesman_id=eq.${userId}` },
  () => fetchAppts(),
  )
  .subscribe();
@@ -535,22 +544,6 @@ export default function SalesmanPanel() {
  .order("created_at", { ascending: false })
  .limit(10)
  .then(({ data }) => setManagerNotes(data || []));
-
- // Enquiries via ref slug
- if (profile?.slug) {
- supabase
- .from("whatsapp_enquiries")
- .select("*, car_listings(brand, model, year, images)")
- .eq("ref_slug", profile.slug)
- .order("created_at", { ascending: false })
- .limit(20)
- .then(({ data }) => {
- setEnquiries(data || []);
- setEnquiriesLoading(false);
- });
- } else {
- setEnquiriesLoading(false);
- }
 
  // Leads assigned to this salesman
  supabase
@@ -682,6 +675,45 @@ Rules:
  supabase.removeChannel(leadsCh);
  };
  }, [userId]);
+
+ // Enquiries — own effect so it runs after profile.slug is available
+ useEffect(() => {
+ if (!userId) return;
+ if (!profile?.slug) {
+ setEnquiriesLoading(false);
+ return;
+ }
+ const refetchEnquiries = () =>
+ supabase
+ .from("whatsapp_enquiries")
+ .select("*, car_listings(brand, model, year, images)")
+ .eq("ref_slug", profile.slug)
+ .order("created_at", { ascending: false })
+ .limit(20)
+ .then(({ data }) => {
+ setEnquiries(data || []);
+ setEnquiriesLoading(false);
+ });
+ refetchEnquiries();
+ const enqCh = supabase
+ .channel("enq_" + userId)
+ .on(
+ "postgres_changes",
+ { event: "INSERT", schema: "public", table: "whatsapp_enquiries", filter: `ref_slug=eq.${profile.slug}` },
+ (payload) => {
+ refetchEnquiries();
+ sendPush({
+ userIds: [userId],
+ title: "New enquiry",
+ body: `${payload.new?.buyer_name || "Someone"} asked about a car`,
+ url: "/salesman",
+ tag: `enq-${payload.new?.id}`,
+ });
+ },
+ )
+ .subscribe();
+ return () => supabase.removeChannel(enqCh);
+ }, [userId, profile?.slug]);
 
  // loan data
  useEffect(() => {
