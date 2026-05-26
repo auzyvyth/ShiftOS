@@ -3021,6 +3021,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
+  const [salesmanStatsMap, setSalesmanStatsMap] = useState({});
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3040,9 +3041,39 @@ function TeamTab({ managerDealership, dealerId }) {
     setAnalyticsMap(map);
   };
 
+  const fetchSalesmanStats = async () => {
+    if (!dealerId) return;
+    const [{ data: soldData }, { data: leadsData }] = await Promise.all([
+      supabase
+        .from("car_listings")
+        .select("assigned_to")
+        .eq("dealer_id", dealerId)
+        .eq("status", "sold"),
+      supabase
+        .from("leads")
+        .select("salesman_id, stage")
+        .eq("dealer_id", dealerId)
+        .eq("is_deleted", false),
+    ]);
+    const map = {};
+    (soldData || []).forEach(({ assigned_to }) => {
+      if (!assigned_to) return;
+      if (!map[assigned_to]) map[assigned_to] = { sold: 0, activeLeads: 0 };
+      map[assigned_to].sold++;
+    });
+    const CLOSED = ["won", "lost", "closed_won", "closed_lost"];
+    (leadsData || []).forEach(({ salesman_id, stage }) => {
+      if (!salesman_id) return;
+      if (!map[salesman_id]) map[salesman_id] = { sold: 0, activeLeads: 0 };
+      if (!CLOSED.includes(stage)) map[salesman_id].activeLeads++;
+    });
+    setSalesmanStatsMap(map);
+  };
+
   useEffect(() => {
     fetchTeam();
     fetchAnalytics();
+    fetchSalesmanStats();
   }, [managerDealership]);
 
   useEffect(() => {
@@ -3493,14 +3524,12 @@ function TeamTab({ managerDealership, dealerId }) {
                         </span>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-2 max-w-xs">
+                    <div className="grid grid-cols-2 gap-2 max-w-[200px]">
                       {[
                         [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
-                        [
-                          String(analyticsMap[s.slug]?.whatsapp || 0),
-                          "WhatsApp",
-                        ],
-                        [String(teamSoldCount), "Team Sales"],
+                        [String(analyticsMap[s.slug]?.whatsapp || 0), "WhatsApp"],
+                        [String(salesmanStatsMap[s.id]?.sold || 0), "Sold"],
+                        [String(salesmanStatsMap[s.id]?.activeLeads || 0), "Active Leads"],
                       ].map(([v, lbl]) => (
                         <div
                           key={lbl}
@@ -3511,7 +3540,7 @@ function TeamTab({ managerDealership, dealerId }) {
                           }}
                         >
                           <p
-                            className={`text-sm font-bold ${lbl === "Team Sales" ? "grad-green" : lbl === "WhatsApp" && Number(v) > 0 ? "grad-green" : "grad-white"}`}
+                            className={`text-sm font-bold ${lbl === "Sold" && Number(v) > 0 ? "grad-green" : lbl === "WhatsApp" && Number(v) > 0 ? "grad-green" : "grad-white"}`}
                           >
                             {v}
                           </p>
