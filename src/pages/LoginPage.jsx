@@ -40,7 +40,7 @@ export default function LoginPage() {
     setMagicLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: magicEmail.trim(),
-      options: { emailRedirectTo: "https://xdrive.my/auth/callback" },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setMagicLoading(false);
     if (error) setError(error.message);
@@ -54,7 +54,7 @@ export default function LoginPage() {
     }
     setResetLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: "https://xdrive.my/reset-password",
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setResetLoading(false);
     if (error) setError(error.message);
@@ -65,7 +65,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://xdrive.my/auth/callback",
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) setError(error.message);
@@ -81,13 +81,15 @@ export default function LoginPage() {
 
     const subdomain = profile?.subdomain;
     const role = profile?.role;
+    const isProd = window.location.hostname === "xdrive.my" || window.location.hostname.endsWith(".xdrive.my");
+    const base = isProd ? "https://xdrive.my" : window.location.origin;
 
     if (role === "superadmin" || role === "dealer") {
       if (profile?.onboarding_complete === false) {
-        window.location.href = "https://xdrive.my/onboarding";
+        window.location.href = `${base}/onboarding`;
         return;
       }
-      if (subdomain) {
+      if (subdomain && isProd) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -95,7 +97,7 @@ export default function LoginPage() {
         const refreshToken = session.refresh_token;
         window.location.href = `https://${subdomain}.xdrive.my/dashboard?_at=${accessToken}&_rt=${refreshToken}`;
       } else {
-        window.location.href = "https://xdrive.my/dashboard";
+        window.location.href = `${base}/dashboard`;
       }
     } else if (role === "salesman") {
       const { data: { session: sess } } = await supabase.auth.getSession();
@@ -103,13 +105,13 @@ export default function LoginPage() {
       const rt = sess?.refresh_token;
       const target = profile?.dealer_id ? "salesman" : "salesman-lite";
       const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : "";
-      window.location.href = `https://xdrive.my/${target}${suffix}`;
+      window.location.href = `${base}/${target}${suffix}`;
     } else {
       const { data: { session: sess } } = await supabase.auth.getSession();
       const at = sess?.access_token;
       const rt = sess?.refresh_token;
       const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : "";
-      window.location.href = `https://xdrive.my/salesman${suffix}`;
+      window.location.href = `${base}/salesman${suffix}`;
     }
   };
 
