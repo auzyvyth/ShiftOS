@@ -390,8 +390,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                       </span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         {e.claimed_by?.full_name && (
-                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#93c5fd", whiteSpace: "nowrap" }}>
-                            {e.claimed_by.full_name}
+                          <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.45)", color: "#fb923c", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            Claimed · {e.claimed_by.full_name}
                           </span>
                         )}
                         <StatusBadge status={e.status || "new"} />
@@ -468,7 +468,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           flex: 1,
                           fontSize: 12,
                           fontWeight: 600,
-                          background: m?.bg,
+                          background: "#0f172a",
                           color: m?.color,
                           border: `1px solid ${m?.border}`,
                           borderRadius: 8,
@@ -476,6 +476,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           cursor: "pointer",
                           outline: "none",
                           fontFamily: "'DM Sans',sans-serif",
+                          WebkitAppearance: "none",
+                          appearance: "none",
                         }}
                       >
                         {Object.keys(statusMeta).map((s) => (
@@ -587,22 +589,15 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         onClick={() => openDetail(e)}
                         style={{ padding: "12px 14px" }}
                       >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "#9ca3af",
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                          }}
-                        >
-                          {e.claimed_by?.full_name
-                            ? `Claimed by ${e.claimed_by.full_name}`
-                            : e.ref_slug
-                            ? `ref: ${e.ref_slug}`
-                            : e.lead_source || "—"}
-                        </span>
+                        {e.claimed_by?.full_name ? (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#fb923c", background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.4)", borderRadius: 6, padding: "3px 9px", whiteSpace: "nowrap" }}>
+                            Claimed · {e.claimed_by.full_name}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: "#9ca3af", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 8px" }}>
+                            {e.ref_slug ? `ref: ${e.ref_slug}` : e.lead_source || "—"}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: "12px 14px" }}>
                         <select
@@ -614,13 +609,15 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            background: statusMeta[e.status || "new"]?.bg,
+                            background: "#0f172a",
                             color: statusMeta[e.status || "new"]?.color,
                             border: `1px solid ${statusMeta[e.status || "new"]?.border}`,
                             borderRadius: 6,
                             padding: "3px 8px",
                             cursor: "pointer",
                             outline: "none",
+                            WebkitAppearance: "none",
+                            appearance: "none",
                           }}
                         >
                           {Object.keys(statusMeta).map((s) => (
@@ -730,8 +727,13 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     : "General enquiry"}
                 </p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <StatusBadge status={selected.status || "new"} />
+                {selected.claimed_by?.full_name && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.45)", color: "#fb923c" }}>
+                    Claimed · {selected.claimed_by.full_name}
+                  </span>
+                )}
                 <button
                   onClick={() => setSelected(null)}
                   style={{
@@ -867,7 +869,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     width: "100%",
                     fontSize: 13,
                     fontWeight: 600,
-                    background: statusMeta[selected.status || "new"]?.bg,
+                    background: "#0f172a",
                     color: statusMeta[selected.status || "new"]?.color,
                     border: `1px solid ${statusMeta[selected.status || "new"]?.border}`,
                     borderRadius: 8,
@@ -875,6 +877,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     cursor: "pointer",
                     outline: "none",
                     fontFamily: "'DM Sans',sans-serif",
+                    WebkitAppearance: "none",
+                    appearance: "none",
                   }}
                 >
                   {Object.keys(statusMeta).map((s) => (
@@ -1585,7 +1589,7 @@ function BookingsTab({ userId, listings, salesmen }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginBottom: 6 }}>
           {car && <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
           {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
-          {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><User size={10} /> {sm.full_name}</p>}
+          {sm?.full_name && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 6, background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4 }}><User size={10} /> {sm.full_name}</span>}
           {b.buyer_state && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", fontWeight: 600 }}>
               <MapPin size={9} />

@@ -4864,18 +4864,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
  return (
  <div>
- {unclaimedEnquiries.length > 0 && (
- <div style={{ marginBottom: 18 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
- <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>Unclaimed</span>
- <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24" }}>{unclaimedEnquiries.length}</span>
- </div>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
- {unclaimedEnquiries.map((enq) => renderEnqCard(enq, true))}
- </div>
- <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", margin: "16px 0" }} />
- </div>
- )}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
  <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>My Enquiries ({enquiries.length})</p>
  {newCount > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>{newCount} new</span>}
@@ -4893,6 +4881,47 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  );
  };
+
+ const renderPoolSection = () => (
+ <div>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Unclaimed Pool</p>
+ {unclaimedEnquiries.length > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700 }}>{unclaimedEnquiries.length} waiting</span>}
+ </div>
+ <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>First to claim gets the lead. Respond within 10 minutes for best conversion.</p>
+ {unclaimedEnquiries.length === 0 ? (
+ <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+ <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
+ <p style={{ margin: 0, fontSize: 13 }}>Pool is empty — no unclaimed enquiries right now.</p>
+ </div>
+ ) : (
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ {unclaimedEnquiries.map((enq) => {
+ const car = enq.car_listings;
+ const badge = responseTimeBadge(enq.created_at);
+ return (
+ <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 10, padding: "12px 14px" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
+ <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>{badge.label}</span>
+ </div>
+ {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+ {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
+ {enq.buyer_message && <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{enq.buyer_message}"</p>}
+ <button
+ onClick={() => claimEnquiry(enq)}
+ disabled={claimingId === enq.id}
+ style={{ width: "100%", padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.45)", color: "#fbbf24", cursor: "pointer", letterSpacing: "0.03em", opacity: claimingId === enq.id ? 0.6 : 1 }}
+ >
+ {claimingId === enq.id ? "Claiming..." : "Claim & Add to Pipeline"}
+ </button>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
 
  const renderBookingsSection = () => {
  const statusColors = {
@@ -5111,14 +5140,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div>
  {/* Sub-tab switcher */}
  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
- {[{ key: "enquiries", label: "Enquiries", badge: newEnqCount }, { key: "bookings", label: "Bookings", badge: pendingAptCount }].map(({ key, label, badge }) => (
- <button key={key} onClick={() => setInboxSubTab(key)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", background: inboxSubTab === key ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${inboxSubTab === key ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`, color: inboxSubTab === key ? "#f87171" : "#6b7280", display: "flex", alignItems: "center", gap: 6 }}>
+ {[
+ { key: "enquiries", label: "Enquiries", badge: newEnqCount, badgeColor: "#dc2626" },
+ { key: "pool", label: "Pool", badge: unclaimedEnquiries.length, badgeColor: "#d97706" },
+ { key: "bookings", label: "Bookings", badge: pendingAptCount, badgeColor: "#dc2626" },
+ ].map(({ key, label, badge, badgeColor }) => (
+ <button key={key} onClick={() => setInboxSubTab(key)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", background: inboxSubTab === key ? (key === "pool" ? "rgba(217,119,6,0.15)" : "rgba(220,38,38,0.15)") : "rgba(255,255,255,0.04)", border: `1px solid ${inboxSubTab === key ? (key === "pool" ? "rgba(217,119,6,0.4)" : "rgba(220,38,38,0.35)") : "rgba(255,255,255,0.08)"}`, color: inboxSubTab === key ? (key === "pool" ? "#fbbf24" : "#f87171") : "#6b7280", display: "flex", alignItems: "center", gap: 6 }}>
  {label}
- {badge > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#dc2626", color: "#fff", borderRadius: 99, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>}
+ {badge > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: badgeColor, color: "#fff", borderRadius: 99, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>}
  </button>
  ))}
  </div>
- {inboxSubTab === "enquiries" ? renderEnquiriesSection() : renderBookingsSection()}
+ {inboxSubTab === "enquiries" ? renderEnquiriesSection() : inboxSubTab === "pool" ? renderPoolSection() : renderBookingsSection()}
  </div>
  );
  };
