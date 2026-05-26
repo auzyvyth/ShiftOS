@@ -355,7 +355,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
         ) : (
           <>
             {/* Mobile cards */}
-            <div className="md:hidden">
+            <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 0 4px" }}>
               {enquiries.map((e) => {
                 const m = statusMeta[e.status || "new"];
                 const carLabel = e.listing
@@ -364,10 +364,11 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 return (
                   <div
                     key={e.id}
-                    onClick={() => openDetail(e)}
                     style={{
-                      padding: "14px 16px",
-                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      background: "#0d1117",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      borderRadius: 10,
+                      padding: "12px 14px",
                       cursor: "pointer",
                     }}
                   >
@@ -381,9 +382,9 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     >
                       <span
                         style={{
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: 600,
-                          color: "#f3f4f6",
+                          color: "#e5e7eb",
                         }}
                       >
                         {e.buyer_name || "Unknown buyer"}
@@ -407,8 +408,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     >
                       <span
                         style={{
-                          fontSize: 12,
-                          color: "#9ca3af",
+                          fontSize: 11,
+                          color: "#6b7280",
                           flex: 1,
                           marginRight: 8,
                           overflow: "hidden",
