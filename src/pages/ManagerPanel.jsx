@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useWebPush } from "../hooks/useWebPush";
 import CarForm from "../components/CarForm";
 import {
   Users,
@@ -116,6 +117,8 @@ export default function ManagerPanel() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useWebPush(profile?.id);
   const [activeNav, setActiveNav] = useState("team");
 
   // Data

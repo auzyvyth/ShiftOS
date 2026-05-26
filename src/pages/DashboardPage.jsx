@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { useWebPush } from "../hooks/useWebPush";
 import CarForm from "../components/CarForm";
 import CarFormFast from "../components/CarFormFast";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -5636,6 +5637,7 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("available");
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
+  useWebPush(userId);
   const [salesmen,         setSalesmen]         = useState([]);
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);

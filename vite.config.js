@@ -14,6 +14,9 @@ export default defineConfig({
 			silent: true,
 		}),
 		VitePWA({
+			strategies: 'injectManifest',
+			srcDir: 'src',
+			filename: 'sw.js',
 			registerType: 'autoUpdate',
 			manifest: {
 				name: 'ShiftOS by XDrive',
@@ -28,8 +31,7 @@ export default defineConfig({
 					{ src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
 				],
 			},
-			workbox: {
-				navigateFallback: '/index.html',
+			injectManifest: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
 				maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
 			},

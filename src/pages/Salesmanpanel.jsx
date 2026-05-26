@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { useWebPush, sendPush } from "../hooks/useWebPush";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import { toast } from "sonner";
 import {
@@ -327,6 +328,8 @@ export default function SalesmanPanel() {
  defaultValue: "ShiftOS · My Panel",
  });
  }, [t]);
+
+ useWebPush(userId);
 
  // auth + profile
  useEffect(() => {
@@ -1290,7 +1293,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const updateLeadStage = async (leadId, stage) => {
  setStageSavingId(leadId);
- const oldStage = leads.find((l) => l.id === leadId)?.stage?? null;
+ const lead = leads.find((l) => l.id === leadId);
+ const oldStage = lead?.stage ?? null;
  const dealerId = getDealerIdFromProfile(profile);
  const { error: stageErr } = await supabase
  .from("leads")
@@ -1307,6 +1311,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  dealer_id: dealerId,
  });
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
+ if (["won", "deposit_taken"].includes(stage) && profile?.dealer_id) {
+ const buyerName = lead?.buyer_name || "A lead";
+ const stageLabel = stage === "won" ? "Won" : "Deposit Taken";
+ sendPush({
+ userIds: [profile.dealer_id],
+ title: `${stageLabel} — ${buyerName}`,
+ body: `${profile.full_name || "Salesman"} moved ${buyerName} to ${stageLabel}`,
+ url: "/dashboard",
+ tag: `lead-${stage}-${leadId}`,
+ });
+ }
  };
 
  const advanceLeadStage = (lead, newStage, force = false) => {
