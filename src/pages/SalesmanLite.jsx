@@ -2228,33 +2228,30 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         )}
 
-        {/* ── This Month Analytics ── */}
-        {commissionData.count > 0 && (
+        {/* ── Commission ledger ── */}
+        {(commissionData.deals?.length > 0 || commissionData.count > 0) && (
           <div style={CARD}>
             <div style={CARD_HEADER}>
-              <span>This Month</span>
-              <span>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</span>
+              <span>Commission Ledger</span>
+              <span style={{ color: "#22c55e", fontWeight: 700 }}>RM {(commissionData.earned || 0).toLocaleString("en-MY")}</span>
             </div>
-            <div style={{ padding: 18 }}>
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Net Profit</p>
-                <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: commissionData.total >= 0 ? "#22c55e" : "#ef4444", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                  RM {commissionData.total.toLocaleString("en-MY")}
-                </p>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
-                {[
-                  { label: "Revenue", value: commissionData.revenue, color: "#3b82f6" },
-                  { label: "Purchase Cost", value: commissionData.purchase, color: "#94a3b8" },
-                  { label: "Recon Cost", value: commissionData.recon, color: "#94a3b8" },
-                  { label: "Services", value: commissionData.services, color: "#94a3b8" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ padding: "12px 14px", background: "#0d1117" }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color }}>{value > 0 ? `RM ${value.toLocaleString("en-MY")}` : "—"}</p>
+            <div>
+              {(commissionData.deals || []).map((deal, i, arr) => {
+                const name = [deal.year, deal.brand, deal.model].filter(Boolean).join(" ") || "Car";
+                const comm = Number(deal.my_commission) || 0;
+                const soldDate = deal.sold_at ? new Date(deal.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—";
+                return (
+                  <div key={deal.id || i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 11, color: "#475569" }}>Sold {soldDate}</p>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: comm > 0 ? "#22c55e" : "#374151", letterSpacing: "-0.02em", flexShrink: 0 }}>
+                      {comm > 0 ? `RM ${comm.toLocaleString("en-MY")}` : "—"}
+                    </p>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -5698,7 +5695,9 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           instagram: settingsForm.instagram || null,
           tiktok: settingsForm.tiktok || null,
           facebook: settingsForm.facebook || null,
-          website: settingsForm.website || null,
+          website:          settingsForm.website || null,
+          commission_rate:  commissionRate,
+          commission_type:  commissionType,
         })
         .eq("id", userId);
       if (saveProfileErr) console.error("handleSave:", saveProfileErr);
@@ -5714,6 +5713,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
         tiktok: settingsForm.tiktok || null,
         facebook: settingsForm.facebook || null,
         website: settingsForm.website || null,
+        commission_rate: commissionRate,
+        commission_type: commissionType,
       }));
       setSettingsForm((p) => ({ ...p, whatsapp_number: phone }));
       setSettingsSaving(false);
@@ -5843,6 +5844,32 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               <input value={settingsForm.ic_number} onChange={(e) => setSettingsForm((p) => ({ ...p, ic_number: e.target.value }))} placeholder="e.g. 901231-14-1234" style={inputStyle} />
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
             </div>
+          </div>
+
+          {/* Commission */}
+          <div style={{ paddingTop: 4 }}>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Commission Model</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {[{ key: "percent", label: "% of price" }, { key: "flat", label: "Flat per car" }].map(({ key, label }) => (
+                <button key={key} onClick={() => setCommissionType(key)}
+                  style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: commissionType === key ? "1px solid rgba(220,38,38,0.5)" : "1px solid rgba(255,255,255,0.1)", background: commissionType === key ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.03)", color: commissionType === key ? "#f87171" : "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="number" min="0" step={commissionType === "percent" ? "0.5" : "50"}
+                value={commissionRate}
+                onChange={e => setCommissionRate(Number(e.target.value))}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <span style={{ fontSize: 12, color: "#6b7280", flexShrink: 0 }}>{commissionType === "percent" ? "%" : "RM / car"}</span>
+            </div>
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>
+              {commissionType === "percent"
+                ? `On a RM 50,000 car → RM ${Math.round(50000 * commissionRate / 100).toLocaleString("en-MY")} commission`
+                : `Fixed RM ${Number(commissionRate).toLocaleString("en-MY")} per car sold`}
+            </p>
           </div>
 
           {/* Social links */}
@@ -7305,6 +7332,38 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
       )}
 
       {renderAddLeadModal()}
+
+      {/* ── Commission modal ── */}
+      {commissionModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", padding: 20 }}>
+          <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", fontFamily: "'DM Sans', sans-serif" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Record Your Commission</p>
+            <p style={{ margin: "0 0 20px", fontSize: 12, color: "#475569" }}>
+              {[commissionModal.car.year, commissionModal.car.brand, commissionModal.car.model].filter(Boolean).join(" ")}
+              {commissionModal.car.selling_price ? ` · RM ${Number(commissionModal.car.selling_price).toLocaleString("en-MY")}` : ""}
+            </p>
+            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Your commission (RM)</label>
+            <input
+              type="number"
+              min="0"
+              value={commissionModalAmt}
+              onChange={e => setCommissionModalAmt(e.target.value)}
+              autoFocus
+              style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, padding: "10px 12px", color: "#22c55e", fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 4 }}
+            />
+            <p style={{ margin: "0 0 20px", fontSize: 10, color: "#374151" }}>Pre-filled from your {commissionType === "percent" ? `${commissionRate}% rate` : `flat RM ${commissionRate} rate`} — edit if different</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={confirmSoldWithCommission} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "#22c55e", border: "none", color: "#000", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                Save &amp; Mark Sold
+              </button>
+              <button onClick={() => { setCommissionModal(null); updateListingStatus(commissionModal.car, "sold", true); }} style={{ padding: "11px 16px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {renderWAModal()}
       {renderLogCallModal()}
       {renderBatchWAModal()}
