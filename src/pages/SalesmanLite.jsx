@@ -228,6 +228,8 @@ export default function SalesmanLite() {
   const [addLeadSaving, setAddLeadSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [testDriveConfirm, setTestDriveConfirm] = useState(null); // { lead, nextStage }
+  const [wonPrompt, setWonPrompt] = useState(null); // { lead }
+  const [wonSaving, setWonSaving] = useState(false);
   const [deletingLeadId, setDeletingLeadId] = useState(null);
   const [lostPromptId, setLostPromptId] = useState(null);
   const [lostSavingId, setLostSavingId] = useState(null);
@@ -991,6 +993,15 @@ export default function SalesmanLite() {
   const advanceLeadStage = (lead, newStage, force = false) => {
     if (!newStage) return;
     if (!force && lead.stage === "test_drive") { setTestDriveConfirm({ lead, nextStage: newStage }); return; }
+    // Intercept won → show confirm modal instead of the undo-timer flow
+    if (newStage === "won") {
+      if (pendingStageRef.current[lead.id]) {
+        clearTimeout(pendingStageRef.current[lead.id].timer);
+        delete pendingStageRef.current[lead.id];
+      }
+      setWonPrompt({ lead });
+      return;
+    }
     const oldStage = lead.stage;
     const leadId = lead.id;
     const buyerName = lead.buyer_name || "Lead";
@@ -1152,6 +1163,85 @@ export default function SalesmanLite() {
       ),
     );
     setLostPromptId(null);
+  };
+
+  const refreshCommissionData = async () => {
+    if (!userId) return;
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const { data } = await supabase
+      .from("car_listings")
+      .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at")
+      .eq("dealer_id", userId)
+      .eq("status", "sold")
+      .gte("sold_at", monthStart);
+    const rows = data || [];
+    const revenue  = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
+    const purchase = rows.reduce((s, l) => s + (Number(l.purchase_price) || 0), 0);
+    const recon    = rows.reduce((s, l) => s + (Number(l.recon_cost) || 0), 0);
+    const services = rows.reduce((s, l) => s + (Number(l.included_services_cost) || 0), 0);
+    const profit   = rows.reduce((s, l) => {
+      const gp = l.gross_profit != null
+        ? Number(l.gross_profit)
+        : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
+      return s + gp;
+    }, 0);
+    setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length });
+  };
+
+  const handleMarkWon = async () => {
+    if (!wonPrompt) return;
+    const { lead } = wonPrompt;
+    const leadId = lead.id;
+    const dealerId = lead.dealer_id ?? null;
+    const now = new Date().toISOString();
+    setWonSaving(true);
+
+    // 1. Mark lead as won
+    const { error: leadErr } = await supabase
+      .from("leads")
+      .update({ stage: "won", updated_at: now })
+      .eq("id", leadId);
+    if (leadErr) {
+      console.error("handleMarkWon lead:", leadErr);
+      toast.error("Failed to mark lead as won");
+      setWonSaving(false);
+      return;
+    }
+
+    // 2. Log activity
+    await supabase.from("lead_activities").insert({
+      lead_id: leadId,
+      activity_type: "stage_changed",
+      from_stage: lead.stage,
+      to_stage: "won",
+      created_by: userId,
+      dealer_id: dealerId,
+    }).catch(e => console.error("handleMarkWon activity:", e));
+
+    // 3. Mark linked car listing as sold
+    if (lead.car_listing_id) {
+      const { error: carErr } = await supabase
+        .from("car_listings")
+        .update({ status: "sold", sold_at: now })
+        .eq("id", lead.car_listing_id);
+      if (carErr) {
+        console.error("handleMarkWon car listing:", carErr);
+        toast.error("Lead won, but failed to mark listing as sold");
+      } else {
+        setMyListings(p => p.filter(c => c.id !== lead.car_listing_id));
+        await refreshCommissionData();
+      }
+    }
+
+    // 4. Update local leads
+    setLeads(p => p.map(l => l.id === leadId ? { ...l, stage: "won", updated_at: now } : l));
+
+    setWonSaving(false);
+    setWonPrompt(null);
+
+    const car = lead.car_listings;
+    const carLabel = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+    toast.success(carLabel ? `Won! ${carLabel} marked as sold.` : "Lead marked as Won!");
   };
 
   // ── notifications ──────────────────────────────────────────────────────────
@@ -7247,6 +7337,56 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           </div>
         );
       })()}
+      {/* ── Won Sale confirmation ── */}
+      {wonPrompt && (() => {
+        const { lead: wonLead } = wonPrompt;
+        const car = wonLead.car_listings;
+        const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+        const carPrice = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+        const dismiss = () => setWonPrompt(null);
+        return (
+          <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🏆</div>
+              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Confirm Won Sale</p>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
+                {wonLead.buyer_name || "Buyer"}{carName ? ` · ${carName}` : ""}
+                {carPrice ? ` · ${carPrice}` : ""}
+              </p>
+              {car ? (
+                <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#4ade80", fontWeight: 600 }}>
+                    The listing will be marked as <strong>Sold</strong> with today's date.
+                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
+                    Your profit dashboard will update automatically.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "#fbbf24" }}>
+                    No car linked to this lead — only the lead stage will be updated.
+                    Link a car first to also mark it as sold.
+                  </p>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  onClick={handleMarkWon}
+                  disabled={wonSaving}
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: wonSaving ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.35)", color: wonSaving ? "#4b5563" : "#22c55e", fontSize: 14, fontWeight: 700, cursor: wonSaving ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
+                >
+                  {wonSaving ? "Saving…" : car ? "Confirm — Mark Listing as Sold" : "Confirm Won"}
+                </button>
+                <button onClick={dismiss} disabled={wonSaving} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {renderFollowUpModal()}
       {renderNotifPanel()}
       {renderCarDetailPopup()}
