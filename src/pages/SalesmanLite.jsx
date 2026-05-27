@@ -926,7 +926,7 @@ export default function SalesmanLite() {
     if (!userId) return;
     try {
       const saved = JSON.parse(localStorage.getItem(`slite_goal_${userId}`));
-      if (saved) setGoal(saved);
+      if (saved) setGoal(prev => ({ ...prev, ...saved }));
     } catch {}
   }, [userId]);
 
@@ -2050,7 +2050,8 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                 />
                 <button
                   onClick={() => {
-                    const val = Math.max(0, Number(earningsDraft) || 0);
+                    const val = Math.floor(Math.max(1, Number(earningsDraft) || 0));
+                    if (!val) return; // empty / zero — don't wipe an existing target
                     saveGoal({ earningsTarget: val });
                     setEarningsEditing(false);
                   }}
@@ -2064,15 +2065,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             ) : goal.earningsTarget > 0 ? (() => {
               const earned = commissionData.total;
               const epct = Math.min((earned / goal.earningsTarget) * 100, 100);
+              const earnedDisplay = Math.max(earned, 0); // clamp negatives — show 0 not "-RM X"
               const epctDisplay = Math.max(epct, 0);
-              const remaining = goal.earningsTarget - earned;
+              const remaining = Math.max(goal.earningsTarget - earnedDisplay, 0);
               return (
                 <div>
                   <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
                     <div>
                       <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Earned this month</p>
                       <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: epct >= 100 ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                        RM {earned.toLocaleString("en-MY")}
+                        RM {earnedDisplay.toLocaleString("en-MY")}
                         <span style={{ fontSize: 14, fontWeight: 500, color: "#475569" }}> / RM {goal.earningsTarget.toLocaleString("en-MY")}</span>
                       </p>
                     </div>
