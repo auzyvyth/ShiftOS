@@ -99,6 +99,7 @@ function App() {
 
           {/* Protected — XDrive */}
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/:tab" element={<DashboardPage />} />
           <Route path="/dashboard/import-stock" element={<ImportStockPage />} />
           <Route path="/salesman" element={<SalesmanPanel />} />
           <Route path="/salesman-lite" element={<SalesmanLite />} />
