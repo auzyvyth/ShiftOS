@@ -64,7 +64,7 @@ function EnquiriesTab({ userId, onOpenDoc, salesmen = [] }) {
       border: "rgba(52,211,153,0.3)",
     },
     lost: {
-      color: "#6b7280",
+      color: "#9ca3af",
       bg: "rgba(107,114,128,0.1)",
       border: "rgba(107,114,128,0.25)",
     },
@@ -355,7 +355,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div>
               <h2 style={{ fontSize: 15, fontWeight: 600, color: "#f3f4f6", margin: 0 }}>Enquiries</h2>
-              <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
+              <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0" }}>
                 {filteredEnqs.length} {searchEnq ? "matching" : "total"}
               </p>
             </div>
@@ -379,7 +379,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
               <button
                 key={key}
                 onClick={() => setEnqFilter(key)}
-                style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", background: enqFilter === key ? (key === "unclaimed" ? "rgba(251,146,60,0.18)" : key === "claimed" ? "rgba(52,211,153,0.12)" : "rgba(220,38,38,0.12)") : "rgba(255,255,255,0.04)", border: enqFilter === key ? (key === "unclaimed" ? "1px solid rgba(251,146,60,0.4)" : key === "claimed" ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(220,38,38,0.3)") : "1px solid rgba(255,255,255,0.08)", color: enqFilter === key ? (key === "unclaimed" ? "#fb923c" : key === "claimed" ? "#34d399" : "#f87171") : "#6b7280" }}
+                style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", background: enqFilter === key ? (key === "unclaimed" ? "rgba(251,146,60,0.18)" : key === "claimed" ? "rgba(52,211,153,0.12)" : "rgba(220,38,38,0.12)") : "rgba(255,255,255,0.04)", border: enqFilter === key ? (key === "unclaimed" ? "1px solid rgba(251,146,60,0.4)" : key === "claimed" ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(220,38,38,0.3)") : "1px solid rgba(255,255,255,0.08)", color: enqFilter === key ? (key === "unclaimed" ? "#fb923c" : key === "claimed" ? "#34d399" : "#f87171") : "#9ca3af" }}
               >
                 {label}
               </button>
@@ -456,7 +456,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                       <span
                         style={{
                           fontSize: 11,
-                          color: "#6b7280",
+                          color: "#9ca3af",
                           flex: 1,
                           marginRight: 8,
                           overflow: "hidden",
@@ -469,7 +469,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                       <span
                         style={{
                           fontSize: 11,
-                          color: "#6b7280",
+                          color: "#9ca3af",
                           flexShrink: 0,
                         }}
                       >
@@ -510,6 +510,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         </button>
                       )}
                       <select
+                        aria-label="Update enquiry status"
                         value={e.status || "new"}
                         onChange={(ev) => updateStatus(e.id, ev.target.value)}
                         style={{
@@ -582,7 +583,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                             fontSize: 10,
                             letterSpacing: "0.12em",
                             textTransform: "uppercase",
-                            color: "#6b7280",
+                            color: "#9ca3af",
                             fontWeight: 500,
                             textAlign: "left",
                             whiteSpace: "nowrap",
@@ -649,6 +650,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                       </td>
                       <td style={{ padding: "12px 14px" }}>
                         <select
+                          aria-label="Update enquiry status"
                           value={e.status || "new"}
                           onChange={(ev) => {
                             ev.stopPropagation();
@@ -683,7 +685,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         onClick={() => openDetail(e)}
                         style={{
                           padding: "12px 14px",
-                          color: "#6b7280",
+                          color: "#9ca3af",
                           fontSize: 12,
                           whiteSpace: "nowrap",
                         }}
@@ -768,7 +770,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   {selected.buyer_name || "Enquiry"}
                 </h3>
                 <p
-                  style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}
+                  style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0" }}
                 >
                   {selected.listing
                     ? `${selected.listing.brand} ${selected.listing.model}`
@@ -783,6 +785,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   </span>
                 )}
                 <button
+                  aria-label="Close"
                   onClick={() => setSelected(null)}
                   style={{
                     background: "rgba(255,255,255,0.05)",
@@ -844,7 +847,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                     <p
                       style={{
                         fontSize: 11,
-                        color: "#6b7280",
+                        color: "#9ca3af",
                         textTransform: "uppercase",
                         letterSpacing: "0.1em",
                         margin: "0 0 4px",
@@ -878,7 +881,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   <p
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "#9ca3af",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
                       margin: "0 0 6px",
@@ -930,7 +933,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 <p
                   style={{
                     fontSize: 11,
-                    color: "#6b7280",
+                    color: "#9ca3af",
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
                     margin: "0 0 6px",
@@ -939,6 +942,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   Status
                 </p>
                 <select
+                  aria-label="Update enquiry status"
                   value={selected.status || "new"}
                   onChange={(ev) => updateStatus(selected.id, ev.target.value)}
                   style={{
@@ -972,7 +976,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                 <p
                   style={{
                     fontSize: 11,
-                    color: "#6b7280",
+                    color: "#9ca3af",
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
                     margin: "0 0 6px",
@@ -1007,7 +1011,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   <p
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "#9ca3af",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
                       margin: "0 0 8px",
@@ -1099,7 +1103,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   <p
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "#9ca3af",
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
                       margin: "0 0 10px",
@@ -1317,6 +1321,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         }}
                       />
                       <button
+                        aria-label="Send message"
                         onClick={e => {
                           const ta = e.currentTarget.previousSibling;
                           const val = ta.value.trim();
@@ -1401,7 +1406,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       border: "rgba(52,211,153,0.3)",
     },
     cancelled: {
-      color: "#6b7280",
+      color: "#9ca3af",
       bg: "rgba(107,114,128,0.1)",
       border: "rgba(107,114,128,0.25)",
     },
@@ -1686,7 +1691,7 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Details row */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginBottom: 6 }}>
-          {car && <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+          {car && <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
           {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
           {sm?.full_name && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 6, background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", display: "inline-flex", alignItems: "center", gap: 4 }}><User size={10} /> {sm.full_name}</span>}
           {b.buyer_state && (
@@ -1706,7 +1711,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             <span style={{ fontSize: 10, color: "#4ade80", flex: 1 }}>
               Reminder: {new Date(b.remind_at).toLocaleString("en-MY", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
-            <button onClick={() => clearReminder(b)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
+            <button onClick={() => clearReminder(b)} style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
           </div>
         ) : b.remind_sent ? (
           <p style={{ fontSize: 10, color: "#4b5563", margin: "0 0 8px" }}>✓ Telegram reminder sent</p>
@@ -1716,7 +1721,7 @@ function BookingsTab({ userId, listings, salesmen }) {
         {isReminderPicking && (
           <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8 }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4ade80", fontWeight: 600 }}>Schedule Telegram reminder</p>
-            <select value={reminderOffset} onChange={e => setReminderOffset(e.target.value)}
+            <select aria-label="Reminder timing" value={reminderOffset} onChange={e => setReminderOffset(e.target.value)}
               style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", marginBottom: 8, outline: "none", boxSizing: "border-box" }}>
               <option value="1h">1 hour before</option>
               <option value="2h">2 hours before</option>
@@ -1724,7 +1729,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <option value="2d">2 days before (9 AM)</option>
             </select>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer" }}>Cancel</button>
               <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
             </div>
           </div>
@@ -1737,7 +1742,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
               style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "'DM Sans',sans-serif" }} />
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer" }}>Cancel</button>
               <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", color: "#c084fc", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
             </div>
           </div>
@@ -1747,7 +1752,7 @@ function BookingsTab({ userId, listings, salesmen }) {
         {isCancelConfirm && (
           <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8 }}>
             <p style={{ margin: 0, fontSize: 11, color: "#fca5a5", flex: 1 }}>Cancel this appointment?</p>
-            <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 10, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>No</button>
+            <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 10, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>No</button>
             <button onClick={() => { updateStatus(b.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 10, color: "#f87171", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Yes, Cancel</button>
           </div>
         )}
@@ -1776,7 +1781,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             Receipt
           </button>
           {notDone && dealerBkProfile?.telegram_bot_token && (
-            <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#4ade80" : "#6b7280", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
+            <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#4ade80" : "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
               <Bell size={10} />{b.remind_at ? "Reminder set" : "Remind"}
             </button>
           )}
@@ -1871,7 +1876,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <>
                 <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
                 <button onClick={() => setUpcomingOpen(p => !p)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px", background: "none", border: "none", cursor: "pointer", width: "100%" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.12em", textTransform: "uppercase" }}>Upcoming · {upcomingBookings.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.12em", textTransform: "uppercase" }}>Upcoming · {upcomingBookings.length}</span>
                   <span style={{ fontSize: 10, color: "#4b5563", marginLeft: "auto" }}>{upcomingOpen ? "▲" : "▼"}</span>
                 </button>
                 {upcomingOpen && upcomingBookings.map(b => renderBookingRow(b))}
@@ -1918,7 +1923,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                     <p
                       style={{
                         fontSize: 10,
-                        color: "#6b7280",
+                        color: "#9ca3af",
                         textTransform: "uppercase",
                         letterSpacing: "0.1em",
                         margin: "0 0 4px",
@@ -1993,6 +1998,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <h3 className="font-semibold text-white">Add Booking</h3>
               <button
+                aria-label="Close"
                 onClick={() => setShowAdd(false)}
                 className="text-gray-500 hover:text-white p-1"
               >
@@ -2035,6 +2041,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   Car Listing
                 </label>
                 <select
+                  aria-label="Car listing"
                   value={addForm.listing_id}
                   onChange={(e) =>
                     setAddForm((p) => ({ ...p, listing_id: e.target.value }))
@@ -2056,6 +2063,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                     Booking Type
                   </label>
                   <select
+                    aria-label="Booking type"
                     value={addForm.booking_type}
                     onChange={(e) =>
                       setAddForm((p) => ({
@@ -2116,6 +2124,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                     Salesman
                   </label>
                   <select
+                    aria-label="Assign salesman"
                     value={addForm.salesman_id}
                     onChange={(e) =>
                       setAddForm((p) => ({ ...p, salesman_id: e.target.value }))
@@ -2224,15 +2233,15 @@ function BookingsTab({ userId, listings, salesmen }) {
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
                 <div>
                   <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff" }}>Deposit Receipt</h3>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{b.buyer_name} · {carName}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{b.buyer_name} · {carName}</p>
                 </div>
-                <button onClick={() => setReceiptModal(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4 }}>
+                <button aria-label="Close" onClick={() => setReceiptModal(null)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: 4 }}>
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Deposit Amount (RM)</label>
+                  <label style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>Deposit Amount (RM)</label>
                   <input
                     type="number"
                     value={receiptAmt}
@@ -2297,6 +2306,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                 </p>
               </div>
               <button
+                aria-label="Close"
                 onClick={() => setReminderTarget(null)}
                 className="text-gray-500 hover:text-white p-1 transition-colors"
               >
