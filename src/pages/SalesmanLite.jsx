@@ -1209,14 +1209,15 @@ export default function SalesmanLite() {
     }
 
     // 2. Log activity
-    await supabase.from("lead_activities").insert({
+    const { error: actErr } = await supabase.from("lead_activities").insert({
       lead_id: leadId,
       activity_type: "stage_changed",
       from_stage: lead.stage,
       to_stage: "won",
       created_by: userId,
       dealer_id: dealerId,
-    }).catch(e => console.error("handleMarkWon activity:", e));
+    });
+    if (actErr) console.error("handleMarkWon activity:", actErr);
 
     // 3. Mark linked car listing as sold
     if (lead.car_listing_id) {
