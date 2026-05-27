@@ -255,9 +255,15 @@ export default function SalesmanLite() {
   const [followUpSaving, setFollowUpSaving] = useState(false);
   // Commission
   const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
+  // Commission modal (fires when marking a listing sold)
+  const [commissionModal, setCommissionModal] = useState(null); // { car }
+  const [commissionModalAmt, setCommissionModalAmt] = useState("");
+  // Commission settings (loaded from profile)
+  const [commissionRate, setCommissionRate] = useState(2);      // percent or flat amount
+  const [commissionType, setCommissionType] = useState("percent"); // "percent" | "flat"
 
   // Goal panel
-  const [goal, setGoal] = useState({ target: 0, focusCarId: null });
+  const [goal, setGoal] = useState({ target: 0, focusCarId: null, earningsTarget: 0 });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
   const saveGoal = (patch) => {
@@ -362,8 +368,17 @@ export default function SalesmanLite() {
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
 
-  const updateListingStatus = async (car, newStatus) => {
+  const updateListingStatus = async (car, newStatus, skipCommissionModal = false) => {
     setStatusMenuCarId(null);
+    // When marking as sold, show commission confirmation modal first
+    if (newStatus === "sold" && !skipCommissionModal) {
+      const preCalc = commissionType === "percent"
+        ? Math.round((Number(car.selling_price) || 0) * (commissionRate / 100))
+        : Math.round(commissionRate);
+      setCommissionModalAmt(String(preCalc));
+      setCommissionModal({ car });
+      return;
+    }
     const prevStatus = car.status;
     setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
     // Use RPC to avoid PostgREST bug with GENERATED ALWAYS columns (gross_profit)
@@ -379,6 +394,42 @@ export default function SalesmanLite() {
       return;
     }
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus } : c));
+  };
+
+  const confirmSoldWithCommission = async () => {
+    if (!commissionModal) return;
+    const { car } = commissionModal;
+    const amt = Number(commissionModalAmt) || 0;
+    setCommissionModal(null);
+    // Update status via RPC
+    await updateListingStatus(car, "sold", true);
+    // Write my_commission
+    if (amt > 0) {
+      await supabase.from("car_listings").update({ my_commission: amt }).eq("id", car.id);
+      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, my_commission: amt } : c));
+    }
+    // Refresh commission data
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const { data: refreshed } = await supabase
+      .from("car_listings")
+      .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at, my_commission, id, year, brand, model")
+      .eq("dealer_id", userId)
+      .eq("status", "sold")
+      .gte("sold_at", monthStart);
+    if (refreshed) {
+      const rows = refreshed;
+      const revenue  = rows.reduce((s, l) => s + (Number(l.selling_price) || 0), 0);
+      const purchase = rows.reduce((s, l) => s + (Number(l.purchase_price) || 0), 0);
+      const recon    = rows.reduce((s, l) => s + (Number(l.recon_cost) || 0), 0);
+      const services = rows.reduce((s, l) => s + (Number(l.included_services_cost) || 0), 0);
+      const profit   = rows.reduce((s, l) => {
+        const gp = l.gross_profit != null ? Number(l.gross_profit) : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
+        return s + gp;
+      }, 0);
+      const commEarned = rows.reduce((s, l) => s + (Number(l.my_commission) || 0), 0);
+      setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length, earned: commEarned, deals: rows });
+    }
+    toast.success("Marked as sold");
   };
 
   // delete listing
@@ -628,7 +679,7 @@ export default function SalesmanLite() {
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         supabase
           .from("car_listings")
-          .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at")
+          .select("gross_profit, selling_price, purchase_price, recon_cost, included_services_cost, sold_at, my_commission, id, year, brand, model")
           .eq("dealer_id", uid)
           .eq("status", "sold")
           .gte("sold_at", monthStart)
@@ -644,7 +695,8 @@ export default function SalesmanLite() {
                 : (Number(l.selling_price) || 0) - (Number(l.purchase_price) || 0) - (Number(l.recon_cost) || 0) - (Number(l.included_services_cost) || 0);
               return s + gp;
             }, 0);
-            setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length });
+            const commEarned = rows.reduce((s, l) => s + (Number(l.my_commission) || 0), 0);
+            setCommissionData({ total: profit, revenue, purchase, recon, services, count: rows.length, earned: commEarned, deals: rows });
           });
       });
 
@@ -926,6 +978,9 @@ export default function SalesmanLite() {
       const saved = JSON.parse(localStorage.getItem(`slite_goal_${userId}`));
       if (saved) setGoal(saved);
     } catch {}
+    // Load commission settings from profile
+    if (profile?.commission_rate != null) setCommissionRate(Number(profile.commission_rate));
+    if (profile?.commission_type)         setCommissionType(profile.commission_type);
   }, [userId]);
 
   // Browser notification: fire when user returns to tab and has stale leads
@@ -1854,6 +1909,42 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
           )}
         </div>
 
+        {/* ── Commission earnings strip ── */}
+        {(() => {
+          const earned = commissionData.earned || 0;
+          const earningsTarget = goal.earningsTarget || 0;
+          const earningsPct = earningsTarget > 0 ? Math.min((earned / earningsTarget) * 100, 100) : 0;
+          return (
+            <div style={{ background: earned > 0 ? "rgba(34,197,94,0.07)" : "#0d1117", border: earned > 0 ? "1px solid rgba(34,197,94,0.18)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "16px 18px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: earningsTarget > 0 ? 10 : 0 }}>
+                <div>
+                  <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: earned > 0 ? "#4ade80" : "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>My Commission This Month</p>
+                  <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: earned > 0 ? "#22c55e" : "#374151", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                    RM {earned.toLocaleString("en-MY")}
+                  </p>
+                  {commissionData.count > 0 && (
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#4b5563" }}>{commissionData.count} deal{commissionData.count !== 1 ? "s" : ""} closed</p>
+                  )}
+                  {earned === 0 && commissionData.count === 0 && (
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#374151" }}>Close your first deal to see earnings here</p>
+                  )}
+                </div>
+                {earningsTarget > 0 && (
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>Target</p>
+                    <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>RM {earningsTarget.toLocaleString("en-MY")}</p>
+                  </div>
+                )}
+              </div>
+              {earningsTarget > 0 && (
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 99, height: 6, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${earningsPct}%`, background: earningsPct >= 100 ? "#22c55e" : earningsPct >= 60 ? "#3b82f6" : "#ef4444", borderRadius: 99, transition: "width 0.6s ease" }} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── KPI strip ── */}
         <div style={{ ...CARD, overflow: "visible" }}>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)" }}>
@@ -1929,6 +2020,28 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   + Set a monthly target
                 </button>
               )}
+
+              {/* Earnings goal row */}
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>Earnings Target</p>
+                  {goal.earningsTarget > 0 ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#22c55e" }}>RM {goal.earningsTarget.toLocaleString("en-MY")}</p>
+                      <button onClick={() => { const v = prompt("Set earnings target (RM):", goal.earningsTarget); if (v && !isNaN(Number(v))) saveGoal({ earningsTarget: Number(v) }); }} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { const v = prompt("Set earnings target (RM):", "5000"); if (v && !isNaN(Number(v))) saveGoal({ earningsTarget: Number(v) }); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.06)", border: "1px dashed rgba(34,197,94,0.2)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}>
+                      + Set earnings target
+                    </button>
+                  )}
+                </div>
+                {goal.earningsTarget > 0 && (
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: (commissionData.earned || 0) >= goal.earningsTarget ? "#22c55e" : "#f1f5f9", flexShrink: 0 }}>
+                    RM {(commissionData.earned || 0).toLocaleString("en-MY")} <span style={{ fontSize: 11, color: "#475569", fontWeight: 400 }}>/ RM {goal.earningsTarget.toLocaleString("en-MY")}</span>
+                  </p>
+                )}
+              </div>
 
               {/* Focus car */}
               {highlighted && (
