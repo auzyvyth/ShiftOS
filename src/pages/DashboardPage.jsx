@@ -711,37 +711,77 @@ export default function DashboardPage() {
       label: "Available",
       dot: "bg-emerald-400",
       cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-      next: "reserved",
     },
     reserved: {
       label: "Reserved",
       dot: "bg-amber-400",
       cls: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-      next: "sold",
     },
     sold: {
       label: "Sold",
       dot: "bg-red-400",
-      cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
-      next: "available",
+      cls: "bg-red-400/10 text-red-400 border-red-400/20",
     },
   };
 
+  const [statusDropdownId, setStatusDropdownId] = useState(null);
+
   const StatusBadge = React.memo(({ listing }) => {
-    const s = listing.status || "available",
-      cfg = STATUS[s] || STATUS.available,
-      busy = updatingStatus === listing.id;
+    const s = listing.status || "available";
+    const cfg = STATUS[s] || STATUS.available;
+    const busy = updatingStatus === listing.id;
+    const open = statusDropdownId === listing.id;
+    const ref = useRef(null);
+
+    useEffect(() => {
+      if (!open) return;
+      const handler = (e) => {
+        if (ref.current && !ref.current.contains(e.target)) {
+          setStatusDropdownId(null);
+        }
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
+    const options = Object.entries(STATUS).filter(([key]) => key !== s);
+
     return (
-      <button
-        onClick={() => handleStatus(listing.id, cfg.next)}
-        disabled={busy}
-        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
-      >
-        <span
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`}
-        />
-        {busy ? "…" : cfg.label}
-      </button>
+      <div ref={ref} className="relative inline-flex">
+        <button
+          onClick={() => !busy && setStatusDropdownId(open ? null : listing.id)}
+          disabled={busy}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-80 cursor-pointer"}`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`}
+          />
+          {busy ? "…" : cfg.label}
+          {!busy && (
+            <svg className={`w-2.5 h-2.5 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
+
+        {open && (
+          <div className="absolute bottom-full mb-1.5 left-0 z-50 min-w-[110px] bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+            {options.map(([key, ocfg]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setStatusDropdownId(null);
+                  handleStatus(listing.id, key);
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-gray-800 transition-colors text-left ${ocfg.cls.split(" ").filter(c => c.startsWith("text-")).join(" ")}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ocfg.dot}`} />
+                {ocfg.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   });
 
