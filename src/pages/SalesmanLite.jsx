@@ -400,14 +400,12 @@ export default function SalesmanLite() {
     if (!commissionModal) return;
     const { car } = commissionModal;
     const amt = Number(commissionModalAmt) || 0;
-    setCommissionModal(null);
-    // Update status via RPC
+    // Update status AND commission atomically before closing modal
     await updateListingStatus(car, "sold", true);
-    // Write my_commission
-    if (amt > 0) {
-      await supabase.from("car_listings").update({ my_commission: amt }).eq("id", car.id);
-      setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, my_commission: amt } : c));
-    }
+    // Always write my_commission (even 0) so ledger row is consistent
+    await supabase.from("car_listings").update({ my_commission: amt }).eq("id", car.id);
+    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, my_commission: amt } : c));
+    setCommissionModal(null);
     // Refresh commission data
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const { data: refreshed } = await supabase
@@ -580,7 +578,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website")
+        .select("id, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, telegram_chat_id, dealer_id, full_name, plan, telegram_bot_token, city, state, ic_number, account_status, instagram, tiktok, facebook, website, commission_rate, commission_type")
         .eq("id", uid)
         .maybeSingle();
 
@@ -981,7 +979,7 @@ export default function SalesmanLite() {
     // Load commission settings from profile
     if (profile?.commission_rate != null) setCommissionRate(Number(profile.commission_rate));
     if (profile?.commission_type)         setCommissionType(profile.commission_type);
-  }, [userId]);
+  }, [userId, profile]);
 
   // Browser notification: fire when user returns to tab and has stale leads
   useEffect(() => {
