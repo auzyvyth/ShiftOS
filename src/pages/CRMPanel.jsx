@@ -28,7 +28,7 @@ const taCls =
 // ─── EnquiriesTab ─────────────────────────────────────────────────────────────
 const DEFAULT_ENQUIRY_TEMPLATE = `Hi {{buyer_name}}, thank you for your enquiry about the {{car_name}}! 😊\n\nWe'd love to help you with more details or arrange a viewing. When would be a good time for you?\n\nBest regards,\n{{dealer_name}} — {{dealership}}`;
 
-function EnquiriesTab({ userId, onOpenDoc }) {
+function EnquiriesTab({ userId, onOpenDoc, salesmen = [] }) {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -43,6 +43,9 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   const [stockData, setStockData] = useState(null);
   const [dealerProfile, setDealerProfile] = useState(null);
   const [searchEnq, setSearchEnq] = useState("");
+  const [enqFilter, setEnqFilter] = useState("all"); // all | unclaimed | claimed
+  const [teamSalesmen, setTeamSalesmen] = useState([]);
+  const [assigningId, setAssigningId] = useState(null);
 
   const statusMeta = {
     new: {
@@ -130,6 +133,16 @@ function EnquiriesTab({ userId, onOpenDoc }) {
           if (data.enquiry_wa_template) setWaTemplate(data.enquiry_wa_template);
         }
       });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("id, full_name, slug")
+      .eq("dealer_id", userId)
+      .in("role", ["salesman", "manager"])
+      .then(({ data }) => setTeamSalesmen(data || []));
   }, [userId]);
 
   const populateTemplate = (tmpl, enq, dp) => {
@@ -304,16 +317,36 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     sendCoachMessage('Read this enquiry and give me your quick read of the situation and what I should do next.');
   }, [coachOpen, selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredEnqs = !searchEnq
-    ? enquiries
-    : enquiries.filter(e => {
-        const q = searchEnq.toLowerCase();
-        return (
-          (e.buyer_name || "").toLowerCase().includes(q) ||
-          (e.buyer_phone || "").toLowerCase().includes(q) ||
-          (e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || "")).toLowerCase().includes(q)
-        );
-      });
+  const assignEnquiry = async (salesman) => {
+    if (!selected) return;
+    setAssigningId(salesman.id);
+    const { error } = await supabase
+      .from("whatsapp_enquiries")
+      .update({ claimed_by_id: salesman.id, ref_slug: salesman.slug || salesman.id })
+      .eq("id", selected.id);
+    setAssigningId(null);
+    if (!error) {
+      const updated = { ...selected, claimed_by: { full_name: salesman.full_name }, ref_slug: salesman.slug || salesman.id };
+      setSelected(updated);
+      setEnquiries(p => p.map(e => e.id === selected.id ? { ...e, claimed_by: { full_name: salesman.full_name }, ref_slug: salesman.slug || salesman.id } : e));
+    }
+  };
+
+  const filteredEnqs = enquiries
+    .filter(e => {
+      if (enqFilter === "unclaimed") return !e.claimed_by?.full_name && !e.ref_slug;
+      if (enqFilter === "claimed") return !!e.claimed_by?.full_name;
+      return true;
+    })
+    .filter(e => {
+      if (!searchEnq) return true;
+      const q = searchEnq.toLowerCase();
+      return (
+        (e.buyer_name || "").toLowerCase().includes(q) ||
+        (e.buyer_phone || "").toLowerCase().includes(q) ||
+        (e.listing ? `${e.listing.brand} ${e.listing.model}` : (e.car_info || "")).toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div className="space-y-4">
@@ -337,6 +370,21 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
             placeholder="Search buyer name, phone, car…"
             style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 12px", outline: "none", fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box" }}
           />
+          <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+            {[
+              { key: "all", label: "All" },
+              { key: "unclaimed", label: "Unclaimed" },
+              { key: "claimed", label: "Claimed" },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setEnqFilter(key)}
+                style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", background: enqFilter === key ? (key === "unclaimed" ? "rgba(251,146,60,0.18)" : key === "claimed" ? "rgba(52,211,153,0.12)" : "rgba(220,38,38,0.12)") : "rgba(255,255,255,0.04)", border: enqFilter === key ? (key === "unclaimed" ? "1px solid rgba(251,146,60,0.4)" : key === "claimed" ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(220,38,38,0.3)") : "1px solid rgba(255,255,255,0.08)", color: enqFilter === key ? (key === "unclaimed" ? "#fb923c" : key === "claimed" ? "#34d399" : "#f87171") : "#6b7280" }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -848,6 +896,34 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   >
                     {selected.buyer_message}
                   </p>
+                </div>
+              )}
+              {!selected.claimed_by?.full_name && teamSalesmen.length > 0 && (
+                <div
+                  style={{
+                    background: "rgba(251,146,60,0.05)",
+                    border: "1px solid rgba(251,146,60,0.2)",
+                    borderRadius: 10,
+                    padding: "14px",
+                    marginBottom: 16,
+                  }}
+                >
+                  <p style={{ fontSize: 11, color: "#fb923c", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px", fontWeight: 700 }}>
+                    Assign to Salesman
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {teamSalesmen.map(sm => (
+                      <button
+                        key={sm.id}
+                        onClick={() => assignEnquiry(sm)}
+                        disabled={assigningId === sm.id}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", opacity: assigningId === sm.id ? 0.6 : 1 }}
+                      >
+                        <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 500 }}>{sm.full_name}</span>
+                        <span style={{ fontSize: 11, color: "#fb923c" }}>{assigningId === sm.id ? "Assigning…" : "Assign →"}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               <div style={{ marginBottom: 16 }}>
@@ -2352,7 +2428,7 @@ export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         {tab === "pipeline" && <PipelinePanel userId={userId} />}
         {tab === "enquiries" && (
-          <EnquiriesTab userId={userId} onOpenDoc={onOpenDoc} />
+          <EnquiriesTab userId={userId} onOpenDoc={onOpenDoc} salesmen={salesmen} />
         )}
         {tab === "bookings" && (
           <BookingsTab

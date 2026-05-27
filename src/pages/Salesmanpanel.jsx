@@ -147,6 +147,7 @@ export default function SalesmanPanel() {
  const [enquiries, setEnquiries] = useState([]);
  const [enquiriesLoading, setEnquiriesLoading] = useState(true);
  const [unclaimedEnquiries, setUnclaimedEnquiries] = useState([]);
+ const [poolSelected, setPoolSelected] = useState(null);
  const [claimingId, setClaimingId] = useState(null);
  const [dealerSalesmanIds, setDealerSalesmanIds] = useState([]);
  const [openTemplateId, setOpenTemplateId] = useState(null);
@@ -763,7 +764,7 @@ Rules:
  const fetchUnclaimed = () =>
  supabase
  .from("whatsapp_enquiries")
- .select("*, car_listings(brand, model, year, images)")
+ .select("*, car_listings(brand, model, year, selling_price, images)")
  .eq("dealer_id", profile.dealer_id)
  .is("ref_slug", null)
  .neq("status", "converted")
@@ -4890,46 +4891,173 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  };
 
- const renderPoolSection = () => (
- <div>
- <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Unclaimed Pool</p>
- {unclaimedEnquiries.length > 0 && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700 }}>{unclaimedEnquiries.length} waiting</span>}
- </div>
- <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>First to claim gets the lead. Respond within 10 minutes for best conversion.</p>
- {unclaimedEnquiries.length === 0 ? (
- <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
- <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>Pool is empty — no unclaimed enquiries right now.</p>
- </div>
- ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {unclaimedEnquiries.map((enq) => {
- const car = enq.car_listings;
- const badge = responseTimeBadge(enq.created_at);
- return (
- <div key={enq.id} style={{ background: "#0d1117", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 10, padding: "12px 14px" }}>
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{enq.buyer_name || "—"}</p>
- <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>{badge.label}</span>
- </div>
- {car && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
- {enq.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 11, color: "#4b5563" }}>📞 {enq.buyer_phone}</p>}
- {enq.buyer_message && <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{enq.buyer_message}"</p>}
- <button
- onClick={() => claimEnquiry(enq)}
- disabled={claimingId === enq.id}
- style={{ width: "100%", padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.45)", color: "#fbbf24", cursor: "pointer", letterSpacing: "0.03em", opacity: claimingId === enq.id ? 0.6 : 1 }}
- >
- {claimingId === enq.id ? "Claiming..." : "Claim & Add to Pipeline"}
- </button>
- </div>
- );
- })}
- </div>
- )}
- </div>
- );
+ const renderPoolSection = () => {
+   const badge = (createdAt) => responseTimeBadge(createdAt);
+   return (
+     <>
+       {/* Pool drawer */}
+       {poolSelected && (
+         <>
+           <div
+             onClick={() => setPoolSelected(null)}
+             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 90, backdropFilter: "blur(4px)" }}
+           />
+           <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 100, width: 380, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "'DM Sans',sans-serif" }}>
+             {/* Drawer header */}
+             <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
+               <div style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                 <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                   {poolSelected.buyer_name || "Unknown buyer"}
+                 </p>
+                 <p style={{ margin: "3px 0 0", fontSize: 13, color: "#6b7280" }}>
+                   {poolSelected.car_listings
+                     ? [poolSelected.car_listings.year, poolSelected.car_listings.brand, poolSelected.car_listings.model].filter(Boolean).join(" ")
+                     : "General enquiry"}
+                 </p>
+               </div>
+               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                 {(() => { const b = badge(poolSelected.created_at); return <span style={{ fontSize: 10, padding: "3px 9px", borderRadius: 99, background: b.bg, border: `1px solid ${b.border}`, color: b.color, fontWeight: 700 }}>{b.label}</span>; })()}
+                 <button onClick={() => setPoolSelected(null)} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                 </button>
+               </div>
+             </div>
+
+             {/* Drawer body */}
+             <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", WebkitOverflowScrolling: "touch" }}>
+               {/* Car image */}
+               {poolSelected.car_listings?.images?.[0] && (
+                 <div style={{ marginBottom: 14, borderRadius: 10, overflow: "hidden" }}>
+                   <img src={poolSelected.car_listings.images[0]} alt="car" style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }} />
+                 </div>
+               )}
+
+               {/* Info grid */}
+               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                 {[
+                   ["Phone", poolSelected.buyer_phone],
+                   ["Enquired", poolSelected.created_at ? new Date(poolSelected.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : "—"],
+                   ["Asking Price", poolSelected.car_listings?.selling_price ? `RM ${Number(poolSelected.car_listings.selling_price).toLocaleString("en-MY")}` : "—"],
+                   ["Source", poolSelected.lead_source || "Website"],
+                 ].map(([k, v]) => (
+                   <div key={k} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "10px 12px" }}>
+                     <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 4px" }}>{k}</p>
+                     <p style={{ fontSize: 13, color: "#f3f4f6", fontWeight: 500, margin: 0, wordBreak: "break-word" }}>{v || "—"}</p>
+                   </div>
+                 ))}
+               </div>
+
+               {/* Message */}
+               {poolSelected.buyer_message && (
+                 <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px", marginBottom: 16 }}>
+                   <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>Their message</p>
+                   <p style={{ fontSize: 13, color: "#d1d5db", margin: 0, lineHeight: 1.65 }}>{poolSelected.buyer_message}</p>
+                 </div>
+               )}
+
+               {/* Urgency note */}
+               <div style={{ background: "rgba(217,119,6,0.06)", border: "1px solid rgba(217,119,6,0.2)", borderRadius: 8, padding: "10px 14px" }}>
+                 <p style={{ margin: 0, fontSize: 12, color: "#fbbf24", lineHeight: 1.5 }}>
+                   First salesman to claim gets this lead. Respond within 10 minutes for best conversion.
+                 </p>
+               </div>
+             </div>
+
+             {/* Drawer footer — claim */}
+             <div style={{ padding: "14px 20px", borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+               <button
+                 onClick={() => { claimEnquiry(poolSelected); setPoolSelected(null); }}
+                 disabled={claimingId === poolSelected.id}
+                 style={{ width: "100%", padding: "14px 0", borderRadius: 10, fontSize: 14, fontWeight: 700, background: claimingId === poolSelected.id ? "rgba(217,119,6,0.08)" : "rgba(217,119,6,0.18)", border: "1px solid rgba(217,119,6,0.5)", color: "#fbbf24", cursor: claimingId === poolSelected.id ? "not-allowed" : "pointer", fontFamily: "'DM Sans',sans-serif", letterSpacing: "0.02em" }}
+               >
+                 {claimingId === poolSelected.id ? "Claiming…" : "Claim & Add to Pipeline"}
+               </button>
+             </div>
+           </div>
+         </>
+       )}
+
+       {/* Pool list */}
+       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+         <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>Unclaimed Pool</p>
+         {unclaimedEnquiries.length > 0 && (
+           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", color: "#fbbf24", fontWeight: 700 }}>
+             {unclaimedEnquiries.length} waiting
+           </span>
+         )}
+       </div>
+       <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>
+         First to claim gets the lead. Respond within 10 minutes for best conversion.
+       </p>
+       {unclaimedEnquiries.length === 0 ? (
+         <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
+           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 8, opacity: 0.3 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+           <p style={{ margin: 0, fontSize: 13 }}>Pool is empty — no unclaimed enquiries right now.</p>
+         </div>
+       ) : (
+         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+           {unclaimedEnquiries.map((enq) => {
+             const car = enq.car_listings;
+             const b = responseTimeBadge(enq.created_at);
+             return (
+               <div
+                 key={enq.id}
+                 onClick={() => setPoolSelected(enq)}
+                 style={{ background: "#0d1117", border: "1px solid rgba(251,191,36,0.22)", borderRadius: 10, padding: "12px 14px", cursor: "pointer" }}
+               >
+                 {/* Name + badge */}
+                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                     {enq.buyer_name || "Unknown buyer"}
+                   </p>
+                   <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: b.bg, border: `1px solid ${b.border}`, color: b.color, fontWeight: 700 }}>
+                     {b.label}
+                   </span>
+                 </div>
+
+                 {/* Car + phone */}
+                 <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 14px", marginBottom: car || enq.buyer_phone ? 5 : 0 }}>
+                   {car && (
+                     <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
+                       {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                     </p>
+                   )}
+                   {enq.buyer_phone && (
+                     <p style={{ margin: 0, fontSize: 12, color: "#4b5563" }}>{enq.buyer_phone}</p>
+                   )}
+                 </div>
+
+                 {/* Message snippet */}
+                 {enq.buyer_message && (
+                   <p style={{ margin: "0 0 10px", fontSize: 12, color: "#4b5563", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                     "{enq.buyer_message}"
+                   </p>
+                 )}
+
+                 {/* Footer row */}
+                 <div style={{ display: "flex", gap: 8, marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                   <button
+                     onClick={() => setPoolSelected(enq)}
+                     style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 500, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
+                   >
+                     View details
+                   </button>
+                   <button
+                     onClick={() => claimEnquiry(enq)}
+                     disabled={claimingId === enq.id}
+                     style={{ flex: 2, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.45)", color: "#fbbf24", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", opacity: claimingId === enq.id ? 0.6 : 1 }}
+                   >
+                     {claimingId === enq.id ? "Claiming…" : "Claim & Add to Pipeline"}
+                   </button>
+                 </div>
+               </div>
+             );
+           })}
+         </div>
+       )}
+     </>
+   );
+ };
 
  const renderBookingsSection = () => {
  const statusColors = {
