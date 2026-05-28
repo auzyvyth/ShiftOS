@@ -25,6 +25,19 @@ const iCls =
 const taCls =
   "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function relativeTime(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-MY');
+}
+
 // ─── EnquiriesTab ─────────────────────────────────────────────────────────────
 const DEFAULT_ENQUIRY_TEMPLATE = `Hi {{buyer_name}}, thank you for your enquiry about the {{car_name}}! 😊\n\nWe'd love to help you with more details or arrange a viewing. When would be a good time for you?\n\nBest regards,\n{{dealer_name}} — {{dealership}}`;
 
@@ -358,6 +371,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
             <div className="md:hidden">
               {enquiries.map((e) => {
                 const m = statusMeta[e.status || "new"];
+                const isGeneral = !e.listing && !e.car_info;
                 const carLabel = e.listing
                   ? `${e.listing.brand} ${e.listing.model}`
                   : e.car_info || "General enquiry";
@@ -379,14 +393,13 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         marginBottom: 5,
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "#f3f4f6",
-                        }}
-                      >
-                        {e.buyer_name || "Unknown buyer"}
+                      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "#f3f4f6" }}>
+                          {e.buyer_name || "Unknown buyer"}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>
+                          {relativeTime(e.created_at)}
+                        </span>
                       </span>
                       <StatusBadge status={e.status || "new"} />
                     </div>
@@ -398,30 +411,26 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         marginBottom: 10,
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "#9ca3af",
-                          flex: 1,
-                          marginRight: 8,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {carLabel}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {e.created_at
-                          ? new Date(e.created_at).toLocaleDateString("en-MY")
-                          : "—"}
-                      </span>
+                      {isGeneral ? (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#818cf8", flex: 1, marginRight: 8 }}>
+                          General enquiry
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#e5e7eb",
+                            flex: 1,
+                            marginRight: 8,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {carLabel}
+                        </span>
+                      )}
                     </div>
                     <div
                       style={{ display: "flex", gap: 8 }}
@@ -461,7 +470,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           flex: 1,
                           fontSize: 12,
                           fontWeight: 600,
-                          background: m?.bg,
+                          background: "#111827",
                           color: m?.color,
                           border: `1px solid ${m?.border}`,
                           borderRadius: 8,
@@ -469,6 +478,8 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           cursor: "pointer",
                           outline: "none",
                           fontFamily: "'DM Sans',sans-serif",
+                          appearance: "none",
+                          WebkitAppearance: "none",
                         }}
                       >
                         {Object.keys(statusMeta).map((s) => (
@@ -538,7 +549,9 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                   </tr>
                 </thead>
                 <tbody>
-                  {enquiries.map((e) => (
+                  {enquiries.map((e) => {
+                    const isGeneral = !e.listing && !e.car_info;
+                    return (
                     <tr
                       key={e.id}
                       style={{
@@ -560,21 +573,28 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           color: "#f3f4f6",
                           fontSize: 13,
                           fontWeight: 500,
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {e.buyer_name || "—"}
+                        <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 6 }}>
+                          {relativeTime(e.created_at)}
+                        </span>
                       </td>
                       <td
                         onClick={() => openDetail(e)}
                         style={{
                           padding: "12px 14px",
-                          color: "#9ca3af",
                           fontSize: 13,
                         }}
                       >
-                        {e.listing
-                          ? `${e.listing.brand} ${e.listing.model}`
-                          : e.car_info || "—"}
+                        {isGeneral ? (
+                          <span style={{ color: "#818cf8", fontWeight: 600 }}>General enquiry</span>
+                        ) : (
+                          <span style={{ color: "#e5e7eb", fontWeight: 700 }}>
+                            {e.listing ? `${e.listing.brand} ${e.listing.model}` : e.car_info}
+                          </span>
+                        )}
                       </td>
                       <td
                         onClick={() => openDetail(e)}
@@ -603,13 +623,15 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            background: statusMeta[e.status || "new"]?.bg,
+                            background: "#111827",
                             color: statusMeta[e.status || "new"]?.color,
                             border: `1px solid ${statusMeta[e.status || "new"]?.border}`,
                             borderRadius: 6,
                             padding: "3px 8px",
                             cursor: "pointer",
                             outline: "none",
+                            appearance: "none",
+                            WebkitAppearance: "none",
                           }}
                         >
                           {Object.keys(statusMeta).map((s) => (
@@ -653,7 +675,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
@@ -1547,6 +1569,9 @@ function BookingsTab({ userId, listings, salesmen }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {b.buyer_name || "Unknown Buyer"}
+            <span style={{ fontSize: 11, fontWeight: 400, color: "#6b7280", marginLeft: 6 }}>
+              {relativeTime(b.created_at)}
+            </span>
           </p>
           {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sm_meta.bg, border: `1px solid ${sm_meta.border}`, color: sm_meta.color, textTransform: "capitalize" }}>
@@ -1565,7 +1590,7 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Details row */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginBottom: 6 }}>
-          {car && <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
+          {car && <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#e5e7eb" }}>{[car.year, car.brand, car.model].filter(Boolean).join(" ")}</p>}
           {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
           {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display:'flex', alignItems:'center', gap:4 }}><User size={10} /> {sm.full_name}</p>}
           {b.buyer_state && (
