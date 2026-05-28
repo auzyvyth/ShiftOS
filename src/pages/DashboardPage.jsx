@@ -1737,7 +1737,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
 }
 
 // ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjustedStaleIds }) {
+function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStaleAdjusted, adjustedStaleIds }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -1854,8 +1854,9 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
       acc[e.salesman_slug].whatsapp++;
     return acc;
   }, {});
+  const dealerSlugs = new Set(salesmen.map(s => s.slug).filter(Boolean));
   const topSalesmen = Object.entries(bySlug)
-    .filter(([slug]) => slug && slug.trim())
+    .filter(([slug]) => slug && slug.trim() && (dealerSlugs.size === 0 || dealerSlugs.has(slug)))
     .sort((a, b) => b[1].whatsapp - a[1].whatsapp);
 
   const total = listings.length;
@@ -5754,7 +5755,7 @@ export default function DashboardPage() {
 
       const { data: sm } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url")
+        .select("id, full_name, avatar_url, slug")
         .eq("role", "salesman")
         .eq("dealer_id", dealerId);
       if (active) {
@@ -6951,6 +6952,7 @@ export default function DashboardPage() {
             <AnalyticsTab
               listings={listings}
               profile={profile}
+              salesmen={salesmen}
               onEditListing={setEditListing}
               onStaleAdjusted={handleStaleAdjusted}
               adjustedStaleIds={adjustedStaleIds}
