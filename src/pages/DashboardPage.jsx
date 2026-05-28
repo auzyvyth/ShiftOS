@@ -5966,14 +5966,15 @@ export default function DashboardPage() {
     );
   }, [listings, searchQuery, statusFilter]);
 
-  const LISTINGS_PER = 12;
-  const [listingsPage, setListingsPage] = useState(1);
-  useEffect(() => { setListingsPage(1); }, [searchQuery, statusFilter]);
-  const pagedListings = useMemo(() => {
-    const start = (listingsPage - 1) * LISTINGS_PER;
-    return filteredListings.slice(start, start + LISTINGS_PER);
-  }, [filteredListings, listingsPage]);
-  const totalListingsPages = Math.ceil(filteredListings.length / LISTINGS_PER);
+  const LISTINGS_INITIAL = 30;
+  const LISTINGS_STEP = 30;
+  const [listingsVisible, setListingsVisible] = useState(LISTINGS_INITIAL);
+  useEffect(() => { setListingsVisible(LISTINGS_INITIAL); }, [searchQuery, statusFilter]);
+  const pagedListings = useMemo(
+    () => filteredListings.slice(0, listingsVisible),
+    [filteredListings, listingsVisible]
+  );
+  const hasMoreListings = filteredListings.length > listingsVisible;
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6914,25 +6915,14 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                    {/* Pagination */}
-                    {totalListingsPages > 1 && (
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    {/* Load more */}
+                    {hasMoreListings && (
+                      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
                         <button
-                          onClick={() => setListingsPage(p => Math.max(1, p - 1))}
-                          disabled={listingsPage === 1}
-                          style={{ fontSize: 13, color: listingsPage === 1 ? '#374151' : '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '5px 14px', cursor: listingsPage === 1 ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                          onClick={() => setListingsVisible(v => v + LISTINGS_STEP)}
+                          style={{ fontSize: 13, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 24px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
                         >
-                          &lsaquo; Prev
-                        </button>
-                        <span style={{ fontSize: 12, color: '#4b5563', fontFamily: "'DM Sans', sans-serif" }}>
-                          {listingsPage} / {totalListingsPages}
-                        </span>
-                        <button
-                          onClick={() => setListingsPage(p => Math.min(totalListingsPages, p + 1))}
-                          disabled={listingsPage === totalListingsPages}
-                          style={{ fontSize: 13, color: listingsPage === totalListingsPages ? '#374151' : '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '5px 14px', cursor: listingsPage === totalListingsPages ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                        >
-                          Next &rsaquo;
+                          See more ({filteredListings.length - listingsVisible} remaining)
                         </button>
                       </div>
                     )}
