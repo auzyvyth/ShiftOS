@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, R
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 import { useDebouncedCallback } from 'use-debounce';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -5613,13 +5613,14 @@ function OutreachHub({ dealerId, listings }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { tab: tabParam } = useParams();
   const { t } = useTranslation();
   const redirectByRole = useRoleRedirect("dealer");
   const { status, loading: subLoading } = useSubscription();
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("listings");
+  const [activeTab, setActiveTab] = useState(tabParam || "listings");
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -5853,6 +5854,7 @@ export default function DashboardPage() {
   };
   const handleNew = (l) => {
     setListings((p) => [l, ...p]);
+    navigate("/dashboard/listings", { replace: true });
     setActiveTab("listings");
     // Prompt to add stock purchase details
     setPendingStockListing(l);
@@ -5861,7 +5863,12 @@ export default function DashboardPage() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSidebarOpen(false);
+    navigate(`/dashboard/${tab}`, { replace: true });
   };
+
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
+  }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleDelete = async (id) => {
     const { error } = await supabase
       .from("car_listings")
@@ -5958,6 +5965,16 @@ export default function DashboardPage() {
       (l.vin_number || "").toLowerCase().includes(q)
     );
   }, [listings, searchQuery, statusFilter]);
+
+  const LISTINGS_INITIAL = 30;
+  const LISTINGS_STEP = 30;
+  const [listingsVisible, setListingsVisible] = useState(LISTINGS_INITIAL);
+  useEffect(() => { setListingsVisible(LISTINGS_INITIAL); }, [searchQuery, statusFilter]);
+  const pagedListings = useMemo(
+    () => filteredListings.slice(0, listingsVisible),
+    [filteredListings, listingsVisible]
+  );
+  const hasMoreListings = filteredListings.length > listingsVisible;
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6682,7 +6699,7 @@ export default function DashboardPage() {
                         ⚡ Fast
                       </button>
                       <button
-                        onClick={() => setActiveTab("add")}
+                        onClick={() => handleTabChange("add")}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
@@ -6738,7 +6755,7 @@ export default function DashboardPage() {
                       {listings.length === 0 ? 'No listings yet' : `No ${statusFilter} listings`}
                     </p>
                     {listings.length === 0 && (
-                      <button onClick={() => setActiveTab("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => handleTabChange("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                         Add your first car
                       </button>
                     )}
@@ -6756,7 +6773,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredListings.map((l) => {
+                          {pagedListings.map((l) => {
                             const isSold = l.status === 'sold';
                             const extGC = gradeColor(String(l.auction_grade));
                             const sp = l.selling_price || l.price || 0;
@@ -6839,7 +6856,7 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden">
-                      {filteredListings.map((l) => {
+                      {pagedListings.map((l) => {
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
@@ -6898,6 +6915,17 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+                    {/* Load more */}
+                    {hasMoreListings && (
+                      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setListingsVisible(v => v + LISTINGS_STEP)}
+                          style={{ fontSize: 13, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 24px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                        >
+                          See more ({filteredListings.length - listingsVisible} remaining)
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
                 </div>
@@ -6960,7 +6988,7 @@ export default function DashboardPage() {
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
           )}
           {activeTab === "revops" && userId && (
-            <RevOpsPage userId={userId} onNavigateToStock={() => setActiveTab("stock")} />
+            <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
           )}
           {activeTab === "services" && userId && (
             <ServicesPage userId={userId} />
