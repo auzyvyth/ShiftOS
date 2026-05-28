@@ -1116,7 +1116,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  await supabase.from("ai_salesman_usage").upsert(
  { salesman_id: userId, usage_date: today, [col]: 1 },
  { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
- ).catch(() => {});
+ ).then(null, () => {});
  };
 
  const generateAiCaptions = async (car, platform = captionPlatform) => {
@@ -1138,7 +1138,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  try {
  const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
  setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
- await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).catch(() => {});
+ await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
  } catch {
  setAiCaptions((p) => ({ ...p, [cacheKey]: "Couldn't generate caption. Please try again." }));
@@ -1158,7 +1158,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  try {
  const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
  setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
- await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).catch(() => {});
+ await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).then(null, () => {});
  await logAiUsage("wa_reply");
  } catch {
  setAiWaReplies((p) => ({ ...p, [lead.id]: "Couldn't generate reply. Try again." }));
@@ -1217,7 +1217,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  );
  setAiFollowups(results);
  const rows = results.map((r) => ({ salesman_id: userId, lead_id: r.lead.id, suggestion_type: r.type, suggestion_text: r.suggestion }));
- if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).catch(() => {});
+ if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).then(null, () => {});
  await logAiUsage("followup");
  } finally {
  setFollowupsLoading(false);

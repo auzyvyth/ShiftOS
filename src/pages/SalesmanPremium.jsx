@@ -1044,7 +1044,7 @@ export default function SalesmanPremium() {
  { salesman_id: userId, usage_date: today, [col]: 1 },
  { onConflict: "salesman_id,usage_date", ignoreDuplicates: false }
  ).then(async () => {
- await supabase.rpc("increment_ai_usage", { p_salesman_id: userId, p_feature: feature, p_date: today }).catch(() => {});
+ await supabase.rpc("increment_ai_usage", { p_salesman_id: userId, p_feature: feature, p_date: today }).then(null, () => {});
  });
  };
 
@@ -1067,7 +1067,7 @@ export default function SalesmanPremium() {
  try {
  const text = await callClaude(prompt, "You write viral Malaysian car sales captions. Reply with the caption text only, no labels.");
  setAiCaptions((p) => ({ ...p, [cacheKey]: text }));
- await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).catch(() => {});
+ await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
  } catch {
  setAiCaptions((p) => ({ ...p, [cacheKey]: "Couldn't generate caption. Please try again." }));
@@ -1087,7 +1087,7 @@ export default function SalesmanPremium() {
  try {
  const text = await callClaude(prompt, "You are a friendly Malaysian car salesman. Reply with the WhatsApp message text only.");
  setAiWaReplies((p) => ({ ...p, [lead.id]: text }));
- await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).catch(() => {});
+ await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).then(null, () => {});
  await logAiUsage("wa_reply");
  } catch {
  setAiWaReplies((p) => ({ ...p, [lead.id]: "Couldn't generate reply. Try again." }));
@@ -1146,7 +1146,7 @@ export default function SalesmanPremium() {
  );
  setAiFollowups(results);
  const rows = results.map((r) => ({ salesman_id: userId, lead_id: r.lead.id, suggestion_type: r.type, suggestion_text: r.suggestion }));
- if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).catch(() => {});
+ if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).then(null, () => {});
  await logAiUsage("followup");
  } finally {
  setFollowupsLoading(false);
