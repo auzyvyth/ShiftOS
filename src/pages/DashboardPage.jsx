@@ -1854,9 +1854,9 @@ function AnalyticsTab({ listings, profile, onEditListing, onStaleAdjusted, adjus
       acc[e.salesman_slug].whatsapp++;
     return acc;
   }, {});
-  const topSalesmen = Object.entries(bySlug).sort(
-    (a, b) => b[1].whatsapp - a[1].whatsapp,
-  );
+  const topSalesmen = Object.entries(bySlug)
+    .filter(([slug]) => slug && slug.trim())
+    .sort((a, b) => b[1].whatsapp - a[1].whatsapp);
 
   const total = listings.length;
   const active = listings.filter(
@@ -4541,7 +4541,7 @@ function StockTab({ userId, listings }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('stock_units')
-      .select('*, car_listings(brand, model, year, plate_number, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status)')
+      .select('*, car_listings(brand, model, year, plate_number, base_price, selling_price, purchase_price, recon_cost, gross_profit, days_in_stock, sold_price, sold_date, status)')
       .eq('dealer_id', userId)
       .order('created_at', { ascending: false });
     if (error) console.error('[StockTab] fetchUnits error:', error.message, error);
@@ -4551,14 +4551,21 @@ function StockTab({ userId, listings }) {
 
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
 
-  const daysInStock = (purchaseDate) => {
-    if (!purchaseDate) return '—';
-    return Math.floor((Date.now() - new Date(purchaseDate)) / 86400000);
+  const daysInStock = (u) => {
+    if (u.days_in_stock != null) return u.days_in_stock;
+    const date = u.purchase_date || u.created_at;
+    if (!date) return '—';
+    return Math.floor((Date.now() - new Date(date)) / 86400000);
+  };
+
+  const costBasis = (u) => {
+    if (Number(u.purchase_price) > 0) return Number(u.purchase_price);
+    return Number(u.car_listings?.base_price) || 0;
   };
 
   const grossProfit = (u) => {
     if (!u.sold_price) return null;
-    return (Number(u.sold_price) || 0) - (Number(u.purchase_price) || 0) - (Number(u.recon_cost) || 0);
+    return (Number(u.sold_price) || 0) - costBasis(u) - (Number(u.recon_cost) || 0);
   };
 
   const now = new Date();
@@ -4572,16 +4579,17 @@ function StockTab({ userId, listings }) {
   });
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
-  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.purchase_price) || 0), 0);
+  const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
   const avgDays = activeUnits.length
     ? Math.round(activeUnits.reduce((s, u) => {
-        if (!u.purchase_date) return s;
-        return s + Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000);
+        const days = daysInStock(u);
+        return typeof days === 'number' ? s + days : s;
       }, 0) / activeUnits.length)
     : 0;
-  const agingUnits = activeUnits.filter(u =>
-    u.purchase_date && Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) > 60
-  );
+  const agingUnits = activeUnits.filter(u => {
+    const days = daysInStock(u);
+    return typeof days === 'number' && days > 60;
+  });
   const gpSparkData = bucketGPByMonth(units);
 
   const handleAdd = async () => {
@@ -4722,8 +4730,9 @@ function StockTab({ userId, listings }) {
                   ) : displayUnits.map(u => {
                     const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                     const gp = grossProfit(u);
-                    const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86400000) : 0;
-                    const isAging = u.status === 'in_stock' && days > 60;
+                    const days = daysInStock(u);
+                    const daysNum = typeof days === 'number' ? days : 0;
+                    const isAging = u.status === 'in_stock' && daysNum > 60;
                     return (
                       <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
@@ -4736,8 +4745,8 @@ function StockTab({ userId, listings }) {
                         )}
                         <td style={{ padding: '12px 14px', fontSize: 13 }}>
                           {isAging
-                            ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{days}d</span>
-                            : <span style={{ color: '#9ca3af' }}>{u.purchase_date ? `${days}d` : '—'}</span>}
+                            ? <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle style={{ width: 11, height: 11 }} />{daysNum}d</span>
+                            : <span style={{ color: '#9ca3af' }}>{days !== '—' ? `${days}d` : '—'}</span>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
                           {gp != null ? <span style={{ color: gp >= 0 ? '#34d399' : '#93c5fd', fontWeight: 600 }}>RM {gp.toLocaleString()}</span> : '—'}
@@ -5858,7 +5867,7 @@ export default function DashboardPage() {
     setActiveTab("listings");
     // Prompt to add stock purchase details
     setPendingStockListing(l);
-    setPendingStockForm({ purchase_price: '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: '' });
+    setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
   };
   const handleTabChange = (tab) => {
     setActiveTab(tab);
