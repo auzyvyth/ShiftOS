@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Route, Routes, BrowserRouter as Router, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Sentry from "@sentry/react";
 
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
@@ -124,6 +125,7 @@ function App() {
         </SentryRoutes>
       </Suspense>
       <Analytics />
+      <SpeedInsights />
     </Router>
   );
 }
