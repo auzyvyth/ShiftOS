@@ -439,7 +439,7 @@ export default function SalesmanLite() {
   const [appointments, setAppointments] = useState([]);
   const [pastOpen, setPastOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
-  const [analyticsEvents, setAnalyticsEvents] = useState([]);
+  // analyticsEvents removed — aggregation now done server-side via get_salesman_analytics RPC
 
   // ── local cache helpers ────────────────────────────────────────────────────
   const CACHE_TTL = 30 * 60 * 1000; // 30 min
@@ -650,42 +650,20 @@ export default function SalesmanLite() {
           });
       });
 
-      // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
-      // Scope by dealer_id (salesman-lite acts as their own dealer; salesman_slug is null on direct visits)
-      const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      supabase
-        .from("analytics_events")
-        .select("event_type, car_id, car_name, created_at, session_id")
-        .eq("dealer_id", uid)
-        .gte("created_at", cutoff30)
-          .then(({ data: allEvts, error: evtsErr }) => {
-            if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
-            const evts = allEvts || [];
-            setAnalyticsEvents(evts);
-            // build per-listing CVR map (all-time, session-deduped)
-            const now = Date.now();
-            const DAY_MS = 86400000;
-            const map = {};
-            const viewedKeys = new Set();
-            const contactedKeys = new Set();
-            evts.forEach((e) => {
-              if (!e.car_id) return;
-              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0, daily: [0,0,0,0,0,0,0] };
-              const key = `${e.car_id}:${e.session_id || e.car_id}`;
-              if (["car_view", "link_visit"].includes(e.event_type)) {
-                if (!viewedKeys.has(key)) {
-                  viewedKeys.add(key);
-                  map[e.car_id].views++;
-                  const daysAgo = Math.floor((now - new Date(e.created_at).getTime()) / DAY_MS);
-                  if (daysAgo >= 0 && daysAgo < 7) map[e.car_id].daily[6 - daysAgo]++;
-                }
-              }
-              if (["whatsapp_click", "call_click"].includes(e.event_type)) {
-                if (!contactedKeys.has(key)) { contactedKeys.add(key); map[e.car_id].enquiries++; }
-              }
-            });
-            setCarStatsMap(map);
+      // Analytics: call server-side RPC — Postgres aggregates, browser receives one row per car
+      supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
+        .then(({ data, error: evtsErr }) => {
+          if (evtsErr) console.error("fetchAnalytics:", evtsErr);
+          const map = {};
+          (data || []).forEach(row => {
+            map[row.car_id] = {
+              views:    Number(row.views)     || 0,
+              enquiries: Number(row.enquiries) || 0,
+              daily:    [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+            };
           });
+          setCarStatsMap(map);
+        });
 
       // fetch leads
       supabase
@@ -1795,37 +1773,29 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   // ── Memoised dashboard analytics (avoids recompute on every render) ─────────
   const listingStats = useMemo(() => {
-    // pre-group events by car_id for O(1) lookup — avoids O(n×m) filter per listing
-    const evtsByCarId = new Map();
-    for (const e of analyticsEvents) {
-      if (!e.car_id) continue;
-      if (!evtsByCarId.has(e.car_id)) evtsByCarId.set(e.car_id, []);
-      evtsByCarId.get(e.car_id).push(e);
-    }
     const enqByListingId = new Map();
     for (const e of enquiries) {
       if (!e.listing_id) continue;
       enqByListingId.set(e.listing_id, (enqByListingId.get(e.listing_id) || 0) + 1);
     }
     return myListings.map((car) => {
-      const carEvts = evtsByCarId.get(car.id) || [];
-      const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const views = viewSessions.size;
-      const waTaps = waSessions.size;
+      const stats   = carStatsMap[car.id] ?? {};
+      const views   = stats.views     || 0;
+      const waTaps  = stats.enquiries || 0;
       const enqCount = enqByListingId.get(car.id) || 0;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-  }, [myListings, analyticsEvents, enquiries]);
+  }, [myListings, carStatsMap, enquiries]);
 
   const dashboardCVR = useMemo(() => {
-    const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
-    const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+    const vals = Object.values(carStatsMap);
+    const totalViews   = vals.reduce((s, v) => s + (v.views     || 0), 0);
+    const totalWATaps  = vals.reduce((s, v) => s + (v.enquiries || 0), 0);
+    const overallCVR   = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
+    const bestCVRStat  = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
     return { totalViews, totalWATaps, overallCVR, bestCVRStat };
-  }, [analyticsEvents, listingStats]);
+  }, [carStatsMap, listingStats]);
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
