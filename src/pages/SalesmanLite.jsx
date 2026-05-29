@@ -2841,67 +2841,62 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
         {myListings.length > 0 && !showAddForm && (
           <>
-            {/* Status tabs — same pattern as DashboardPage listings panel */}
-            <div
-              style={{
-                display: "flex",
-                gap: 0,
-                borderBottom: "1px solid rgba(255,255,255,0.07)",
-                marginBottom: 0,
-              }}
-            >
-              {[
-                { key: "pending_approval", label: "Pending",  count: myListings.filter((c) => c.status === "pending_approval").length },
-                { key: "rejected",         label: "Rejected", count: myListings.filter((c) => c.status === "rejected").length },
-                { key: "available",        label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
-                { key: "reserved",         label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
-                { key: "sold",             label: "Sold",     count: myListings.filter((c) => c.status === "sold").length },
-              ].map(({ key, label, count }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilterStatus(key)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "10px 16px",
-                    fontSize: 13,
-                    fontWeight: filterStatus === key ? 600 : 400,
-                    fontFamily: "'DM Sans', sans-serif",
-                    color: filterStatus === key ? "#f9fafb" : "#4b5563",
-                    borderBottom: filterStatus === key ? "2px solid #dc2626" : "2px solid transparent",
-                    marginBottom: -1,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    transition: "color 0.15s",
-                  }}
-                >
-                  {label}
-                  <span
+            {/* Status tabs */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", marginBottom: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 0,
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {[
+                  { key: "pending_approval", label: "Pending",   count: myListings.filter((c) => c.status === "pending_approval").length },
+                  { key: "rejected",         label: "Rejected",  count: myListings.filter((c) => c.status === "rejected").length },
+                  { key: "available",        label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
+                  { key: "reserved",         label: "Reserved",  count: myListings.filter((c) => c.status === "reserved").length },
+                  { key: "sold",             label: "Sold",      count: myListings.filter((c) => c.status === "sold").length },
+                ].map(({ key, label, count }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilterStatus(key)}
                     style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: "1px 7px",
-                      borderRadius: 4,
-                      lineHeight: 1.6,
-                      background: filterStatus === key ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
-                      color: filterStatus === key ? "#f87171" : "#374151",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "10px 13px",
+                      fontSize: 13,
+                      fontWeight: filterStatus === key ? 600 : 400,
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: filterStatus === key ? "#f9fafb" : "#4b5563",
+                      borderBottom: filterStatus === key ? "2px solid #dc2626" : "2px solid transparent",
+                      marginBottom: -1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "color 0.15s",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
                     }}
                   >
-                    {count}
-                  </span>
-                </button>
-              ))}
-
-              {/* Hot / stale pills pushed to the right */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, paddingRight: 4 }}>
-                {hotCount > 0 && (
-                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600 }}>🔥 {hotCount} hot</span>
-                )}
-                {staleCount > 0 && (
-                  <span style={{ fontSize: 11, color: "#6b7280" }}>💤 {staleCount} stale</span>
-                )}
+                    {label}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        lineHeight: 1.6,
+                        background: filterStatus === key ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                        color: filterStatus === key ? "#f87171" : "#374151",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -2919,6 +2914,12 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
               <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
               <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+              {hotCount > 0 && (
+                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, marginLeft: "auto" }}>{hotCount} hot</span>
+              )}
+              {staleCount > 0 && (
+                <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 500 }}>{staleCount} stale</span>
+              )}
             </div>
           </>
         )}
@@ -3075,54 +3076,46 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
                   )}
 
-                  {/* Sold stamp overlay bar */}
-                  {isSold && (
+                  {/* Status indicator — compact single-line strip */}
+                  {(isSold || isReserved || isPending || isRejected) && (
                     <div style={{
-                      background: "rgba(107,114,128,0.18)",
-                      borderBottom: "1px solid rgba(107,114,128,0.2)",
-                      padding: "5px 14px",
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
+                      padding: "5px 12px",
+                      borderBottom: `1px solid ${
+                        isRejected  ? "rgba(239,68,68,0.18)"   :
+                        isSold      ? "rgba(107,114,128,0.15)" :
+                                      "rgba(251,191,36,0.15)"
+                      }`,
+                      background: `${
+                        isRejected  ? "rgba(239,68,68,0.05)"   :
+                        isSold      ? "rgba(107,114,128,0.07)" :
+                                      "rgba(251,191,36,0.05)"
+                      }`,
                     }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                        ✓ Sold
+                      <span style={{
+                        width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+                        background: isRejected ? "#f87171" : isSold ? "#6b7280" : "#fbbf24",
+                      }} />
+                      <span style={{
+                        fontSize: 10, fontWeight: 600,
+                        color: isRejected ? "#f87171" : isSold ? "#9ca3af" : "#fbbf24",
+                      }}>
+                        {isSold ? "Sold" : isReserved ? "Reserved" : isPending ? "Pending approval" : "Rejected"}
                       </span>
-                      {car.sold_at && (
+                      {isSold && car.sold_at && (
                         <span style={{ fontSize: 10, color: "#4b5563" }}>
-                          · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                          · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
                         </span>
                       )}
-                    </div>
-                  )}
-
-                  {/* Reserved banner */}
-                  {isReserved && (
-                    <div style={{
-                      background: "rgba(251,191,36,0.07)",
-                      borderBottom: "1px solid rgba(251,191,36,0.15)",
-                      padding: "5px 14px",
-                    }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                        🔒 Reserved
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Pending approval banner */}
-                  {isPending && (
-                    <div style={{ background: "rgba(251,191,36,0.06)", borderBottom: "1px solid rgba(251,191,36,0.15)", padding: "6px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase" }}>⏳ Approval Pending</span>
-                      <span style={{ fontSize: 10, color: "#78716c" }}>· Not visible to buyers yet</span>
-                    </div>
-                  )}
-
-                  {/* Rejected banner + reason */}
-                  {isRejected && (
-                    <div style={{ background: "rgba(239,68,68,0.06)", borderBottom: "1px solid rgba(239,68,68,0.18)", padding: "6px 14px" }}>
-                      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#f87171", letterSpacing: "0.08em", textTransform: "uppercase" }}>✕ Rejected</p>
-                      {car.rejection_reason && (
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9ca3af", lineHeight: 1.4 }}>{car.rejection_reason}</p>
+                      {isPending && (
+                        <span style={{ fontSize: 10, color: "#78716c" }}>· not visible to buyers yet</span>
+                      )}
+                      {isRejected && car.rejection_reason && (
+                        <span style={{ fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          · {car.rejection_reason}
+                        </span>
                       )}
                     </div>
                   )}

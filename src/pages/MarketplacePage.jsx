@@ -551,6 +551,27 @@ export default function MarketplacePage() {
         /* ── Utility ── */
         .mp-brand-scroll::-webkit-scrollbar { display:none }
         .mp-brand-pill:hover  { opacity:.85; transform:translateY(-1px) }
+
+        /* Brand grid */
+        .mp-brand-grid {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          flex-wrap: wrap;
+          padding: 10px 0;
+        }
+        @media (max-width: 640px) {
+          .mp-brand-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            justify-items: center;
+          }
+          .mp-brand-card {
+            width: 100% !important;
+            height: 58px !important;
+          }
+        }
         .mp-reset-btn:hover   { color:#111827 !important; border-color:rgba(0,0,0,.25) !important }
         .mp-chip-x:hover      { opacity:.7 }
         .mp-select:focus      { border-color:rgba(220,38,38,.5) !important; box-shadow:0 0 0 3px rgba(220,38,38,.12) }
@@ -682,12 +703,12 @@ export default function MarketplacePage() {
 
       <main style={S.page}>
         {/* ── Hero ── */}
-        <section className="mp-hero-section" style={{ background:'#08090f', position:'relative' }}>
+        <section className="mp-hero-section" style={{ background:'#08090f', position:'relative', isolation:'isolate' }}>
 
-          {/* BG grid */}
-          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:0 }}/>
+          {/* BG grid — z-index:-1 keeps it behind all content within this stacking context */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize:'80px 80px', pointerEvents:'none', zIndex:-1 }}/>
           {/* Red glow */}
-          <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:0 }}/>
+          <div style={{ position:'absolute', top:'-200px', left:'50%', transform:'translateX(-50%)', width:'900px', height:'700px', background:'radial-gradient(ellipse at 50% 30%,rgba(220,38,38,0.12) 0%,transparent 60%)', pointerEvents:'none', zIndex:-1 }}/>
 
           {/* Two-column hero content */}
           <div className="mp-hero-main">
@@ -899,9 +920,9 @@ export default function MarketplacePage() {
         {/* ── Brand strip ── */}
         <section style={{ background: '#F7F6F2', padding: '28px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="mp-brand-grid">
               {[
-                { label: 'All',        brandVal: '',              initials: 'ALL', color: '#DC2626' },
+                { label: 'All',        brandVal: '',              initials: 'ALL',  color: '#DC2626' },
                 { label: 'Perodua',    brandVal: 'Perodua',       logo: '/brands/perodua.svg' },
                 { label: 'Proton',     brandVal: 'Proton',        logo: '/brands/proton.svg' },
                 { label: 'Toyota',     brandVal: 'Toyota',        logo: '/brands/toyota.svg' },
@@ -912,6 +933,11 @@ export default function MarketplacePage() {
                 { label: 'BMW',        brandVal: 'BMW',           logo: '/brands/bmw.svg' },
                 { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: '/brands/mercedes.svg' },
                 { label: 'Hyundai',    brandVal: 'Hyundai',       logo: '/brands/hyundai.svg' },
+                { label: 'Kia',        brandVal: 'Kia',           initials: 'KIA',  color: '#c5002b' },
+                { label: 'Lexus',      brandVal: 'Lexus',         initials: 'L',    color: '#1a1a1a' },
+                { label: 'Subaru',     brandVal: 'Subaru',        initials: 'SUB',  color: '#013a8e' },
+                { label: 'VW',         brandVal: 'Volkswagen',    initials: 'VW',   color: '#1c3873' },
+                { label: 'Audi',       brandVal: 'Audi',          initials: 'AUDI', color: '#bb0a30' },
               ].map(({ label, brandVal, logo, initials, color }) => {
                 const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
                 return (
@@ -921,10 +947,10 @@ export default function MarketplacePage() {
                       setParam('brand', brandVal);
                       document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
-                    style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%' }}
                   >
-                    <div style={{
-                      width: '84px', height: '68px', borderRadius: '14px', padding: '12px',
+                    <div className="mp-brand-card" style={{
+                      width: '84px', height: '68px', borderRadius: '14px', padding: '10px',
                       background: isActive ? 'rgba(220,38,38,0.08)' : '#ffffff',
                       border: `1px solid ${isActive ? 'rgba(220,38,38,0.4)' : 'rgba(0,0,0,0.08)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -936,7 +962,7 @@ export default function MarketplacePage() {
                       {logo ? (
                         <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
                       ) : null}
-                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
+                      <span style={{ display: logo ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '8px', background: color || 'rgba(0,0,0,0.08)', color: '#fff', fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', fontFamily: "'Outfit',sans-serif" }}>{initials}</span>
                     </div>
                     <span style={{ fontSize: '11px', color: isActive ? '#dc2626' : '#374151', fontFamily: "'Outfit',sans-serif", fontWeight: isActive ? '700' : '500', textAlign: 'center', maxWidth: '84px', lineHeight: 1.2 }}>{label}</span>
                   </button>
@@ -1019,8 +1045,8 @@ export default function MarketplacePage() {
                           return (
                             <div key={car.id} style={{ position:'relative' }}>
                               <CarCard car={car} ctaContext={ctaCtx} />
-                              {/* Seller badge — bottom-left of image */}
-                              <div style={{ position:'absolute', top:'10px', left:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
+                              {/* Seller badge — bottom-right of image (image is 170px tall; top:136 = 34px above image bottom, clear of photo count at bottom-left) */}
+                              <div style={{ position:'absolute', top:'136px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
                                 <Users size={9} color={sellerColor.color}/>
                                 <span style={{ fontSize:'10px', fontWeight:'700', color: sellerColor.color, fontFamily:"'Outfit',sans-serif", letterSpacing:'0.03em' }}>{sellerLabel}</span>
                               </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition } from "react";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -550,7 +550,7 @@ function ProductsCatalogue({ dealerId }) {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
@@ -4175,7 +4175,7 @@ function ListingDetailDrawer({
     <>
       {/* Backdrop */}
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto' }}
+        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
         onClick={onClose}
       >
         {/* Panel */}
@@ -4448,7 +4448,7 @@ function ListingDetailDrawer({
       {lbOpen && (
         <div
           onClick={() => setLbOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           {/* Close */}
           <button
@@ -4495,7 +4495,7 @@ function ListingDetailDrawer({
       {calcOpen && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
+          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -4526,7 +4526,7 @@ function ListingDetailDrawer({
 }
 
 // ─── StockTab ─────────────────────────────────────────────────────────────────
-function StockTab({ userId, listings }) {
+const StockTab = React.memo(function StockTab({ userId, listings }) {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4537,6 +4537,10 @@ function StockTab({ userId, listings }) {
   const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Reset pagination when switching between available/sold
+  useEffect(() => { setVisibleCount(30); }, [stockView]);
 
   const fetchUnits = async () => {
     setLoading(true);
@@ -4714,30 +4718,41 @@ function StockTab({ userId, listings }) {
             <p className="text-gray-600 text-sm p-6">No stock units yet.</p>
           ) : (() => {
             const displayUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const visibleUnits = displayUnits.slice(0, visibleCount);
+            const hasMore = displayUnits.length > visibleCount;
             const thStyle = { padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' };
+            const currentYear = new Date().getFullYear();
             return (
+              <>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     {stockView === 'available'
-                      ? ['Car', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
-                      : ['Car', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      ? ['Car', 'Age', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Age', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
                     }
                   </tr>
                 </thead>
                 <tbody>
                   {displayUnits.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
-                  ) : displayUnits.map(u => {
+                    <tr><td colSpan={9} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
+                  ) : visibleUnits.map(u => {
                     const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                     const gp = grossProfit(u);
                     const days = daysInStock(u);
                     const daysNum = typeof days === 'number' ? days : 0;
                     const isAging = u.status === 'in_stock' && daysNum > 60;
+                    const carYear = car?.year ? Number(car.year) : null;
+                    const carAge = carYear ? currentYear - carYear : null;
                     return (
                       <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {carAge != null
+                            ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
+                            : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
                         <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
@@ -4772,6 +4787,17 @@ function StockTab({ userId, listings }) {
                   })}
                 </tbody>
               </table>
+              {hasMore && (
+                <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button
+                    onClick={() => setVisibleCount(c => c + 30)}
+                    style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
+                  >
+                    Load More ({displayUnits.length - visibleCount} remaining)
+                  </button>
+                </div>
+              )}
+              </>
             );
           })()}
         </div>
@@ -4833,7 +4859,7 @@ function StockTab({ userId, listings }) {
       )}
     </div>
   );
-}
+});
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
 const EMPTY_GEN_FORM = {
@@ -5870,11 +5896,13 @@ export default function DashboardPage() {
     setPendingStockListing(l);
     setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
   };
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSidebarOpen(false);
-    navigate(`/dashboard/${tab}`, { replace: true });
-  };
+  const handleTabChange = useCallback((tab) => {
+    startTransition(() => {
+      setActiveTab(tab);
+      setSidebarOpen(false);
+      navigate(`/dashboard/${tab}`, { replace: true });
+    });
+  }, [navigate]);
 
   useEffect(() => {
     if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
@@ -6307,13 +6335,14 @@ export default function DashboardPage() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/65 z-20 lg:hidden backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: '#07090f' }}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
@@ -6343,7 +6372,7 @@ export default function DashboardPage() {
             </button>
           </div>
           <button
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => startTransition(() => setSidebarOpen(false))}
             className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
           >
             <X className="w-4 h-4" />
@@ -6461,7 +6490,7 @@ export default function DashboardPage() {
           }}
         >
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => startTransition(() => setSidebarOpen(true))}
             className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
           >
             <Menu className="w-5 h-5" />
@@ -7138,8 +7167,8 @@ export default function DashboardPage() {
 
       {/* ── Fast List modal ── */}
       {showFastModal && (
-        <div onClick={() => setShowFastModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', fontFamily: "'DM Sans',sans-serif" }}>
+        <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "'DM Sans',sans-serif" }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>

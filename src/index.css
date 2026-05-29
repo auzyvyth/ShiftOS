@@ -222,3 +222,17 @@
     }
   }
 }
+
+/* ── Modal scroll lock ── */
+/* When a full-screen backdrop (fixed + inset-0 + z-50) is mounted, lock body scroll.
+   inset-0 narrows the selector so dropdowns and tooltips don't trigger this. */
+html:has(.fixed.inset-0.z-50),
+html:has(.modal-overlay) {
+  overflow: hidden;
+}
+
+/* Inner scroll containers inside modals: stop overscroll chaining to parent */
+.modal-inner-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
