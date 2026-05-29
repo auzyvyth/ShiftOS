@@ -1045,8 +1045,8 @@ export default function MarketplacePage() {
                           return (
                             <div key={car.id} style={{ position:'relative' }}>
                               <CarCard car={car} ctaContext={ctaCtx} />
-                              {/* Seller badge — bottom-left of image */}
-                              <div style={{ position:'absolute', top:'10px', left:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
+                              {/* Seller badge — bottom-right of image (image is 170px tall; top:136 = 34px above image bottom, clear of photo count at bottom-left) */}
+                              <div style={{ position:'absolute', top:'136px', right:'10px', zIndex:10, display:'flex', alignItems:'center', gap:'4px', background: sellerColor.bg, border:`1px solid ${sellerColor.border}`, borderRadius:'6px', padding:'3px 8px', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', pointerEvents:'none' }}>
                                 <Users size={9} color={sellerColor.color}/>
                                 <span style={{ fontSize:'10px', fontWeight:'700', color: sellerColor.color, fontFamily:"'Outfit',sans-serif", letterSpacing:'0.03em' }}>{sellerLabel}</span>
                               </div>

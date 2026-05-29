@@ -196,7 +196,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           .cc-body         { padding: 9px 10px 11px !important; }
           .cc-name         { font-size: 12px !important; }
           .cc-price-main   { font-size: 16px !important; }
-          .cc-monthly-pill { display: none !important; }
+          .cc-monthly-row  { display: none !important; }
           .cc-spec-val     { font-size: 10px !important; }
           .cc-wa           { width: 28px !important; height: 28px !important; }
         }
@@ -414,8 +414,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
               {formattedPrice}
             </span>
 
-            {/* Monthly pill — 20px reserved */}
-            <div style={{ height: 20, display: 'flex', alignItems: 'center', marginTop: 4 }}>
+            {/* Monthly pill — 20px reserved, hidden as full row on mobile */}
+            <div className="cc-monthly-row" style={{ height: 20, display: 'flex', alignItems: 'center', marginTop: 4 }}>
               {monthly ? (
                 <span className="cc-monthly-pill" style={{
                   display:      'inline-flex',
