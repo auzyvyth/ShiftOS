@@ -125,7 +125,7 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
           <span className="text-sm font-semibold text-white">{title}</span>
         </div>
       )}
-      <div className="p-4 sm:p-5">
+      <div className="p-4 sm:p-5" style={{ minHeight: `${skeletonRows * 40}px` }}>
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: skeletonRows }).map((_, i) => (
@@ -644,18 +644,16 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
       </div>
 
       {/* ── Alerts strip ──────────────────────────────────────────────────── */}
-      {visibleAlerts.length > 0 && (
-        <div className="space-y-2">
-          {visibleAlerts.map((a) => (
-            <AlertBanner
-              key={a.id}
-              type={a.type}
-              message={a.message}
-              onDismiss={() => dismissAlert(a.id)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-2" style={{ overflow: 'hidden' }}>
+        {visibleAlerts.map((a) => (
+          <AlertBanner
+            key={a.id}
+            type={a.type}
+            message={a.message}
+            onDismiss={() => dismissAlert(a.id)}
+          />
+        ))}
+      </div>
 
       {/* ── Section 1: Revenue Overview ──────────────────────────────────── */}
       <div>
