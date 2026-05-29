@@ -31,13 +31,22 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid appointment date' });
   }
 
-  const supabase = createClient(
-    process.env.VITE_SUPABASE_URL || SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
-  );
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Resolve salesman from refSlug if provided
-  let salesmanId = assignedTo || null;
+  // Verify the listing exists and get its real dealer_id from the DB
+  // (never trust caller-supplied dealerId — prevents fake bookings on competitor dealers)
+  const { data: listing } = await supabase
+    .from('car_listings')
+    .select('dealer_id, assigned_to')
+    .eq('id', carId)
+    .maybeSingle();
+
+  if (!listing) {
+    return res.status(404).json({ error: 'Listing not found' });
+  }
+
+  // Resolve salesman from refSlug if provided, else fall back to listing's assigned_to
+  let salesmanId = assignedTo || listing.assigned_to || null;
   if (refSlug) {
     const { data: sm } = await supabase
       .from('profiles')
@@ -48,7 +57,7 @@ export default async function handler(req, res) {
   }
 
   const { error: bookErr } = await supabase.from('appointments').insert({
-    dealer_id: dealerId,
+    dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
     car_listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
@@ -65,7 +74,7 @@ export default async function handler(req, res) {
 
   // Non-fatal: create lead for heatmap / CRM
   await supabase.from('leads').insert({
-    dealer_id: dealerId,
+    dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
     car_listing_id: carId,
     buyer_name: name.trim().substring(0, 100),
