@@ -506,14 +506,16 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
-    // If tokens were passed via URL (cross-domain session handoff), establish
-    // the session then strip them from the address bar immediately.
+    // Cross-domain session handoff: strip tokens from URL immediately on detection
+    // (before any async work) to minimise exposure in referrer headers and history.
     const _params = new URLSearchParams(window.location.search);
     const _at = _params.get('_at');
     const _rt = _params.get('_rt');
+    if (_at || _rt) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     const sessionPromise = _at && _rt
       ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
-          .then(() => { window.history.replaceState({}, '', window.location.pathname); })
           .then(() => supabase.auth.getSession())
       : supabase.auth.getSession();
 
