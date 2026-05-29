@@ -6,7 +6,7 @@ import { trackEvent } from '../utils/analytics';
 
 const XDRIVE_WA = '60174155191';
 
-export default function CarCardMarket({ car }) {
+function CarCardMarket({ car }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -137,3 +137,5 @@ export default function CarCardMarket({ car }) {
     </div>
   );
 }
+
+export default React.memo(CarCardMarket);

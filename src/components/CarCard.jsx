@@ -547,4 +547,4 @@ function badgePill(bg, color) {
   };
 }
 
-export default CarCard;
+export default React.memo(CarCard);
