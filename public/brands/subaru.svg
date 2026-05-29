@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#ffffff"/>
+  <!-- Outer ellipse -->
+  <ellipse cx="100" cy="100" rx="92" ry="92" fill="#013a8e"/>
+  <!-- 6 Pleiades stars: 1 large + 5 small -->
+  <!-- Large star -->
+  <circle cx="82" cy="92" r="18" fill="#ffffff"/>
+  <!-- Small stars -->
+  <circle cx="118" cy="82" r="11" fill="#ffffff"/>
+  <circle cx="130" cy="106" r="9" fill="#ffffff"/>
+  <circle cx="114" cy="122" r="8" fill="#ffffff"/>
+  <circle cx="92" cy="126" r="7" fill="#ffffff"/>
+  <circle cx="70" cy="116" r="7" fill="#ffffff"/>
+</svg>

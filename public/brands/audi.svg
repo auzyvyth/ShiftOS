@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 80">
+  <rect width="260" height="80" fill="#ffffff"/>
+  <!-- 4 interlocking rings, stroke only -->
+  <circle cx="40"  cy="40" r="32" fill="none" stroke="#bb0a30" stroke-width="5"/>
+  <circle cx="93"  cy="40" r="32" fill="none" stroke="#bb0a30" stroke-width="5"/>
+  <circle cx="146" cy="40" r="32" fill="none" stroke="#bb0a30" stroke-width="5"/>
+  <circle cx="199" cy="40" r="32" fill="none" stroke="#bb0a30" stroke-width="5"/>
+  <!-- Mask out interior ring overlap using white arcs for clean look -->
+  <!-- Between ring 1 and 2: mask left interior -->
+  <path d="M72,22 A32,32 0 0,0 72,58" fill="none" stroke="#ffffff" stroke-width="6"/>
+  <path d="M125,22 A32,32 0 0,0 125,58" fill="none" stroke="#ffffff" stroke-width="6"/>
+  <path d="M178,22 A32,32 0 0,0 178,58" fill="none" stroke="#ffffff" stroke-width="6"/>
+</svg>

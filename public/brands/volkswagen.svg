@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#ffffff"/>
+  <!-- Outer circle -->
+  <circle cx="100" cy="100" r="92" fill="#1c3873"/>
+  <circle cx="100" cy="100" r="75" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <!-- VW letters in white -->
+  <g fill="#ffffff" font-family="Arial,sans-serif" font-weight="900" font-size="72" text-anchor="middle">
+    <!-- V: left half -->
+    <polygon points="65,52 78,52 100,108 86,108"/>
+    <!-- V: right half -->
+    <polygon points="135,52 122,52 100,108 114,108"/>
+    <!-- W: far left -->
+    <polygon points="48,72 60,72 74,118 62,118"/>
+    <!-- W: left-center -->
+    <polygon points="74,118 86,118 100,84 88,84"/>
+    <!-- W: right-center -->
+    <polygon points="100,84 112,84 126,118 114,118"/>
+    <!-- W: far right -->
+    <polygon points="126,118 138,118 152,72 140,72"/>
+  </g>
+</svg>
