@@ -5,20 +5,42 @@ import CarCard from '@/components/CarCard';
 
 const CAROUSEL_GAP = 12;
 
-const SkeletonCarouselCard = ({ width }) => (
-  <div style={{
-    width, flexShrink: 0,
-    background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)',
-    borderRadius: 14, overflow: 'hidden',
-  }}>
-    <div style={{ height: 160, background: 'linear-gradient(90deg,#e8e6e0 25%,#f0eeea 50%,#e8e6e0 75%)', backgroundSize: '200% 100%', animation: 'mp-shimmer 1.5s infinite' }} />
-    <div style={{ padding: 12 }}>
-      {[80, 55, 100, 70].map((w, i) => (
-        <div key={i} style={{ height: 9, width: `${w}%`, background: '#e8e6e0', borderRadius: 4, marginBottom: 8, animation: 'mp-shimmer 1.5s infinite' }} />
-      ))}
+const SkeletonCarouselCard = ({ width }) => {
+  const b = '#e8e6e0';
+  const s = 'mp-shimmer 1.5s infinite';
+  return (
+    <div style={{ width, flexShrink: 0, background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden' }}>
+      {/* Image — 170px matches CarCard */}
+      <div style={{ height: 170, background: `linear-gradient(90deg,${b} 25%,#f0eeea 50%,${b} 75%)`, backgroundSize: '200% 100%', animation: s }} />
+      {/* Body — matches cc-body padding: 11px 13px 13px */}
+      <div style={{ padding: '11px 13px 13px' }}>
+        {/* Name */}
+        <div style={{ height: 13, width: '80%', background: b, borderRadius: 4, marginBottom: 4, animation: s }} />
+        {/* Sub line */}
+        <div style={{ height: 10, width: '52%', background: b, borderRadius: 4, marginBottom: 17, animation: s, animationDelay: '0.05s' }} />
+        {/* Strikethrough row — 16px reserved (empty, matches always-reserved space) */}
+        <div style={{ height: 16 }} />
+        {/* Main price */}
+        <div style={{ height: 22, width: '68%', background: b, borderRadius: 5, marginBottom: 5, animation: s, animationDelay: '0.07s' }} />
+        {/* Monthly pill */}
+        <div style={{ height: 20, width: '58%', background: b, borderRadius: 20, marginBottom: 10, animation: s, animationDelay: '0.1s' }} />
+        {/* 2×2 spec grid — icon+value rows */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 6, columnGap: 8, marginBottom: 10 }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{ height: 13, background: b, borderRadius: 4, animation: s, animationDelay: `${0.1 + i * 0.04}s` }} />
+          ))}
+        </div>
+        {/* Divider */}
+        <div style={{ height: 1, background: '#F1F5F9', marginBottom: 8 }} />
+        {/* Footer row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
+          <div style={{ height: 10, width: '48%', background: b, borderRadius: 4, animation: s, animationDelay: '0.18s' }} />
+          <div style={{ height: 28, width: 32, background: b, borderRadius: 10, animation: s, animationDelay: '0.18s' }} />
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyType, ctaContext }) {
   const scrollRef = useRef(null);

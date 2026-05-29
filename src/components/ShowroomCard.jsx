@@ -225,17 +225,37 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   );
 }
 
-// Horizontal skeleton to show while ShowroomCard data is loading.
+// Horizontal skeleton — mirrors ShowroomCard's exact row structure.
 export function ShowroomCardSkeleton() {
+  const b = '#e5e7eb';
+  const s = 'sc-shimmer 1.5s infinite';
   return (
     <div style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px' }}>
-      <div style={{ width: '38%', maxWidth: '220px', flexShrink: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />
-      <div style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ height: '12px', width: '75%', background: '#e5e7eb', borderRadius: '5px', animation: 'sc-shimmer 1.5s infinite' }} />
-        <div style={{ height: '10px', width: '45%', background: '#e5e7eb', borderRadius: '5px', animation: 'sc-shimmer 1.5s infinite' }} />
-        <div style={{ height: '22px', width: '60%', background: '#e5e7eb', borderRadius: '5px', animation: 'sc-shimmer 1.5s infinite', marginTop: '4px' }} />
-        <div style={{ height: '10px', width: '80%', background: '#e5e7eb', borderRadius: '5px', animation: 'sc-shimmer 1.5s infinite' }} />
-        <div style={{ marginTop: 'auto', height: '34px', width: '100%', background: '#e5e7eb', borderRadius: '8px', animation: 'sc-shimmer 1.5s infinite' }} />
+      {/* Image column — same 38% / 210px as real card */}
+      <div style={{ width: '38%', maxWidth: '210px', flexShrink: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: s }} />
+      {/* Content column — matches padding: 11px 14px */}
+      <div style={{ flex: 1, padding: '11px 14px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* Row 1: condition pill + year pill */}
+        <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
+          <div style={{ height: 20, width: 42, background: b, borderRadius: 20, animation: s }} />
+          <div style={{ height: 20, width: 32, background: b, borderRadius: 20, animation: s, animationDelay: '0.05s' }} />
+        </div>
+        {/* Row 2: name — 2 lines */}
+        <div style={{ height: 13, width: '82%', background: b, borderRadius: 4, marginBottom: 5, animation: s, animationDelay: '0.05s' }} />
+        <div style={{ height: 13, width: '58%', background: b, borderRadius: 4, marginBottom: 6, animation: s, animationDelay: '0.07s' }} />
+        {/* Row 3: spec line */}
+        <div style={{ height: 10, width: '90%', background: b, borderRadius: 4, marginBottom: 0, animation: s, animationDelay: '0.1s' }} />
+        {/* Flex spacer — pushes bottom rows to match card */}
+        <div style={{ flex: 1 }} />
+        {/* Row 4: compare button */}
+        <div style={{ height: 22, width: 78, background: b, borderRadius: 7, marginBottom: 5, animation: s, animationDelay: '0.1s' }} />
+        {/* Row 5: monthly estimate */}
+        <div style={{ height: 10, width: '52%', background: b, borderRadius: 4, marginBottom: 6, animation: s, animationDelay: '0.12s' }} />
+        {/* Row 6: WA + save buttons */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ flex: 1, height: 34, background: b, borderRadius: 8, animation: s, animationDelay: '0.15s' }} />
+          <div style={{ width: 36, height: 34, background: b, borderRadius: 8, flexShrink: 0, animation: s, animationDelay: '0.15s' }} />
+        </div>
       </div>
     </div>
   );
