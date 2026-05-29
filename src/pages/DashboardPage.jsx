@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition } from "react";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -4526,7 +4526,7 @@ function ListingDetailDrawer({
 }
 
 // ─── StockTab ─────────────────────────────────────────────────────────────────
-function StockTab({ userId, listings }) {
+const StockTab = React.memo(function StockTab({ userId, listings }) {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4859,7 +4859,7 @@ function StockTab({ userId, listings }) {
       )}
     </div>
   );
-}
+});
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
 const EMPTY_GEN_FORM = {
@@ -5896,11 +5896,13 @@ export default function DashboardPage() {
     setPendingStockListing(l);
     setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
   };
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSidebarOpen(false);
-    navigate(`/dashboard/${tab}`, { replace: true });
-  };
+  const handleTabChange = useCallback((tab) => {
+    startTransition(() => {
+      setActiveTab(tab);
+      setSidebarOpen(false);
+      navigate(`/dashboard/${tab}`, { replace: true });
+    });
+  }, [navigate]);
 
   useEffect(() => {
     if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
@@ -6333,7 +6335,7 @@ export default function DashboardPage() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/65 z-20 lg:hidden backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
@@ -6370,7 +6372,7 @@ export default function DashboardPage() {
             </button>
           </div>
           <button
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => startTransition(() => setSidebarOpen(false))}
             className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
           >
             <X className="w-4 h-4" />
@@ -6488,7 +6490,7 @@ export default function DashboardPage() {
           }}
         >
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => startTransition(() => setSidebarOpen(true))}
             className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
           >
             <Menu className="w-5 h-5" />
