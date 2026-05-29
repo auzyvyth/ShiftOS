@@ -4537,6 +4537,10 @@ function StockTab({ userId, listings }) {
   const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Reset pagination when switching between available/sold
+  useEffect(() => { setVisibleCount(30); }, [stockView]);
 
   const fetchUnits = async () => {
     setLoading(true);
@@ -4714,30 +4718,41 @@ function StockTab({ userId, listings }) {
             <p className="text-gray-600 text-sm p-6">No stock units yet.</p>
           ) : (() => {
             const displayUnits = stockView === 'available' ? activeUnits : soldUnits;
+            const visibleUnits = displayUnits.slice(0, visibleCount);
+            const hasMore = displayUnits.length > visibleCount;
             const thStyle = { padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' };
+            const currentYear = new Date().getFullYear();
             return (
+              <>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     {stockView === 'available'
-                      ? ['Car', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
-                      : ['Car', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      ? ['Car', 'Age', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
+                      : ['Car', 'Age', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
                     }
                   </tr>
                 </thead>
                 <tbody>
                   {displayUnits.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
-                  ) : displayUnits.map(u => {
+                    <tr><td colSpan={9} style={{ padding: '24px 14px', color: '#4b5563', fontSize: 13 }}>No units in this view.</td></tr>
+                  ) : visibleUnits.map(u => {
                     const car = u.car_listings || { brand: u.brand, model: u.model, year: u.year, plate_number: u.registration_number };
                     const gp = grossProfit(u);
                     const days = daysInStock(u);
                     const daysNum = typeof days === 'number' ? days : 0;
                     const isAging = u.status === 'in_stock' && daysNum > 60;
+                    const carYear = car?.year ? Number(car.year) : null;
+                    const carAge = carYear ? currentYear - carYear : null;
                     return (
                       <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {carAge != null
+                            ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
+                            : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
                         <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
@@ -4772,6 +4787,17 @@ function StockTab({ userId, listings }) {
                   })}
                 </tbody>
               </table>
+              {hasMore && (
+                <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button
+                    onClick={() => setVisibleCount(c => c + 30)}
+                    style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
+                  >
+                    Load More ({displayUnits.length - visibleCount} remaining)
+                  </button>
+                </div>
+              )}
+              </>
             );
           })()}
         </div>
