@@ -550,7 +550,7 @@ function ProductsCatalogue({ dealerId }) {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
@@ -4175,7 +4175,7 @@ function ListingDetailDrawer({
     <>
       {/* Backdrop */}
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto' }}
+        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
         onClick={onClose}
       >
         {/* Panel */}
@@ -4448,7 +4448,7 @@ function ListingDetailDrawer({
       {lbOpen && (
         <div
           onClick={() => setLbOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           {/* Close */}
           <button
@@ -4495,7 +4495,7 @@ function ListingDetailDrawer({
       {calcOpen && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
+          className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -6313,7 +6313,8 @@ export default function DashboardPage() {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: '#07090f' }}
       >
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
           <div
@@ -7138,8 +7139,8 @@ export default function DashboardPage() {
 
       {/* ── Fast List modal ── */}
       {showFastModal && (
-        <div onClick={() => setShowFastModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', fontFamily: "'DM Sans',sans-serif" }}>
+        <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "'DM Sans',sans-serif" }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>

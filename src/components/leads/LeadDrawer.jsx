@@ -351,7 +351,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     <>
       {/* Backdrop */}
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
         onClick={onClose}
       />
 
@@ -477,7 +477,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         </div>
 
         {/* ── SCROLLABLE BODY ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '20px' }}>
 
           {/* ── Car of Interest ── */}
           <SLabel>Interested In</SLabel>
