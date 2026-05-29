@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition } from "react";
+import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -5298,11 +5299,11 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${renderDocHTML(printDoc)}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
+                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>
-            <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderDocHTML(printDoc) }} />
+            <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
           </div>
         </div>
       )}

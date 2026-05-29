@@ -439,7 +439,7 @@ export default function SalesmanLite() {
   const [appointments, setAppointments] = useState([]);
   const [pastOpen, setPastOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
-  const [analyticsEvents, setAnalyticsEvents] = useState([]);
+  // analyticsEvents removed — aggregation now done server-side via get_salesman_analytics RPC
 
   // ── local cache helpers ────────────────────────────────────────────────────
   const CACHE_TTL = 30 * 60 * 1000; // 30 min
@@ -506,14 +506,16 @@ export default function SalesmanLite() {
 
   // auth + profile
   useEffect(() => {
-    // If tokens were passed via URL (cross-domain session handoff), establish
-    // the session then strip them from the address bar immediately.
+    // Cross-domain session handoff: strip tokens from URL immediately on detection
+    // (before any async work) to minimise exposure in referrer headers and history.
     const _params = new URLSearchParams(window.location.search);
     const _at = _params.get('_at');
     const _rt = _params.get('_rt');
+    if (_at || _rt) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     const sessionPromise = _at && _rt
       ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
-          .then(() => { window.history.replaceState({}, '', window.location.pathname); })
           .then(() => supabase.auth.getSession())
       : supabase.auth.getSession();
 
@@ -603,13 +605,13 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -650,42 +652,20 @@ export default function SalesmanLite() {
           });
       });
 
-      // Single analytics fetch — all-time, all fields needed for both 30d chart and CVR map
-      // Scope by dealer_id (salesman-lite acts as their own dealer; salesman_slug is null on direct visits)
-      const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      supabase
-        .from("analytics_events")
-        .select("event_type, car_id, car_name, created_at, session_id")
-        .eq("dealer_id", uid)
-        .gte("created_at", cutoff30)
-          .then(({ data: allEvts, error: evtsErr }) => {
-            if (evtsErr) console.error("fetchAnalyticsEvents:", evtsErr);
-            const evts = allEvts || [];
-            setAnalyticsEvents(evts);
-            // build per-listing CVR map (all-time, session-deduped)
-            const now = Date.now();
-            const DAY_MS = 86400000;
-            const map = {};
-            const viewedKeys = new Set();
-            const contactedKeys = new Set();
-            evts.forEach((e) => {
-              if (!e.car_id) return;
-              if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0, daily: [0,0,0,0,0,0,0] };
-              const key = `${e.car_id}:${e.session_id || e.car_id}`;
-              if (["car_view", "link_visit"].includes(e.event_type)) {
-                if (!viewedKeys.has(key)) {
-                  viewedKeys.add(key);
-                  map[e.car_id].views++;
-                  const daysAgo = Math.floor((now - new Date(e.created_at).getTime()) / DAY_MS);
-                  if (daysAgo >= 0 && daysAgo < 7) map[e.car_id].daily[6 - daysAgo]++;
-                }
-              }
-              if (["whatsapp_click", "call_click"].includes(e.event_type)) {
-                if (!contactedKeys.has(key)) { contactedKeys.add(key); map[e.car_id].enquiries++; }
-              }
-            });
-            setCarStatsMap(map);
+      // Analytics: call server-side RPC — Postgres aggregates, browser receives one row per car
+      supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
+        .then(({ data, error: evtsErr }) => {
+          if (evtsErr) console.error("fetchAnalytics:", evtsErr);
+          const map = {};
+          (data || []).forEach(row => {
+            map[row.car_id] = {
+              views:    Number(row.views)     || 0,
+              enquiries: Number(row.enquiries) || 0,
+              daily:    [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+            };
           });
+          setCarStatsMap(map);
+        });
 
       // fetch leads
       supabase
@@ -1795,37 +1775,29 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
 
   // ── Memoised dashboard analytics (avoids recompute on every render) ─────────
   const listingStats = useMemo(() => {
-    // pre-group events by car_id for O(1) lookup — avoids O(n×m) filter per listing
-    const evtsByCarId = new Map();
-    for (const e of analyticsEvents) {
-      if (!e.car_id) continue;
-      if (!evtsByCarId.has(e.car_id)) evtsByCarId.set(e.car_id, []);
-      evtsByCarId.get(e.car_id).push(e);
-    }
     const enqByListingId = new Map();
     for (const e of enquiries) {
       if (!e.listing_id) continue;
       enqByListingId.set(e.listing_id, (enqByListingId.get(e.listing_id) || 0) + 1);
     }
     return myListings.map((car) => {
-      const carEvts = evtsByCarId.get(car.id) || [];
-      const viewSessions = new Set(carEvts.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const waSessions = new Set(carEvts.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id));
-      const views = viewSessions.size;
-      const waTaps = waSessions.size;
+      const stats   = carStatsMap[car.id] ?? {};
+      const views   = stats.views     || 0;
+      const waTaps  = stats.enquiries || 0;
       const enqCount = enqByListingId.get(car.id) || 0;
       const cvr = views > 0 ? (waTaps / views) * 100 : null;
       return { car, views, waTaps, enqCount, cvr };
     });
-  }, [myListings, analyticsEvents, enquiries]);
+  }, [myListings, carStatsMap, enquiries]);
 
   const dashboardCVR = useMemo(() => {
-    const totalViews = new Set(analyticsEvents.filter((e) => ["car_view", "link_visit"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const totalWATaps = new Set(analyticsEvents.filter((e) => ["whatsapp_click", "call_click"].includes(e.event_type)).map((e) => e.session_id || e.car_id)).size;
-    const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
-    const bestCVRStat = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
+    const vals = Object.values(carStatsMap);
+    const totalViews   = vals.reduce((s, v) => s + (v.views     || 0), 0);
+    const totalWATaps  = vals.reduce((s, v) => s + (v.enquiries || 0), 0);
+    const overallCVR   = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
+    const bestCVRStat  = listingStats.reduce((best, s) => (s.cvr !== null && (best === null || s.cvr > best.cvr)) ? s : best, null);
     return { totalViews, totalWATaps, overallCVR, bestCVRStat };
-  }, [analyticsEvents, listingStats]);
+  }, [carStatsMap, listingStats]);
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
@@ -1892,8 +1864,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
     const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
 
-    // Goal panel data
-    const soldThisMonth = myListings.filter(c => {
+    // Goal panel data — commission earned this month (sum of my_commission on sold listings)
+    const soldThisMonth = myListings
+      .filter(c => {
+        if (c.status !== "sold" || !c.sold_at) return false;
+        const d = new Date(c.sold_at);
+        const now = new Date();
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, c) => sum + (Number(c.my_commission) || 0), 0);
+    const soldCountThisMonth = myListings.filter(c => {
       if (c.status !== "sold" || !c.sold_at) return false;
       const d = new Date(c.sold_at);
       const now = new Date();
@@ -1978,13 +1958,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
             <div style={{ padding: 18 }}>
               {goalEditing ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>Target:</span>
-                  <input type="number" min="1" max="99" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
-                    style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>cars</span>
-                  <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Set</button>
-                  <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <div>
+                  <p style={{ margin: "0 0 10px", fontSize: 11, color: "#6b7280" }}>Set your commission target for {new Date().toLocaleDateString("en-MY",{month:"long"})}:</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>RM</span>
+                    <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
+                      style={{ width: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 16, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
+                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Save</button>
+                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  </div>
+                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>Set commission per car in your Listings tab. Sold cars count toward this goal.</p>
                 </div>
               ) : goal.target > 0 ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -2004,20 +1987,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </div>
                   {/* Text */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      {soldThisMonth}<span style={{ fontSize: 16, color: "#475569", fontWeight: 500 }}> / {goal.target}</span>
+                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                      RM {soldThisMonth.toLocaleString("en-MY")}
                     </p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>cars sold this month</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
                     {pct >= 100
                       ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Goal smashed!</p>
-                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{goal.target - soldThisMonth} more · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day` : "last day!"}</p>
+                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
                     }
                     <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setGoalDraft(5); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                  + Set a monthly target
+                <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  + Set a monthly commission goal
                 </button>
               )}
 
@@ -3184,9 +3168,31 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
 
                     {/* Price */}
-                    <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
                       {price}
                     </p>
+
+                    {/* My commission input */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, color: "#374151", whiteSpace: "nowrap" }}>My commission:</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
+                        <span style={{ fontSize: 10, color: "#6b7280", padding: "3px 5px 3px 7px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "5px 0 0 5px", lineHeight: 1 }}>RM</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          placeholder="0"
+                          defaultValue={car.my_commission != null ? car.my_commission : ""}
+                          onBlur={async e => {
+                            const val = e.target.value === "" ? null : Number(e.target.value);
+                            if (val === (car.my_commission ?? null)) return;
+                            await supabase.from("car_listings").update({ my_commission: val }).eq("id", car.id);
+                            setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, my_commission: val } : c));
+                          }}
+                          style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 5px 5px 0", padding: "3px 7px", color: car.my_commission ? "#60a5fa" : "#6b7280", fontSize: 12, fontWeight: car.my_commission ? 700 : 400, fontFamily: "inherit", outline: "none" }}
+                        />
+                      </div>
+                    </div>
 
                     {/* Meta */}
                     <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
