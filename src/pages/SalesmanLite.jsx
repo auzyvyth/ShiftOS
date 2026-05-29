@@ -603,13 +603,13 @@ export default function SalesmanLite() {
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
           )
           .eq("assigned_to", uid),
         supabase
           .from("car_listings")
           .select(
-            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at",
+            "id, slug, year, brand, model, variant, selling_price, original_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, city, state, condition, engine_cc, created_at, included_services, included_services_cost, sold_at, my_commission, rejection_reason",
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
@@ -1892,8 +1892,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
     const agendaStale = staleLeads.filter((l) => !l.follow_up_at);
     const hasAgenda = agendaAppts.length > 0 || agendaFollowUps.length > 0 || agendaStale.length > 0;
 
-    // Goal panel data
-    const soldThisMonth = myListings.filter(c => {
+    // Goal panel data — commission earned this month (sum of my_commission on sold listings)
+    const soldThisMonth = myListings
+      .filter(c => {
+        if (c.status !== "sold" || !c.sold_at) return false;
+        const d = new Date(c.sold_at);
+        const now = new Date();
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, c) => sum + (Number(c.my_commission) || 0), 0);
+    const soldCountThisMonth = myListings.filter(c => {
       if (c.status !== "sold" || !c.sold_at) return false;
       const d = new Date(c.sold_at);
       const now = new Date();
@@ -1978,13 +1986,16 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
             </div>
             <div style={{ padding: 18 }}>
               {goalEditing ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>Target:</span>
-                  <input type="number" min="1" max="99" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
-                    style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>cars</span>
-                  <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Set</button>
-                  <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <div>
+                  <p style={{ margin: "0 0 10px", fontSize: 11, color: "#6b7280" }}>Set your commission target for {new Date().toLocaleDateString("en-MY",{month:"long"})}:</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 600 }}>RM</span>
+                    <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
+                      style={{ width: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 16, fontWeight: 700, fontFamily: "inherit" }} autoFocus />
+                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Save</button>
+                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  </div>
+                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#374151" }}>Set commission per car in your Listings tab. Sold cars count toward this goal.</p>
                 </div>
               ) : goal.target > 0 ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -2004,20 +2015,21 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                   </div>
                   {/* Text */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      {soldThisMonth}<span style={{ fontSize: 16, color: "#475569", fontWeight: 500 }}> / {goal.target}</span>
+                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                      RM {soldThisMonth.toLocaleString("en-MY")}
                     </p>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>cars sold this month</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>of RM {goal.target.toLocaleString("en-MY")} goal · {soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold</p>
                     {pct >= 100
                       ? <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Goal smashed!</p>
-                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>{goal.target - soldThisMonth} more · {daysLeft > 0 ? `~${((goal.target - soldThisMonth) / daysLeft).toFixed(1)}/day` : "last day!"}</p>
+                      : <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569" }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
                     }
                     <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setGoalDraft(5); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                  + Set a monthly target
+                <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  + Set a monthly commission goal
                 </button>
               )}
 
@@ -3184,9 +3196,31 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
                     </div>
 
                     {/* Price */}
-                    <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: isSold ? "#4b5563" : "#60a5fa" }}>
                       {price}
                     </p>
+
+                    {/* My commission input */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, color: "#374151", whiteSpace: "nowrap" }}>My commission:</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 0, flex: 1 }}>
+                        <span style={{ fontSize: 10, color: "#6b7280", padding: "3px 5px 3px 7px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderRadius: "5px 0 0 5px", lineHeight: 1 }}>RM</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          placeholder="0"
+                          defaultValue={car.my_commission != null ? car.my_commission : ""}
+                          onBlur={async e => {
+                            const val = e.target.value === "" ? null : Number(e.target.value);
+                            if (val === (car.my_commission ?? null)) return;
+                            await supabase.from("car_listings").update({ my_commission: val }).eq("id", car.id);
+                            setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, my_commission: val } : c));
+                          }}
+                          style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: "none", borderRadius: "0 5px 5px 0", padding: "3px 7px", color: car.my_commission ? "#60a5fa" : "#6b7280", fontSize: 12, fontWeight: car.my_commission ? 700 : 400, fontFamily: "inherit", outline: "none" }}
+                        />
+                      </div>
+                    </div>
 
                     {/* Meta */}
                     <p style={{ margin: "0 0 8px", fontSize: 11, color: "#4b5563" }}>
