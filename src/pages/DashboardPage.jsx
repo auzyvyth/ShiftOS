@@ -1753,108 +1753,77 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
     if (chatOpen) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatOpen]);
 
-  const [events, setEvents] = useState([]);
+  const [carStatsRows, setCarStatsRows] = useState([]);
+  const [slugStatsRows, setSlugStatsRows] = useState([]);
+  const [dailyRows, setDailyRows] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
     if (!profile?.id) return;
     const dealerId = getDealerIdFromProfile(profile);
     if (!dealerId) return;
-    // Also pull events where dealer_id is null but car_id belongs to this dealer
-    // (covers main-domain visits where dealer_id wasn't attached to store_visit)
     Promise.all([
-      supabase
-        .from("analytics_events")
-        .select("*")
-        .eq("dealer_id", dealerId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("car_listings")
-        .select("id")
-        .eq("dealer_id", dealerId)
-        .in("status", ["available", "reserved", "sold"]),
-    ]).then(([eventsRes, listingsRes]) => {
-      const directEvents = eventsRes.data || [];
-      const dealerCarIds = new Set((listingsRes.data || []).map(l => l.id));
-      // No-dealer_id events that reference one of this dealer's cars (deduped by id)
-      const seenIds = new Set(directEvents.map(e => e.id));
-      setEvents(directEvents);
+      supabase.rpc("get_dealer_car_analytics", { p_dealer_id: dealerId }),
+      supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId }),
+      supabase.rpc("get_dealer_daily_analytics", { p_dealer_id: dealerId }),
+    ]).then(([carRes, slugRes, dailyRes]) => {
+      setCarStatsRows(carRes.data || []);
+      setSlugStatsRows(slugRes.data || []);
+      setDailyRows(dailyRes.data || []);
       setEventsLoading(false);
-      // Fetch orphan events (null dealer_id but car_id matches) separately to avoid large OR query
-      if (dealerCarIds.size > 0) {
-        supabase
-          .from("analytics_events")
-          .select("*")
-          .is("dealer_id", null)
-          .in("car_id", [...dealerCarIds])
-          .order("created_at", { ascending: false })
-          .then(({ data }) => {
-            const extras = (data || []).filter(e => !seenIds.has(e.id));
-            if (extras.length > 0) setEvents(prev => [...prev, ...extras]);
-          });
-      }
     });
   }, [profile?.id]);
-  const totalClicks = events.filter(
-    (e) => e.event_type === "link_visit" || e.event_type === "car_view" || e.event_type === "card_click",
-  ).length;
-  const totalWa = events.filter(
-    (e) => e.event_type === "whatsapp_click",
-  ).length;
-  const totalCalls = events.filter((e) => e.event_type === "call_click").length;
-  const totalBookings = events.filter((e) => e.event_type === "booking_click").length;
-  const storeVisits = events.filter((e) =>
-    e.event_type === "store_visit" || e.event_type === "car_view" || e.event_type === "page_view"
-  ).length;
 
-  const buildDailyChart = (evts, days = 30) => {
-    const result = [];
+  const totalClicks = carStatsRows.reduce((s, r) => s + (Number(r.views) || 0), 0);
+  const totalWa = carStatsRows.reduce((s, r) => s + (Number(r.whatsapp) || 0), 0);
+  const totalCalls = carStatsRows.reduce((s, r) => s + (Number(r.calls) || 0), 0);
+  const totalBookings = carStatsRows.reduce((s, r) => s + (Number(r.bookings) || 0), 0);
+  const storeVisits = dailyRows.reduce((s, r) => s + (Number(r.visits) || 0), 0);
+
+  const dailyChart = useMemo(() => {
+    const rowMap = {};
+    dailyRows.forEach(r => { rowMap[r.date] = r; });
     const now = new Date();
-    for (let i = days - 1; i >= 0; i--) {
+    return Array.from({ length: 30 }, (_, i) => {
       const d = new Date(now);
-      d.setDate(d.getDate() - i);
+      d.setDate(d.getDate() - (29 - i));
       const dateStr = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
-      const dayEvents = evts.filter(e => e.created_at?.slice(0, 10) === dateStr);
-      result.push({
-        date:     label,
-        visits:   dayEvents.filter(e => ['store_visit', 'car_view', 'page_view'].includes(e.event_type)).length,
-        clicks:   dayEvents.filter(e => ['link_visit', 'card_click'].includes(e.event_type)).length,
-        whatsapp: dayEvents.filter(e => e.event_type === 'whatsapp_click').length,
-        calls:    dayEvents.filter(e => e.event_type === 'call_click').length,
-        bookings: dayEvents.filter(e => e.event_type === 'booking_click').length,
-      });
-    }
-    return result;
-  };
-
-  const dailyChart = useMemo(() => buildDailyChart(events), [events]);
+      const r = rowMap[dateStr] || {};
+      return {
+        date:     d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }),
+        visits:   Number(r.visits)   || 0,
+        clicks:   Number(r.clicks)   || 0,
+        whatsapp: Number(r.whatsapp) || 0,
+        calls:    Number(r.calls)    || 0,
+        bookings: Number(r.bookings) || 0,
+      };
+    });
+  }, [dailyRows]);
 
   const carStatsMap = useMemo(() => {
     const map = {};
-    events.forEach(e => {
-      if (!e.car_id) return;
-      if (!map[e.car_id]) map[e.car_id] = { views: 0, whatsapp: 0, calls: 0, bookings: 0 };
-      if (['car_view', 'link_visit', 'card_click'].includes(e.event_type)) map[e.car_id].views++;
-      if (e.event_type === 'whatsapp_click') map[e.car_id].whatsapp++;
-      if (e.event_type === 'call_click') map[e.car_id].calls++;
-      if (e.event_type === 'booking_click') map[e.car_id].bookings++;
-    });
-    Object.values(map).forEach(s => {
-      const leads = s.whatsapp + s.calls;
-      s.cvr = s.views > 0 ? ((leads / s.views) * 100).toFixed(1) + '%' : '—';
+    carStatsRows.forEach(r => {
+      const views = Number(r.views) || 0;
+      const wa = Number(r.whatsapp) || 0;
+      const calls = Number(r.calls) || 0;
+      map[r.car_id] = {
+        views,
+        whatsapp: wa,
+        calls,
+        bookings: Number(r.bookings) || 0,
+        cvr: views > 0 ? (((wa + calls) / views) * 100).toFixed(1) + '%' : '—',
+      };
     });
     return map;
-  }, [events]);
+  }, [carStatsRows]);
 
-  const bySlug = events.reduce((acc, e) => {
-    if (!acc[e.salesman_slug])
-      acc[e.salesman_slug] = { clicks: 0, whatsapp: 0 };
-    if (e.event_type === "link_visit" || e.event_type === "car_view")
-      acc[e.salesman_slug].clicks++;
-    if (e.event_type === "whatsapp_click")
-      acc[e.salesman_slug].whatsapp++;
+  const bySlug = useMemo(() => {
+    const acc = {};
+    slugStatsRows.forEach(r => {
+      if (r.slug) acc[r.slug] = { clicks: Number(r.clicks) || 0, whatsapp: Number(r.whatsapp) || 0 };
+    });
     return acc;
-  }, {});
+  }, [slugStatsRows]);
+
   const dealerSlugs = new Set(salesmen.map(s => s.slug).filter(Boolean));
   const topSalesmen = Object.entries(bySlug)
     .filter(([slug]) => slug && slug.trim() && (dealerSlugs.size === 0 || dealerSlugs.has(slug)))
@@ -3025,18 +2994,11 @@ function TeamTab({ managerDealership, dealerId }) {
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
-    const { data } = await supabase
-      .from("analytics_events")
-      .select("salesman_slug,event_type")
-      .eq("dealer_id", dealerId);   // scope to this dealer's salesmen only
+    const { data } = await supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId });
     if (!data) return;
     const map = {};
-    data.forEach(({ salesman_slug, event_type }) => {
-      if (!map[salesman_slug]) map[salesman_slug] = { clicks: 0, whatsapp: 0 };
-      if (event_type === "link_visit" || event_type === "car_view")
-        map[salesman_slug].clicks++;
-      if (event_type === "whatsapp_click")
-        map[salesman_slug].whatsapp++;
+    data.forEach(({ slug, clicks, whatsapp }) => {
+      if (slug) map[slug] = { clicks: Number(clicks) || 0, whatsapp: Number(whatsapp) || 0 };
     });
     setAnalyticsMap(map);
   };
