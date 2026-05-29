@@ -337,6 +337,14 @@ export default function CarDetailPage() {
   const heroRef = useRef(null);
   const autoRef = useRef(null);
 
+  /* current user — used to suppress booking button on own listings */
+  const [currentUserId, setCurrentUserId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUserId(data?.session?.user?.id || null);
+    });
+  }, []);
+
   /* booking */
   const [form, setForm] = useState({
     name: "",
@@ -856,6 +864,9 @@ export default function CarDetailPage() {
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
   const contactPhone =
     dealer?.whatsapp_number || salesmanProfile?.whatsapp_number || null;
+  const isOwnListing = !!currentUserId && (
+    currentUserId === car.dealer_id || currentUserId === car.assigned_to
+  );
   const isRecon = car.is_recon;
   const isHot =
     car.original_price &&
@@ -1558,6 +1569,7 @@ export default function CarDetailPage() {
         {/* M4 — CTA card */}
         <div className="cdp-mobile-only" style={{ padding:'0 18px', marginBottom:24 }}>
           <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
+            {!isOwnListing && (
             <button
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
@@ -1568,6 +1580,7 @@ export default function CarDetailPage() {
               style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
               Book a Viewing
             </button>
+            )}
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={handleWhatsApp}
                 style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', color:'#4ade80', borderRadius:10, padding:'12px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}>
@@ -2967,6 +2980,7 @@ export default function CarDetailPage() {
             )}
 
             {/* CTA BUTTONS */}
+            {!isOwnListing && (
             <button
               onClick={() => {
                 trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
@@ -2977,6 +2991,7 @@ export default function CarDetailPage() {
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
               Book a Viewing
             </button>
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button onClick={handleWhatsApp}
@@ -3124,11 +3139,13 @@ export default function CarDetailPage() {
           </span>
         </button>
         <button className="cdp-mobile-bar-wa" onClick={handleWhatsApp}>WhatsApp</button>
+        {!isOwnListing && (
         <button className="cdp-mobile-bar-book" onClick={() => {
           trackEvent(supabase, 'booking_click', { car_id: car.id, car_name: `${car.brand} ${car.model} ${car.year}`, dealer_id: car.dealer_id, metadata: { source: 'car_detail' } });
           setBooked(false);
           setShowBookingModal(true);
         }}>Book a Viewing</button>
+        )}
       </div>
 
       {/* ── enquiry modal ── */}

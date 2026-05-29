@@ -237,7 +237,7 @@ export default function SalesmanPanel() {
 
  // Per-listing analytics
  const [carStatsMap, setCarStatsMap] = useState({});
- const [rawEvents, setRawEvents] = useState([]);
+ // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
 
  // Manager notes
@@ -386,44 +386,21 @@ export default function SalesmanPanel() {
  const assignedCarIds = (assignedCars || []).map((c) => c.id);
 
  if (assignedCarIds.length > 0) {
- const { data: evts } = await supabase
- .from("analytics_events")
- .select("event_type, created_at")
- .in("car_id", assignedCarIds);
- if (evts) {
- setRawEvents(evts);
- setMyClicks(
- evts.filter(
- (e) =>
- e.event_type === "link_visit" || e.event_type === "car_view",
- ).length,
- );
- setMyEnquiries(
- evts.filter(
- (e) =>
- e.event_type === "whatsapp_click" ||
- e.event_type === "call_click",
- ).length,
- );
- }
-
- // Per-listing analytics map
- supabase
- .from("analytics_events")
- .select("car_id, event_type")
- .in("car_id", assignedCarIds)
- .then(({ data: evtData }) => {
+ // Analytics: server-side aggregation via RPC — one row per car
+ const { data: analyticsRows, error: analyticsErr } = await supabase
+ .rpc("get_car_analytics", { p_car_ids: assignedCarIds });
+ if (analyticsErr) console.error("fetchAnalytics:", analyticsErr);
  const map = {};
- (evtData || []).forEach((e) => {
- if (!e.car_id) return;
- if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
- if (["car_view", "link_visit"].includes(e.event_type))
- map[e.car_id].views++;
- if (["whatsapp_click", "call_click"].includes(e.event_type))
- map[e.car_id].enquiries++;
+ (analyticsRows || []).forEach(row => {
+ map[row.car_id] = {
+ views:     Number(row.views)     || 0,
+ enquiries: Number(row.enquiries) || 0,
+ daily:     [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ };
  });
  setCarStatsMap(map);
- });
+ setMyClicks(Object.values(map).reduce((s, v) => s + (v.views     || 0), 0));
+ setMyEnquiries(Object.values(map).reduce((s, v) => s + (v.enquiries || 0), 0));
  }
  });
  }, [navigate]);
@@ -754,45 +731,25 @@ Rules:
  };
  }, [enquiries, commissionDetails]);
 
- // main charts (line + donut) 
+ // main charts (line + donut)
  useEffect(() => {
  if (!window.Chart) return;
 
- // Build 14-day labels + data
- const days = Array.from({ length: 14 }, (_, i) => {
+ // Build 7-day labels + data from carStatsMap (RPC-aggregated)
+ const days = Array.from({ length: 7 }, (_, i) => {
  const d = new Date();
  d.setHours(0, 0, 0, 0);
- d.setDate(d.getDate() - (13 - i));
+ d.setDate(d.getDate() - (6 - i));
  return d;
  });
  const labels = days.map((d) =>
  d.toLocaleDateString("en-MY", { month: "short", day: "numeric" }),
  );
- const viewCounts = days.map((day) => {
- const next = new Date(day);
- next.setDate(next.getDate() + 1);
- return rawEvents.filter((e) => {
- const t = new Date(e.created_at).getTime();
- return (
- (e.event_type === "car_view" || e.event_type === "link_visit") &&
- t >= day.getTime() &&
- t < next.getTime()
+ const allStats = Object.values(carStatsMap);
+ const viewCounts = Array.from({ length: 7 }, (_, i) =>
+ allStats.reduce((s, v) => s + ((v.daily && v.daily[i]) || 0), 0)
  );
- }).length;
- });
- const enqCounts = days.map((day) => {
- const next = new Date(day);
- next.setDate(next.getDate() + 1);
- return rawEvents.filter((e) => {
- const t = new Date(e.created_at).getTime();
- return (
- (e.event_type === "whatsapp_click" ||
- e.event_type === "call_click") &&
- t >= day.getTime() &&
- t < next.getTime()
- );
- }).length;
- });
+ const enqCounts = Array(7).fill(0);
 
  const tickStyle = { color: "rgba(255,255,255,0.25)", font: { size: 10 } };
  const gridStyle = { color: "rgba(255,255,255,0.05)" };
@@ -877,7 +834,7 @@ Rules:
  },
  });
  }
- }, [rawEvents, leads, activeTab, subTab, chartJsLoaded]);
+ }, [carStatsMap, leads, activeTab, subTab, chartJsLoaded]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -4927,12 +4884,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    return b;
   };
 
-  const events = rawEvents;
-  const viewsD = bucket7(events, "car_view");
-  const waD = bucket7(events, "whatsapp_click");
+  const allStats = Object.values(carStatsMap);
+  const viewsD = Array.from({ length: 7 }, (_, i) =>
+   allStats.reduce((s, v) => s + ((v.daily && v.daily[i]) || 0), 0)
+  );
+  const waD = Array(7).fill(0);
   const enqD = bucketArr7(enquiries);
-  const totalViews = events.filter(e => e.event_type === "car_view").length;
-  const totalWA = events.filter(e => e.event_type === "whatsapp_click").length;
+  const totalViews = myClicks;
+  const totalWA = myEnquiries;
   const cvr = totalViews > 0 ? ((totalWA / totalViews) * 100).toFixed(1) : "0";
   const cvrNum = Number(cvr);
   const cvrColor = cvrNum >= 10 ? "#4ade80" : cvrNum >= 5 ? "#fbbf24" : "#f87171";

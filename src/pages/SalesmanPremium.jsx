@@ -350,7 +350,7 @@ export default function SalesmanPremium() {
  const pendingStageRef = useRef({});
  const [appointments, setAppointments] = useState([]);
  const [enquiries, setEnquiries] = useState([]);
- const [analyticsEvents, setAnalyticsEvents] = useState([]);
+ // analyticsEvents removed — aggregated server-side via get_salesman_analytics RPC
 
  // stale leads (48h + overdue follow-ups)
  useEffect(() => {
@@ -470,31 +470,17 @@ export default function SalesmanPremium() {
  setMyListings(merged);
  });
 
- // fetch analytics events (30d, scoped by dealer_id — premium acts as own dealer)
- supabase
- .from("analytics_events")
- .select("event_type, car_id, car_name, created_at")
- .eq("dealer_id", uid)
- .gte(
- "created_at",
- new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
- )
- .then(({ data: evts }) => setAnalyticsEvents(evts || []));
-
- // build per-listing stats map for CVR heatmap
- supabase
- .from("analytics_events")
- .select("car_id, event_type")
- .eq("dealer_id", uid)
- .then(({ data: evtData }) => {
+ // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser
+ supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
+ .then(({ data, error }) => {
+ if (error) console.error("fetchAnalytics:", error);
  const map = {};
- (evtData || []).forEach((e) => {
- if (!e.car_id) return;
- if (!map[e.car_id]) map[e.car_id] = { views: 0, enquiries: 0 };
- if (["car_view", "link_visit"].includes(e.event_type))
- map[e.car_id].views++;
- if (["whatsapp_click", "call_click"].includes(e.event_type))
- map[e.car_id].enquiries++;
+ (data || []).forEach(row => {
+ map[row.car_id] = {
+ views:     Number(row.views)     || 0,
+ enquiries: Number(row.enquiries) || 0,
+ daily:     [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ };
  });
  setCarStatsMap(map);
  });
@@ -1444,21 +1430,15 @@ export default function SalesmanPremium() {
  ];
 
  const listingStats = myListings.map((car) => {
- const carEvts = analyticsEvents.filter((e) => e.car_id === car.id);
- const views = carEvts.filter((e) => e.event_type === "car_view").length;
- const waTaps = carEvts.filter(
- (e) => e.event_type === "whatsapp_click",
- ).length;
+ const s = carStatsMap[car.id] ?? {};
+ const views    = s.views     || 0;
+ const waTaps   = s.enquiries || 0;
  const enqCount = enquiries.filter((e) => e.listing_id === car.id).length;
- const cvr = views > 0? (waTaps / views) * 100 : null;
+ const cvr = views > 0 ? (waTaps / views) * 100 : null;
  return { car, views, waTaps, enqCount, cvr };
  });
- const totalViews = analyticsEvents.filter(
- (e) => e.event_type === "car_view",
- ).length;
- const totalWATaps = analyticsEvents.filter(
- (e) => e.event_type === "whatsapp_click",
- ).length;
+ const totalViews  = Object.values(carStatsMap).reduce((s, v) => s + (v.views     || 0), 0);
+ const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
  const bestCVRStat = listingStats.reduce((best, s) => {
  if (s.cvr!== null && (best === null || s.cvr > best.cvr)) return s;
  return best;
@@ -5882,12 +5862,14 @@ export default function SalesmanPremium() {
    return b;
   };
 
-  const events = analyticsEvents;
-  const viewsD = bucket7(events, "car_view");
-  const waD = bucket7(events, "whatsapp_click");
+  // Sum daily arrays from carStatsMap (d0=6daysAgo → d6=today)
+  const viewsD = Array(7).fill(0).map((_, i) =>
+    Object.values(carStatsMap).reduce((s, v) => s + (v.daily?.[i] || 0), 0)
+  );
+  const waD = Array(7).fill(0); // WA daily breakdown not available from RPC; show zeros
   const enqD = bucketArr7(enquiries);
-  const totalViews = events.filter(e => e.event_type === "car_view").length;
-  const totalWA = events.filter(e => e.event_type === "whatsapp_click").length;
+  const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views     || 0), 0);
+  const totalWA    = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
   const cvr = totalViews > 0 ? ((totalWA / totalViews) * 100).toFixed(1) : "0";
   const cvrNum = Number(cvr);
   const cvrColor = cvrNum >= 10 ? "#4ade80" : cvrNum >= 5 ? "#fbbf24" : "#f87171";

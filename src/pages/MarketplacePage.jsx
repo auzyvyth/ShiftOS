@@ -933,11 +933,11 @@ export default function MarketplacePage() {
                 { label: 'BMW',        brandVal: 'BMW',           logo: '/brands/bmw.svg' },
                 { label: 'Mercedes',   brandVal: 'Mercedes-Benz', logo: '/brands/mercedes.svg' },
                 { label: 'Hyundai',    brandVal: 'Hyundai',       logo: '/brands/hyundai.svg' },
-                { label: 'Kia',        brandVal: 'Kia',           initials: 'KIA',  color: '#c5002b' },
-                { label: 'Lexus',      brandVal: 'Lexus',         initials: 'L',    color: '#1a1a1a' },
-                { label: 'Subaru',     brandVal: 'Subaru',        initials: 'SUB',  color: '#013a8e' },
-                { label: 'VW',         brandVal: 'Volkswagen',    initials: 'VW',   color: '#1c3873' },
-                { label: 'Audi',       brandVal: 'Audi',          initials: 'AUDI', color: '#bb0a30' },
+                { label: 'Kia',        brandVal: 'Kia',           logo: '/brands/kia.svg' },
+                { label: 'Lexus',      brandVal: 'Lexus',         logo: '/brands/lexus.svg' },
+                { label: 'Subaru',     brandVal: 'Subaru',        logo: '/brands/subaru.svg' },
+                { label: 'VW',         brandVal: 'Volkswagen',    logo: '/brands/volkswagen.svg' },
+                { label: 'Audi',       brandVal: 'Audi',          logo: '/brands/audi.svg' },
               ].map(({ label, brandVal, logo, initials, color }) => {
                 const isActive = brandVal ? searchParams.get('brand') === brandVal : !searchParams.get('brand');
                 return (
@@ -947,7 +947,7 @@ export default function MarketplacePage() {
                       setParam('brand', brandVal);
                       document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%' }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: 'auto' }}
                   >
                     <div className="mp-brand-card" style={{
                       width: '84px', height: '68px', borderRadius: '14px', padding: '10px',
