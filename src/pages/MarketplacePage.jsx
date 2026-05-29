@@ -918,8 +918,8 @@ export default function MarketplacePage() {
         </section>
 
         {/* ── Brand strip ── */}
-        <section style={{ background: '#F7F6F2', padding: '28px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+        <section style={{ background: '#F7F6F2', padding: '28px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 20px' }}>
             <div className="mp-brand-grid">
               {[
                 { label: 'All',        brandVal: '',              initials: 'ALL',  color: '#DC2626' },
