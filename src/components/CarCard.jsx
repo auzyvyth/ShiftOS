@@ -156,7 +156,6 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
           .cc-price-main  { font-size: 15px !important; }
           .cc-monthly     { display: none !important; }
           .cc-pricebox    { height: auto !important; margin-bottom: 6px !important; }
-          .cc-pricebox > div:first-child { height: auto !important; min-height: 0 !important; }
           .cc-pricebox > div:last-child  { display: none !important; }
           .cc-grid        { gap: 3px !important; margin-bottom: 6px !important; }
           .cc-cell        { padding: 4px 6px !important; gap: 4px !important; }
