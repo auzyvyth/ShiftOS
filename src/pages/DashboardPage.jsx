@@ -2991,6 +2991,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
+  const [soldMap, setSoldMap] = useState({});
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3003,9 +3004,28 @@ function TeamTab({ managerDealership, dealerId }) {
     setAnalyticsMap(map);
   };
 
+  const fetchSoldPerSalesman = async () => {
+    if (!dealerId) return;
+    const { data } = await supabase
+      .from("car_listings")
+      .select("assigned_to, commission_amount")
+      .eq("dealer_id", dealerId)
+      .eq("status", "sold")
+      .not("assigned_to", "is", null);
+    if (!data) return;
+    const map = {};
+    data.forEach(({ assigned_to, commission_amount }) => {
+      if (!map[assigned_to]) map[assigned_to] = { sold: 0, commission: 0 };
+      map[assigned_to].sold += 1;
+      map[assigned_to].commission += Number(commission_amount) || 0;
+    });
+    setSoldMap(map);
+  };
+
   useEffect(() => {
     fetchTeam();
     fetchAnalytics();
+    fetchSoldPerSalesman();
   }, [managerDealership]);
 
   useEffect(() => {
@@ -3360,8 +3380,50 @@ function TeamTab({ managerDealership, dealerId }) {
           <div>
             {(() => {
               const filteredTeam = salespeople.filter(s => s.role === teamTab);
+              const leaderboard = teamTab === 'salesman' && filteredTeam.length > 0
+                ? [...filteredTeam]
+                    .map(s => ({
+                      ...s,
+                      sold: soldMap[s.id]?.sold || 0,
+                      commission: soldMap[s.id]?.commission || 0,
+                      clicks: analyticsMap[s.slug]?.clicks || 0,
+                    }))
+                    .sort((a, b) => b.sold - a.sold || b.clicks - a.clicks)
+                : null;
+              const rankColors = [
+                { bg: 'rgba(250,204,21,0.12)', color: '#fbbf24', border: 'rgba(250,204,21,0.22)' },
+                { bg: 'rgba(148,163,184,0.10)', color: '#94a3b8', border: 'rgba(148,163,184,0.18)' },
+                { bg: 'rgba(180,83,9,0.12)', color: '#f97316', border: 'rgba(180,83,9,0.20)' },
+              ];
               return (
                 <>
+                  {leaderboard && (
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Leaderboard</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {leaderboard.map((s, i) => {
+                          const rc = rankColors[i] || { bg: 'rgba(255,255,255,0.04)', color: '#374151', border: 'rgba(255,255,255,0.06)' };
+                          return (
+                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{
+                                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 10, fontWeight: 800,
+                                background: rc.bg, color: rc.color,
+                                border: `1px solid ${rc.border}`,
+                              }}>{i + 1}</span>
+                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#34d399' : '#374151', minWidth: 18, textAlign: 'right' }}>{s.sold}</span>
+                              <span style={{ fontSize: 10, color: '#4b5563', marginRight: 6 }}>sold</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', minWidth: 72, textAlign: 'right' }}>
+                                RM {s.commission > 0 ? s.commission.toLocaleString() : '0'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {filteredTeam.length === 0 && (
                     <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
                       No {ROLE_TABS.find(t => t.role === teamTab)?.label} yet.
@@ -3459,11 +3521,8 @@ function TeamTab({ managerDealership, dealerId }) {
                     <div className="grid grid-cols-3 gap-2 max-w-xs">
                       {[
                         [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
-                        [
-                          String(analyticsMap[s.slug]?.whatsapp || 0),
-                          "WhatsApp",
-                        ],
-                        [String(teamSoldCount), "Team Sales"],
+                        [String(analyticsMap[s.slug]?.whatsapp || 0), "WhatsApp"],
+                        [String(soldMap[s.id]?.sold || 0), "Sales"],
                       ].map(([v, lbl]) => (
                         <div
                           key={lbl}
@@ -3474,7 +3533,7 @@ function TeamTab({ managerDealership, dealerId }) {
                           }}
                         >
                           <p
-                            className={`text-sm font-bold ${lbl === "Team Sales" ? "grad-green" : lbl === "WhatsApp" && Number(v) > 0 ? "grad-green" : "grad-white"}`}
+                            className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "grad-white"}`}
                           >
                             {v}
                           </p>
