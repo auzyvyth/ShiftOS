@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
-  AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation,
+  AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation, CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
@@ -21,6 +21,22 @@ const inp = {
   fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box',
 };
 const focusRed = { borderColor: 'rgba(220,38,38,0.4)' };
+
+// ─── HP / Financing constants ──────────────────────────────────────────────────
+const MY_BANKS = ['Maybank','CIMB','Public Bank','RHB','Hong Leong','AmBank','Alliance','Affin','BSN','Bank Rakyat','MBSB','Al Rajhi'];
+const TENURES  = [12,24,36,48,60,72,84,96];
+const HP_STATUS_CFG = {
+  pending:   { label: 'Pending',   color: '#f59e0b' },
+  approved:  { label: 'Approved',  color: '#34d399' },
+  rejected:  { label: 'Rejected',  color: '#f87171' },
+  disbursed: { label: 'Disbursed', color: '#60a5fa' },
+};
+const calcEIR = (principal, annualRate, months) => {
+  if (!principal || !months) return 0;
+  const r = annualRate / 100 / 12;
+  if (r === 0) return principal / months;
+  return principal * r / (1 - Math.pow(1 + r, -months));
+};
 
 // ─── Section label ─────────────────────────────────────────────────────────────
 function SLabel({ children }) {
@@ -108,6 +124,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [dealLinkCopied, setDealLinkCopied] = useState(false);
   const [minsLeft, setMinsLeft]             = useState(null);
 
+  // HP / Financing state
+  const [hpRows, setHpRows]     = useState([]);
+  const [hpOpen, setHpOpen]     = useState(false);
+  const [showAddHP, setShowAddHP] = useState(false);
+  const [hpForm, setHpForm]     = useState({ bank: '', amount: '', tenure: 84, rate: 3.5, notes: '' });
+  const [hpSaving, setHpSaving] = useState(false);
+
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
 
@@ -132,17 +155,19 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  // Fetch catalogue & attached add-ons
+  // Fetch catalogue, attached add-ons, and HP submissions
   useEffect(() => {
     if (!lead?.id || !lead?.dealer_id) return;
     const fetch = async () => {
       setAddonsLoading(true);
-      const [catRes, dealRes] = await Promise.all([
+      const [catRes, dealRes, hpRes] = await Promise.all([
         supabase.from('dealer_products').select('id, name, category, selling_price').eq('dealer_id', lead.dealer_id).eq('is_active', true).order('name'),
         supabase.from('deal_products').select('id, sold_price, notes, product_id, dealer_products(name, category)').eq('lead_id', lead.id),
+        supabase.from('deal_financing').select('*').eq('lead_id', lead.id).order('submitted_at', { ascending: false }),
       ]);
       setCatalogueProducts(catRes.data || []);
       setDealAddons(dealRes.data || []);
+      setHpRows(hpRes.data || []);
       setAddonsLoading(false);
     };
     fetch();
@@ -179,6 +204,36 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     await supabase.from('deal_products').delete().eq('id', id);
     setDealAddons(p => p.filter(a => a.id !== id));
     toast.success('Removed');
+  };
+
+  const hpInstalment = useMemo(() => calcEIR(Number(hpForm.amount), hpForm.rate, hpForm.tenure), [hpForm.amount, hpForm.rate, hpForm.tenure]);
+
+  const handleAddHP = async () => {
+    if (!hpForm.bank || !hpForm.amount || Number(hpForm.amount) <= 0) { toast.error('Bank and loan amount required'); return; }
+    setHpSaving(true);
+    const car = lead?.car_listing;
+    const { data, error } = await supabase.from('deal_financing').insert({
+      dealer_id: lead.dealer_id, lead_id: lead.id, listing_id: lead.car_listing_id || null,
+      bank_name: hpForm.bank, loan_amount: Number(hpForm.amount), tenure_months: hpForm.tenure,
+      annual_rate_pct: hpForm.rate, monthly_install: Math.round(hpInstalment),
+      margin_pct: car?.selling_price ? Number(((Number(hpForm.amount) / car.selling_price) * 100).toFixed(1)) : null,
+      notes: hpForm.notes.trim() || null, submitted_at: new Date().toISOString(),
+    }).select().single();
+    if (error) { toast.error('Failed to add HP submission'); } else {
+      setHpRows(p => [data, ...p]);
+      setShowAddHP(false);
+      setHpForm({ bank: '', amount: '', tenure: 84, rate: 3.5, notes: '' });
+      toast.success('HP submission added');
+    }
+    setHpSaving(false);
+  };
+
+  const handleUpdateHPStatus = async (id, status) => {
+    const patch = { status };
+    if (status === 'approved') patch.approved_at = new Date().toISOString();
+    if (status === 'disbursed') patch.disbursed_at = new Date().toISOString();
+    const { error } = await supabase.from('deal_financing').update(patch).eq('id', id);
+    if (!error) setHpRows(p => p.map(r => r.id === id ? { ...r, ...patch } : r));
   };
 
   const handleGenerateDealLink = async () => {
@@ -948,6 +1003,102 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               )}
             </div>
           )}
+
+          {/* ── HP / Financing ── */}
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={() => setHpOpen(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: hpOpen ? '8px 8px 0 0' : 8, cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <CreditCard style={{ width: 13, height: 13, color: '#6b7280' }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: hpOpen ? '#e5e7eb' : '#9ca3af' }}>
+                  HP / Financing {hpRows.length > 0 ? `(${hpRows.length})` : ''}
+                </span>
+                {hpRows.some(r => r.status === 'pending') && (
+                  <span style={{ fontSize: 10, color: '#f59e0b' }}>{hpRows.filter(r => r.status === 'pending').length} pending</span>
+                )}
+              </div>
+              {hpOpen ? <ChevronUp style={{ width: 13, height: 13, color: '#4b5563' }} /> : <ChevronDown style={{ width: 13, height: 13, color: '#4b5563' }} />}
+            </button>
+
+            {hpOpen && (
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 12, marginBottom: 0 }}>
+                {/* Existing submissions */}
+                {hpRows.map(row => {
+                  const cfg = HP_STATUS_CFG[row.status] || HP_STATUS_CFG.pending;
+                  return (
+                    <div key={row.id} style={{ marginBottom: 8, padding: '9px 10px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 7 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{row.bank_name}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, borderRadius: 4, padding: '2px 7px' }}>{cfg.label}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
+                        <span>RM {Number(row.loan_amount).toLocaleString()}</span>
+                        <span>{row.tenure_months}mo</span>
+                        <span>{row.annual_rate_pct}% p.a.</span>
+                        {row.monthly_install && <span style={{ color: '#c084fc', fontWeight: 600 }}>RM {Number(row.monthly_install).toLocaleString()}/mo</span>}
+                      </div>
+                      {row.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          {['approved','rejected'].map(s => (
+                            <button key={s} onClick={() => handleUpdateHPStatus(row.id, s)} style={{ flex: 1, fontSize: 10, padding: '4px', borderRadius: 5, cursor: 'pointer', background: s === 'approved' ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${s === 'approved' ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`, color: s === 'approved' ? '#34d399' : '#f87171', fontWeight: 600 }}>
+                              {s === 'approved' ? 'Approve' : 'Reject'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {row.status === 'approved' && (
+                        <button onClick={() => handleUpdateHPStatus(row.id, 'disbursed')} style={{ width: '100%', fontSize: 10, padding: '4px', borderRadius: 5, cursor: 'pointer', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.25)', color: '#60a5fa', fontWeight: 600 }}>
+                          Mark Disbursed
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Add submission form */}
+                {!showAddHP ? (
+                  <button
+                    onClick={() => setShowAddHP(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#a78bfa', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
+                  >
+                    <Plus style={{ width: 12, height: 12 }} />Add HP Submission
+                  </button>
+                ) : (
+                  <div style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 8, padding: 12, marginTop: 4 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New HP Submission</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                      <select value={hpForm.bank} onChange={e => setHpForm(f => ({ ...f, bank: e.target.value }))} style={{ ...inp, gridColumn: '1/-1', appearance: 'none' }} className="ld-inp">
+                        <option value="">— Select bank —</option>
+                        {MY_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                      <input value={hpForm.amount} onChange={e => setHpForm(f => ({ ...f, amount: e.target.value }))} placeholder="Loan amount (RM)" type="number" style={inp} className="ld-inp" />
+                      <select value={hpForm.tenure} onChange={e => setHpForm(f => ({ ...f, tenure: Number(e.target.value) }))} style={{ ...inp, appearance: 'none' }} className="ld-inp">
+                        {TENURES.map(t => <option key={t} value={t}>{t}mo ({(t/12).toFixed(0)}yr)</option>)}
+                      </select>
+                      <input value={hpForm.rate} onChange={e => setHpForm(f => ({ ...f, rate: Number(e.target.value) }))} placeholder="Rate % p.a." type="number" step="0.1" style={inp} className="ld-inp" />
+                    </div>
+                    {hpInstalment > 0 && (
+                      <div style={{ display: 'flex', gap: 12, marginBottom: 6, padding: '6px 10px', background: 'rgba(167,139,250,0.06)', borderRadius: 6 }}>
+                        <span style={{ fontSize: 11, color: '#c084fc' }}>EIR: <strong>RM {Math.round(hpInstalment).toLocaleString()}/mo</strong></span>
+                        {lead?.car_listing?.selling_price && hpForm.amount && (
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Margin: {((Number(hpForm.amount) / lead.car_listing.selling_price) * 100).toFixed(1)}%</span>
+                        )}
+                      </div>
+                    )}
+                    <input value={hpForm.notes} onChange={e => setHpForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ ...inp, marginBottom: 8 }} className="ld-inp" />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setShowAddHP(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)', color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
+                        {hpSaving ? 'Submitting…' : 'Submit'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <Divider />
 
