@@ -27,6 +27,7 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
+import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
@@ -652,6 +653,16 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const [subdomain, setSubdomain] = useState(profile?.subdomain || '');
   const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
+  const [planUsage, setPlanUsage] = useState(null);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const dealerIdForUsage = profile.role === 'manager' || profile.role === 'admin' ? profile.dealer_id : profile.id;
+    if (!dealerIdForUsage) return;
+    supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
+      if (data) setPlanUsage(data);
+    });
+  }, [profile?.id]);
 
   const sanitizeSubdomain = (val) =>
     val.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -922,8 +933,63 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </p>
     ) : null;
 
+  const planCfg = getPlanConfig(profile?.plan);
+  const nextPlan = nextDealerPlan(profile?.plan);
+  const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
+
   return (
     <div className="space-y-4 max-w-2xl">
+      {/* ── Plan Usage ── */}
+      {planUsage && (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, letterSpacing: 2, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: '#E8EDF5' }}>{planCfg.label}</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#E8EDF5' }}>RM {planCfg.price.toLocaleString()}</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>/month</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: nextPlanCfg ? 16 : 0 }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>LISTINGS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#f87171' : '#E8EDF5' }}>
+                {planUsage.active_listings ?? 0}
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                  {planUsage.listing_cap ? ` / ${planUsage.listing_cap}` : ' / unlimited'}
+                </span>
+              </p>
+              {planUsage.listing_cap && (
+                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                </div>
+              )}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>TEAM SEATS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#f87171' : '#E8EDF5' }}>
+                {planUsage.seat_count ?? 0}
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                  {planUsage.seat_cap ? ` / ${planUsage.seat_cap}` : ' / unlimited'}
+                </span>
+              </p>
+              {planUsage.seat_cap && (
+                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                </div>
+              )}
+            </div>
+          </div>
+          {nextPlanCfg && (
+            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 13, color: '#f87171', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
+            </a>
+          )}
+        </div>
+      )}
       {/* ── 1. Dealership Identity ── */}
       <SettingsSection
         title="Dealership Identity"
@@ -3121,6 +3187,14 @@ function TeamTab({ managerDealership, dealerId }) {
     setAddLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // Check seat cap before creating
+      const { data: capCheck } = await supabase.rpc('check_seat_cap', { p_dealer_id: dealerId });
+      if (capCheck && !capCheck.allowed) {
+        setAddError(`Seat limit reached (${capCheck.current}/${capCheck.cap}). Upgrade your plan to add more team members.`);
+        setAddLoading(false);
+        return;
+      }
 
       if (isSalesman) {
         // Auth-first salesman creation via edge function
