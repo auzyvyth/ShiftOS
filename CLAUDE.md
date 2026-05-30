@@ -1,7 +1,10 @@
 # ShiftOS — Project Context
 
-## Pending tasks
-See `TODO.md` in the repo root — read it at the start of every session before picking up work.
+## Pending tasks — session start protocol
+1. Read `TODO.md` at the start of every session.
+2. Present the pending items to the user and ask which one to work on first.
+3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
+4. Do not start work without asking the user which item to tackle.
 
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
