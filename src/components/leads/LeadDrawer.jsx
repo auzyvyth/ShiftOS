@@ -271,6 +271,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       annual_rate_pct: hpForm.rate, monthly_install: Math.round(hpInstalment),
       margin_pct: car?.selling_price ? Number(((Number(hpForm.amount) / car.selling_price) * 100).toFixed(1)) : null,
       notes: hpForm.notes.trim() || null, submitted_at: new Date().toISOString(),
+      queue_order: hpRows.length + 1,
     }).select().single();
     if (error) { toast.error('Failed to add HP submission'); } else {
       setHpRows(p => [data, ...p]);
@@ -287,6 +288,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (status === 'disbursed') patch.disbursed_at = new Date().toISOString();
     const { error } = await supabase.from('deal_financing').update(patch).eq('id', id);
     if (!error) setHpRows(p => p.map(r => r.id === id ? { ...r, ...patch } : r));
+  };
+
+  const handleToggleDoc = async (rowId, docKey, current) => {
+    const row = hpRows.find(r => r.id === rowId);
+    const updated = { ...(row?.hp_docs || {}), [docKey]: !current };
+    const { error } = await supabase.from('deal_financing').update({ hp_docs: updated }).eq('id', rowId);
+    if (!error) setHpRows(p => p.map(r => r.id === rowId ? { ...r, hp_docs: updated } : r));
   };
 
   const handleGenerateDealLink = async () => {
@@ -818,22 +826,61 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   </span>
                 )}
               </div>
+              {/* HP-2: CCRIS warning */}
+              {hpRows.some(r => r.rejection_reason_category === 'ccris_issue') && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>CCRIS Issue Detected</p>
+                  <p style={{ fontSize: 11, color: '#b91c1c', lineHeight: 1.5 }}>
+                    This buyer has a CCRIS rejection. Other banks are likely to reject too. Advise the customer to check their CCRIS report before submitting further applications.
+                  </p>
+                </div>
+              )}
               {addonsLoading ? <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p> : (
                 <>
-                  {hpRows.map(row => {
+                  {hpRows.map((row, idx) => {
                     const cfg = HP_STATUS_CFG[row.status] || HP_STATUS_CFG.pending;
+                    const docs = row.hp_docs || {};
+                    const HP_DOCS = [
+                      { key: 'ic', label: 'IC (Buyer)' },
+                      { key: 'payslip', label: 'Payslip (3mo)' },
+                      { key: 'bank_stmt', label: 'Bank Statement (3mo)' },
+                      { key: 'epf', label: 'EPF Statement' },
+                      { key: 'driving_license', label: 'Driving License' },
+                      { key: 'grant', label: 'Vehicle Grant' },
+                      { key: 'insurance', label: 'Insurance' },
+                      { key: 'roadtax', label: 'Road Tax' },
+                    ];
+                    const docsCollected = HP_DOCS.filter(d => docs[d.key]).length;
                     return (
                       <div key={row.id} style={{ marginBottom: 8, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.bank_name}</span>
+                          <span style={{ fontSize: 12, color: '#9ca3af', marginRight: 6 }}>#{idx + 1}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', flex: 1 }}>{row.bank_name}</span>
                           <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: `${cfg.color}15`, border: `1px solid ${cfg.color}35`, borderRadius: 4, padding: '2px 8px' }}>{cfg.label}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 14, fontSize: 12, color: '#6b7280', marginBottom: row.status === 'pending' || row.status === 'approved' ? 8 : 0 }}>
+                        <div style={{ display: 'flex', gap: 14, fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
                           <span>RM {Number(row.loan_amount).toLocaleString()}</span>
                           <span>{row.tenure_months}mo</span>
                           <span>{row.annual_rate_pct}% p.a.</span>
-                          {row.monthly_install && <span style={{ color: '#7c3aed', fontWeight: 600 }}>RM {Number(row.monthly_install).toLocaleString()}/mo EIR</span>}
+                          {row.monthly_install && <span style={{ color: '#7c3aed', fontWeight: 600 }}>RM {Number(row.monthly_install).toLocaleString()}/mo</span>}
                         </div>
+                        {/* HP-6: Document checklist */}
+                        <details style={{ marginBottom: 8 }}>
+                          <summary style={{ fontSize: 11, color: '#6b7280', cursor: 'pointer', userSelect: 'none', marginBottom: 6 }}>
+                            Docs {docsCollected}/{HP_DOCS.length}
+                            <span style={{ marginLeft: 6, color: docsCollected === HP_DOCS.length ? '#16a34a' : '#d97706' }}>
+                              {docsCollected === HP_DOCS.length ? '✓ Complete' : `${HP_DOCS.length - docsCollected} missing`}
+                            </span>
+                          </summary>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 6 }}>
+                            {HP_DOCS.map(d => (
+                              <label key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: docs[d.key] ? '#16a34a' : '#6b7280', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={!!docs[d.key]} onChange={() => handleToggleDoc(row.id, d.key, docs[d.key])} style={{ accentColor: '#dc2626' }} />
+                                {d.label}
+                              </label>
+                            ))}
+                          </div>
+                        </details>
                         {row.status === 'pending' && (
                           <div style={{ display: 'flex', gap: 6 }}>
                             {['approved','rejected'].map(s => (
