@@ -1,0 +1,149 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { supabase } from '../supabaseClient';
+
+const HP_STATUS = {
+  pending:   { label: 'Pending',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)' },
+  approved:  { label: 'Approved',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.2)' },
+  rejected:  { label: 'Rejected',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.2)' },
+  disbursed: { label: 'Disbursed', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  border: 'rgba(59,130,246,0.2)' },
+};
+
+function fmtRM(n) {
+  return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function daysSince(ts) {
+  return Math.floor((Date.now() - new Date(ts)) / 86400000);
+}
+
+export default function HPBoard({ dealerId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase
+      .from('deal_financing')
+      .select('*, lead:leads(buyer_name, phone, assigned_to, salesman:profiles!leads_assigned_to_fkey(full_name), car_listing:car_listings(brand, model, year))')
+      .eq('dealer_id', dealerId)
+      .order('submitted_at', { ascending: false })
+      .then(({ data }) => { setRows(data || []); setLoading(false); });
+  }, [dealerId]);
+
+  const handleStatusUpdate = async (id, patch) => {
+    const { error } = await supabase
+      .from('deal_financing')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (!error) setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+  };
+
+  const counts = useMemo(() => ({
+    pending: rows.filter(r => r.status === 'pending').length,
+    approved: rows.filter(r => r.status === 'approved').length,
+    rejected: rows.filter(r => r.status === 'rejected').length,
+    disbursed: rows.filter(r => r.status === 'disbursed').length,
+  }), [rows]);
+
+  const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter);
+
+  const summaryTotal = useMemo(() => ({
+    pending: rows.filter(r => r.status === 'pending').reduce((s, r) => s + Number(r.loan_amount), 0),
+    approved: rows.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.loan_amount), 0),
+    disbursed: rows.filter(r => r.status === 'disbursed').reduce((s, r) => s + Number(r.loan_amount), 0),
+  }), [rows]);
+
+  if (loading) return <p style={{ color: '#4b5563', fontSize: 13, padding: 16 }}>Loading HP board…</p>;
+
+  return (
+    <div>
+      {/* Summary strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
+        {[
+          { label: 'Pending', count: counts.pending, amount: summaryTotal.pending, ...HP_STATUS.pending },
+          { label: 'Approved', count: counts.approved, amount: summaryTotal.approved, ...HP_STATUS.approved },
+          { label: 'Disbursed', count: counts.disbursed, amount: summaryTotal.disbursed, ...HP_STATUS.disbursed },
+          { label: 'Rejected', count: counts.rejected, amount: 0, ...HP_STATUS.rejected },
+        ].map(s => (
+          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 16px' }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: s.color, margin: 0 }}>{s.count}</p>
+            <p style={{ fontSize: 11, color: s.color, opacity: 0.8, margin: '2px 0 0' }}>{s.label}</p>
+            {s.amount > 0 && <p style={{ fontSize: 11, color: s.color, opacity: 0.6, margin: '2px 0 0' }}>{fmtRM(s.amount)}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[['all', 'All', '#6b7280'], ...Object.entries(HP_STATUS).map(([k, v]) => [k, v.label, v.color])].map(([k, label, color]) => (
+          <button
+            key={k}
+            onClick={() => setFilter(k)}
+            style={{
+              fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+              background: filter === k ? `${color}15` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${filter === k ? `${color}30` : 'rgba(255,255,255,0.07)'}`,
+              color: filter === k ? color : '#6b7280',
+            }}
+          >
+            {label} ({k === 'all' ? rows.length : counts[k] || 0})
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#4b5563', fontSize: 13 }}>
+          {rows.length === 0 ? 'No HP submissions yet. Add them from the F&I panel or lead drawer.' : `No ${filter} submissions.`}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Bank', 'Buyer', 'Car', 'Salesman', 'Amount', 'Tenure', 'Monthly (EIR)', 'Days', 'Status', 'Action'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(row => {
+                const days = daysSince(row.submitted_at);
+                const overdue = row.status === 'pending' && days > 5;
+                const car = row.lead?.car_listing;
+                const s = HP_STATUS[row.status] || HP_STATUS.pending;
+                return (
+                  <tr key={row.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: overdue ? 'rgba(239,68,68,0.03)' : 'transparent' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#e5e7eb' }}>{row.bank_name}</td>
+                    <td style={{ padding: '10px 12px', color: '#d1d5db' }}>{row.lead?.buyer_name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{car ? `${car.year} ${car.brand} ${car.model}` : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.lead?.salesman?.full_name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#f3f4f6', fontWeight: 600 }}>{fmtRM(row.loan_amount)}</td>
+                    <td style={{ padding: '10px 12px', color: '#9ca3af' }}>{row.tenure_months}m</td>
+                    <td style={{ padding: '10px 12px', color: '#9ca3af' }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#6b7280', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>{s.label}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {row.status === 'pending' && (
+                          <>
+                            <button onClick={() => handleStatusUpdate(row.id, { status: 'approved', approved_at: new Date().toISOString() })} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', cursor: 'pointer', whiteSpace: 'nowrap' }}>Approve</button>
+                            <button onClick={() => handleStatusUpdate(row.id, { status: 'rejected' })} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer' }}>Reject</button>
+                          </>
+                        )}
+                        {row.status === 'approved' && (
+                          <button onClick={() => handleStatusUpdate(row.id, { status: 'disbursed', disbursed_at: new Date().toISOString() })} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa', cursor: 'pointer', whiteSpace: 'nowrap' }}>Disbursed</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

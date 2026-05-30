@@ -11,23 +11,24 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import CarForm from "../components/CarForm";
-import CarFormFast from "../components/CarFormFast";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
-import FinancingCalculator from "../components/FinancingCalculator";
-import LeadsPage from "./LeadsPage";
-import CRMPanel from "./CRMPanel";
 import SciFiLoader from "../components/SciFiLoader";
-import HeroSlidesPage from "./xdrive/HeroSlidesPage";
-import RevOpsPage from "./RevOpsPage";
-import ServicesPage from "./ServicesPage";
+const CarForm          = React.lazy(() => import("../components/CarForm"));
+const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
+const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
+const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
+const LeadsPage        = React.lazy(() => import("./LeadsPage"));
+const CRMPanel         = React.lazy(() => import("./CRMPanel"));
+const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
+const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
+const ServicesPage     = React.lazy(() => import("./ServicesPage"));
+const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
+const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
-import AISalesManager from '../components/AISalesManager';
 import {
   Car,
   PlusCircle,
@@ -55,6 +56,7 @@ import {
   BarChart3,
   Send,
   Bot,
+  CreditCard,
   ChevronRight,
   AlertCircle,
   CheckCircle2,
@@ -2353,7 +2355,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" />
+                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -2437,7 +2439,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" />
+                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
@@ -4229,7 +4231,7 @@ function ListingDetailDrawer({
                       onClick={() => setImgIdx(i)}
                       style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
                     </div>
                   ))}
                 </div>
@@ -5194,7 +5196,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
-                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
                           <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
@@ -5233,7 +5235,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
                           >
                             {l.images?.[0] ? (
-                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                             ) : (
                               <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
@@ -5473,8 +5475,9 @@ function OutreachHub({ dealerId, listings }) {
         ))}
       </div>
 
+      <style>{`.outreach-body{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px}@media(max-width:768px){.outreach-body{grid-template-columns:1fr}}`}</style>
       {/* ── Two-column body ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'340px 1fr', gap:14, marginBottom:14 }}>
+      <div className="outreach-body">
 
         {/* LEFT — Lead list */}
         <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -5495,7 +5498,7 @@ function OutreachHub({ dealerId, listings }) {
           </div>
 
           {/* Lead scroll */}
-          <div style={{ overflowY:'auto', flex:1, maxHeight:440, padding:8 }}>
+          <div style={{ overflowY:'auto', flex:1, maxHeight:'min(440px, 55vw)', padding:8 }}>
             {visibleLeads.length === 0 ? (
               <div style={{ padding:'40px 16px', textAlign:'center', color:'#374151', fontSize:13 }}>
                 {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: SEGS[segment].color } })}
@@ -5884,6 +5887,8 @@ export default function DashboardPage() {
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
+  const [visibleCount, setVisibleCount] = useState(30);
+  const sentinelRef = useRef(null);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [salesmen,         setSalesmen]         = useState([]);
@@ -5965,7 +5970,7 @@ export default function DashboardPage() {
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", uid)   // always scoped to the live session user
+        .eq("id", uid)
         .maybeSingle();
       if (!active) return;
 
@@ -5976,7 +5981,6 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
-        // Correct dealer ID for manager/admin roles (their uid ≠ dealer_id)
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
       } else {
@@ -5985,19 +5989,20 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const { data: cars, error: carsError } = await supabase
-        .from("car_listings")
-        .select("*")
-        .eq("dealer_id", dealerId)
-        .order("created_at", { ascending: false });
-      if (active) setListings(carsError ? [] : cars || []);
-
-      const { data: sm } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, slug")
-        .eq("role", "salesman")
-        .eq("dealer_id", dealerId);
+      const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
+        supabase
+          .from("car_listings")
+          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners")
+          .eq("dealer_id", dealerId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .eq("role", "salesman")
+          .eq("dealer_id", dealerId),
+      ]);
       if (active) {
+        setListings(carsError ? [] : cars || []);
         setSalesmen(sm || []);
         setLoading(false);
       }
@@ -6217,15 +6222,20 @@ export default function DashboardPage() {
     );
   }, [listings, searchQuery, statusFilter]);
 
-  const LISTINGS_INITIAL = 30;
-  const LISTINGS_STEP = 30;
-  const [listingsVisible, setListingsVisible] = useState(LISTINGS_INITIAL);
-  useEffect(() => { setListingsVisible(LISTINGS_INITIAL); }, [searchQuery, statusFilter]);
-  const pagedListings = useMemo(
-    () => filteredListings.slice(0, listingsVisible),
-    [filteredListings, listingsVisible]
-  );
-  const hasMoreListings = filteredListings.length > listingsVisible;
+  // Reset visible window whenever the filtered set changes
+  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery]);
+
+  // Infinite scroll — expand visible window when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + 20); },
+      { rootMargin: '300px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [activeTab]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6434,6 +6444,7 @@ export default function DashboardPage() {
     { id: "documents", Icon: FileText, label: "Documents" },
     { id: "revops",   Icon: BarChart3,  label: "RevOps" },
     { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
+    { id: "hp",       Icon: CreditCard, label: "HP Board" },
     { id: "customers", Icon: UserCheck, label: "Customers" },
   ];
 
@@ -7027,7 +7038,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {pagedListings.map((l) => {
+                          {filteredListings.slice(0, visibleCount).map((l) => {
                             const isSold = l.status === 'sold';
                             const extGC = gradeColor(String(l.auction_grade));
                             const sp = l.selling_price || l.price || 0;
@@ -7045,7 +7056,7 @@ export default function DashboardPage() {
                                 {/* Thumbnail */}
                                 <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
                                   {l.images?.[0]
-                                    ? <img src={l.images[0]} alt="" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
@@ -7110,7 +7121,7 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden">
-                      {pagedListings.map((l) => {
+                      {filteredListings.slice(0, visibleCount).map((l) => {
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
@@ -7125,7 +7136,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                               {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                 : <div style={{ width: 80, height: 60, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}
@@ -7169,16 +7180,8 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                    {/* Load more */}
-                    {hasMoreListings && (
-                      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                        <button
-                          onClick={() => setListingsVisible(v => v + LISTINGS_STEP)}
-                          style={{ fontSize: 13, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 24px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                        >
-                          See more ({filteredListings.length - listingsVisible} remaining)
-                        </button>
-                      </div>
+                    {visibleCount < filteredListings.length && (
+                      <div ref={sentinelRef} style={{ height: 1 }} />
                     )}
                   </>
                 )}
@@ -7187,6 +7190,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
               <CarForm onCreate={handleNew} />
@@ -7248,12 +7252,22 @@ export default function DashboardPage() {
           {activeTab === "services" && userId && (
             <ServicesPage userId={userId} />
           )}
+          {activeTab === "hp" && userId && (
+            <div className="space-y-2">
+              <div>
+                <h2 className="text-white font-semibold text-base">HP Board</h2>
+                <p className="text-gray-600 text-xs mt-0.5">Hire-purchase submissions across all deals — track bank status and follow-ups</p>
+              </div>
+              <HPBoard dealerId={userId} />
+            </div>
+          )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />
           )}
+          </React.Suspense>
         </div>
       </main>
 
