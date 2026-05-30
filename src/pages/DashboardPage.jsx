@@ -21,6 +21,7 @@ import SciFiLoader from "../components/SciFiLoader";
 import HeroSlidesPage from "./xdrive/HeroSlidesPage";
 import RevOpsPage from "./RevOpsPage";
 import ServicesPage from "./ServicesPage";
+import HPBoard from "../components/HPBoard";
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -55,6 +56,7 @@ import {
   BarChart3,
   Send,
   Bot,
+  CreditCard,
   ChevronRight,
   AlertCircle,
   CheckCircle2,
@@ -6240,8 +6242,9 @@ export default function DashboardPage() {
     { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
     { id: "stock", Icon: Package, label: "Stock" },
     { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops",   Icon: BarChart3, label: "RevOps" },
-    { id: "services", Icon: Wrench,   label: "Services & Add-ons" },
+    { id: "revops",   Icon: BarChart3,   label: "RevOps" },
+    { id: "services", Icon: Wrench,     label: "Services & Add-ons" },
+    { id: "hp",       Icon: CreditCard, label: "HP Board" },
   ];
 
   const STAT_CARDS = [
@@ -7054,6 +7057,15 @@ export default function DashboardPage() {
           )}
           {activeTab === "services" && userId && (
             <ServicesPage userId={userId} />
+          )}
+          {activeTab === "hp" && userId && (
+            <div className="space-y-2">
+              <div>
+                <h2 className="text-white font-semibold text-base">HP Board</h2>
+                <p className="text-gray-600 text-xs mt-0.5">Hire-purchase submissions across all deals — track bank status and follow-ups</p>
+              </div>
+              <HPBoard dealerId={userId} />
+            </div>
           )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
