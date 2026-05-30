@@ -23,6 +23,7 @@ const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
+const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -6562,6 +6563,7 @@ export default function DashboardPage() {
     { id: "revops",   Icon: BarChart3,  label: "RevOps" },
     { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
     { id: "hp",       Icon: CreditCard, label: "HP Board" },
+    { id: "oversight", Icon: Shield, label: "GM Oversight" },
     { id: "customers", Icon: UserCheck, label: "Customers" },
   ];
 
@@ -7380,6 +7382,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
+          )}
+          {activeTab === "oversight" && userId && (
+            <OversightTab dealerId={getDealerIdFromProfile(profile)} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />
