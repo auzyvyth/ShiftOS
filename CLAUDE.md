@@ -1,5 +1,8 @@
 # ShiftOS — Project Context
 
+## Pending tasks
+See `TODO.md` in the repo root — read it at the start of every session before picking up work.
+
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
 
