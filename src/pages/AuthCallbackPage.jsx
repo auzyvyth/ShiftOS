@@ -30,10 +30,10 @@ export default function AuthCallbackPage() {
 
       const { role, subdomain, dealer_id } = profile;
 
-      // Only dealer/superadmin go through onboarding flow.
-      // Team roles (manager, accountant, fi_officer, admin, salesman) are created
-      // via invites and never set onboarding_complete — don't redirect them.
-      if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false) {
+      // Only dealer/superadmin go through onboarding.
+      // A dealer with a subdomain has completed onboarding regardless of the flag —
+      // use subdomain as the authoritative signal to prevent flag drift locking users out.
+      if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false && !subdomain) {
         navigate('/onboarding');
         return;
       }

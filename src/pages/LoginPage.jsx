@@ -118,7 +118,7 @@ export default function LoginPage() {
     const role = profile?.role;
 
     if (role === "superadmin" || role === "dealer") {
-      if (profile?.onboarding_complete === false) {
+      if (profile?.onboarding_complete === false && !subdomain) {
         window.location.href = `${base}/onboarding`;
         return;
       }

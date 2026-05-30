@@ -18,7 +18,7 @@ async function redirectByRole(session, navigate) {
 
   const { role, subdomain, dealer_id } = profile;
 
-  if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false) {
+  if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false && !subdomain) {
     navigate('/onboarding');
     return;
   }
