@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
-  AlertTriangle, FileText, Plus, Package,
+  AlertTriangle, FileText, Plus, Package, Link, Copy, Presentation,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
@@ -102,8 +102,20 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [addonForm, setAddonForm]           = useState({ product_id: '', sold_price: '', notes: '' });
   const [attachSaving, setAttachSaving]     = useState(false);
 
+  // Deal sheet state
+  const [dealLink, setDealLink]             = useState(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [dealLinkCopied, setDealLinkCopied] = useState(false);
+  const [minsLeft, setMinsLeft]             = useState(null);
+
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
+
+  useEffect(() => {
+    if (!minsLeft) return;
+    const id = setInterval(() => setMinsLeft(m => (m > 0 ? m - 1 : 0)), 60000);
+    return () => clearInterval(id);
+  }, [!!minsLeft]);
 
   // Sync when parent updates
   useEffect(() => {
@@ -167,6 +179,74 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     await supabase.from('deal_products').delete().eq('id', id);
     setDealAddons(p => p.filter(a => a.id !== id));
     toast.success('Removed');
+  };
+
+  const handleGenerateDealLink = async () => {
+    if (!car || !lead?.dealer_id) return;
+    setGeneratingLink(true);
+    try {
+      const { data: dealerProfile } = await supabase
+        .from('profiles')
+        .select('site_name, brand_color, whatsapp_number')
+        .eq('id', lead.dealer_id)
+        .maybeSingle();
+
+      const { data: fullCar } = await supabase
+        .from('car_listings')
+        .select('brand, model, year, selling_price, images, city, state, mileage, transmission, fuel_type, included_services')
+        .eq('id', car.id)
+        .maybeSingle();
+
+      const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
+      const carPrice = Number(fullCar?.selling_price || car.selling_price || 0);
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      const snapshot = {
+        car: {
+          brand: fullCar?.brand || car.brand,
+          model: fullCar?.model || car.model,
+          year:  fullCar?.year  || car.year,
+          selling_price: carPrice,
+          images: fullCar?.images || car.images || [],
+          city:   fullCar?.city  || car.city,
+          state:  fullCar?.state || car.state,
+          mileage: fullCar?.mileage,
+          transmission: fullCar?.transmission,
+          fuel_type: fullCar?.fuel_type,
+          included_services: fullCar?.included_services || [],
+        },
+        dealer: {
+          name: dealerProfile?.site_name || 'Dealership',
+          brand_color: dealerProfile?.brand_color || '#dc2626',
+          whatsapp: dealerProfile?.whatsapp_number || null,
+        },
+        addons: dealAddons.map(a => ({
+          name:     a.dealer_products?.name || '',
+          category: a.dealer_products?.category || 'other',
+          price:    Number(a.sold_price),
+        })),
+        car_price: carPrice,
+        addons_total: addonsTotal,
+        grand_total: carPrice + addonsTotal,
+        generated_at: new Date().toISOString(),
+        expires_at: expiresAt,
+      };
+
+      const { error } = await supabase
+        .from('leads')
+        .update({ deal_token: token, deal_token_expires_at: expiresAt, deal_snapshot: snapshot })
+        .eq('id', lead.id);
+
+      if (error) { toast.error('Failed to generate link'); return; }
+
+      const url = `${window.location.origin}/deal/${token}`;
+      setDealLink(url);
+      setMinsLeft(60);
+      toast.success('Deal sheet ready');
+    } finally {
+      setGeneratingLink(false);
+    }
   };
 
   if (!lead) return null;
@@ -812,6 +892,59 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     </div>
                   )}
                 </>
+              )}
+            </div>
+          )}
+
+          {/* ── Deal Sheet ── */}
+          {car && (
+            <div style={{ marginTop: 8 }}>
+              {!dealLink ? (
+                <button
+                  onClick={handleGenerateDealLink}
+                  disabled={generatingLink}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '10px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)', color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer', justifyContent: 'center', opacity: generatingLink ? 0.6 : 1 }}
+                >
+                  <Presentation style={{ width: 13, height: 13 }} />
+                  {generatingLink ? 'Generating…' : 'Generate Deal Sheet'}
+                </button>
+              ) : (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Presentation style={{ width: 12, height: 12, color: '#818cf8' }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af' }}>Deal Sheet</span>
+                    </div>
+                    {minsLeft !== null && (
+                      <span style={{ fontSize: 10, color: minsLeft < 10 ? '#ef4444' : '#6b7280' }}>
+                        {minsLeft > 0 ? `Expires in ${minsLeft}m` : 'Expired'}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(dealLink); setDealLinkCopied(true); setTimeout(() => setDealLinkCopied(false), 2000); }}
+                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: dealLinkCopied ? '#34d399' : '#9ca3af', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                    >
+                      <Copy style={{ width: 11, height: 11 }} />
+                      {dealLinkCopied ? 'Copied!' : 'Copy Link'}
+                    </button>
+                    <button
+                      onClick={() => window.open(dealLink, '_blank')}
+                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                    >
+                      <ExternalLink style={{ width: 11, height: 11 }} />
+                      Open Fullscreen
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleGenerateDealLink}
+                    disabled={generatingLink}
+                    style={{ width: '100%', padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.07)', color: '#4b5563', fontSize: 11, cursor: 'pointer', opacity: generatingLink ? 0.5 : 1 }}
+                  >
+                    {generatingLink ? 'Regenerating…' : 'Regenerate (resets 1h timer)'}
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -46,6 +46,7 @@ const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage        = lazy(() => import("./pages/PrivacyPage"));
+const DealPage           = lazy(() => import("./pages/DealPage"));
 
 const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
 
@@ -118,6 +119,7 @@ function App() {
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/deal/:token" element={<DealPage />} />
 
           {/* Dealer slug catch-all */}
           <Route path="/s/:slug" element={<SalesmanProfilePage />} />
