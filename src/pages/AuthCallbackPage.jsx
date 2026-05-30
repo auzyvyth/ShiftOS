@@ -22,12 +22,21 @@ export default function AuthCallbackPage() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      if (!profile || profile.onboarding_complete === false) {
+      // No profile at all → brand new user, needs onboarding
+      if (!profile) {
         navigate('/onboarding');
         return;
       }
 
       const { role, subdomain, dealer_id } = profile;
+
+      // Only dealer/superadmin go through onboarding flow.
+      // Team roles (manager, accountant, fi_officer, admin, salesman) are created
+      // via invites and never set onboarding_complete — don't redirect them.
+      if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false) {
+        navigate('/onboarding');
+        return;
+      }
 
       if (role === 'dealer' || role === 'superadmin') {
         if (subdomain) {

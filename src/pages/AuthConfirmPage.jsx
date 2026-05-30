@@ -18,13 +18,41 @@ export default function AuthConfirmPage() {
       return;
     }
 
-    supabase.auth.verifyOtp({ token_hash, type }).then(({ error }) => {
+    supabase.auth.verifyOtp({ token_hash, type }).then(async ({ data, error }) => {
       if (error) {
         console.error('[AuthConfirmPage] verifyOtp error:', error.message);
         setErrorMsg(error.message);
         setStatus('error');
-      } else {
+        return;
+      }
+
+      const session = data?.session;
+      if (!session) {
+        // Email confirmed but no session (e.g. Supabase email confirm without auto-sign-in)
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, onboarding_complete, dealer_id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!profile || ((profile.role === 'dealer' || profile.role === 'superadmin') && profile.onboarding_complete === false)) {
         navigate('/onboarding', { replace: true });
+      } else if (profile.role === 'salesman') {
+        navigate(profile.dealer_id ? '/salesman' : '/salesman-lite', { replace: true });
+      } else if (profile.role === 'manager') {
+        navigate('/manager', { replace: true });
+      } else if (profile.role === 'accountant') {
+        navigate('/accountant', { replace: true });
+      } else if (profile.role === 'fi_officer') {
+        navigate('/fi', { replace: true });
+      } else if (profile.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
       }
     });
   }, []);
