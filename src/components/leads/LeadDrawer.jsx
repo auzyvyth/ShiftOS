@@ -297,6 +297,32 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!error) setHpRows(p => p.map(r => r.id === rowId ? { ...r, hp_docs: updated } : r));
   };
 
+  // HP-5: JPJ transfer tracking
+  const handleJPJStatus = async (newStatus) => {
+    const patch = { jpj_status: newStatus };
+    if (newStatus === 'submitted') patch.jpj_submitted_at = new Date().toISOString();
+    if (newStatus === 'completed') patch.jpj_completed_at = new Date().toISOString();
+    const { error } = await supabase.from('leads').update(patch).eq('id', lead.id);
+    if (!error) {
+      setLead(p => ({ ...p, ...patch }));
+      toast.success(newStatus === 'submitted' ? 'JPJ submitted' : newStatus === 'completed' ? 'JPJ completed' : 'JPJ reset');
+    }
+  };
+
+  // HP-4: LOU tracking — LOU typically valid 7-14 days
+  const handleSetLOU = async (rowId) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 14);
+    const expiresStr = expires.toISOString().slice(0, 10);
+    const patch = { lou_received_at: new Date().toISOString(), lou_expires_at: expiresStr };
+    const { error } = await supabase.from('deal_financing').update(patch).eq('id', rowId);
+    if (!error) {
+      setHpRows(p => p.map(r => r.id === rowId ? { ...r, ...patch } : r));
+      toast.success('LOU logged — expires in 14 days');
+    }
+  };
+
   const handleGenerateDealLink = async () => {
     if (!car || !lead?.dealer_id) return;
     setGeneratingLink(true);
@@ -890,11 +916,30 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                             ))}
                           </div>
                         )}
-                        {row.status === 'approved' && (
-                          <button onClick={() => handleUpdateHPStatus(row.id, 'disbursed')} style={{ width: '100%', fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontWeight: 600 }}>
-                            Mark Disbursed
-                          </button>
-                        )}
+                        {row.status === 'approved' && (() => {
+                          const louDaysLeft = row.lou_expires_at
+                            ? Math.floor((new Date(row.lou_expires_at) - Date.now()) / 86400000)
+                            : null;
+                          const louExpired = louDaysLeft !== null && louDaysLeft < 0;
+                          const louUrgent = louDaysLeft !== null && louDaysLeft <= 3;
+                          return (
+                            <>
+                              {/* HP-4: LOU tracking */}
+                              {!row.lou_received_at ? (
+                                <button onClick={() => handleSetLOU(row.id)} style={{ width: '100%', fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#fffbeb', border: '1px solid #fde68a', color: '#d97706', fontWeight: 600, marginBottom: 6 }}>
+                                  Log LOU Received
+                                </button>
+                              ) : (
+                                <div style={{ fontSize: 10, color: louExpired ? '#dc2626' : louUrgent ? '#d97706' : '#16a34a', background: louExpired ? '#fef2f2' : louUrgent ? '#fffbeb' : '#f0fdf4', border: `1px solid ${louExpired ? '#fecaca' : louUrgent ? '#fde68a' : '#bbf7d0'}`, borderRadius: 4, padding: '4px 8px', marginBottom: 6, fontWeight: 600 }}>
+                                  LOU {louExpired ? `expired ${-louDaysLeft}d ago` : `expires in ${louDaysLeft}d`} ({new Date(row.lou_expires_at).toLocaleDateString('en-MY')})
+                                </div>
+                              )}
+                              <button onClick={() => handleUpdateHPStatus(row.id, 'disbursed')} style={{ width: '100%', fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontWeight: 600 }}>
+                                Mark Disbursed
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -936,6 +981,66 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 </>
               )}
             </div>
+
+            {/* ── HP-5: JPJ Transfer ── */}
+            {hpRows.some(r => r.status === 'disbursed') && (
+              <div style={w.section}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <p style={{ ...w.label, margin: 0 }}>JPJ Transfer</p>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280' }}>
+                    {lead.jpj_status === 'completed' ? 'Done' : lead.jpj_status === 'submitted' ? 'In progress' : 'Pending'}
+                  </span>
+                </div>
+                {(() => {
+                  const jpj = lead.jpj_status || 'pending';
+                  const daysAtJPJ = lead.jpj_submitted_at && jpj === 'submitted'
+                    ? Math.floor((Date.now() - new Date(lead.jpj_submitted_at)) / 86400000)
+                    : null;
+                  const jpjOverdue = daysAtJPJ !== null && daysAtJPJ > 7;
+                  return (
+                    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        {['pending', 'submitted', 'completed'].map((s, i) => (
+                          <React.Fragment key={s}>
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 11,
+                              background: ['pending','submitted','completed'].indexOf(jpj) >= i ? '#7c3aed' : '#e5e7eb',
+                              color: ['pending','submitted','completed'].indexOf(jpj) >= i ? '#fff' : '#9ca3af',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 11, fontWeight: 700,
+                            }}>{i + 1}</div>
+                            <span style={{ fontSize: 11, color: jpj === s ? '#111827' : '#9ca3af', fontWeight: jpj === s ? 600 : 400, textTransform: 'capitalize' }}>{s}</span>
+                            {i < 2 && <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      {jpj === 'submitted' && daysAtJPJ !== null && (
+                        <p style={{ fontSize: 11, color: jpjOverdue ? '#dc2626' : '#6b7280', marginBottom: 8 }}>
+                          {daysAtJPJ}d at JPJ {jpjOverdue ? '— follow up' : ''}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {jpj === 'pending' && (
+                          <button onClick={() => handleJPJStatus('submitted')} style={{ flex: 1, fontSize: 11, padding: '6px', borderRadius: 6, cursor: 'pointer', background: '#faf5ff', border: '1px solid #e9d5ff', color: '#7c3aed', fontWeight: 600 }}>
+                            Mark Submitted
+                          </button>
+                        )}
+                        {jpj === 'submitted' && (
+                          <button onClick={() => handleJPJStatus('completed')} style={{ flex: 1, fontSize: 11, padding: '6px', borderRadius: 6, cursor: 'pointer', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontWeight: 600 }}>
+                            Mark Completed
+                          </button>
+                        )}
+                        {jpj === 'completed' && lead.jpj_completed_at && (
+                          <p style={{ flex: 1, fontSize: 11, color: '#16a34a', margin: 0, padding: '6px 0' }}>
+                            Completed {new Date(lead.jpj_completed_at).toLocaleDateString('en-MY')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* ── Add-ons & Deal Sheet ── */}
             <div style={w.section}>
