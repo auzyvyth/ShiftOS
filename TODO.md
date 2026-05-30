@@ -13,22 +13,84 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Code — in progress / next up
+## Priority 1 — Enterprise HP Workflow (closes the biggest dealer pain)
 
-### 1. Customer remarketing — Phase 2
-**Priority: medium**
-- Phase 1 (customer records + expiry tracking) is done.
-- Phase 2: WhatsApp blast to customers whose road tax / insurance expires in the next 30 days.
-- Needs a "Send reminder" flow in the Customers tab that pre-fills a WA message template.
+### HP-1. Bank performance scorecard
+The single most valuable GM/owner insight tool missing from the platform.
+- Add `bank_name`, `rejection_reason_category` (dropdown: DSR / CCRIS / valuation gap / employment type / vehicle age / margin), `days_to_decision` (auto from submitted_at → status change) to `deal_financing`
+- Build bank scorecard view in FIPanel + DashboardPage: approval rate %, avg days to decision, rejection breakdown by reason, per-bank table sortable by approval rate
+- This is the data model that enables a future bank recommendation engine
 
-### 2. Multi-branch support
-**Priority: low — architectural**
-- Currently single-dealer tenancy per subdomain.
-- Dealer groups with multiple outlets need one login, branch-level P&L separation, and cross-branch stock visibility.
+### HP-2. Sequential multi-bank queue with CCRIS warning
+- When a submission is rejected, prompt "Try next bank?" with a dropdown + CCRIS counter (warn at 3 submissions: "further applications will damage buyer's credit score")
+- Store submission sequence order on `deal_financing` (attempt_number column)
+- Show full bank attempt history per deal in LeadDrawer and FIPanel
+
+### HP-3. PUSPAKOM B7 expiry tracking
+- Add `puspakom_b7_date` and `puspakom_b7_expiry` (auto = b7_date + 60 days) to `leads` or `deal_financing`
+- Show expiry badge in LeadDrawer (green / yellow <14 days / red expired)
+- Alert in manager dashboard for deals with B7 expiring within 7 days
+
+### HP-4. LOU (Letter of Offer) tracking
+- Add `lou_issued_at`, `lou_signed_at`, `lou_document_url` to `deal_financing`
+- Stage milestone: Approved → LOU Issued → LOU Signed → JPJ → Disbursed
+- LeadDrawer HP section shows which milestone the deal is at
+
+### HP-5. JPJ transfer tracking
+- Add `jpj_submitted_at`, `jpj_completed_at`, `jpj_notes` to `deal_financing` or a separate `deal_jpj` table
+- Visible in LeadDrawer and FIPanel deal view
+- Disbursement gate: JPJ completed triggers disbursement-ready status
+
+### HP-6. HP document checklist per deal
+- Checklist tied to `deal_financing`: IC copy, payslips (x3), EPF statement, bank statements (x6 for self-employed), SSM cert, tax returns, booking receipt
+- Employment type auto-selects checklist template (employed / self-employed / commission-based)
+- Incomplete checklist blocks HP submission with warning
 
 ---
 
-## Verify / QA
+## Priority 2 — Owner / GM Oversight (what justifies the price)
+
+### GM-1. Real-time owner P&L dashboard
+- Today's gross: units sold today × avg gross per unit
+- Month-to-date: units sold, gross profit, F&I gross, total revenue
+- Cash flow view: disbursements expected this week (approved HP deals pending JPJ)
+- Days-on-lot aging: stock older than 30 / 60 / 90 days with carrying cost estimate
+- Accessible from DashboardPage owner home tab, not buried in analytics
+
+### GM-2. Audit trail
+- Log every status change across leads, deal_financing, car_listings with: who changed it, from/to value, timestamp
+- New `activity_log` table: entity_type, entity_id, actor_id, field, old_value, new_value, created_at
+- Viewable per-deal in LeadDrawer (timeline) and per-entity in admin panel
+- Required for any compliance or dispute resolution claim
+
+### GM-3. Salesman quality score
+- Per-salesman metrics visible to owner/manager: submission rejection rate, avg doc completeness at submission, avg days from lead to won, close rate %
+- Shown in TeamTab alongside existing leaderboard
+
+---
+
+## Priority 3 — Monetisation Infrastructure (needed before billing)
+
+### BILLING-1. Plan tier enforcement
+- 6 tiers: Salesman Lite, Salesman Premium, Dealer Starter (≤20 listings), Dealer Growth (≤60), Dealer Pro (≤150), Dealer Group (unlimited + multi-branch)
+- Add `plan_tier` column to `profiles`
+- Enforce listing cap on car_listings insert (RPC or trigger)
+- Enforce user seat cap on invites
+- Show upgrade prompt when cap is hit
+
+### BILLING-2. Usage tracking
+- Track active listing count, seat count, monthly HP submissions per dealer
+- Visible to superadmin in admin panel
+- Basis for billing and upsell triggers
+
+### BILLING-3. Multi-branch (Dealer Group tier only)
+- Currently single-dealer tenancy per subdomain
+- Dealer groups: one login, branch-level P&L separation, cross-branch stock visibility
+- Architectural change — scope carefully before starting
+
+---
+
+## Priority 4 — Role completeness QA (must work before first paying customer)
 
 ### V1. `invites` edge function — non-salesman roles
 Confirm that manager / accountant / fi_officer / admin creation via the `invites` Edge Function
@@ -36,10 +98,21 @@ actually creates a Supabase auth user (not just inserts a profile row).
 If it only inserts a profile row those users cannot log in.
 
 ### V2. Commission realtime subscription scope
-TeamTab has a realtime channel on `car_listings` for the team sold count.
-Now that per-salesman sold counts are fetched client-side on mount,
-confirm that updates (new sold listings) also trigger `fetchSoldPerSalesman` re-run.
-Currently the realtime handler only calls `fetchSold` (team count) — wire it to `fetchSoldPerSalesman` too.
+TeamTab realtime channel only calls `fetchSold` (team count).
+Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
+
+### V3. Salesman Lite vs Premium feature gates
+- Confirm which features are visible/hidden per salesman tier
+- Lite: basic pipeline, lead stages, WA messaging
+- Premium: deal sheet generator, HP submissions, financing calculator, customer records
+
+---
+
+## Priority 5 — CRM polish
+
+### CRM-1. Customer remarketing — Phase 2
+- WhatsApp blast to customers whose road tax / insurance expires in the next 30 days
+- "Send reminder" flow in Customers tab that pre-fills WA message template
 
 ---
 
@@ -48,14 +121,15 @@ Currently the realtime handler only calls `fetchSold` (team count) — wire it t
 - Analytics RPC migration — Salesmanpanel + DashboardPage (rawEvents removed, 3 RPCs deployed)
 - React.memo on CarCard + CarCardMarket (marketplace perf)
 - Self-booking prevention on CarDetailPage
-- Brand strip layout fix (vertical stacking bug — width:auto)
-- Brand strip / cards horizontal alignment fix (padding moved to inner div)
+- Brand strip layout fix and horizontal alignment fix
 - Real brand SVGs: Kia, Audi, Subaru, Volkswagen (simple-icons)
 - Team tab leaderboard (gold/silver/bronze ranks, sold count + commission per salesman)
-- Per-salesman Sales stat tile (was showing team total for every member)
-- Customer records (Phase 1) — `customers` table, DB trigger on lead won, Customers tab in Dashboard + ManagerPanel with expiry colour-coding and inline edit
-- Manager approval workflow — all salesmen require approval, manager RPCs, Approvals tab in ManagerPanel, rejection reason shown to salesman
-- Deal presentation screen — shareable token page (/deal/:token), 1h expiry, PDF download, LeadDrawer integration
-- Accountant payroll payout — Commissions → Ledger sub-tab: per-deal commission due, mark-as-paid checkbox, unpaid total
-- F&I module — full FIPanel rewrite: Deals tab with per-deal product lines + F&I gross, HP submissions per deal, Calculator
-- HP loan tracking — deal_financing table, EIR instalment (HPAA 2026 compliant), HPBoard component, HP Board tab in DashboardPage
+- Per-salesman Sales stat tile
+- Customer records (Phase 1) — customers table, DB trigger on lead won, Customers tab + expiry colour-coding
+- Manager approval workflow — RPCs, Approvals tab, rejection reason to salesman
+- Deal presentation screen — shareable token, 7-day expiry, PDF, WA CTA
+- Accountant payroll payout — Commissions Ledger sub-tab, mark-as-paid
+- F&I module — FIPanel rewrite: Deals tab, HP submissions per deal, Calculator
+- HP loan tracking — deal_financing table, EIR (HPAA 2026), HPBoard, HP Board tab
+- Pipeline redesign — list view, stage stepper, instant stage changes
+- Deal sheet v2 — inline HP/on-road calculator, road tax (JPJ formula), insurance (tariff + NCD + SST), buyer name + salesman in snapshot
