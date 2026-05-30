@@ -48,18 +48,13 @@ Current file is a geometric approximation (L inside oval).
 - PUSPAKOM B7 inspection field per deal (mandatory for every used car HP, RM60, 60-day validity).
 - Manager view: board of all active submissions — bank, salesman, days since submitted, status.
 
-### 4. Customer record + remarketing
+### 4. Customer remarketing — Phase 2
 **Priority: medium**
-- Once a car is sold the customer disappears.
-- Need: customer card linked to the sold lead (name, contact, purchase date, car bought).
+- Phase 1 (customer records + expiry tracking) is done.
 - Phase 2: WhatsApp blast to customers whose road tax / insurance expires in the next 30 days.
+- Needs a "Send reminder" flow in the Customers tab that pre-fills a WA message template.
 
-### 5. Manager approval workflow UI
-**Priority: medium**
-- Migration for listing approval exists but ManagerPanel has no visible approve / reject queue.
-- Salesmen should be able to "submit for approval"; managers see a pending queue and can approve or send back with a note.
-
-### 6. Multi-branch support
+### 5. Multi-branch support
 **Priority: low — architectural**
 - Currently single-dealer tenancy per subdomain.
 - Dealer groups with multiple outlets need one login, branch-level P&L separation, and cross-branch stock visibility.
@@ -90,3 +85,5 @@ Currently the realtime handler only calls `fetchSold` (team count) — wire it t
 - Real brand SVGs: Kia, Audi, Subaru, Volkswagen (simple-icons)
 - Team tab leaderboard (gold/silver/bronze ranks, sold count + commission per salesman)
 - Per-salesman Sales stat tile (was showing team total for every member)
+- Customer records (item 4 Phase 1) — `customers` table, DB trigger on lead won, Customers tab in Dashboard + ManagerPanel with expiry colour-coding and inline edit
+- Manager approval workflow (item 5) — all salesmen require approval, new manager RPCs, Approvals tab in ManagerPanel, rejection reason shown to salesman
