@@ -1,10 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  DndContext, PointerSensor, useSensor, useSensors,
-  DragOverlay, closestCenter, useDroppable,
-} from '@dnd-kit/core';
 import { toast } from 'sonner';
-import { Plus, Search, X, Inbox, ChevronDown } from 'lucide-react';
+import { Plus, Search, X, Inbox } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useLeads } from '../hooks/useLeads';
 import LeadCard from '../components/leads/LeadCard';
@@ -18,89 +14,6 @@ import {
 const T = {
   btnRed: { background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' },
 };
-
-const COLLAPSE_THRESHOLD = 5; // show "show more" only beyond this count
-
-// ─── Stage section ────────────────────────────────────────────────────────────
-function StageSection({ stage, leads, onOpen, onMoveNext, onMovePrev }) {
-  const cfg = STAGE_CONFIG[stage];
-  const { setNodeRef, isOver } = useDroppable({ id: stage });
-  const [showAll, setShowAll] = useState(false);
-
-  const visible = showAll ? leads : leads.slice(0, COLLAPSE_THRESHOLD);
-  const hidden  = leads.length - COLLAPSE_THRESHOLD;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        background: isOver ? cfg.bg : 'rgba(255,255,255,0.016)',
-        border: `1px solid ${isOver ? cfg.headerBorder : cfg.border}`,
-        borderLeft: `3px solid ${cfg.headerBorder}`,
-        borderRadius: 10,
-        overflow: 'clip',
-        transition: 'border-color 0.15s, background 0.15s',
-      }}
-    >
-      {/* Stage header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '9px 12px',
-        borderBottom: leads.length > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-        background: 'rgba(0,0,0,0.15)',
-      }}>
-        {cfg.icon && <cfg.icon size={14} />}
-        <span style={{ fontSize: 12, fontWeight: 700, color: cfg.headerBorder, flex: 1 }}>
-          {cfg.label}
-        </span>
-        {leads.length > 0 && (
-          <span style={{
-            fontSize: 10, fontWeight: 800, color: cfg.headerBorder,
-            background: cfg.bg, border: `1px solid ${cfg.border}`,
-            borderRadius: 99, padding: '1px 8px',
-          }}>
-            {leads.length}
-          </span>
-        )}
-        {leads.length === 0 && (
-          <span style={{ fontSize: 10, color: '#1f2937' }}>empty</span>
-        )}
-      </div>
-
-      {/* Lead rows — responsive grid on desktop */}
-      {leads.length > 0 && (
-        <div style={{ padding: '8px 8px 4px' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: 6,
-          }}>
-            {visible.map(lead => (
-              <LeadCard key={lead.id} lead={lead} onOpen={onOpen} onMoveNext={onMoveNext} onMovePrev={onMovePrev} />
-            ))}
-          </div>
-
-          {/* Show more / less */}
-          {leads.length > COLLAPSE_THRESHOLD && (
-            <button
-              type="button"
-              onClick={() => setShowAll(p => !p)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                margin: '6px 4px 4px', padding: '4px 8px',
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#4b5563', fontSize: 11,
-              }}
-            >
-              <ChevronDown size={11} style={{ transform: showAll ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              {showAll ? 'Show less' : `+${hidden} more`}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Empty state ───────────────────────────────────────────────────────────────
 function EmptyState({ onAdd }) {
@@ -121,17 +34,45 @@ function EmptyState({ onAdd }) {
   );
 }
 
+// ─── Stage section header (All view) ──────────────────────────────────────────
+function StageSectionHeader({ stage, count }) {
+  const cfg = STAGE_CONFIG[stage];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      padding: '8px 16px 4px',
+    }}>
+      <div style={{
+        width: 7, height: 7, borderRadius: '50%',
+        background: cfg.headerBorder, flexShrink: 0,
+      }} />
+      <span style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.10em',
+        textTransform: 'uppercase', color: cfg.headerBorder,
+      }}>
+        {cfg.label}
+      </span>
+      <span style={{
+        fontSize: 10, color: '#374151',
+        fontWeight: 600,
+      }}>
+        {count}
+      </span>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function LeadsPage() {
   const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads();
 
-  const [activeLeadId, setActiveLeadId] = useState(null);
-  const [openLead, setOpenLead]         = useState(null);
-  const [showAdd, setShowAdd]           = useState(false);
-  const [search, setSearch]             = useState('');
-  const [filterSource, setFilterSource] = useState('');
+  const [openLead, setOpenLead]             = useState(null);
+  const [showAdd, setShowAdd]               = useState(false);
+  const [search, setSearch]                 = useState('');
+  const [filterSource, setFilterSource]     = useState('');
   const [filterAssigned, setFilterAssigned] = useState('');
-  const [teamMembers, setTeamMembers]   = useState([]);
+  const [activeStage, setActiveStage]       = useState('all');
+  const [teamMembers, setTeamMembers]       = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -172,56 +113,16 @@ export default function LeadsPage() {
     return map;
   }, [filtered]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const stageTabCounts = useMemo(() => {
+    const counts = { all: filtered.length };
+    STAGE_ORDER.forEach(s => { counts[s] = byStage[s]?.length || 0; });
+    return counts;
+  }, [filtered, byStage]);
 
-  function handleDragStart({ active }) { setActiveLeadId(active.id); }
-
-  async function handleDragEnd({ active, over }) {
-    setActiveLeadId(null);
-    if (!over) return;
-    const lead = active.data.current?.lead;
-    const newStage = over.id;
-    if (!lead || lead.stage === newStage) return;
-    const originalStage = lead.stage;
-    optimisticStageChange(lead.id, newStage);
-    try {
-      await updateLeadStage(lead.id, newStage);
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('lead_activities').insert({
-        lead_id: lead.id, dealer_id: lead.dealer_id,
-        activity_type: 'stage_changed', from_stage: originalStage, to_stage: newStage,
-        created_by: user?.id,
-      });
-      toast.success('Stage updated');
-    } catch {
-      revertStageChange(lead.id, originalStage);
-      toast.error('Error saving — please try again');
-    }
-  }
-
-  async function handleMoveNext(lead) {
-    const idx = STAGE_ORDER.indexOf(lead.stage);
-    if (idx < 0 || idx >= STAGE_ORDER.length - 1) return;
-    await moveToStage(lead, STAGE_ORDER[idx + 1]);
-  }
-
-  async function handleMovePrev(lead) {
-    const idx = STAGE_ORDER.indexOf(lead.stage);
-    if (idx <= 0) return;
-    await moveToStage(lead, STAGE_ORDER[idx - 1]);
-  }
-
-  async function moveToStage(lead, newStage) {
-    const originalStage = lead.stage;
-    optimisticStageChange(lead.id, newStage);
-    try {
-      await updateLeadStage(lead.id, newStage);
-      toast.success('Stage updated');
-    } catch {
-      revertStageChange(lead.id, originalStage);
-      toast.error('Error saving — please try again');
-    }
-  }
+  const visibleLeads = useMemo(() => {
+    if (activeStage === 'all') return filtered;
+    return byStage[activeStage] || [];
+  }, [activeStage, filtered, byStage]);
 
   async function handleAddLead(payload) {
     const lead = await addLead(payload);
@@ -247,7 +148,6 @@ export default function LeadsPage() {
     if (openLead?.id === id) setOpenLead(null);
   }
 
-  const activeLead = activeLeadId ? leads.find(l => l.id === activeLeadId) : null;
   const hasFilters = search || filterSource || filterAssigned;
 
   return (
@@ -257,7 +157,7 @@ export default function LeadsPage() {
       <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div>
-          <h1 className="text-base font-bold text-white">Leads Pipeline</h1>
+          <h1 className="text-base font-bold text-white">Pipeline</h1>
           <p className="text-xs text-gray-600">{leads.length} lead{leads.length !== 1 ? 's' : ''} total</p>
         </div>
         <button
@@ -311,7 +211,64 @@ export default function LeadsPage() {
         )}
       </div>
 
-      {/* ── Pipeline body ── */}
+      {/* ── Stage tabs ── */}
+      <div
+        className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 overflow-x-auto"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        {/* All tab */}
+        <button
+          onClick={() => setActiveStage('all')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
+            background: activeStage === 'all' ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
+            border: activeStage === 'all' ? '1px solid rgba(220,38,38,0.28)' : '1px solid rgba(255,255,255,0.07)',
+            color: activeStage === 'all' ? '#f87171' : '#6b7280',
+          }}
+        >
+          All
+          <span style={{
+            fontSize: 10, padding: '0 5px', borderRadius: 99,
+            background: activeStage === 'all' ? 'rgba(220,38,38,0.18)' : 'rgba(255,255,255,0.06)',
+            color: activeStage === 'all' ? '#f87171' : '#4b5563',
+          }}>
+            {stageTabCounts.all}
+          </span>
+        </button>
+
+        {/* Stage tabs */}
+        {STAGE_ORDER.map(stage => {
+          const cfg = STAGE_CONFIG[stage];
+          const active = activeStage === stage;
+          return (
+            <button
+              key={stage}
+              onClick={() => setActiveStage(stage)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
+                background: active ? cfg.bg : 'rgba(255,255,255,0.04)',
+                border: active ? `1px solid ${cfg.border}` : '1px solid rgba(255,255,255,0.07)',
+                color: active ? cfg.headerBorder : '#6b7280',
+              }}
+            >
+              {cfg.label}
+              <span style={{
+                fontSize: 10, padding: '0 5px', borderRadius: 99,
+                background: active ? `${cfg.headerBorder}22` : 'rgba(255,255,255,0.06)',
+                color: active ? cfg.headerBorder : '#4b5563',
+              }}>
+                {stageTabCounts[stage]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── List body ── */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-gray-600 text-sm">Loading leads…</p>
@@ -319,36 +276,34 @@ export default function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div
-            className="flex-1 overflow-y-auto overscroll-contain"
-            style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}
-          >
-            {STAGE_ORDER.map(stage => (
-              <StageSection
-                key={stage}
-                stage={stage}
-                leads={byStage[stage] || []}
-                onOpen={setOpenLead}
-                onMoveNext={handleMoveNext}
-                onMovePrev={handleMovePrev}
-              />
-            ))}
-          </div>
-
-          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-            {activeLead ? (
-              <div style={{ rotate: '2deg', opacity: 0.92 }}>
-                <LeadCard lead={activeLead} />
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {activeStage === 'all' ? (
+            // Grouped by stage
+            STAGE_ORDER.map(stage => {
+              const stageLeads = byStage[stage] || [];
+              if (stageLeads.length === 0) return null;
+              return (
+                <div key={stage}>
+                  <StageSectionHeader stage={stage} count={stageLeads.length} />
+                  {stageLeads.map(lead => (
+                    <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
+                  ))}
+                </div>
+              );
+            })
+          ) : (
+            // Single stage view
+            visibleLeads.length === 0 ? (
+              <div className="flex items-center justify-center py-16">
+                <p className="text-gray-600 text-sm">No leads in this stage.</p>
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            ) : (
+              visibleLeads.map(lead => (
+                <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
+              ))
+            )
+          )}
+        </div>
       )}
 
       {openLead && (

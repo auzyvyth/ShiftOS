@@ -490,21 +490,29 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         onClick={onClose}
       />
 
-      {/* Drawer panel */}
+      {/* Modal panel */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
+        pointerEvents: 'none',
+      }}>
       <div
         style={{
-          position: 'fixed', right: 0, top: 0, bottom: 0, zIndex: 50,
-          width: 'min(480px, 100vw)',
+          width: '100%', maxWidth: 680,
+          maxHeight: '90vh',
           background: 'linear-gradient(155deg, #0d0d14 0%, #0a0a0f 100%)',
-          borderLeft: '1px solid rgba(255,255,255,0.07)',
-          boxShadow: '-20px 0 60px rgba(0,0,0,0.7)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 16,
+          boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           fontFamily: "'DM Sans', sans-serif",
-          animation: 'ldSlide 0.22s ease',
+          animation: 'ldPop 0.18s ease',
+          pointerEvents: 'auto',
         }}
       >
         <style>{`
-          @keyframes ldSlide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+          @keyframes ldPop { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
           .ld-inp:focus { border-color: rgba(220,38,38,0.4) !important; }
           .ld-stage-pill:hover { opacity: 1 !important; }
         `}</style>
@@ -1196,6 +1204,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           {/* Bottom spacer */}
           <div style={{ height: 24 }} />
         </div>
+      </div>
       </div>
     </>
   );
