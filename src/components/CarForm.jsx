@@ -1494,8 +1494,8 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         payment_type: form.payment_type || "cash",
       };
 
-      // Salesman-lite (standalone, no dealer) requires superadmin approval
-      const needsApproval = profile?.role === "salesman" && !profile?.dealer_id;
+      // All salesmen require approval — standalone → superadmin, under-dealer → manager
+      const needsApproval = profile?.role === "salesman";
 
       if (listing) {
         // Edit mode — update by id

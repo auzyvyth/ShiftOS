@@ -11,24 +11,24 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import CarForm from "../components/CarForm";
-import CarFormFast from "../components/CarFormFast";
-import TikTokStudioV3 from "../components/TikTokStudioV3";
-import FinancingCalculator from "../components/FinancingCalculator";
-import LeadsPage from "./LeadsPage";
-import CRMPanel from "./CRMPanel";
 import SciFiLoader from "../components/SciFiLoader";
-import HeroSlidesPage from "./xdrive/HeroSlidesPage";
-import RevOpsPage from "./RevOpsPage";
-import ServicesPage from "./ServicesPage";
-import HPBoard from "../components/HPBoard";
+const CarForm          = React.lazy(() => import("../components/CarForm"));
+const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
+const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
+const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
+const LeadsPage        = React.lazy(() => import("./LeadsPage"));
+const CRMPanel         = React.lazy(() => import("./CRMPanel"));
+const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
+const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
+const ServicesPage     = React.lazy(() => import("./ServicesPage"));
+const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
+const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
-import AISalesManager from '../components/AISalesManager';
 import {
   Car,
   PlusCircle,
@@ -98,6 +98,7 @@ import {
   Wrench,
   Upload,
   Snowflake,
+  UserCheck,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -2354,7 +2355,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <td className="lp-td">
                             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" />
+                                ? <img src={l.images[0]} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" />
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
@@ -2438,7 +2439,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                       {/* top row */}
                       <div className="lp-card-top">
                         {l.images?.[0]
-                          ? <img src={l.images[0]} alt="" className="lp-card-img" />
+                          ? <img src={l.images[0]} alt="" className="lp-card-img" loading="lazy" decoding="async" />
                           : <div className="lp-card-placeholder" />
                         }
                         <div style={{ flex:1, minWidth:0 }}>
@@ -4230,7 +4231,7 @@ function ListingDetailDrawer({
                       onClick={() => setImgIdx(i)}
                       style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
                     </div>
                   ))}
                 </div>
@@ -5195,7 +5196,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
-                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
                           <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
@@ -5234,7 +5235,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
                           >
                             {l.images?.[0] ? (
-                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                             ) : (
                               <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
@@ -5474,8 +5475,9 @@ function OutreachHub({ dealerId, listings }) {
         ))}
       </div>
 
+      <style>{`.outreach-body{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px}@media(max-width:768px){.outreach-body{grid-template-columns:1fr}}`}</style>
       {/* ── Two-column body ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'340px 1fr', gap:14, marginBottom:14 }}>
+      <div className="outreach-body">
 
         {/* LEFT — Lead list */}
         <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -5496,7 +5498,7 @@ function OutreachHub({ dealerId, listings }) {
           </div>
 
           {/* Lead scroll */}
-          <div style={{ overflowY:'auto', flex:1, maxHeight:440, padding:8 }}>
+          <div style={{ overflowY:'auto', flex:1, maxHeight:'min(440px, 55vw)', padding:8 }}>
             {visibleLeads.length === 0 ? (
               <div style={{ padding:'40px 16px', textAlign:'center', color:'#374151', fontSize:13 }}>
                 {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: SEGS[segment].color } })}
@@ -5670,6 +5672,196 @@ function OutreachHub({ dealerId, listings }) {
   );
 }
 
+// ─── Customers Tab ───────────────────────────────────────────────────────────
+function CustomersTab({ dealerId }) {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("customers").select("*").eq("dealer_id", dealerId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { setCustomers(data || []); setLoading(false); });
+  }, [dealerId]);
+
+  const today = new Date();
+  const expiryColor = (diff) => diff === null ? "#6b7280" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
+  const expiryLabel = (expiry, diff) => {
+    if (!expiry) return "—";
+    const d = new Date(expiry).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" });
+    if (diff < 0) return `${d} (Expired)`;
+    if (diff <= 30) return `${d} (${Math.round(diff)}d)`;
+    return d;
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    const { id } = editing;
+    await supabase.from("customers").update({
+      notes: editing.notes,
+      road_tax_expiry: editing.road_tax_expiry || null,
+      insurance_expiry: editing.insurance_expiry || null,
+      email: editing.email || null,
+      ic_number: editing.ic_number || null,
+    }).eq("id", id);
+    setCustomers(p => p.map(c => c.id === id ? { ...c, ...editing } : c));
+    setEditing(null);
+    setSaving(false);
+  };
+
+  const filtered = customers.filter(c =>
+    !search || `${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const thisMonthCount = customers.filter(c => {
+    const d = new Date(c.created_at);
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }).length;
+  const rtExpiring = customers.filter(c => { if (!c.road_tax_expiry) return false; const diff = (new Date(c.road_tax_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+  const insExpiring = customers.filter(c => { if (!c.insurance_expiry) return false; const diff = (new Date(c.insurance_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+
+  if (loading) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "Total Customers", val: customers.length, color: "#dc2626" },
+          { label: "This Month", val: thisMonthCount, color: "#4ade80" },
+          { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
+          { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
+            <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or phone…"
+          className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-gray-600"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
+        <table className="w-full border-collapse" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+          <thead>
+            <tr className="border-b border-gray-800">
+              {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", ""].map(h => (
+                <th key={h} className="px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold text-left whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(c => {
+              const rtDiff = c.road_tax_expiry ? (new Date(c.road_tax_expiry) - today) / 86400000 : null;
+              const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
+              return (
+                <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                  <td className="px-4 py-2.5">
+                    <p className="text-sm font-semibold text-gray-100 m-0">{c.name || "—"}</p>
+                  </td>
+                  <td className="px-4 py-2.5 text-sm text-gray-400">
+                    {c.phone ? (
+                      <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 flex items-center gap-1 no-underline">
+                        <Phone className="w-3 h-3" />{c.phone}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <p className="text-sm text-gray-200 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
+                    {c.car_plate && <p className="text-[11px] text-gray-500 mt-0.5 m-0">{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                    {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(rtDiff) }}>
+                    {expiryLabel(c.road_tax_expiry, rtDiff)}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(insDiff) }}>
+                    {expiryLabel(c.insurance_expiry, insDiff)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 transition-colors">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600 text-sm">
+                {customers.length === 0
+                  ? "No customers yet. Customers are created automatically when a lead is marked as Won."
+                  : "No results for your search."}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-base font-semibold text-gray-100 m-0">{editing.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{[editing.car_brand, editing.car_model, editing.car_plate].filter(Boolean).join(" · ")}</p>
+              </div>
+              <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3 mb-4">
+              {[
+                { label: "Road Tax Expiry", key: "road_tax_expiry", type: "date" },
+                { label: "Insurance Expiry", key: "insurance_expiry", type: "date" },
+                { label: "Email", key: "email", type: "email" },
+                { label: "IC Number", key: "ic_number", type: "text" },
+              ].map(({ label, key, type }) => (
+                <div key={key}>
+                  <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={editing[key] || ""}
+                    onChange={e => setEditing(p => ({ ...p, [key]: e.target.value }))}
+                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={editing.notes || ""}
+                  onChange={e => setEditing(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl border border-gray-800 text-gray-400 text-sm hover:text-gray-200 transition-colors">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -5695,6 +5887,8 @@ export default function DashboardPage() {
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
+  const [visibleCount, setVisibleCount] = useState(30);
+  const sentinelRef = useRef(null);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [salesmen,         setSalesmen]         = useState([]);
@@ -5776,7 +5970,7 @@ export default function DashboardPage() {
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", uid)   // always scoped to the live session user
+        .eq("id", uid)
         .maybeSingle();
       if (!active) return;
 
@@ -5787,7 +5981,6 @@ export default function DashboardPage() {
           return;
         }
         setProfile(p);
-        // Correct dealer ID for manager/admin roles (their uid ≠ dealer_id)
         const dealerId = getDealerIdFromProfile(p);
         setUserId(dealerId);
       } else {
@@ -5796,19 +5989,20 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const { data: cars, error: carsError } = await supabase
-        .from("car_listings")
-        .select("*")
-        .eq("dealer_id", dealerId)
-        .order("created_at", { ascending: false });
-      if (active) setListings(carsError ? [] : cars || []);
-
-      const { data: sm } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, slug")
-        .eq("role", "salesman")
-        .eq("dealer_id", dealerId);
+      const [{ data: cars, error: carsError }, { data: sm }] = await Promise.all([
+        supabase
+          .from("car_listings")
+          .select("id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners")
+          .eq("dealer_id", dealerId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .eq("role", "salesman")
+          .eq("dealer_id", dealerId),
+      ]);
       if (active) {
+        setListings(carsError ? [] : cars || []);
         setSalesmen(sm || []);
         setLoading(false);
       }
@@ -6028,15 +6222,20 @@ export default function DashboardPage() {
     );
   }, [listings, searchQuery, statusFilter]);
 
-  const LISTINGS_INITIAL = 30;
-  const LISTINGS_STEP = 30;
-  const [listingsVisible, setListingsVisible] = useState(LISTINGS_INITIAL);
-  useEffect(() => { setListingsVisible(LISTINGS_INITIAL); }, [searchQuery, statusFilter]);
-  const pagedListings = useMemo(
-    () => filteredListings.slice(0, listingsVisible),
-    [filteredListings, listingsVisible]
-  );
-  const hasMoreListings = filteredListings.length > listingsVisible;
+  // Reset visible window whenever the filtered set changes
+  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery]);
+
+  // Infinite scroll — expand visible window when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + 20); },
+      { rootMargin: '300px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [activeTab]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -6228,6 +6427,7 @@ export default function DashboardPage() {
     services:  { title: "Services",  sub: "Add-ons & product catalogue" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
+    customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
   };
 
   const NAV = [
@@ -6242,9 +6442,10 @@ export default function DashboardPage() {
     { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
     { id: "stock", Icon: Package, label: "Stock" },
     { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops",   Icon: BarChart3,   label: "RevOps" },
-    { id: "services", Icon: Wrench,     label: "Services & Add-ons" },
+    { id: "revops",   Icon: BarChart3,  label: "RevOps" },
+    { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
     { id: "hp",       Icon: CreditCard, label: "HP Board" },
+    { id: "customers", Icon: UserCheck, label: "Customers" },
   ];
 
   const STAT_CARDS = [
@@ -6837,7 +7038,7 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {pagedListings.map((l) => {
+                          {filteredListings.slice(0, visibleCount).map((l) => {
                             const isSold = l.status === 'sold';
                             const extGC = gradeColor(String(l.auction_grade));
                             const sp = l.selling_price || l.price || 0;
@@ -6855,7 +7056,7 @@ export default function DashboardPage() {
                                 {/* Thumbnail */}
                                 <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
                                   {l.images?.[0]
-                                    ? <img src={l.images[0]} alt="" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
@@ -6920,7 +7121,7 @@ export default function DashboardPage() {
 
                     {/* Mobile cards */}
                     <div className="md:hidden">
-                      {pagedListings.map((l) => {
+                      {filteredListings.slice(0, visibleCount).map((l) => {
                         const isSold = l.status === 'sold';
                         const sp = l.selling_price || l.price || 0;
                         const op = l.original_price || l.previous_price || null;
@@ -6935,7 +7136,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                               {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                 : <div style={{ width: 80, height: 60, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}
@@ -6979,16 +7180,8 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                    {/* Load more */}
-                    {hasMoreListings && (
-                      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                        <button
-                          onClick={() => setListingsVisible(v => v + LISTINGS_STEP)}
-                          style={{ fontSize: 13, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 24px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                        >
-                          See more ({filteredListings.length - listingsVisible} remaining)
-                        </button>
-                      </div>
+                    {visibleCount < filteredListings.length && (
+                      <div ref={sentinelRef} style={{ height: 1 }} />
                     )}
                   </>
                 )}
@@ -6997,6 +7190,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
               <CarForm onCreate={handleNew} />
@@ -7070,6 +7264,10 @@ export default function DashboardPage() {
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
           )}
+          {activeTab === "customers" && userId && (
+            <CustomersTab dealerId={userId} />
+          )}
+          </React.Suspense>
         </div>
       </main>
 

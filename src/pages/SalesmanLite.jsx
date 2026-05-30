@@ -259,9 +259,11 @@ export default function SalesmanLite() {
   const [commissionData, setCommissionData] = useState({ total: 0, count: 0 });
 
   // Goal panel
-  const [goal, setGoal] = useState({ target: 0, focusCarId: null });
+  const [goal, setGoal] = useState({ target: 0, focusCarId: null, earningsTarget: 0 });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
+  const [earningsEditing, setEarningsEditing] = useState(false);
+  const [earningsDraft, setEarningsDraft] = useState("");
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
@@ -906,7 +908,7 @@ export default function SalesmanLite() {
     if (!userId) return;
     try {
       const saved = JSON.parse(localStorage.getItem(`slite_goal_${userId}`));
-      if (saved) setGoal(saved);
+      if (saved) setGoal(prev => ({ ...prev, ...saved }));
     } catch {}
   }, [userId]);
 
@@ -2099,6 +2101,84 @@ Return valid JSON only (no markdown, no code block), exactly this shape:
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── Earnings Target ── */}
+        <div style={CARD}>
+          <div style={CARD_HEADER}>
+            <span>Earnings Target</span>
+            <span>{daysLeft}d left</span>
+          </div>
+          <div style={{ padding: 18 }}>
+            {earningsEditing ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>RM</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  value={earningsDraft}
+                  onChange={e => setEarningsDraft(e.target.value)}
+                  placeholder="e.g. 20000"
+                  style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none" }}
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    const val = Math.floor(Math.max(1, Number(earningsDraft) || 0));
+                    if (!val) return; // empty / zero — don't wipe an existing target
+                    saveGoal({ earningsTarget: val });
+                    setEarningsEditing(false);
+                  }}
+                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 6, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}
+                >Save</button>
+                <button
+                  onClick={() => setEarningsEditing(false)}
+                  style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}
+                >Cancel</button>
+              </div>
+            ) : goal.earningsTarget > 0 ? (() => {
+              const earned = commissionData.total;
+              const epct = Math.min((earned / goal.earningsTarget) * 100, 100);
+              const earnedDisplay = Math.max(earned, 0); // clamp negatives — show 0 not "-RM X"
+              const epctDisplay = Math.max(epct, 0);
+              const remaining = Math.max(goal.earningsTarget - earnedDisplay, 0);
+              return (
+                <div>
+                  <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
+                    <div>
+                      <p style={{ margin: "0 0 2px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Earned this month</p>
+                      <p style={{ margin: 0, fontSize: 28, fontWeight: 800, color: epct >= 100 ? "#22c55e" : "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                        RM {earnedDisplay.toLocaleString("en-MY")}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: "#475569" }}> / RM {goal.earningsTarget.toLocaleString("en-MY")}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setEarningsDraft(String(goal.earningsTarget)); setEarningsEditing(true); }}
+                      style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginBottom: 4 }}
+                    >Edit</button>
+                  </div>
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", marginBottom: 8 }}>
+                    <div style={{ height: "100%", width: `${epctDisplay}%`, background: epct >= 100 ? "#22c55e" : epct >= 60 ? "#3b82f6" : "#ef4444", borderRadius: 99, transition: "width 0.5s ease" }} />
+                  </div>
+                  {epct >= 100
+                    ? <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Target smashed! RM {Math.abs(remaining).toLocaleString("en-MY")} over goal.</p>
+                    : <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>
+                        RM {remaining.toLocaleString("en-MY")} to go
+                        {daysLeft > 0 ? ` · ~RM ${Math.round(remaining / daysLeft).toLocaleString("en-MY")}/day needed` : " · last day!"}
+                      </p>
+                  }
+                </div>
+              );
+            })() : (
+              <button
+                onClick={() => { setEarningsDraft(""); setEarningsEditing(true); }}
+                style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(220,38,38,0.06)", border: "1px dashed rgba(220,38,38,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                + Set an earnings target (RM)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Follow-up Needed ── */}
