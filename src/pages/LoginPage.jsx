@@ -110,7 +110,7 @@ export default function LoginPage() {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subdomain, role, dealer_id, onboarding_complete")
+      .select("subdomain, role, dealer_id, onboarding_complete, plan")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -136,7 +136,11 @@ export default function LoginPage() {
       const { data: { session: sess } } = await supabase.auth.getSession();
       const at = sess?.access_token;
       const rt = sess?.refresh_token;
-      const target = profile?.dealer_id ? "salesman" : "salesman-lite";
+      const target = profile?.dealer_id
+        ? "salesman"
+        : profile?.plan === "salesman_full"
+        ? "salesman-premium"
+        : "salesman-lite";
       const suffix = at && rt && isProd ? `?_at=${at}&_rt=${rt}` : "";
       window.location.href = `${base}/${target}${suffix}`;
     } else {
