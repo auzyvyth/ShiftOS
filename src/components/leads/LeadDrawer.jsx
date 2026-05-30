@@ -293,11 +293,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!car || !lead?.dealer_id) return;
     setGeneratingLink(true);
     try {
-      const { data: dealerProfile } = await supabase
-        .from('profiles')
-        .select('site_name, brand_color, whatsapp_number')
-        .eq('id', lead.dealer_id)
-        .maybeSingle();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const [dealerRes, salesmanRes] = await Promise.all([
+        supabase.from('profiles').select('site_name, brand_color, whatsapp_number').eq('id', lead.dealer_id).maybeSingle(),
+        currentUser ? supabase.from('profiles').select('full_name, whatsapp_number').eq('id', currentUser.id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      const dealerProfile  = dealerRes.data;
+      const salesmanProfile = salesmanRes.data;
 
       const { data: fullCar } = await supabase
         .from('car_listings')
@@ -316,9 +318,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
       const feesTotal  = (roadTax || 0) + (insCalc?.total || 0) + 150;
       const token      = crypto.randomUUID();
-      const expiresAt  = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const expiresAt  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const snapshot = {
+        buyer_name: lead.buyer_name || null,
+        salesman: salesmanProfile ? {
+          name:     salesmanProfile.full_name || null,
+          whatsapp: salesmanProfile.whatsapp_number || null,
+        } : null,
         car: {
           brand: fullCar?.brand || car.brand,
           model: fullCar?.model || car.model,
@@ -334,9 +341,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           engine_cc: fullCar?.engine_cc || null,
         },
         dealer: {
-          name: dealerProfile?.site_name || 'Dealership',
-          brand_color: dealerProfile?.brand_color || '#dc2626',
-          whatsapp: dealerProfile?.whatsapp_number || null,
+          name:        dealerProfile?.site_name    || 'Dealership',
+          brand_color: dealerProfile?.brand_color  || '#dc2626',
+          whatsapp:    dealerProfile?.whatsapp_number || null,
         },
         addons: dealAddons.map(a => ({
           name:     a.dealer_products?.name || '',
@@ -1035,7 +1042,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                             <Presentation style={{ width: 12, height: 12, color: '#4338ca' }} />
                             <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Deal Sheet ready</span>
                           </div>
-                          {minsLeft !== null && <span style={{ fontSize: 10, color: minsLeft < 10 ? '#dc2626' : '#9ca3af' }}>{minsLeft > 0 ? `${minsLeft}m left` : 'Expired'}</span>}
+                          {minsLeft !== null && <span style={{ fontSize: 10, color: '#9ca3af' }}>Valid 7 days</span>}
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => { navigator.clipboard.writeText(dealLink); setDealLinkCopied(true); setTimeout(() => setDealLinkCopied(false), 2000); }}
