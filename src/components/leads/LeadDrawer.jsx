@@ -82,6 +82,21 @@ function timeAgo(ts) {
   return `${Math.floor(d / 86400)}d ago`;
 }
 
+// ─── Road tax estimate (JPJ, private, Peninsular saloon) ─────────────────────
+function calcRoadTaxEst(cc) {
+  const c = parseFloat(cc);
+  if (!c || c <= 0) return 0;
+  if (c <= 1000) return 20;
+  if (c <= 1200) return 55;
+  if (c <= 1400) return 70;
+  if (c <= 1600) return 90;
+  if (c <= 1800) return Math.round(200 + (c - 1600) * 0.40);
+  if (c <= 2000) return Math.round(280 + (c - 1800) * 1.00);
+  if (c <= 2500) return Math.round(480 + (c - 2000) * 2.00);
+  if (c <= 3000) return Math.round(1480 + (c - 2500) * 3.00);
+  return Math.round(2980 + (c - 3000) * 4.00);
+}
+
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [] }) {
   const [lead, setLead]               = useState(initialLead);
@@ -123,6 +138,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [generatingLink, setGeneratingLink] = useState(false);
   const [dealLinkCopied, setDealLinkCopied] = useState(false);
   const [minsLeft, setMinsLeft]             = useState(null);
+  const [dealFees, setDealFees]             = useState({ road_tax: '', insurance: '', puspakom: '150' });
 
   // HP / Financing state
   const [hpRows, setHpRows]     = useState([]);
@@ -248,14 +264,30 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
       const { data: fullCar } = await supabase
         .from('car_listings')
-        .select('brand, model, year, selling_price, images, city, state, mileage, transmission, fuel_type, included_services')
+        .select('brand, model, year, selling_price, images, city, state, mileage, transmission, fuel_type, included_services, engine_cc')
         .eq('id', car.id)
         .maybeSingle();
 
+      // Auto-fill road tax from engine CC if not yet set
+      let fees = { ...dealFees };
+      if (!fees.road_tax && fullCar?.engine_cc) {
+        const rt = calcRoadTaxEst(fullCar.engine_cc);
+        if (rt > 0) {
+          fees = { ...fees, road_tax: String(rt) };
+          setDealFees(fees);
+        }
+      }
+
       const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
+      const feesTotal = Number(fees.road_tax || 0) + Number(fees.insurance || 0) + Number(fees.puspakom || 0);
       const carPrice = Number(fullCar?.selling_price || car.selling_price || 0);
       const token = crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      // Best HP row: disbursed > approved > pending > first
+      const bestHp = hpRows.find(r => r.status === 'disbursed')
+        || hpRows.find(r => r.status === 'approved')
+        || hpRows[0] || null;
 
       const snapshot = {
         car: {
@@ -270,6 +302,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           transmission: fullCar?.transmission,
           fuel_type: fullCar?.fuel_type,
           included_services: fullCar?.included_services || [],
+          engine_cc: fullCar?.engine_cc || null,
         },
         dealer: {
           name: dealerProfile?.site_name || 'Dealership',
@@ -281,11 +314,25 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           category: a.dealer_products?.category || 'other',
           price:    Number(a.sold_price),
         })),
-        car_price: carPrice,
+        fees: {
+          road_tax:  Number(fees.road_tax  || 0),
+          insurance: Number(fees.insurance || 0),
+          puspakom:  Number(fees.puspakom  || 0),
+        },
+        financing: bestHp ? {
+          bank:           bestHp.bank_name,
+          loan_amount:    bestHp.loan_amount,
+          tenure_months:  bestHp.tenure_months,
+          annual_rate_pct: bestHp.annual_rate_pct,
+          monthly_install: bestHp.monthly_install,
+          status:         bestHp.status,
+        } : null,
+        car_price:    carPrice,
         addons_total: addonsTotal,
-        grand_total: carPrice + addonsTotal,
+        fees_total:   feesTotal,
+        grand_total:  carPrice + addonsTotal + feesTotal,
         generated_at: new Date().toISOString(),
-        expires_at: expiresAt,
+        expires_at:   expiresAt,
       };
 
       const { error } = await supabase
@@ -840,6 +887,31 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       </div>
                     </div>
                   )}
+                  {/* ── Fees for deal sheet ── */}
+                  {car && (
+                    <div style={{ margin: '8px 0', padding: '12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Fees (deal sheet)</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
+                        {[{ key: 'road_tax', label: 'Road Tax' }, { key: 'insurance', label: 'Insurance' }, { key: 'puspakom', label: 'Puspakom' }].map(({ key, label }) => (
+                          <div key={key}>
+                            <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>{label}</p>
+                            <input type="number" placeholder="RM 0" value={dealFees[key]}
+                              onChange={e => setDealFees(f => ({ ...f, [key]: e.target.value }))}
+                              style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
+                          </div>
+                        ))}
+                      </div>
+                      {(Number(dealFees.road_tax) + Number(dealFees.insurance) + Number(dealFees.puspakom)) > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid #f1f3f5' }}>
+                          <span style={{ fontSize: 11, color: '#6b7280' }}>Fees subtotal</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>
+                            RM {(Number(dealFees.road_tax || 0) + Number(dealFees.insurance || 0) + Number(dealFees.puspakom || 0)).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {car && (
                     !dealLink ? (
                       <button onClick={handleGenerateDealLink} disabled={generatingLink}

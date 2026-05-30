@@ -85,7 +85,7 @@ export default function DealPage() {
 
   if (!deal) return <ExpiredView />;
 
-  const { car, dealer, addons = [], car_price, addons_total, grand_total, generated_at, expires_at } = deal;
+  const { car, dealer, addons = [], fees = {}, financing = null, car_price, addons_total, fees_total = 0, grand_total, generated_at, expires_at } = deal;
   const accentColor = dealer?.brand_color || '#dc2626';
   const mainImage = car?.images?.[0] || null;
   const includedServices = car?.included_services || [];
@@ -206,11 +206,78 @@ export default function DealPage() {
               </div>
             )}
 
+            {/* Fees */}
+            {(fees.road_tax > 0 || fees.insurance > 0 || fees.puspakom > 0) && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Fees & Registration</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {fees.road_tax > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Road Tax</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.road_tax)}</span>
+                    </div>
+                  )}
+                  {fees.insurance > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Insurance</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.insurance)}</span>
+                    </div>
+                  )}
+                  {fees.puspakom > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Puspakom Inspection</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.puspakom)}</span>
+                    </div>
+                  )}
+                </div>
+                {fees_total > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', marginTop: 4 }}>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>Fees subtotal</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{formatRM(fees_total)}</span>
+                  </div>
+                )}
+                <div style={{ height: 1, background: '#f1f5f9', margin: '8px 0 20px' }} />
+              </div>
+            )}
+
+            {/* Financing */}
+            {financing && (
+              <div style={{ marginBottom: 20, padding: '14px 16px', background: '#f5f3ff', borderRadius: 12, border: '1px solid #e9d5ff' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>HP Financing</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 4 }}>{financing.bank}</p>
+                    <p style={{ fontSize: 12, color: '#6b7280' }}>
+                      {financing.tenure_months}mo · {financing.annual_rate_pct}% p.a. · Loan {formatRM(financing.loan_amount)}
+                    </p>
+                  </div>
+                  {financing.monthly_install > 0 && (
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <p style={{ fontSize: presentMode ? 24 : 20, fontWeight: 800, color: '#7c3aed' }}>
+                        {formatRM(financing.monthly_install)}
+                      </p>
+                      <p style={{ fontSize: 11, color: '#9ca3af' }}>/ month (EIR)</p>
+                    </div>
+                  )}
+                </div>
+                {financing.status && (
+                  <div style={{ marginTop: 10, display: 'inline-flex', padding: '2px 9px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: ['approved','disbursed'].includes(financing.status) ? '#ecfdf5' : '#fffbeb',
+                    color:      ['approved','disbursed'].includes(financing.status) ? '#059669' : '#d97706',
+                    border: `1px solid ${['approved','disbursed'].includes(financing.status) ? '#a7f3d0' : '#fde68a'}` }}>
+                    {financing.status.charAt(0).toUpperCase() + financing.status.slice(1)}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Total */}
             <div style={{ background: accentColor, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <div>
                 <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Package</p>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Car + all add-ons</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                  {fees_total > 0 ? 'Car + add-ons + fees' : 'Car + all add-ons'}
+                </p>
               </div>
               <p style={{ fontSize: presentMode ? 32 : 26, fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }}>{formatRM(grand_total)}</p>
             </div>
