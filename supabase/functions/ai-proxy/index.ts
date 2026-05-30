@@ -26,6 +26,29 @@ serve(async (req) => {
   }
 
   try {
+    // Require a valid Supabase user session — prevents API bill abuse
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
+      });
+    }
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+    );
+    const { data: { user }, error: authErr } = await anonClient.auth.getUser(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
+      });
+    }
+
     const { prompt } = await req.json();
     if (!prompt) {
       return new Response(JSON.stringify({ error: "missing prompt" }), {

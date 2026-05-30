@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
+  // Verify this came from Supabase, not an arbitrary caller
+  const secret = Deno.env.get("WEBHOOK_SECRET");
+  if (secret && req.headers.get("x-webhook-secret") !== secret) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
   try {
     const payload = await req.json();
     const listing = payload.record;
