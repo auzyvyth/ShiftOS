@@ -15,6 +15,16 @@ Current file is a geometric approximation (L inside oval).
 
 ## Code — in progress / next up
 
+### 0. Deal presentation screen — in-person F&I menu selling
+**Priority: high — direct revenue per deal**
+- Dealer side only. No public URL. Fullscreen overlay within SalesmanPanel on the dealer's subdomain.
+- Trigger: lead reaches "Negotiation" stage → prompt appears in LeadDrawer to build deal sheet.
+- Build: existing add-ons section in LeadDrawer becomes the deal builder — salesman ticks products, price updates live.
+- Present: "Present to Customer" button launches fullscreen overlay. Salesman turns laptop around. Customer sees: car photo + specs, included services (free), selected add-ons with prices, total.
+- Lock: "Confirm Deal" saves selected products to `deal_products`, moves lead to "Closing" stage.
+- No new tables needed — uses existing `dealer_products`, `deal_products`, `leads`, `car_listings`.
+- Entry point: LeadDrawer header when lead.stage === 'negotiation'.
+
 ### 1. Accountant payroll payout view
 **Priority: high**
 - AccountantPanel has P&L but no "run payroll" screen.
