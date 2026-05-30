@@ -238,7 +238,7 @@ export default function LeadsPage() {
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6' }}>
-          <div style={{ margin: '16px', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #e5e7eb' }}>
+          <div style={{ margin: '8px 0 0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
             {activeStage === 'all' ? (
               STAGE_ORDER.map(stage => {
                 const stageLeads = byStage[stage] || [];
