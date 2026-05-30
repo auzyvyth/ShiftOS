@@ -837,6 +837,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
+  const [capError, setCapError] = useState(false);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const DEFAULT_ORDER = STEPS.map((s) => s.id);
   const [sectionOrder, setSectionOrder] = useState(DEFAULT_ORDER);
@@ -1589,7 +1590,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         setImgProgress([]);
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      if (err?.message?.includes('listing_cap_exceeded') || err?.code === 'P0001' && err?.message?.includes('listing cap')) {
+        setCapError(true);
+      } else {
+        alert("Error: " + err.message);
+      }
     }
     setUploading(false);
   };
@@ -2782,10 +2787,21 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             </button>
           </div>
         )}
+        {capError && (
+          <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+            <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 1.5 }}>
+              Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
+            </p>
+            <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              Upgrade Plan
+            </a>
+          </div>
+        )}
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={uploading || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+          disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
           className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {uploading ? (

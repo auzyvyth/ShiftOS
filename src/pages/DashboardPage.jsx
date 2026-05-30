@@ -23,10 +23,12 @@ const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
+const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg } from "../utils/serviceCategories";
+import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
@@ -652,6 +654,16 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const [subdomain, setSubdomain] = useState(profile?.subdomain || '');
   const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
+  const [planUsage, setPlanUsage] = useState(null);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const dealerIdForUsage = profile.role === 'manager' || profile.role === 'admin' ? profile.dealer_id : profile.id;
+    if (!dealerIdForUsage) return;
+    supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
+      if (data) setPlanUsage(data);
+    });
+  }, [profile?.id]);
 
   const sanitizeSubdomain = (val) =>
     val.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -922,8 +934,63 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </p>
     ) : null;
 
+  const planCfg = getPlanConfig(profile?.plan);
+  const nextPlan = nextDealerPlan(profile?.plan);
+  const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
+
   return (
     <div className="space-y-4 max-w-2xl">
+      {/* ── Plan Usage ── */}
+      {planUsage && (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, letterSpacing: 2, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: '#E8EDF5' }}>{planCfg.label}</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#E8EDF5' }}>RM {planCfg.price.toLocaleString()}</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>/month</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: nextPlanCfg ? 16 : 0 }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>LISTINGS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#f87171' : '#E8EDF5' }}>
+                {planUsage.active_listings ?? 0}
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                  {planUsage.listing_cap ? ` / ${planUsage.listing_cap}` : ' / unlimited'}
+                </span>
+              </p>
+              {planUsage.listing_cap && (
+                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                </div>
+              )}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>TEAM SEATS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#f87171' : '#E8EDF5' }}>
+                {planUsage.seat_count ?? 0}
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                  {planUsage.seat_cap ? ` / ${planUsage.seat_cap}` : ' / unlimited'}
+                </span>
+              </p>
+              {planUsage.seat_cap && (
+                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                </div>
+              )}
+            </div>
+          </div>
+          {nextPlanCfg && (
+            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 13, color: '#f87171', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
+            </a>
+          )}
+        </div>
+      )}
       {/* ── 1. Dealership Identity ── */}
       <SettingsSection
         title="Dealership Identity"
@@ -3122,6 +3189,14 @@ function TeamTab({ managerDealership, dealerId }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
+      // Check seat cap before creating
+      const { data: capCheck } = await supabase.rpc('check_seat_cap', { p_dealer_id: dealerId });
+      if (capCheck && !capCheck.allowed) {
+        setAddError(`Seat limit reached (${capCheck.current}/${capCheck.cap}). Upgrade your plan to add more team members.`);
+        setAddLoading(false);
+        return;
+      }
+
       if (isSalesman) {
         // Auth-first salesman creation via edge function
         const res = await fetch(`${SERVER_URL}/create-salesman`, {
@@ -4556,7 +4631,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '' });
+  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '' });
   const [addSaving, setAddSaving] = useState(false);
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
@@ -4624,9 +4699,9 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
 
   const handleAdd = async () => {
     setAddSaving(true);
-    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0 });
+    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null });
     setShowAdd(false);
-    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '' });
+    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '' });
     setAddSaving(false);
     fetchUnits();
   };
@@ -4653,6 +4728,27 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     setUnits(p => p.map(u => u.id === soldTarget.id ? { ...u, ...payload } : u));
     setSoldTarget(null);
     setSoldSaving(false);
+  };
+
+  // HP-3: PUSPAKOM B7 helpers (cert valid 3 months)
+  const puspakomStatus = (date) => {
+    if (!date) return { label: 'B7 missing', color: '#6b7280', urgent: false };
+    const issued = new Date(date);
+    const expires = new Date(issued); expires.setMonth(expires.getMonth() + 3);
+    const daysLeft = Math.floor((expires - Date.now()) / 86400000);
+    if (daysLeft < 0)  return { label: `B7 expired ${-daysLeft}d ago`, color: '#ef4444', urgent: true };
+    if (daysLeft <= 14) return { label: `B7 expires in ${daysLeft}d`,   color: '#f59e0b', urgent: true };
+    return { label: `B7 valid ${daysLeft}d`, color: '#22c55e', urgent: false };
+  };
+  const handleUpdatePuspakom = async (unit) => {
+    const current = unit.puspakom_b7_date || '';
+    const next = window.prompt('PUSPAKOM B7 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
+    if (next === null) return;
+    const value = next.trim() || null;
+    const { error } = await supabase.from('stock_units').update({ puspakom_b7_date: value }).eq('id', unit.id).eq('dealer_id', userId);
+    if (error) { toast.error('Update failed'); return; }
+    setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b7_date: value } : u));
+    toast.success('PUSPAKOM B7 updated');
   };
 
   const statusBadge = (s) => {
@@ -4772,7 +4868,24 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                     return (
                       <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
-                          {car ? <><p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p><p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p></> : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
+                          {car ? (
+                            <>
+                              <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
+                              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p>
+                              {u.status === 'in_stock' && (() => {
+                                const ps = puspakomStatus(u.puspakom_b7_date);
+                                return (
+                                  <button
+                                    onClick={() => handleUpdatePuspakom(u)}
+                                    title="Click to update PUSPAKOM B7 date"
+                                    style={{ marginTop: 4, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}
+                                  >
+                                    {ps.label}
+                                  </button>
+                                );
+                              })()}
+                            </>
+                          ) : <span style={{ color: '#6b7280', fontSize: 12 }}>—</span>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>
                           {carAge != null
@@ -4853,6 +4966,11 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in" className={iCls} /></div>
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
+                <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
+                <p className="text-[10px] text-gray-500 mt-1">Inspection cert valid for 3 months from this date.</p>
+              </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
@@ -6445,6 +6563,7 @@ export default function DashboardPage() {
     { id: "revops",   Icon: BarChart3,  label: "RevOps" },
     { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
     { id: "hp",       Icon: CreditCard, label: "HP Board" },
+    { id: "oversight", Icon: Shield, label: "GM Oversight" },
     { id: "customers", Icon: UserCheck, label: "Customers" },
   ];
 
@@ -7263,6 +7382,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
+          )}
+          {activeTab === "oversight" && userId && (
+            <OversightTab dealerId={getDealerIdFromProfile(profile)} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />
