@@ -3,7 +3,7 @@ export const PLAN_CONFIG = {
   salesman_lite: {
     label: 'Salesman Lite',
     price: 0,
-    listingCap: null,
+    listingCap: 15,
     seatCap: 1,
     isDealer: false,
   },
