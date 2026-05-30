@@ -11,12 +11,17 @@ async function redirectByRole(session, navigate) {
     .eq('id', session.user.id)
     .maybeSingle();
 
-  if (!profile || profile.onboarding_complete === false) {
+  if (!profile) {
     navigate('/onboarding');
     return;
   }
 
   const { role, subdomain, dealer_id } = profile;
+
+  if ((role === 'dealer' || role === 'superadmin') && profile.onboarding_complete === false) {
+    navigate('/onboarding');
+    return;
+  }
 
   if (role === 'dealer' || role === 'superadmin') {
     if (subdomain) {
