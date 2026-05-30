@@ -23,6 +23,10 @@ import {
   Target,
   Eye,
   Megaphone,
+  ClipboardCheck,
+  UserCheck,
+  AlertTriangle,
+  Phone,
 } from "lucide-react";
 
 const ACCENT = "#f97316";
@@ -125,6 +129,18 @@ export default function ManagerPanel() {
   const [leads, setLeads] = useState([]);
   const [events, setEvents] = useState([]);
 
+  // Approvals
+  const [pendingListings, setPendingListings] = useState([]);
+  const [approvalActioning, setApprovalActioning] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Customers
+  const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [customerSaving, setCustomerSaving] = useState(false);
+
   // UI
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddListing, setShowAddListing] = useState(false);
@@ -197,6 +213,22 @@ export default function ManagerPanel() {
         .select("event_type, salesman_slug, car_id, created_at")
         .eq("dealer_id", did)
         .then(({ data: d }) => setEvents(d || []));
+
+      // Pending approval listings (from salesmen under this dealer)
+      supabase
+        .from("car_listings")
+        .select("id,brand,model,variant,year,selling_price,images,status,rejection_reason,created_at,dealer_id,profiles!car_listings_dealer_id_fkey(full_name)")
+        .eq("status", "pending_approval")
+        .order("created_at", { ascending: false })
+        .then(({ data: d }) => setPendingListings(d || []));
+
+      // Customers under this dealer
+      supabase
+        .from("customers")
+        .select("*")
+        .eq("dealer_id", did)
+        .order("created_at", { ascending: false })
+        .then(({ data: d }) => setCustomers(d || []));
 
       supabase
         .from("salesman_notes")
@@ -365,6 +397,41 @@ export default function ManagerPanel() {
     setNotifications((p) =>
       p.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)),
     );
+  };
+
+  const handleApprove = async (listingId) => {
+    setApprovalActioning(listingId);
+    const { error } = await supabase.rpc("manager_approve_listing", { p_listing_id: listingId });
+    if (!error) setPendingListings((p) => p.filter((l) => l.id !== listingId));
+    setApprovalActioning(null);
+  };
+
+  const handleReject = async (listingId) => {
+    if (!rejectReason.trim()) return;
+    setApprovalActioning(listingId);
+    const { error } = await supabase.rpc("manager_reject_listing", { p_listing_id: listingId, p_reason: rejectReason.trim() });
+    if (!error) {
+      setPendingListings((p) => p.filter((l) => l.id !== listingId));
+      setRejectingId(null);
+      setRejectReason("");
+    }
+    setApprovalActioning(null);
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!editingCustomer) return;
+    setCustomerSaving(true);
+    const { id, ...fields } = editingCustomer;
+    await supabase.from("customers").update({
+      notes: fields.notes,
+      road_tax_expiry: fields.road_tax_expiry || null,
+      insurance_expiry: fields.insurance_expiry || null,
+      email: fields.email || null,
+      ic_number: fields.ic_number || null,
+    }).eq("id", id);
+    setCustomers((p) => p.map((c) => c.id === id ? { ...c, ...fields } : c));
+    setEditingCustomer(null);
+    setCustomerSaving(false);
   };
 
   // ── Booking row renderer ──────────────────────────────────────────────────
@@ -890,6 +957,8 @@ export default function ManagerPanel() {
             badge: leads.filter((l) => l.stage === "new").length || null,
           },
           { id: "analytics", label: "Analytics", Icon: BarChart2, badge: null },
+          { id: "approvals", label: "Approvals", Icon: ClipboardCheck, badge: pendingListings.length || null },
+          { id: "customers", label: "Customers", Icon: UserCheck, badge: customers.length || null },
         ].map(({ id, label, Icon, badge }) => (
           <button
             key={id}
@@ -2334,6 +2403,242 @@ export default function ManagerPanel() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── APPROVALS ────────────────────────────────────────────────────── */}
+        {activeNav === "approvals" && (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+                Listings submitted by your team that require your approval before going live.
+              </p>
+            </div>
+            {pendingListings.length === 0 ? (
+              <div style={{ ...S.card, padding: 40, textAlign: "center" }}>
+                <ClipboardCheck style={{ width: 32, height: 32, color: "#374151", margin: "0 auto 12px" }} />
+                <p style={{ color: "#374151", fontSize: 14 }}>No listings pending approval.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {pendingListings.map((listing) => {
+                  const isActioning = approvalActioning === listing.id;
+                  const isRejecting = rejectingId === listing.id;
+                  const salesman = listing.profiles;
+                  return (
+                    <div key={listing.id} style={{ ...S.card, padding: 16, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      {listing.images?.[0] ? (
+                        <img src={listing.images[0]} alt="" style={{ width: 80, height: 60, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 80, height: 60, borderRadius: 8, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f2f5", margin: 0 }}>
+                            {listing.year} {listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ""}
+                          </p>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24" }}>
+                            Pending
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 13, color: "#60a5fa", fontWeight: 600, margin: "0 0 2px" }}>
+                          RM {(listing.selling_price || 0).toLocaleString()}
+                        </p>
+                        <p style={{ fontSize: 11, color: "#6b7280", margin: 0 }}>
+                          Submitted by {salesman?.full_name || "Salesman"} · {timeAgo(listing.created_at)}
+                        </p>
+                        {isRejecting && (
+                          <div style={{ marginTop: 10 }}>
+                            <p style={{ margin: "0 0 6px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection</p>
+                            <textarea
+                              value={rejectReason}
+                              onChange={(e) => setRejectReason(e.target.value)}
+                              rows={2}
+                              placeholder="e.g. Price too high, missing photos…"
+                              style={{ ...S.input, resize: "none", marginBottom: 8 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                                style={{ ...S.btn, fontSize: 11 }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleReject(listing.id)}
+                                disabled={!rejectReason.trim() || isActioning}
+                                style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: rejectReason.trim() ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.04)", border: rejectReason.trim() ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)", color: rejectReason.trim() ? "#f87171" : "#374151", cursor: rejectReason.trim() ? "pointer" : "not-allowed", fontFamily: "'DM Sans',sans-serif", opacity: isActioning ? 0.6 : 1 }}
+                              >
+                                Confirm Reject
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {!isRejecting && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
+                          <button
+                            onClick={() => handleApprove(listing.id)}
+                            disabled={isActioning}
+                            style={{ ...S.btnPrimary, background: "linear-gradient(135deg,#16a34a,#15803d)", opacity: isActioning ? 0.6 : 1 }}
+                          >
+                            <Check style={{ width: 13, height: 13 }} />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(listing.id)}
+                            style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", display: "inline-flex", alignItems: "center", gap: 5 }}
+                          >
+                            <X style={{ width: 12, height: 12 }} />
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CUSTOMERS ────────────────────────────────────────────────────── */}
+        {activeNav === "customers" && (
+          <div>
+            {/* Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 16 }}>
+              {[
+                { label: "Total Customers", val: customers.length, color: ACCENT },
+                { label: "This Month", val: customers.filter(c => { const d = new Date(c.created_at); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); }).length, color: "#4ade80" },
+                { label: "Road Tax Expiring", val: customers.filter(c => { if (!c.road_tax_expiry) return false; const diff = (new Date(c.road_tax_expiry) - new Date()) / 86400000; return diff >= 0 && diff <= 30; }).length, color: "#fbbf24" },
+                { label: "Insurance Expiring", val: customers.filter(c => { if (!c.insurance_expiry) return false; const diff = (new Date(c.insurance_expiry) - new Date()) / 86400000; return diff >= 0 && diff <= 30; }).length, color: "#c084fc" },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ ...S.card, padding: "14px 16px" }}>
+                  <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 6 }}>{label}</p>
+                  <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color, margin: 0, lineHeight: 1 }}>{val}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div style={{ position: "relative", marginBottom: 16 }}>
+              <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "#6b7280", pointerEvents: "none" }} />
+              <input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Search by name or phone…" style={{ ...S.input, paddingLeft: 32 }} />
+            </div>
+
+            {/* Table */}
+            <div style={{ ...S.card, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Sans',sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", "Actions"].map(h => (
+                      <th key={h} style={{ padding: "10px 14px", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b7280", fontWeight: 600, textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers
+                    .filter(c => !customerSearch || `${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(customerSearch.toLowerCase()))
+                    .map(c => {
+                      const today = new Date();
+                      const rtDiff = c.road_tax_expiry ? (new Date(c.road_tax_expiry) - today) / 86400000 : null;
+                      const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
+                      const expiryColor = (diff) => diff === null ? "#4b5563" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
+                      const expiryLabel = (expiry, diff) => {
+                        if (!expiry) return "—";
+                        const d = new Date(expiry).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" });
+                        if (diff < 0) return `${d} (Expired)`;
+                        if (diff <= 30) return `${d} (${Math.round(diff)}d)`;
+                        return d;
+                      };
+                      return (
+                        <tr key={c.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(249,115,22,0.03)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        >
+                          <td style={{ padding: "10px 14px" }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: "#f0f2f5", margin: 0 }}>{c.name || "—"}</p>
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 13, color: "#9ca3af" }}>
+                            {c.phone ? (
+                              <a href={`https://wa.me/${c.phone.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" style={{ color: "#4ade80", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Phone style={{ width: 11, height: 11 }} />{c.phone}
+                              </a>
+                            ) : "—"}
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <p style={{ fontSize: 13, color: "#f0f2f5", margin: 0 }}>{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
+                            {c.car_plate && <p style={{ fontSize: 11, color: "#6b7280", margin: "2px 0 0" }}>{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap" }}>
+                            {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: expiryColor(rtDiff), whiteSpace: "nowrap", fontWeight: rtDiff !== null && rtDiff <= 30 ? 600 : 400 }}>
+                            {expiryLabel(c.road_tax_expiry, rtDiff)}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: expiryColor(insDiff), whiteSpace: "nowrap", fontWeight: insDiff !== null && insDiff <= 30 ? 600 : 400 }}>
+                            {expiryLabel(c.insurance_expiry, insDiff)}
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <button onClick={() => setEditingCustomer({ ...c })} style={{ ...S.btn, fontSize: 10, padding: "4px 10px" }}>Edit</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {customers.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#374151", fontSize: 13 }}>
+                      No customers yet. Customers are created automatically when a lead is marked as Won.
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Edit drawer */}
+            {editingCustomer && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }}>
+                <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, fontFamily: "'DM Sans',sans-serif" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f2f5", margin: 0 }}>{editingCustomer.name}</p>
+                    <button onClick={() => setEditingCustomer(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X style={{ width: 18, height: 18 }} /></button>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 16px" }}>
+                    {[editingCustomer.car_brand, editingCustomer.car_model, editingCustomer.car_plate].filter(Boolean).join(" · ")}
+                  </p>
+                  {[
+                    { label: "Road Tax Expiry", key: "road_tax_expiry", type: "date" },
+                    { label: "Insurance Expiry", key: "insurance_expiry", type: "date" },
+                    { label: "Email", key: "email", type: "email" },
+                    { label: "IC Number", key: "ic_number", type: "text" },
+                  ].map(({ label, key, type }) => (
+                    <div key={key} style={{ marginBottom: 12 }}>
+                      <label style={{ ...S.label, display: "block", marginBottom: 4 }}>{label}</label>
+                      <input
+                        type={type}
+                        value={editingCustomer[key] || ""}
+                        onChange={(e) => setEditingCustomer(p => ({ ...p, [key]: e.target.value }))}
+                        style={S.input}
+                      />
+                    </div>
+                  ))}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...S.label, display: "block", marginBottom: 4 }}>Notes</label>
+                    <textarea
+                      rows={3}
+                      value={editingCustomer.notes || ""}
+                      onChange={(e) => setEditingCustomer(p => ({ ...p, notes: e.target.value }))}
+                      style={{ ...S.input, resize: "none" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setEditingCustomer(null)} style={{ flex: 1, padding: 10, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
+                    <button onClick={handleSaveCustomer} disabled={customerSaving} style={{ ...S.btnPrimary, flex: 1, justifyContent: "center", opacity: customerSaving ? 0.6 : 1 }}>
+                      {customerSaving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -96,6 +96,7 @@ import {
   Wrench,
   Upload,
   Snowflake,
+  UserCheck,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -5668,6 +5669,196 @@ function OutreachHub({ dealerId, listings }) {
   );
 }
 
+// ─── Customers Tab ───────────────────────────────────────────────────────────
+function CustomersTab({ dealerId }) {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("customers").select("*").eq("dealer_id", dealerId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { setCustomers(data || []); setLoading(false); });
+  }, [dealerId]);
+
+  const today = new Date();
+  const expiryColor = (diff) => diff === null ? "#6b7280" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
+  const expiryLabel = (expiry, diff) => {
+    if (!expiry) return "—";
+    const d = new Date(expiry).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" });
+    if (diff < 0) return `${d} (Expired)`;
+    if (diff <= 30) return `${d} (${Math.round(diff)}d)`;
+    return d;
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    const { id } = editing;
+    await supabase.from("customers").update({
+      notes: editing.notes,
+      road_tax_expiry: editing.road_tax_expiry || null,
+      insurance_expiry: editing.insurance_expiry || null,
+      email: editing.email || null,
+      ic_number: editing.ic_number || null,
+    }).eq("id", id);
+    setCustomers(p => p.map(c => c.id === id ? { ...c, ...editing } : c));
+    setEditing(null);
+    setSaving(false);
+  };
+
+  const filtered = customers.filter(c =>
+    !search || `${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const thisMonthCount = customers.filter(c => {
+    const d = new Date(c.created_at);
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }).length;
+  const rtExpiring = customers.filter(c => { if (!c.road_tax_expiry) return false; const diff = (new Date(c.road_tax_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+  const insExpiring = customers.filter(c => { if (!c.insurance_expiry) return false; const diff = (new Date(c.insurance_expiry) - today) / 86400000; return diff >= 0 && diff <= 30; }).length;
+
+  if (loading) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "Total Customers", val: customers.length, color: "#dc2626" },
+          { label: "This Month", val: thisMonthCount, color: "#4ade80" },
+          { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
+          { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
+            <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or phone…"
+          className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-gray-600"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
+        <table className="w-full border-collapse" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+          <thead>
+            <tr className="border-b border-gray-800">
+              {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", ""].map(h => (
+                <th key={h} className="px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold text-left whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(c => {
+              const rtDiff = c.road_tax_expiry ? (new Date(c.road_tax_expiry) - today) / 86400000 : null;
+              const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
+              return (
+                <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                  <td className="px-4 py-2.5">
+                    <p className="text-sm font-semibold text-gray-100 m-0">{c.name || "—"}</p>
+                  </td>
+                  <td className="px-4 py-2.5 text-sm text-gray-400">
+                    {c.phone ? (
+                      <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 flex items-center gap-1 no-underline">
+                        <Phone className="w-3 h-3" />{c.phone}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <p className="text-sm text-gray-200 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
+                    {c.car_plate && <p className="text-[11px] text-gray-500 mt-0.5 m-0">{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                    {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(rtDiff) }}>
+                    {expiryLabel(c.road_tax_expiry, rtDiff)}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(insDiff) }}>
+                    {expiryLabel(c.insurance_expiry, insDiff)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 transition-colors">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600 text-sm">
+                {customers.length === 0
+                  ? "No customers yet. Customers are created automatically when a lead is marked as Won."
+                  : "No results for your search."}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-base font-semibold text-gray-100 m-0">{editing.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{[editing.car_brand, editing.car_model, editing.car_plate].filter(Boolean).join(" · ")}</p>
+              </div>
+              <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3 mb-4">
+              {[
+                { label: "Road Tax Expiry", key: "road_tax_expiry", type: "date" },
+                { label: "Insurance Expiry", key: "insurance_expiry", type: "date" },
+                { label: "Email", key: "email", type: "email" },
+                { label: "IC Number", key: "ic_number", type: "text" },
+              ].map(({ label, key, type }) => (
+                <div key={key}>
+                  <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={editing[key] || ""}
+                    onChange={e => setEditing(p => ({ ...p, [key]: e.target.value }))}
+                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={editing.notes || ""}
+                  onChange={e => setEditing(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl border border-gray-800 text-gray-400 text-sm hover:text-gray-200 transition-colors">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -6226,6 +6417,7 @@ export default function DashboardPage() {
     services:  { title: "Services",  sub: "Add-ons & product catalogue" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
+    customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
   };
 
   const NAV = [
@@ -6240,8 +6432,9 @@ export default function DashboardPage() {
     { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
     { id: "stock", Icon: Package, label: "Stock" },
     { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops",   Icon: BarChart3, label: "RevOps" },
-    { id: "services", Icon: Wrench,   label: "Services & Add-ons" },
+    { id: "revops",   Icon: BarChart3,  label: "RevOps" },
+    { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
+    { id: "customers", Icon: UserCheck, label: "Customers" },
   ];
 
   const STAT_CARDS = [
@@ -7057,6 +7250,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "outreach" && userId && (
             <OutreachHub dealerId={userId} listings={listings} />
+          )}
+          {activeTab === "customers" && userId && (
+            <CustomersTab dealerId={userId} />
           )}
         </div>
       </main>

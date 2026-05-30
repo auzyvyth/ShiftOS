@@ -79,16 +79,22 @@ function formatApptDate(iso) {
 
 function StatusBadge({ status }) {
  const styles = {
- available: "bg-green-500/15 text-green-400 border-green-500/30",
- reserved: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
- pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+   available: "bg-green-500/15 text-green-400 border-green-500/30",
+   reserved: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+   pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+   pending_approval: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+   rejected: "bg-red-500/15 text-red-400 border-red-500/30",
+ };
+ const labels = {
+   pending_approval: "Pending Approval",
+   rejected: "Rejected",
  };
 
  return (
  <span
- className={`px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize flex-shrink-0 ${styles[status]?? "bg-gray-700 text-gray-400 border-gray-600"}`}
+ className={`px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 ${styles[status] ?? "bg-gray-700 text-gray-400 border-gray-600"}`}
  >
- {status}
+   {labels[status] ?? status}
  </span>
  );
 }
@@ -3492,6 +3498,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </p>
  <StatusBadge status={car.status} />
  </div>
+ {car.status === "rejected" && car.rejection_reason && (
+   <div style={{ margin: "4px 0 6px", padding: "6px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+     <p style={{ margin: 0, fontSize: 11, color: "#f87171" }}>Rejected: {car.rejection_reason}</p>
+   </div>
+ )}
+ {car.status === "pending_approval" && (
+   <p style={{ margin: "4px 0 6px", fontSize: 11, color: "#fbbf24" }}>Awaiting approval from your manager.</p>
+ )}
  <p
  style={{
  margin: "0 0 8px",
