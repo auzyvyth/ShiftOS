@@ -85,7 +85,7 @@ export default function DealPage() {
 
   if (!deal) return <ExpiredView />;
 
-  const { car, dealer, addons = [], fees = {}, financing = null, car_price, addons_total, fees_total = 0, grand_total, generated_at, expires_at } = deal;
+  const { car, dealer, addons = [], fees = {}, financing_calc = null, car_price, addons_total, fees_total = 0, grand_total, generated_at, expires_at } = deal;
   const accentColor = dealer?.brand_color || '#dc2626';
   const mainImage = car?.images?.[0] || null;
   const includedServices = car?.included_services || [];
@@ -240,34 +240,32 @@ export default function DealPage() {
               </div>
             )}
 
-            {/* Financing */}
-            {financing && (
-              <div style={{ marginBottom: 20, padding: '14px 16px', background: '#f5f3ff', borderRadius: 12, border: '1px solid #e9d5ff' }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>HP Financing</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            {/* Financing estimate */}
+            {financing_calc && financing_calc.monthly_install > 0 && (
+              <div style={{ marginBottom: 20, padding: '16px 18px', background: '#f5f3ff', borderRadius: 12, border: '1px solid #e9d5ff' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>HP Financing Estimate</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
                   <div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 4 }}>{financing.bank}</p>
-                    <p style={{ fontSize: 12, color: '#6b7280' }}>
-                      {financing.tenure_months}mo · {financing.annual_rate_pct}% p.a. · Loan {formatRM(financing.loan_amount)}
-                    </p>
+                    <p style={{ fontSize: 22, fontWeight: 800, color: '#7c3aed' }}>{formatRM(financing_calc.monthly_install)}<span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}> / mo</span></p>
+                    <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>EIR ~{financing_calc.eir}% p.a.</p>
                   </div>
-                  {financing.monthly_install > 0 && (
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ fontSize: presentMode ? 24 : 20, fontWeight: 800, color: '#7c3aed' }}>
-                        {formatRM(financing.monthly_install)}
-                      </p>
-                      <p style={{ fontSize: 11, color: '#9ca3af' }}>/ month (EIR)</p>
-                    </div>
-                  )}
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 12, color: '#6b7280' }}>Loan: <strong style={{ color: '#374151' }}>{formatRM(financing_calc.loan_amount)}</strong></p>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Tenure: <strong style={{ color: '#374151' }}>{financing_calc.tenure_years} yrs</strong></p>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Rate: <strong style={{ color: '#374151' }}>{financing_calc.interest_rate}% flat</strong></p>
+                  </div>
                 </div>
-                {financing.status && (
-                  <div style={{ marginTop: 10, display: 'inline-flex', padding: '2px 9px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: ['approved','disbursed'].includes(financing.status) ? '#ecfdf5' : '#fffbeb',
-                    color:      ['approved','disbursed'].includes(financing.status) ? '#059669' : '#d97706',
-                    border: `1px solid ${['approved','disbursed'].includes(financing.status) ? '#a7f3d0' : '#fde68a'}` }}>
-                    {financing.status.charAt(0).toUpperCase() + financing.status.slice(1)}
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#7c3aed', fontWeight: 600 }}>
+                    {financing_calc.dp_pct}% down payment
+                  </span>
+                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: '#f3f4f6', color: '#6b7280', fontWeight: 600 }}>
+                    Total repayment {formatRM(financing_calc.total_repayment)}
+                  </span>
+                </div>
+                <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 10, lineHeight: 1.5 }}>
+                  *Estimate only. Subject to bank approval and actual terms.
+                </p>
               </div>
             )}
 

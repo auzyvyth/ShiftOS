@@ -85,7 +85,7 @@ function timeAgo(ts) {
 // ─── Road tax estimate (JPJ, private, Peninsular saloon) ─────────────────────
 function calcRoadTaxEst(cc) {
   const c = parseFloat(cc);
-  if (!c || c <= 0) return 0;
+  if (!c || c <= 0) return null;
   if (c <= 1000) return 20;
   if (c <= 1200) return 55;
   if (c <= 1400) return 70;
@@ -95,6 +95,37 @@ function calcRoadTaxEst(cc) {
   if (c <= 2500) return Math.round(480 + (c - 2000) * 2.00);
   if (c <= 3000) return Math.round(1480 + (c - 2500) * 3.00);
   return Math.round(2980 + (c - 3000) * 4.00);
+}
+
+const NON_SALOON_RATES = [
+  { maxCc: 1400, rate: 297 }, { maxCc: 1650, rate: 432 }, { maxCc: 2200, rate: 514 },
+  { maxCc: 2500, rate: 1280 }, { maxCc: 3050, rate: 1466 }, { maxCc: 4250, rate: 1711 },
+  { maxCc: Infinity, rate: 2097 },
+];
+function calcInsuranceEst(sum, ncd, vehicleType, cc) {
+  if (!sum || sum <= 0) return null;
+  let gross;
+  if (vehicleType === 'Non-Saloon') {
+    const ccNum = parseFloat(cc) || 0;
+    gross = (NON_SALOON_RATES.find(t => ccNum <= t.maxCc) || NON_SALOON_RATES.at(-1)).rate;
+  } else {
+    gross = 26;
+    const tiers = [
+      { cap: 15000, rate: 0.01615 }, { cap: 15000, rate: 0.01540 },
+      { cap: 25000, rate: 0.01400 }, { cap: 25000, rate: 0.01370 },
+      { cap: 50000, rate: 0.01295 }, { cap: 50000, rate: 0.01250 },
+      { cap: Infinity, rate: 0.01220 },
+    ];
+    let rem = Math.max(0, sum - 1000);
+    for (const { cap, rate } of tiers) {
+      if (rem <= 0) break;
+      gross += Math.min(rem, cap) * rate;
+      rem -= cap;
+    }
+  }
+  const net = gross * (1 - ncd / 100);
+  const sst = net * 0.08;
+  return { gross: Math.round(gross), netPremium: Math.round(net), sst: Math.round(sst), stampDuty: 10, total: Math.round(net + sst + 10) };
 }
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
@@ -138,7 +169,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [generatingLink, setGeneratingLink] = useState(false);
   const [dealLinkCopied, setDealLinkCopied] = useState(false);
   const [minsLeft, setMinsLeft]             = useState(null);
-  const [dealFees, setDealFees]             = useState({ road_tax: '', insurance: '', puspakom: '150' });
+  const [calcState, setCalcState]           = useState({ dpPct: 10, loanTerm: 7, intRate: 3.5, engineCc: '', vehicleType: 'Saloon', insNcd: 55 });
 
   // HP / Financing state
   const [hpRows, setHpRows]     = useState([]);
@@ -171,19 +202,25 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  // Fetch catalogue, attached add-ons, and HP submissions
+  // Fetch catalogue, attached add-ons, HP submissions, and engine CC
   useEffect(() => {
     if (!lead?.id || !lead?.dealer_id) return;
     const fetch = async () => {
       setAddonsLoading(true);
-      const [catRes, dealRes, hpRes] = await Promise.all([
+      const [catRes, dealRes, hpRes, carRes] = await Promise.all([
         supabase.from('dealer_products').select('id, name, category, selling_price').eq('dealer_id', lead.dealer_id).eq('is_active', true).order('name'),
         supabase.from('deal_products').select('id, sold_price, notes, product_id, dealer_products(name, category)').eq('lead_id', lead.id),
         supabase.from('deal_financing').select('*').eq('lead_id', lead.id).order('submitted_at', { ascending: false }),
+        lead?.car_listing?.id
+          ? supabase.from('car_listings').select('engine_cc').eq('id', lead.car_listing.id).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
       setCatalogueProducts(catRes.data || []);
       setDealAddons(dealRes.data || []);
       setHpRows(hpRes.data || []);
+      if (carRes.data?.engine_cc) {
+        setCalcState(s => ({ ...s, engineCc: String(carRes.data.engine_cc) }));
+      }
       setAddonsLoading(false);
     };
     fetch();
@@ -268,26 +305,18 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         .eq('id', car.id)
         .maybeSingle();
 
-      // Auto-fill road tax from engine CC if not yet set
-      let fees = { ...dealFees };
-      if (!fees.road_tax && fullCar?.engine_cc) {
-        const rt = calcRoadTaxEst(fullCar.engine_cc);
-        if (rt > 0) {
-          fees = { ...fees, road_tax: String(rt) };
-          setDealFees(fees);
-        }
-      }
-
+      const carPrice   = Number(fullCar?.selling_price || car.selling_price || 0);
+      const ccToUse    = calcState.engineCc || (fullCar?.engine_cc ? String(fullCar.engine_cc) : '');
+      const loanAmt    = Math.max(0, carPrice - carPrice * calcState.dpPct / 100);
+      const monthly    = calcState.loanTerm > 0
+        ? (loanAmt + loanAmt * (calcState.intRate / 100) * calcState.loanTerm) / (calcState.loanTerm * 12) : 0;
+      const eir        = +(calcState.intRate * 1.85).toFixed(2);
+      const roadTax    = calcRoadTaxEst(ccToUse);
+      const insCalc    = calcInsuranceEst(carPrice, calcState.insNcd, calcState.vehicleType, ccToUse);
       const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
-      const feesTotal = Number(fees.road_tax || 0) + Number(fees.insurance || 0) + Number(fees.puspakom || 0);
-      const carPrice = Number(fullCar?.selling_price || car.selling_price || 0);
-      const token = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-
-      // Best HP row: disbursed > approved > pending > first
-      const bestHp = hpRows.find(r => r.status === 'disbursed')
-        || hpRows.find(r => r.status === 'approved')
-        || hpRows[0] || null;
+      const feesTotal  = (roadTax || 0) + (insCalc?.total || 0) + 150;
+      const token      = crypto.randomUUID();
+      const expiresAt  = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
       const snapshot = {
         car: {
@@ -314,19 +343,25 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           category: a.dealer_products?.category || 'other',
           price:    Number(a.sold_price),
         })),
-        fees: {
-          road_tax:  Number(fees.road_tax  || 0),
-          insurance: Number(fees.insurance || 0),
-          puspakom:  Number(fees.puspakom  || 0),
+        financing_calc: {
+          dp_pct:         calcState.dpPct,
+          loan_amount:    Math.round(loanAmt),
+          tenure_years:   calcState.loanTerm,
+          interest_rate:  calcState.intRate,
+          monthly_install: Math.round(monthly),
+          eir,
+          total_interest:  Math.round(loanAmt * (calcState.intRate / 100) * calcState.loanTerm),
+          total_repayment: Math.round(loanAmt + loanAmt * (calcState.intRate / 100) * calcState.loanTerm),
         },
-        financing: bestHp ? {
-          bank:           bestHp.bank_name,
-          loan_amount:    bestHp.loan_amount,
-          tenure_months:  bestHp.tenure_months,
-          annual_rate_pct: bestHp.annual_rate_pct,
-          monthly_install: bestHp.monthly_install,
-          status:         bestHp.status,
-        } : null,
+        fees: {
+          road_tax:  roadTax || 0,
+          insurance: insCalc?.total || 0,
+          insurance_breakdown: insCalc || null,
+          puspakom:  150,
+          engine_cc: ccToUse || null,
+          vehicle_type: calcState.vehicleType,
+          ncd: calcState.insNcd,
+        },
         car_price:    carPrice,
         addons_total: addonsTotal,
         fees_total:   feesTotal,
@@ -365,6 +400,17 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const currentStageIdx = STAGE_ORDER.indexOf(lead.stage);
   const nextStage  = currentStageIdx < STAGE_ORDER.length - 1 ? STAGE_ORDER[currentStageIdx + 1] : null;
   const isTerminal = lead.stage === 'won' || lead.stage === 'lost' || lead.stage === 'closed_won' || lead.stage === 'closed_lost';
+
+  // ── Inline deal calculator ────────────────────────────────────────────────────
+  const carPriceNum    = car?.selling_price ? Number(car.selling_price) : 0;
+  const dealLoanAmt    = Math.max(0, carPriceNum - carPriceNum * calcState.dpPct / 100);
+  const dealMonthly    = calcState.loanTerm > 0
+    ? (dealLoanAmt + dealLoanAmt * (calcState.intRate / 100) * calcState.loanTerm) / (calcState.loanTerm * 12)
+    : 0;
+  const dealRoadTax    = calcRoadTaxEst(calcState.engineCc);
+  const dealInsCalc    = carPriceNum > 0 ? calcInsuranceEst(carPriceNum, calcState.insNcd, calcState.vehicleType, calcState.engineCc) : null;
+  const dealAddonsAmt  = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
+  const dealOnRoad     = carPriceNum + dealAddonsAmt + (dealRoadTax || 0) + (dealInsCalc?.total || 0) + 150;
 
   // ── Inline edit ──────────────────────────────────────────────────────────────
   function startEdit(field) {
@@ -887,28 +933,92 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       </div>
                     </div>
                   )}
-                  {/* ── Fees for deal sheet ── */}
-                  {car && (
-                    <div style={{ margin: '8px 0', padding: '12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Fees (deal sheet)</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
-                        {[{ key: 'road_tax', label: 'Road Tax' }, { key: 'insurance', label: 'Insurance' }, { key: 'puspakom', label: 'Puspakom' }].map(({ key, label }) => (
-                          <div key={key}>
-                            <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>{label}</p>
-                            <input type="number" placeholder="RM 0" value={dealFees[key]}
-                              onChange={e => setDealFees(f => ({ ...f, [key]: e.target.value }))}
-                              style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
-                          </div>
+                  {/* ── Inline deal calculator ── */}
+                  {car && carPriceNum > 0 && (
+                    <div style={{ margin: '8px 0', padding: '14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Financing & On-Road Calculator</p>
+
+                      {/* Car price read-only */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f9fafb', borderRadius: 7, border: '1px solid #f1f3f5', marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, color: '#6b7280' }}>Car Price</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>RM {carPriceNum.toLocaleString()}</span>
+                      </div>
+
+                      {/* HP inputs */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                        <div>
+                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Down Payment %</p>
+                          <input type="number" value={calcState.dpPct} min="0" max="50"
+                            onChange={e => setCalcState(s => ({ ...s, dpPct: Number(e.target.value) }))}
+                            style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Tenure (years)</p>
+                          <select value={calcState.loanTerm} onChange={e => setCalcState(s => ({ ...s, loanTerm: Number(e.target.value) }))}
+                            style={{ ...w.inp, padding: '7px 10px', fontSize: 12, appearance: 'none' }} className="ld-inp">
+                            {[3, 5, 7, 9].map(y => <option key={y} value={y}>{y} years</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Interest % p.a.</p>
+                          <input type="number" step="0.1" value={calcState.intRate}
+                            onChange={e => setCalcState(s => ({ ...s, intRate: Number(e.target.value) }))}
+                            style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Engine CC</p>
+                          <input type="number" placeholder="e.g. 1500" value={calcState.engineCc}
+                            onChange={e => setCalcState(s => ({ ...s, engineCc: e.target.value }))}
+                            style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
+                        </div>
+                      </div>
+
+                      {/* Vehicle type + NCD */}
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                        {['Saloon', 'Non-Saloon'].map(vt => (
+                          <button key={vt} onClick={() => setCalcState(s => ({ ...s, vehicleType: vt }))}
+                            style={{ flex: 1, padding: '5px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${calcState.vehicleType === vt ? '#6366f1' : '#e5e7eb'}`, background: calcState.vehicleType === vt ? '#eef2ff' : '#f9fafb', color: calcState.vehicleType === vt ? '#6366f1' : '#6b7280' }}>
+                            {vt === 'Saloon' ? 'Saloon' : 'SUV/MPV'}
+                          </button>
                         ))}
                       </div>
-                      {(Number(dealFees.road_tax) + Number(dealFees.insurance) + Number(dealFees.puspakom)) > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid #f1f3f5' }}>
-                          <span style={{ fontSize: 11, color: '#6b7280' }}>Fees subtotal</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>
-                            RM {(Number(dealFees.road_tax || 0) + Number(dealFees.insurance || 0) + Number(dealFees.puspakom || 0)).toLocaleString()}
-                          </span>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
+                        <span style={{ fontSize: 10, color: '#9ca3af', alignSelf: 'center', marginRight: 2 }}>NCD</span>
+                        {[0, 25, 30, 38.33, 45, 55].map(n => (
+                          <button key={n} onClick={() => setCalcState(s => ({ ...s, insNcd: n }))}
+                            style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: `1px solid ${calcState.insNcd === n ? '#6366f1' : '#e5e7eb'}`, background: calcState.insNcd === n ? '#eef2ff' : '#f9fafb', color: calcState.insNcd === n ? '#6366f1' : '#6b7280' }}>
+                            {n === 38.33 ? '38%' : `${n}%`}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Results */}
+                      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f3f5' }}>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#6366f1' }}>RM {Math.round(dealMonthly).toLocaleString()}/mo</span>
                         </div>
-                      )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Loan Amount ({calcState.dpPct}% down)</span>
+                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>RM {Math.round(dealLoanAmt).toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Road Tax (annual)</span>
+                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{dealRoadTax ? `RM ${dealRoadTax.toLocaleString()}` : <span style={{ color: '#d1d5db' }}>Enter CC</span>}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Insurance (NCD {calcState.insNcd}%)</span>
+                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{dealInsCalc ? `RM ${dealInsCalc.total.toLocaleString()}` : '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Puspakom</span>
+                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>RM 150</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>On-Road Total</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: '#dc2626' }}>RM {dealOnRoad.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
