@@ -482,701 +482,468 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     fuOverdueDays = Math.round((today - fd) / 86400000);
   }
 
+  // ── White modal styles ──────────────────────────────────────────────────────
+  const w = {
+    inp: { width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box' },
+    label: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 8px', display: 'block' },
+    section: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', marginBottom: 12 },
+    divider: { height: 1, background: '#f1f3f5', margin: '16px 0' },
+  };
+
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
-        onClick={onClose}
-      />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} onClick={onClose} />
 
-      {/* Modal panel */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
-        pointerEvents: 'none',
-      }}>
-      <div
-        style={{
-          width: '100%', maxWidth: 680,
-          maxHeight: '90vh',
-          background: 'linear-gradient(155deg, #0d0d14 0%, #0a0a0f 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16,
-          boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          fontFamily: "'DM Sans', sans-serif",
-          animation: 'ldPop 0.18s ease',
-          pointerEvents: 'auto',
-        }}
-      >
-        <style>{`
-          @keyframes ldPop { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-          .ld-inp:focus { border-color: rgba(220,38,38,0.4) !important; }
-          .ld-stage-pill:hover { opacity: 1 !important; }
-        `}</style>
+      {/* Centered modal */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, pointerEvents: 'none' }}>
+        <div style={{ width: '100%', maxWidth: 700, maxHeight: '92vh', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'DM Sans', sans-serif", animation: 'ldPop 0.16s ease', pointerEvents: 'auto' }}>
+          <style>{`
+            @keyframes ldPop { from { transform: scale(0.97); opacity:0; } to { transform:scale(1); opacity:1; } }
+            .ld-inp:focus { border-color: #dc2626 !important; outline: none; }
+          `}</style>
 
-        {/* Top accent */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(220,38,38,0.5) 40%,rgba(56,189,248,0.3) 70%,transparent)', zIndex: 1 }} />
-
-        {/* ── HEADER ── */}
-        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            {/* Avatar */}
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'white', flexShrink: 0 }}>
-              {initials}
-            </div>
-
-            {/* Name + phone */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Name */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                {editingField === 'name' ? (
-                  <input
-                    autoFocus
-                    value={editVal}
-                    onChange={e => setEditVal(e.target.value)}
-                    onBlur={saveEdit}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingField(null); }}
-                    style={{ ...inp, padding: '4px 8px', fontSize: 16, fontWeight: 500, flex: 1 }}
-                    className="ld-inp"
-                  />
-                ) : (
-                  <>
-                    <h2 style={{ fontSize: 17, fontWeight: 600, color: 'white', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.buyer_name}</h2>
-                    <button onClick={() => startEdit('name')} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#4b5563', flexShrink: 0 }}>
-                      <Pencil style={{ width: 12, height: 12 }} />
-                    </button>
-                  </>
-                )}
+          {/* ── HEADER ── */}
+          <div style={{ padding: '20px 20px 0', background: '#fff', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+              {/* Avatar */}
+              <div style={{ width: 50, height: 50, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'white', flexShrink: 0, letterSpacing: '-0.5px' }}>
+                {initials}
               </div>
 
-              {/* Phone */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                {editingField === 'phone' ? (
-                  <input
-                    autoFocus
-                    value={editVal}
-                    onChange={e => setEditVal(e.target.value)}
-                    onBlur={saveEdit}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingField(null); }}
-                    style={{ ...inp, padding: '3px 8px', fontSize: 13, flex: 1 }}
-                    className="ld-inp"
-                  />
-                ) : (
-                  <>
-                    <a href={`tel:${lead.phone}`} style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>{lead.phone}</a>
-                    <button onClick={() => startEdit('phone')} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#4b5563', flexShrink: 0 }}>
-                      <Pencil style={{ width: 11, height: 11 }} />
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Badges */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <LeadSourceBadge source={lead.lead_source} />
-                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: stageCfg.bg, border: `1px solid ${stageCfg.border}` }} className={stageCfg.color}>
-                  {stageCfg.icon && <stageCfg.icon size={11} style={{ flexShrink: 0 }} />} {stageCfg.label}
-                </span>
-                <span style={{ fontSize: 11 }} className={ageCls}>{days === 0 ? 'Today' : `${days}d ago`}</span>
-              </div>
-            </div>
-
-            {/* Close */}
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', flexShrink: 0 }}>
-              <X style={{ width: 15, height: 15 }} />
-            </button>
-          </div>
-
-          {/* Quick Actions */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <a
-              href={formatWhatsAppURL(lead.phone)}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.2)', color: '#34d399', fontSize: 12, fontWeight: 500, textDecoration: 'none' }}
-            >
-              <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
-            </a>
-            <a
-              href={`tel:${lead.phone}`}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.2)', color: '#60a5fa', fontSize: 12, fontWeight: 500, textDecoration: 'none' }}
-            >
-              <Phone style={{ width: 13, height: 13 }} />Call
-            </a>
-            {nextStage && !isTerminal && (
-              <button
-                onClick={() => handleStageChange(nextStage)}
-                disabled={stageChanging}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', color: '#f87171', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-              >
-                <ChevronRight style={{ width: 13, height: 13 }} />
-                {STAGE_CONFIG[nextStage]?.label || nextStage}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── SCROLLABLE BODY ── */}
-        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '20px' }}>
-
-          {/* ── Car of Interest ── */}
-          <SLabel>Interested In</SLabel>
-          {car ? (
-            <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden', marginBottom: 6 }}>
-              {carThumb && (
-                <img src={carThumb} alt={carLabel} loading="lazy" decoding="async" style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', filter: 'brightness(0.85)' }} />
-              )}
-              <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'white', margin: '0 0 2px' }}>{carLabel}</p>
-                  {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', margin: 0 }}>RM {car.selling_price.toLocaleString()}</p>}
-                  {instalment && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo</p>}
+              {/* Name + phone + badges */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  {editingField === 'name' ? (
+                    <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={saveEdit}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingField(null); }}
+                      style={{ ...w.inp, padding: '3px 8px', fontSize: 17, fontWeight: 600, flex: 1 }} className="ld-inp" />
+                  ) : (
+                    <>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>{lead.buyer_name}</h2>
+                      <button onClick={() => startEdit('name')} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#d1d5db', flexShrink: 0 }}>
+                        <Pencil style={{ width: 12, height: 12 }} />
+                      </button>
+                    </>
+                  )}
                 </div>
-                {car.slug && (
-                  <a href={`/cars/${car.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#6b7280', flexShrink: 0 }}>
-                    <ExternalLink style={{ width: 14, height: 14 }} />
-                  </a>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {editingField === 'phone' ? (
+                    <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)} onBlur={saveEdit}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingField(null); }}
+                      style={{ ...w.inp, padding: '2px 8px', fontSize: 13, width: 180 }} className="ld-inp" />
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <a href={`tel:${lead.phone}`} style={{ fontSize: 13, color: '#6b7280', textDecoration: 'none' }}>{lead.phone || '—'}</a>
+                      <button onClick={() => startEdit('phone')} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#d1d5db' }}>
+                        <Pencil style={{ width: 10, height: 10 }} />
+                      </button>
+                    </div>
+                  )}
+                  <LeadSourceBadge source={lead.lead_source} />
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{days === 0 ? 'Today' : `${days}d ago`}</span>
+                </div>
               </div>
+
+              {/* Close */}
+              <button onClick={onClose} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', flexShrink: 0 }}>
+                <X style={{ width: 14, height: 14 }} />
+              </button>
             </div>
-          ) : (
-            <div style={{ marginBottom: 6 }}>
-              <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>No car linked.</p>
-              {!showCarSearch ? (
-                <button
-                  onClick={() => setShowCarSearch(true)}
-                  style={{ fontSize: 12, color: '#ef4444', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}
-                >
-                  + Link a car
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
+              </a>
+              <a href={`tel:${lead.phone}`}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                <Phone style={{ width: 13, height: 13 }} />Call
+              </a>
+              {nextStage && !isTerminal && (
+                <button onClick={() => handleStageChange(nextStage)} disabled={stageChanging}
+                  style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: stageChanging ? 0.7 : 1 }}>
+                  <ChevronRight style={{ width: 13, height: 13 }} />Move to {STAGE_CONFIG[nextStage]?.label}
                 </button>
-              ) : (
-                <div>
-                  <div style={{ position: 'relative', marginBottom: 6 }}>
-                    <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#4b5563', pointerEvents: 'none' }} />
-                    <input
-                      autoFocus
-                      value={carSearch}
-                      onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 1) searchCars(e.target.value); }}
-                      placeholder="Search brand or model…"
-                      style={{ ...inp, paddingLeft: 32 }}
-                      className="ld-inp"
-                    />
-                  </div>
-                  {carSearching && <p style={{ fontSize: 11, color: '#6b7280' }}>Searching…</p>}
-                  {carResults.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => linkCar(c.id)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <span style={{ fontSize: 12, color: '#e5e5e5' }}>{c.year} {c.brand} {c.model}</span>
-                      {c.selling_price && <span style={{ fontSize: 11, color: '#ef4444' }}>RM {c.selling_price.toLocaleString()}</span>}
+              )}
+            </div>
+
+            {/* Stage progress bar */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0 16px', borderTop: '1px solid #f1f3f5', overflowX: 'auto', gap: 0, scrollbarWidth: 'none' }}>
+              {STAGE_ORDER.filter(s => s !== 'lost').map((s, i, arr) => {
+                const cfg = STAGE_CONFIG[s];
+                const active = s === lead.stage;
+                const past = STAGE_ORDER.indexOf(s) < STAGE_ORDER.indexOf(lead.stage) && lead.stage !== 'lost';
+                const isLast = i === arr.length - 1;
+                return (
+                  <React.Fragment key={s}>
+                    <button onClick={() => handleStageChange(s)} disabled={stageChanging} title={cfg.label}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 60, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? cfg.headerBorder : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? cfg.headerBorder : past ? '#f3f4f6' : '#fff', transition: 'all 0.15s' }}>
+                        {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+                        {past && <Check style={{ width: 11, height: 11, color: '#9ca3af' }} />}
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: active ? cfg.headerBorder : '#9ca3af', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{cfg.label}</span>
+                    </button>
+                    {!isLast && <div style={{ flex: 1, height: 1, background: past ? '#d1d5db' : '#e5e7eb', minWidth: 8, marginBottom: 18 }} />}
+                  </React.Fragment>
+                );
+              })}
+              {/* Lost pill */}
+              <button onClick={() => handleStageChange('lost')} disabled={stageChanging}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 48, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${lead.stage === 'lost' ? '#dc2626' : '#fee2e2'}`, background: lead.stage === 'lost' ? '#dc2626' : '#fff' }}>
+                  {lead.stage === 'lost' && <X style={{ width: 10, height: 10, color: '#fff' }} />}
+                </div>
+                <span style={{ fontSize: 9, fontWeight: lead.stage === 'lost' ? 700 : 500, color: lead.stage === 'lost' ? '#dc2626' : '#fca5a5', whiteSpace: 'nowrap' }}>Lost</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ── SCROLLABLE BODY ── */}
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px 24px', background: '#f9fafb' }}>
+
+            {/* Loss reason panel */}
+            {showLossPanel && (
+              <div style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 12 }}>Why was this lead lost?</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+                  {LOST_REASONS.map(r => (
+                    <button key={r} onClick={() => setSelectedLossReason(r)}
+                      style={{ padding: '7px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, textAlign: 'left', cursor: 'pointer', background: selectedLossReason === r ? '#fef2f2' : '#f9fafb', border: selectedLossReason === r ? '1px solid #fca5a5' : '1px solid #e5e7eb', color: selectedLossReason === r ? '#dc2626' : '#374151' }}>
+                      {r}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          <Divider />
-
-          {/* ── Follow-up ── */}
-          <SLabel>Follow-up</SLabel>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 6 }}>
-            <div style={{ flex: 1 }}>
-              <input
-                type="datetime-local"
-                value={followUpDate ? followUpDate.slice(0, 16) : ''}
-                onChange={e => setFollowUpDate(e.target.value)}
-                style={{ ...inp, colorScheme: 'dark' }}
-                className="ld-inp"
-              />
-            </div>
-            <button
-              onClick={() => saveFollowUp(followUpDate)}
-              disabled={savingFollowUp}
-              style={{ padding: '9px 14px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', color: 'white', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: savingFollowUp ? 0.6 : 1 }}
-            >
-              {savingFollowUp ? '…' : 'Save'}
-            </button>
-            {followUpDate && (
-              <button onClick={() => saveFollowUp('')} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>Clear</button>
-            )}
-          </div>
-          {fuOverdueDays > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.18)', marginBottom: 4 }}>
-              <AlertTriangle style={{ width: 12, height: 12, color: '#f87171' }} />
-              <span style={{ fontSize: 11, color: '#f87171' }}>Overdue by {fuOverdueDays} day{fuOverdueDays !== 1 ? 's' : ''}</span>
-            </div>
-          )}
-
-          <Divider />
-
-          {/* ── Stage Pipeline ── */}
-          <SLabel>Pipeline Stage</SLabel>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-            {STAGE_ORDER.map(s => {
-              const cfg = STAGE_CONFIG[s];
-              const active = s === lead.stage;
-              return (
-                <button
-                  key={s}
-                  onClick={() => handleStageChange(s)}
-                  disabled={stageChanging}
-                  className="ld-stage-pill"
-                  style={{
-                    padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                    background: active ? cfg.bg : 'rgba(255,255,255,0.04)',
-                    border: active ? `1px solid ${cfg.border}` : '1px solid rgba(255,255,255,0.07)',
-                    color: active ? (cfg.headerBorder) : '#6b7280',
-                    cursor: stageChanging ? 'not-allowed' : 'pointer',
-                    opacity: active ? 1 : 0.65,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {cfg.icon && <cfg.icon size={11} />} {cfg.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Loss reason inline panel */}
-          {showLossPanel && (
-            <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 8, padding: 16, marginBottom: 12 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#f87171', marginBottom: 12 }}>Why was this lead lost?</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
-                {LOST_REASONS.map(r => (
-                  <button
-                    key={r}
-                    onClick={() => setSelectedLossReason(r)}
-                    style={{
-                      padding: '7px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, textAlign: 'left', cursor: 'pointer',
-                      background: selectedLossReason === r ? 'rgba(220,38,38,0.18)' : 'rgba(255,255,255,0.04)',
-                      border: selectedLossReason === r ? '1px solid rgba(220,38,38,0.4)' : '1px solid rgba(255,255,255,0.07)',
-                      color: selectedLossReason === r ? '#f87171' : '#9ca3af',
-                    }}
-                  >
-                    {r}
+                <textarea placeholder="Optional notes…" value={lossNotes} onChange={e => setLossNotes(e.target.value)} rows={2} style={{ ...w.inp, resize: 'none', marginBottom: 10 }} className="ld-inp" />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setShowLossPanel(false); setPendingStage(null); setSelectedLossReason(''); }} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={confirmLoss} disabled={savingLoss || !selectedLossReason} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !selectedLossReason ? 0.5 : 1 }}>
+                    {savingLoss ? 'Saving…' : 'Confirm Loss'}
                   </button>
-                ))}
+                </div>
               </div>
-              <textarea
-                placeholder="Optional notes…"
-                value={lossNotes}
-                onChange={e => setLossNotes(e.target.value)}
-                rows={2}
-                style={{ ...inp, resize: 'none', marginBottom: 10 }}
-                className="ld-inp"
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setShowLossPanel(false); setPendingStage(null); setSelectedLossReason(''); }} style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={confirmLoss} disabled={savingLoss || !selectedLossReason} style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !selectedLossReason ? 0.5 : 1 }}>
-                  {savingLoss ? 'Saving…' : 'Confirm Loss'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <Divider />
-
-          {/* ── Assigned Salesman ── */}
-          <SLabel>Assigned To</SLabel>
-          {teamMembers.length > 0 ? (
-            <div style={{ position: 'relative' }}>
-              <User style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#4b5563', pointerEvents: 'none' }} />
-              <select
-                value={assignedTo}
-                onChange={e => handleAssign(e.target.value)}
-                style={{ ...inp, paddingLeft: 32, appearance: 'none', cursor: 'pointer' }}
-                className="ld-inp"
-              >
-                <option value="">— Unassigned —</option>
-                {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-              </select>
-            </div>
-          ) : (
-            <p style={{ fontSize: 12, color: '#4b5563' }}>No team members set up.</p>
-          )}
-
-          <Divider />
-
-          {/* ── WhatsApp Templates ── */}
-          <SLabel>Quick Messages</SLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {WHATSAPP_TEMPLATES.map((tpl, i) => (
-              <div
-                key={i}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6 }}
-              >
-                <span style={{ fontSize: 12, color: '#9ca3af' }}>{tpl.label}</span>
-                <button
-                  onClick={() => openTemplate(tpl)}
-                  style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 5, background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.2)', color: '#34d399', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  <MessageCircle style={{ width: 11, height: 11 }} />Send
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <Divider />
-
-          {/* ── Notes ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <SLabel>Notes</SLabel>
-            {notesSaved && (
-              <span style={{ fontSize: 10, color: '#34d399', display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Check style={{ width: 10, height: 10 }} />Saved
-              </span>
             )}
-          </div>
-          <textarea
-            value={notes}
-            onChange={e => handleNotesChange(e.target.value)}
-            placeholder="Add notes about this lead…"
-            rows={4}
-            style={{ ...inp, resize: 'vertical', minHeight: 80 }}
-            className="ld-inp"
-          />
 
-          <Divider />
-
-          {/* ── Add-ons / Services (collapsible) ── */}
-          <button
-            onClick={() => setAddonsOpen(v => !v)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', marginBottom: addonsOpen ? 0 : 0 }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Package style={{ width: 13, height: 13, color: '#6b7280' }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: addonsOpen ? '#e5e7eb' : '#9ca3af' }}>
-                Add-ons {!addonsLoading && `(${dealAddons.length})`}
-              </span>
-              {!addonsLoading && dealAddons.length > 0 && (
-                <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
-                  · RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
-                </span>
+            {/* ── Info strip: Assign + Follow-up ── */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+              {teamMembers.length > 0 && (
+                <div style={{ flex: 1 }}>
+                  <p style={w.label}>Assigned To</p>
+                  <div style={{ position: 'relative' }}>
+                    <User style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 12, height: 12, color: '#9ca3af', pointerEvents: 'none' }} />
+                    <select value={assignedTo} onChange={e => handleAssign(e.target.value)} style={{ ...w.inp, paddingLeft: 30, appearance: 'none', cursor: 'pointer' }} className="ld-inp">
+                      <option value="">— Unassigned —</option>
+                      {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                    </select>
+                  </div>
+                </div>
               )}
+              <div style={{ flex: 1 }}>
+                <p style={w.label}>Follow-up</p>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="datetime-local" value={followUpDate ? followUpDate.slice(0, 16) : ''} onChange={e => setFollowUpDate(e.target.value)}
+                    style={{ ...w.inp, flex: 1, colorScheme: 'light' }} className="ld-inp" />
+                  <button onClick={() => saveFollowUp(followUpDate)} disabled={savingFollowUp}
+                    style={{ padding: '9px 12px', borderRadius: 8, background: '#dc2626', color: 'white', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: savingFollowUp ? 0.6 : 1 }}>
+                    {savingFollowUp ? '…' : 'Set'}
+                  </button>
+                  {followUpDate && <button onClick={() => saveFollowUp('')} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>}
+                </div>
+                {fuOverdueDays > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5, padding: '5px 9px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                    <AlertTriangle style={{ width: 11, height: 11, color: '#dc2626' }} />
+                    <span style={{ fontSize: 11, color: '#dc2626' }}>Overdue by {fuOverdueDays}d</span>
+                  </div>
+                )}
+              </div>
             </div>
-            {addonsOpen
-              ? <ChevronUp style={{ width: 13, height: 13, color: '#4b5563' }} />
-              : <ChevronDown style={{ width: 13, height: 13, color: '#4b5563' }} />}
-          </button>
 
-          {addonsOpen && (
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '12px', marginBottom: 0 }}>
-              {addonsLoading ? (
-                <p style={{ fontSize: 12, color: '#4b5563' }}>Loading…</p>
+            {/* ── Car of Interest ── */}
+            <div style={w.section}>
+              <p style={w.label}>Car of Interest</p>
+              {car ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {carThumb && <img src={carThumb} alt={carLabel} loading="lazy" style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{carLabel}</p>
+                    {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>RM {Number(car.selling_price).toLocaleString()}</p>}
+                    {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo</p>}
+                  </div>
+                  {car.slug && <a href={`/cars/${car.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#9ca3af', flexShrink: 0 }}><ExternalLink style={{ width: 14, height: 14 }} /></a>}
+                </div>
               ) : (
                 <>
-                  {/* Attached list */}
-                  {dealAddons.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      {dealAddons.map(a => (
-                        <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 10px', marginBottom: 3, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
-                          <span style={{ fontSize: 12, color: '#e5e7eb', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
-                          <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#4b5563', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
-                            <X style={{ width: 12, height: 12 }} />
-                          </button>
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
-                          Total add-ons: RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}
-                        </span>
+                  {!showCarSearch ? (
+                    <button onClick={() => setShowCarSearch(true)} style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '7px 14px', cursor: 'pointer' }}>
+                      + Link a car
+                    </button>
+                  ) : (
+                    <div>
+                      <div style={{ position: 'relative', marginBottom: 6 }}>
+                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
+                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 1) searchCars(e.target.value); }}
+                          placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
                       </div>
+                      {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
+                      {carResults.map(c => (
+                        <button key={c.id} onClick={() => linkCar(c.id)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
+                          <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
+                          {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
+                        </button>
+                      ))}
                     </div>
                   )}
+                </>
+              )}
+            </div>
 
-                  {/* Attach button */}
-                  {!showAttach && (
-                    <button
-                      onClick={() => { setShowAttach(true); setAddonForm({ product_id: '', sold_price: '', notes: '' }); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#ef4444', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
-                    >
-                      <Plus style={{ width: 12, height: 12 }} />Attach Add-on
-                    </button>
-                  )}
+            {/* ── Notes ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <p style={{ ...w.label, margin: 0 }}>Notes</p>
+                {notesSaved && <span style={{ fontSize: 10, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3 }}><Check style={{ width: 10, height: 10 }} />Saved</span>}
+              </div>
+              <textarea value={notes} onChange={e => handleNotesChange(e.target.value)} placeholder="Add notes about this lead…" rows={3}
+                style={{ ...w.inp, resize: 'vertical', minHeight: 72 }} className="ld-inp" />
+            </div>
 
-                  {/* Inline attach form */}
-                  {showAttach && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12 }}>
-                      {catalogueProducts.length === 0 ? (
-                        <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>No active products configured. Add them in Services & Add-ons.</p>
-                      ) : (
-                        <>
-                          <select
-                            value={addonForm.product_id}
-                            onChange={e => {
-                              const sel = catalogueProducts.find(p => p.id === e.target.value);
-                              setAddonForm(f => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price }));
-                            }}
-                            style={{ ...inp, marginBottom: 6, appearance: 'none' }}
-                            className="ld-inp"
-                          >
-                            <option value="">— Select product —</option>
-                            {catalogueProducts.map(p => (
-                              <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString()}</option>
+            {/* ── HP / Financing ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <p style={{ ...w.label, margin: 0 }}>HP / Financing</p>
+                {hpRows.some(r => r.status === 'pending') && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '1px 7px' }}>
+                    {hpRows.filter(r => r.status === 'pending').length} pending
+                  </span>
+                )}
+              </div>
+              {addonsLoading ? <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p> : (
+                <>
+                  {hpRows.map(row => {
+                    const cfg = HP_STATUS_CFG[row.status] || HP_STATUS_CFG.pending;
+                    return (
+                      <div key={row.id} style={{ marginBottom: 8, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.bank_name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: `${cfg.color}15`, border: `1px solid ${cfg.color}35`, borderRadius: 4, padding: '2px 8px' }}>{cfg.label}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 14, fontSize: 12, color: '#6b7280', marginBottom: row.status === 'pending' || row.status === 'approved' ? 8 : 0 }}>
+                          <span>RM {Number(row.loan_amount).toLocaleString()}</span>
+                          <span>{row.tenure_months}mo</span>
+                          <span>{row.annual_rate_pct}% p.a.</span>
+                          {row.monthly_install && <span style={{ color: '#7c3aed', fontWeight: 600 }}>RM {Number(row.monthly_install).toLocaleString()}/mo EIR</span>}
+                        </div>
+                        {row.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {['approved','rejected'].map(s => (
+                              <button key={s} onClick={() => handleUpdateHPStatus(row.id, s)} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: s === 'approved' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${s === 'approved' ? '#bbf7d0' : '#fecaca'}`, color: s === 'approved' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                {s === 'approved' ? 'Approve' : 'Reject'}
+                              </button>
                             ))}
-                          </select>
-                          <input
-                            type="number"
-                            value={addonForm.sold_price}
-                            onChange={e => setAddonForm(f => ({ ...f, sold_price: e.target.value }))}
-                            placeholder="Sold price (RM)"
-                            style={{ ...inp, marginBottom: 6 }}
-                            className="ld-inp"
-                            min="0"
-                          />
-                          <input
-                            value={addonForm.notes}
-                            onChange={e => setAddonForm(f => ({ ...f, notes: e.target.value }))}
-                            placeholder="Notes (optional)"
-                            style={{ ...inp, marginBottom: 8 }}
-                            className="ld-inp"
-                          />
-                        </>
-                      )}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                        {catalogueProducts.length > 0 && (
-                          <button
-                            onClick={handleAttachAddon}
-                            disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
-                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}
-                          >
-                            {attachSaving ? 'Adding…' : 'Add'}
+                          </div>
+                        )}
+                        {row.status === 'approved' && (
+                          <button onClick={() => handleUpdateHPStatus(row.id, 'disbursed')} style={{ width: '100%', fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', fontWeight: 600 }}>
+                            Mark Disbursed
                           </button>
                         )}
+                      </div>
+                    );
+                  })}
+                  {!showAddHP ? (
+                    <button onClick={() => setShowAddHP(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center', fontWeight: 600 }}>
+                      <Plus style={{ width: 12, height: 12 }} />Add HP Submission
+                    </button>
+                  ) : (
+                    <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 8, padding: 12 }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New HP Submission</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                        <select value={hpForm.bank} onChange={e => setHpForm(f => ({ ...f, bank: e.target.value }))} style={{ ...w.inp, gridColumn: '1/-1', appearance: 'none' }} className="ld-inp">
+                          <option value="">— Select bank —</option>
+                          {MY_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                        <input value={hpForm.amount} onChange={e => setHpForm(f => ({ ...f, amount: e.target.value }))} placeholder="Loan amount (RM)" type="number" style={w.inp} className="ld-inp" />
+                        <select value={hpForm.tenure} onChange={e => setHpForm(f => ({ ...f, tenure: Number(e.target.value) }))} style={{ ...w.inp, appearance: 'none' }} className="ld-inp">
+                          {TENURES.map(t => <option key={t} value={t}>{t}mo ({(t/12).toFixed(0)}yr)</option>)}
+                        </select>
+                        <input value={hpForm.rate} onChange={e => setHpForm(f => ({ ...f, rate: Number(e.target.value) }))} placeholder="Rate % p.a." type="number" step="0.1" style={w.inp} className="ld-inp" />
+                      </div>
+                      {hpInstalment > 0 && (
+                        <div style={{ display: 'flex', gap: 16, marginBottom: 8, padding: '7px 10px', background: '#faf5ff', borderRadius: 6 }}>
+                          <span style={{ fontSize: 12, color: '#7c3aed' }}>EIR: <strong>RM {Math.round(hpInstalment).toLocaleString()}/mo</strong></span>
+                          {lead?.car_listing?.selling_price && hpForm.amount && (
+                            <span style={{ fontSize: 12, color: '#9ca3af' }}>Margin: {((Number(hpForm.amount) / lead.car_listing.selling_price) * 100).toFixed(1)}%</span>
+                          )}
+                        </div>
+                      )}
+                      <input value={hpForm.notes} onChange={e => setHpForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ ...w.inp, marginBottom: 8 }} className="ld-inp" />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setShowAddHP(false)} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#7c3aed', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
+                          {hpSaving ? 'Submitting…' : 'Submit'}
+                        </button>
                       </div>
                     </div>
                   )}
                 </>
               )}
             </div>
-          )}
 
-          {/* ── Deal Sheet ── */}
-          {car && (
-            <div style={{ marginTop: 8 }}>
-              {!dealLink ? (
-                <button
-                  onClick={handleGenerateDealLink}
-                  disabled={generatingLink}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '10px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)', color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer', justifyContent: 'center', opacity: generatingLink ? 0.6 : 1 }}
-                >
-                  <Presentation style={{ width: 13, height: 13 }} />
-                  {generatingLink ? 'Generating…' : 'Generate Deal Sheet'}
-                </button>
-              ) : (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Presentation style={{ width: 12, height: 12, color: '#818cf8' }} />
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af' }}>Deal Sheet</span>
-                    </div>
-                    {minsLeft !== null && (
-                      <span style={{ fontSize: 10, color: minsLeft < 10 ? '#ef4444' : '#6b7280' }}>
-                        {minsLeft > 0 ? `Expires in ${minsLeft}m` : 'Expired'}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(dealLink); setDealLinkCopied(true); setTimeout(() => setDealLinkCopied(false), 2000); }}
-                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: dealLinkCopied ? '#34d399' : '#9ca3af', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                    >
-                      <Copy style={{ width: 11, height: 11 }} />
-                      {dealLinkCopied ? 'Copied!' : 'Copy Link'}
-                    </button>
-                    <button
-                      onClick={() => window.open(dealLink, '_blank')}
-                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                    >
-                      <ExternalLink style={{ width: 11, height: 11 }} />
-                      Open Fullscreen
-                    </button>
-                  </div>
-                  <button
-                    onClick={handleGenerateDealLink}
-                    disabled={generatingLink}
-                    style={{ width: '100%', padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.07)', color: '#4b5563', fontSize: 11, cursor: 'pointer', opacity: generatingLink ? 0.5 : 1 }}
-                  >
-                    {generatingLink ? 'Regenerating…' : 'Regenerate (resets 1h timer)'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── HP / Financing ── */}
-          <div style={{ marginTop: 8 }}>
-            <button
-              onClick={() => setHpOpen(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: hpOpen ? '8px 8px 0 0' : 8, cursor: 'pointer' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <CreditCard style={{ width: 13, height: 13, color: '#6b7280' }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: hpOpen ? '#e5e7eb' : '#9ca3af' }}>
-                  HP / Financing {hpRows.length > 0 ? `(${hpRows.length})` : ''}
-                </span>
-                {hpRows.some(r => r.status === 'pending') && (
-                  <span style={{ fontSize: 10, color: '#f59e0b' }}>{hpRows.filter(r => r.status === 'pending').length} pending</span>
+            {/* ── Add-ons & Deal Sheet ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <p style={{ ...w.label, margin: 0 }}>Add-ons & Deal</p>
+                {!addonsLoading && dealAddons.length > 0 && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString()}</span>
                 )}
               </div>
-              {hpOpen ? <ChevronUp style={{ width: 13, height: 13, color: '#4b5563' }} /> : <ChevronDown style={{ width: 13, height: 13, color: '#4b5563' }} />}
-            </button>
-
-            {hpOpen && (
-              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 12, marginBottom: 0 }}>
-                {/* Existing submissions */}
-                {hpRows.map(row => {
-                  const cfg = HP_STATUS_CFG[row.status] || HP_STATUS_CFG.pending;
-                  return (
-                    <div key={row.id} style={{ marginBottom: 8, padding: '9px 10px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 7 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{row.bank_name}</span>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, borderRadius: 4, padding: '2px 7px' }}>{cfg.label}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
-                        <span>RM {Number(row.loan_amount).toLocaleString()}</span>
-                        <span>{row.tenure_months}mo</span>
-                        <span>{row.annual_rate_pct}% p.a.</span>
-                        {row.monthly_install && <span style={{ color: '#c084fc', fontWeight: 600 }}>RM {Number(row.monthly_install).toLocaleString()}/mo</span>}
-                      </div>
-                      {row.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          {['approved','rejected'].map(s => (
-                            <button key={s} onClick={() => handleUpdateHPStatus(row.id, s)} style={{ flex: 1, fontSize: 10, padding: '4px', borderRadius: 5, cursor: 'pointer', background: s === 'approved' ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${s === 'approved' ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`, color: s === 'approved' ? '#34d399' : '#f87171', fontWeight: 600 }}>
-                              {s === 'approved' ? 'Approve' : 'Reject'}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {row.status === 'approved' && (
-                        <button onClick={() => handleUpdateHPStatus(row.id, 'disbursed')} style={{ width: '100%', fontSize: 10, padding: '4px', borderRadius: 5, cursor: 'pointer', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.25)', color: '#60a5fa', fontWeight: 600 }}>
-                          Mark Disbursed
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Add submission form */}
-                {!showAddHP ? (
-                  <button
-                    onClick={() => setShowAddHP(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#a78bfa', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
-                  >
-                    <Plus style={{ width: 12, height: 12 }} />Add HP Submission
-                  </button>
-                ) : (
-                  <div style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 8, padding: 12, marginTop: 4 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New HP Submission</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-                      <select value={hpForm.bank} onChange={e => setHpForm(f => ({ ...f, bank: e.target.value }))} style={{ ...inp, gridColumn: '1/-1', appearance: 'none' }} className="ld-inp">
-                        <option value="">— Select bank —</option>
-                        {MY_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                      <input value={hpForm.amount} onChange={e => setHpForm(f => ({ ...f, amount: e.target.value }))} placeholder="Loan amount (RM)" type="number" style={inp} className="ld-inp" />
-                      <select value={hpForm.tenure} onChange={e => setHpForm(f => ({ ...f, tenure: Number(e.target.value) }))} style={{ ...inp, appearance: 'none' }} className="ld-inp">
-                        {TENURES.map(t => <option key={t} value={t}>{t}mo ({(t/12).toFixed(0)}yr)</option>)}
-                      </select>
-                      <input value={hpForm.rate} onChange={e => setHpForm(f => ({ ...f, rate: Number(e.target.value) }))} placeholder="Rate % p.a." type="number" step="0.1" style={inp} className="ld-inp" />
-                    </div>
-                    {hpInstalment > 0 && (
-                      <div style={{ display: 'flex', gap: 12, marginBottom: 6, padding: '6px 10px', background: 'rgba(167,139,250,0.06)', borderRadius: 6 }}>
-                        <span style={{ fontSize: 11, color: '#c084fc' }}>EIR: <strong>RM {Math.round(hpInstalment).toLocaleString()}/mo</strong></span>
-                        {lead?.car_listing?.selling_price && hpForm.amount && (
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Margin: {((Number(hpForm.amount) / lead.car_listing.selling_price) * 100).toFixed(1)}%</span>
-                        )}
-                      </div>
-                    )}
-                    <input value={hpForm.notes} onChange={e => setHpForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ ...inp, marginBottom: 8 }} className="ld-inp" />
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setShowAddHP(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '7px', borderRadius: 6, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)', color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
-                        {hpSaving ? 'Submitting…' : 'Submit'}
+              {addonsLoading ? <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p> : (
+                <>
+                  {dealAddons.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 10px', marginBottom: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 7 }}>
+                      <span style={{ fontSize: 13, color: '#374151', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
+                      <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
+                        <X style={{ width: 13, height: 13 }} />
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <Divider />
-
-          {/* ── Activity Timeline ── */}
-          <SLabel>Activity</SLabel>
-          {actLoading ? (
-            <p style={{ fontSize: 12, color: '#4b5563', paddingBottom: 8 }}>Loading…</p>
-          ) : activities.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#4b5563', paddingBottom: 8 }}>No activity yet.</p>
-          ) : (
-            <div style={{ marginBottom: 16 }}>
-              {[...activities].reverse().map((a, idx) => {
-                const cfg = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
-                let desc = a.note || '';
-                if (a.activity_type === 'stage_changed') {
-                  const from = STAGE_CONFIG[a.from_stage]?.label || a.from_stage;
-                  const to   = STAGE_CONFIG[a.to_stage]?.label   || a.to_stage;
-                  desc = `Moved from ${from} → ${to}${a.note ? ` · ${a.note}` : ''}`;
-                }
-                if (a.activity_type === 'created' && !desc) desc = 'Lead created';
-                return (
-                  <div key={a.id} style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color, marginTop: 3, flexShrink: 0 }} />
-                      {idx < activities.length - 1 && <div style={{ width: 1, flex: 1, background: 'rgba(255,255,255,0.05)', marginTop: 4 }} />}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
-                        <span style={{ fontSize: 10, color: '#4b5563', flexShrink: 0 }}>{timeAgo(a.created_at)}</span>
+                  ))}
+                  {!showAttach ? (
+                    <button onClick={() => { setShowAttach(true); setAddonForm({ product_id: '', sold_price: '', notes: '' }); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center', fontWeight: 600, marginBottom: car ? 8 : 0 }}>
+                      <Plus style={{ width: 12, height: 12 }} />Add Add-on
+                    </button>
+                  ) : (
+                    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: car ? 8 : 0 }}>
+                      {catalogueProducts.length === 0 ? (
+                        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>No active products configured. Add them in Services & Add-ons.</p>
+                      ) : (
+                        <>
+                          <select value={addonForm.product_id} onChange={e => { const sel = catalogueProducts.find(p => p.id === e.target.value); setAddonForm(f => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price })); }}
+                            style={{ ...w.inp, marginBottom: 6, appearance: 'none' }} className="ld-inp">
+                            <option value="">— Select product —</option>
+                            {catalogueProducts.map(p => <option key={p.id} value={p.id}>{p.name} — RM {Number(p.selling_price).toLocaleString()}</option>)}
+                          </select>
+                          <input type="number" value={addonForm.sold_price} onChange={e => setAddonForm(f => ({ ...f, sold_price: e.target.value }))}
+                            placeholder="Sold price (RM)" style={{ ...w.inp, marginBottom: 6 }} className="ld-inp" min="0" />
+                        </>
+                      )}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        {catalogueProducts.length > 0 && (
+                          <button onClick={handleAttachAddon} disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
+                            style={{ flex: 1, padding: '7px', borderRadius: 7, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}>
+                            {attachSaving ? 'Adding…' : 'Add'}
+                          </button>
+                        )}
                       </div>
-                      {desc && <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{desc}</p>}
-                      {a.creator?.full_name && <p style={{ fontSize: 10, color: '#4b5563', margin: '2px 0 0' }}>by {a.creator.full_name}</p>}
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                  {car && (
+                    !dealLink ? (
+                      <button onClick={handleGenerateDealLink} disabled={generatingLink}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '9px 14px', borderRadius: 8, background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 12, fontWeight: 600, cursor: 'pointer', justifyContent: 'center', opacity: generatingLink ? 0.6 : 1 }}>
+                        <Presentation style={{ width: 13, height: 13 }} />{generatingLink ? 'Generating…' : 'Generate Deal Sheet'}
+                      </button>
+                    ) : (
+                      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Presentation style={{ width: 12, height: 12, color: '#4338ca' }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Deal Sheet ready</span>
+                          </div>
+                          {minsLeft !== null && <span style={{ fontSize: 10, color: minsLeft < 10 ? '#dc2626' : '#9ca3af' }}>{minsLeft > 0 ? `${minsLeft}m left` : 'Expired'}</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => { navigator.clipboard.writeText(dealLink); setDealLinkCopied(true); setTimeout(() => setDealLinkCopied(false), 2000); }}
+                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f9fafb', border: '1px solid #e5e7eb', color: dealLinkCopied ? '#16a34a' : '#6b7280', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                            <Copy style={{ width: 11, height: 11 }} />{dealLinkCopied ? 'Copied!' : 'Copy Link'}
+                          </button>
+                          <button onClick={() => window.open(dealLink, '_blank')}
+                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                            <ExternalLink style={{ width: 11, height: 11 }} />Open
+                          </button>
+                          <button onClick={handleGenerateDealLink} disabled={generatingLink}
+                            style={{ padding: '7px 10px', borderRadius: 6, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#9ca3af', fontSize: 11, cursor: 'pointer', opacity: generatingLink ? 0.5 : 1 }}>
+                            Regenerate
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </>
+              )}
             </div>
-          )}
 
-          {/* Manual log */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 12 }}>
-            <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Log Activity</p>
-            <select
-              value={logType}
-              onChange={e => setLogType(e.target.value)}
-              style={{ ...inp, appearance: 'none', marginBottom: 8 }}
-              className="ld-inp"
-            >
-              {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-            <textarea
-              value={logNote}
-              onChange={e => setLogNote(e.target.value)}
-              placeholder="What happened?…"
-              rows={2}
-              style={{ ...inp, resize: 'none', marginBottom: 8 }}
-              className="ld-inp"
-            />
-            <button
-              onClick={handleLog}
-              disabled={logging || !logNote.trim()}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 6, background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!logNote.trim() || logging) ? 0.5 : 1 }}
-            >
-              <FileText style={{ width: 12, height: 12 }} />
-              {logging ? 'Logging…' : 'Log Activity'}
-            </button>
-          </div>
+            {/* ── Quick Messages ── */}
+            <div style={w.section}>
+              <p style={w.label}>Quick Messages</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {WHATSAPP_TEMPLATES.map((tpl, i) => (
+                  <button key={i} onClick={() => openTemplate(tpl)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <MessageCircle style={{ width: 11, height: 11 }} />{tpl.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <Divider />
+            {/* ── Activity ── */}
+            <div style={w.section}>
+              <p style={w.label}>Activity</p>
+              {actLoading ? <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p> : activities.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>No activity yet.</p>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  {[...activities].reverse().map((a, idx) => {
+                    const cfg = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
+                    let desc = a.note || '';
+                    if (a.activity_type === 'stage_changed') {
+                      const from = STAGE_CONFIG[a.from_stage]?.label || a.from_stage;
+                      const to   = STAGE_CONFIG[a.to_stage]?.label   || a.to_stage;
+                      desc = `${from} → ${to}${a.note ? ` · ${a.note}` : ''}`;
+                    }
+                    if (a.activity_type === 'created' && !desc) desc = 'Lead created';
+                    return (
+                      <div key={a.id} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color, marginTop: 4, flexShrink: 0 }} />
+                          {idx < activities.length - 1 && <div style={{ width: 1, flex: 1, background: '#e5e7eb', marginTop: 4 }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
+                            <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>{timeAgo(a.created_at)}</span>
+                          </div>
+                          {desc && <p style={{ fontSize: 12, color: '#374151', margin: 0, lineHeight: 1.5 }}>{desc}</p>}
+                          {a.creator?.full_name && <p style={{ fontSize: 10, color: '#9ca3af', margin: '2px 0 0' }}>by {a.creator.full_name}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Log form */}
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+                <p style={{ ...w.label, marginBottom: 8 }}>Log Activity</p>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                  <select value={logType} onChange={e => setLogType(e.target.value)} style={{ ...w.inp, appearance: 'none', flex: 1 }} className="ld-inp">
+                    {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <textarea value={logNote} onChange={e => setLogNote(e.target.value)} placeholder="What happened?…" rows={2} style={{ ...w.inp, resize: 'none', marginBottom: 8 }} className="ld-inp" />
+                <button onClick={handleLog} disabled={logging || !logNote.trim()}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 7, background: '#111827', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!logNote.trim() || logging) ? 0.4 : 1 }}>
+                  <FileText style={{ width: 12, height: 12 }} />{logging ? 'Logging…' : 'Log Activity'}
+                </button>
+              </div>
+            </div>
+
+            <div style={w.divider} />
 
           {/* ── Danger Zone ── */}
           <div style={{ background: 'rgba(220,38,38,0.03)', border: '1px solid rgba(220,38,38,0.1)', borderRadius: 8, padding: 14 }}>
@@ -1185,7 +952,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <div>
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>Permanently delete this lead?</p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setDeleteConfirm(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'none', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => setDeleteConfirm(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(220,38,38,0.2)', border: '1px solid rgba(220,38,38,0.35)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: deleting ? 0.6 : 1 }}>
                     {deleting ? 'Deleting…' : 'Yes, Delete'}
                   </button>

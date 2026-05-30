@@ -40,24 +40,15 @@ function StageSectionHeader({ stage, count }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 7,
-      padding: '8px 16px 4px',
+      padding: '10px 20px 6px',
+      background: '#f9fafb',
+      borderBottom: '1px solid #f1f3f5',
     }}>
-      <div style={{
-        width: 7, height: 7, borderRadius: '50%',
-        background: cfg.headerBorder, flexShrink: 0,
-      }} />
-      <span style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: '0.10em',
-        textTransform: 'uppercase', color: cfg.headerBorder,
-      }}>
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: cfg.headerBorder }}>
         {cfg.label}
       </span>
-      <span style={{
-        fontSize: 10, color: '#374151',
-        fontWeight: 600,
-      }}>
-        {count}
-      </span>
+      <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 500 }}>{count}</span>
     </div>
   );
 }
@@ -169,140 +160,110 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 overflow-x-auto"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <div className="relative flex-1 min-w-[140px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none" />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search buyer or car…"
-            className="w-full pl-9 pr-8 py-1.5 text-sm text-white placeholder-gray-600 rounded-lg focus:outline-none transition-colors"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white">
-              <X className="w-3 h-3" />
+      {/* ── Filter + Stage bar ── */}
+      <div className="flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)' }}>
+        {/* Search + dropdowns */}
+        <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
+          <div className="relative flex-1 min-w-[140px] max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6b7280' }} />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search buyer or car…"
+              className="w-full pl-9 pr-8 py-1.5 text-sm rounded-lg focus:outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#e5e7eb' }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }}>
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
+            className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af' }}>
+            <option value="">All Sources</option>
+            {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          {teamMembers.length > 0 && (
+            <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
+              className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af' }}>
+              <option value="">All Salespeople</option>
+              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+            </select>
+          )}
+          {hasFilters && (
+            <button onClick={() => { setSearch(''); setFilterSource(''); setFilterAssigned(''); }}
+              style={{ fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <X className="w-3 h-3" />Clear
             </button>
           )}
         </div>
 
-        <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
-          className="text-xs text-gray-400 py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <option value="">All Sources</option>
-          {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-
-        {teamMembers.length > 0 && (
-          <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
-            className="text-xs text-gray-400 py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <option value="">All Salespeople</option>
-            {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-          </select>
-        )}
-
-        {hasFilters && (
-          <button onClick={() => { setSearch(''); setFilterSource(''); setFilterAssigned(''); }}
-            className="text-xs text-red-400 hover:text-red-300 flex-shrink-0 flex items-center gap-1 px-2">
-            <X className="w-3 h-3" />Clear
-          </button>
-        )}
-      </div>
-
-      {/* ── Stage tabs ── */}
-      <div
-        className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 overflow-x-auto"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-      >
-        {/* All tab */}
-        <button
-          onClick={() => setActiveStage('all')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
-            background: activeStage === 'all' ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
-            border: activeStage === 'all' ? '1px solid rgba(220,38,38,0.28)' : '1px solid rgba(255,255,255,0.07)',
-            color: activeStage === 'all' ? '#f87171' : '#6b7280',
-          }}
-        >
-          All
-          <span style={{
-            fontSize: 10, padding: '0 5px', borderRadius: 99,
-            background: activeStage === 'all' ? 'rgba(220,38,38,0.18)' : 'rgba(255,255,255,0.06)',
-            color: activeStage === 'all' ? '#f87171' : '#4b5563',
-          }}>
-            {stageTabCounts.all}
-          </span>
-        </button>
-
         {/* Stage tabs */}
-        {STAGE_ORDER.map(stage => {
-          const cfg = STAGE_CONFIG[stage];
-          const active = activeStage === stage;
-          return (
-            <button
-              key={stage}
-              onClick={() => setActiveStage(stage)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
-                background: active ? cfg.bg : 'rgba(255,255,255,0.04)',
-                border: active ? `1px solid ${cfg.border}` : '1px solid rgba(255,255,255,0.07)',
-                color: active ? cfg.headerBorder : '#6b7280',
-              }}
-            >
-              {cfg.label}
-              <span style={{
-                fontSize: 10, padding: '0 5px', borderRadius: 99,
-                background: active ? `${cfg.headerBorder}22` : 'rgba(255,255,255,0.06)',
-                color: active ? cfg.headerBorder : '#4b5563',
+        <div className="flex items-center gap-1 px-4 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <button onClick={() => setActiveStage('all')} style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+            background: activeStage === 'all' ? '#dc2626' : 'rgba(255,255,255,0.05)',
+            border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid rgba(255,255,255,0.08)',
+            color: activeStage === 'all' ? '#fff' : '#9ca3af',
+          }}>
+            All <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts.all}</span>
+          </button>
+          {STAGE_ORDER.map(stage => {
+            const cfg = STAGE_CONFIG[stage];
+            const active = activeStage === stage;
+            return (
+              <button key={stage} onClick={() => setActiveStage(stage)} style={{
+                display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
+                fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+                background: active ? cfg.headerBorder : 'rgba(255,255,255,0.05)',
+                border: active ? `1px solid ${cfg.headerBorder}` : '1px solid rgba(255,255,255,0.08)',
+                color: active ? '#fff' : '#9ca3af',
               }}>
-                {stageTabCounts[stage]}
-              </span>
-            </button>
-          );
-        })}
+                {cfg.label} <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts[stage]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── List body ── */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-gray-600 text-sm">Loading leads…</p>
+        <div className="flex-1 flex items-center justify-center" style={{ background: '#f3f4f6' }}>
+          <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading leads…</p>
         </div>
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-          {activeStage === 'all' ? (
-            // Grouped by stage
-            STAGE_ORDER.map(stage => {
-              const stageLeads = byStage[stage] || [];
-              if (stageLeads.length === 0) return null;
-              return (
-                <div key={stage}>
-                  <StageSectionHeader stage={stage} count={stageLeads.length} />
-                  {stageLeads.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
-                  ))}
-                </div>
-              );
-            })
-          ) : (
-            // Single stage view
-            visibleLeads.length === 0 ? (
-              <div className="flex items-center justify-center py-16">
-                <p className="text-gray-600 text-sm">No leads in this stage.</p>
-              </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6' }}>
+          <div style={{ margin: '12px', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' }}>
+            {activeStage === 'all' ? (
+              STAGE_ORDER.map(stage => {
+                const stageLeads = byStage[stage] || [];
+                if (stageLeads.length === 0) return null;
+                return (
+                  <div key={stage}>
+                    <StageSectionHeader stage={stage} count={stageLeads.length} />
+                    {stageLeads.map(lead => (
+                      <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
+                    ))}
+                  </div>
+                );
+              })
             ) : (
-              visibleLeads.map(lead => (
-                <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
-              ))
-            )
-          )}
+              visibleLeads.length === 0 ? (
+                <div style={{ background: '#fff', padding: '48px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p style={{ color: '#9ca3af', fontSize: 13 }}>No leads in this stage.</p>
+                </div>
+              ) : (
+                visibleLeads.map(lead => (
+                  <LeadCard key={lead.id} lead={lead} onOpen={setOpenLead} />
+                ))
+              )
+            )}
+          </div>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, Calendar } from 'lucide-react';
+import { MessageCircle, Calendar, Phone } from 'lucide-react';
 import LeadSourceBadge from './LeadSourceBadge';
 import {
   getInitials, avatarGradient, getLeadAgeDays,
@@ -11,10 +11,16 @@ function followUpStyle(dateStr) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   const diff = Math.round((d - today) / 86400000);
-  if (diff < 0)  return { color: '#f87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.22)' };
-  if (diff === 0) return { color: '#fbbf24', bg: 'rgba(251,191,36,0.10)',  border: 'rgba(251,191,36,0.22)'  };
-  return           { color: '#6b7280',  bg: 'rgba(107,114,128,0.08)',  border: 'rgba(107,114,128,0.18)'  };
+  if (diff < 0)  return { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+  if (diff === 0) return { color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+  return           { color: '#6b7280',  bg: '#f9fafb',  border: '#e5e7eb' };
 }
+
+// Highlighted source badges for enquiries and bookings
+const HIGHLIGHT_SOURCES = {
+  drevo_enquiry: { label: 'Enquiry', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  booking:       { label: 'Booking', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+};
 
 export default function LeadCard({ lead, onOpen }) {
   const days       = getLeadAgeDays(lead.created_at);
@@ -25,11 +31,12 @@ export default function LeadCard({ lead, onOpen }) {
 
   const car        = lead.car_listing;
   const carLabel   = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : null;
-  const carPrice   = car?.selling_price ? `RM ${car.selling_price.toLocaleString()}` : null;
+  const carPrice   = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString()}` : null;
 
   const followUp   = lead.follow_up_at;
   const fuStyle    = followUpStyle(followUp);
   const assignedName = lead.assigned_profile?.full_name;
+  const highlight  = HIGHLIGHT_SOURCES[lead.lead_source];
 
   return (
     <div
@@ -37,108 +44,100 @@ export default function LeadCard({ lead, onOpen }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        padding: '12px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        gap: 14,
+        padding: '14px 20px 14px 16px',
+        background: '#ffffff',
+        borderBottom: '1px solid #f1f3f5',
+        borderLeft: `3px solid ${stageCfg.headerBorder}`,
         cursor: 'pointer',
-        background: 'transparent',
-        transition: 'background 0.12s',
+        transition: 'background 0.1s, box-shadow 0.1s',
         userSelect: 'none',
+        position: 'relative',
       }}
       className="group"
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#fafafa'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
     >
       {/* Avatar */}
-      <div
-        style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: avatarBg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 800, color: 'white',
-          flexShrink: 0,
-        }}
-      >
+      <div style={{
+        width: 42, height: 42, borderRadius: '50%',
+        background: avatarBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, fontWeight: 800, color: 'white',
+        flexShrink: 0, letterSpacing: '-0.5px',
+      }}>
         {initials}
       </div>
 
       {/* Main info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Row 1: name + source badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {/* Row 1: name + highlight badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {lead.buyer_name}
           </span>
-          <LeadSourceBadge source={lead.lead_source} size="xs" />
+          {highlight ? (
+            <span style={{ fontSize: 10, fontWeight: 700, color: highlight.color, background: highlight.bg, border: `1px solid ${highlight.border}`, borderRadius: 4, padding: '1px 7px', flexShrink: 0, letterSpacing: '0.03em' }}>
+              {highlight.label}
+            </span>
+          ) : (
+            <LeadSourceBadge source={lead.lead_source} size="xs" />
+          )}
         </div>
 
         {/* Row 2: car + price */}
-        {carLabel && (
+        {carLabel ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {carLabel}
             </span>
             {carPrice && (
-              <span style={{ fontSize: 12, color: '#e5e7eb', fontWeight: 500, flexShrink: 0 }}>
-                {carPrice}
+              <span style={{ fontSize: 12, color: '#111827', fontWeight: 600, flexShrink: 0 }}>
+                · {carPrice}
               </span>
             )}
           </div>
+        ) : (
+          <span style={{ fontSize: 12, color: '#d1d5db' }}>No car linked</span>
         )}
       </div>
 
-      {/* Right side: age, follow-up, assigned, stage, WA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {/* Age text */}
-        <span style={{ fontSize: 11, fontWeight: 500 }} className={txtCls}>
-          {days === 0 ? 'Today' : `${days}d`}
-        </span>
-
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         {/* Follow-up chip */}
         {followUp && fuStyle && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 3,
-            padding: '2px 6px', borderRadius: 4,
-            background: fuStyle.bg, border: `1px solid ${fuStyle.border}`,
-          }}>
-            <Calendar style={{ width: 9, height: 9, color: fuStyle.color }} />
-            <span style={{ fontSize: 10, color: fuStyle.color }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', borderRadius: 6, background: fuStyle.bg, border: `1px solid ${fuStyle.border}` }}>
+            <Calendar style={{ width: 10, height: 10, color: fuStyle.color }} />
+            <span style={{ fontSize: 11, color: fuStyle.color, fontWeight: 500 }}>
               {new Date(followUp).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
             </span>
           </div>
         )}
 
+        {/* HP dot */}
+        {lead.hp_count > 0 && (
+          <div title={`${lead.hp_count} HP submission${lead.hp_count > 1 ? 's' : ''}`}
+            style={{ width: 8, height: 8, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }}
+          />
+        )}
+
         {/* Assigned avatar */}
         {assignedName && (
-          <div
-            title={assignedName}
-            style={{
-              width: 20, height: 20, borderRadius: '50%',
-              background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 700, color: '#a78bfa',
-            }}
-          >
+          <div title={assignedName} style={{
+            width: 22, height: 22, borderRadius: '50%',
+            background: '#ede9fe', border: '1px solid #ddd6fe',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 9, fontWeight: 700, color: '#7c3aed',
+          }}>
             {assignedName[0]?.toUpperCase()}
           </div>
         )}
 
-        {/* HP dot placeholder */}
-        {lead.hp_count > 0 && (
-          <div
-            title={`${lead.hp_count} HP submission${lead.hp_count > 1 ? 's' : ''}`}
-            style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: '#a78bfa', flexShrink: 0,
-            }}
-          />
-        )}
-
         {/* Stage pill */}
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '2px 8px', borderRadius: 20,
-          fontSize: 10, fontWeight: 600,
+          display: 'inline-flex', alignItems: 'center',
+          padding: '3px 10px', borderRadius: 20,
+          fontSize: 11, fontWeight: 600,
           background: stageCfg.bg,
           border: `1px solid ${stageCfg.border}`,
           color: stageCfg.headerBorder,
@@ -147,23 +146,27 @@ export default function LeadCard({ lead, onOpen }) {
           {stageCfg.label}
         </span>
 
-        {/* WhatsApp button */}
+        {/* Age */}
+        <span style={{ fontSize: 11, fontWeight: 500, minWidth: 28, textAlign: 'right' }} className={txtCls}>
+          {days === 0 ? 'Today' : `${days}d`}
+        </span>
+
+        {/* WA button */}
         <a
           href={formatWhatsAppURL(lead.phone)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={e => e.stopPropagation()}
-          title="Chat on WhatsApp"
+          title="WhatsApp"
           style={{
-            width: 28, height: 28, borderRadius: 6,
+            width: 30, height: 30, borderRadius: 8,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            background: 'rgba(37,211,102,0.10)', border: '1px solid rgba(37,211,102,0.18)',
-            opacity: 0, transition: 'opacity 0.15s',
+            flexShrink: 0, background: '#f0fdf4', border: '1px solid #bbf7d0',
+            opacity: 0, transition: 'opacity 0.12s',
           }}
           className="group-hover:!opacity-100"
         >
-          <MessageCircle style={{ width: 13, height: 13, color: '#34d399' }} />
+          <MessageCircle style={{ width: 14, height: 14, color: '#16a34a' }} />
         </a>
       </div>
     </div>
