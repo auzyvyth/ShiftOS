@@ -573,9 +573,9 @@ export default function SalesmanLite() {
         return;
       }
 
-      // Premium standalone accounts go to their own page
+      // Premium standalone accounts use the full panel
       if (profileData.plan === "salesman_full") {
-        navigate("/salesman-premium", { replace: true });
+        navigate("/salesman", { replace: true });
         return;
       }
 

@@ -367,7 +367,7 @@ export default function SalesmanPanel() {
  return;
  }
 
- if (profileData.plan === 'salesman_lite') {
+ if (profileData.plan === 'salesman_lite' && !profileData.dealer_id) {
  navigate('/salesman-lite', { replace: true });
  return;
  }
