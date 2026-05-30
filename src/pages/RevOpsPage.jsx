@@ -355,7 +355,6 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
         }, 0);
         avgResponseMin = Math.round(totalMin / responded.length);
       }
-      // TODO: if first_response_at column doesn't exist on leads, avgResponseMin stays null
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
       setLeadLoading(false);
@@ -544,31 +543,26 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
     const fetch = async () => {
       const newAlerts = [];
 
-      // Alert 1 — Unresponded leads (only if first_response_at column exists)
-      // We'll attempt the query and ignore gracefully if the column doesn't exist
-      try {
-        const thirtyMinsAgo = new Date(Date.now() - 30 * 60000).toISOString();
-        const { data: unresponded, error: respErr } = await supabase
-          .from("leads")
-          .select("id, created_at")
-          .eq("dealer_id", userId)
-          .is("first_response_at", null)
-          .eq("stage", "new")
-          .lt("created_at", thirtyMinsAgo);
+      // Alert 1 — Unresponded leads (new leads >30 min without a stage change)
+      const thirtyMinsAgo = new Date(Date.now() - 30 * 60000).toISOString();
+      const { data: unresponded, error: respErr } = await supabase
+        .from("leads")
+        .select("id, created_at")
+        .eq("dealer_id", userId)
+        .is("first_response_at", null)
+        .eq("stage", "new")
+        .lt("created_at", thirtyMinsAgo);
 
-        if (!respErr && unresponded && unresponded.length > 0) {
-          const oldest = unresponded.reduce((a, b) =>
-            new Date(a.created_at) < new Date(b.created_at) ? a : b,
-          );
-          const hrs = hoursAgo(oldest.created_at);
-          newAlerts.push({
-            id: "unresponded",
-            type: "red",
-            message: `${unresponded.length} lead${unresponded.length > 1 ? "s" : ""} haven't been responded to — oldest is ${hrs}h ago`,
-          });
-        }
-      } catch (_) {
-        // first_response_at column may not exist — skip this alert
+      if (!respErr && unresponded && unresponded.length > 0) {
+        const oldest = unresponded.reduce((a, b) =>
+          new Date(a.created_at) < new Date(b.created_at) ? a : b,
+        );
+        const hrs = hoursAgo(oldest.created_at);
+        newAlerts.push({
+          id: "unresponded",
+          type: "red",
+          message: `${unresponded.length} lead${unresponded.length > 1 ? "s" : ""} haven't been responded to — oldest is ${hrs}h ago`,
+        });
       }
 
       // Alert 2 — Aged stock
@@ -829,7 +823,6 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               </>
             ) : (
               <span style={{ fontSize: 12, color: "#4b5563" }}>
-                {/* TODO: add first_response_at column to leads table to enable this metric */}
                 No data
               </span>
             )}
