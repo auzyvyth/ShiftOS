@@ -412,15 +412,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── Car search & link ────────────────────────────────────────────────────────
   async function searchCars(q) {
+    if (!lead?.dealer_id) return;
     setCarSearching(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setCarSearching(false); return; }
     const { data } = await supabase
       .from('car_listings')
       .select('id, brand, model, year, selling_price, images, city, state, slug')
-      .eq('dealer_id', user.id)
+      .eq('dealer_id', lead.dealer_id)
       .neq('status', 'sold')
-      .ilike('model', `%${q}%`)
+      .or(`brand.ilike.%${q}%,model.ilike.%${q}%`)
       .limit(8);
     setCarResults(data || []);
     setCarSearching(false);
@@ -682,7 +681,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     <div>
                       <div style={{ position: 'relative', marginBottom: 6 }}>
                         <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
-                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 1) searchCars(e.target.value); }}
+                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 0) searchCars(e.target.value); }}
                           placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
                       </div>
                       {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}

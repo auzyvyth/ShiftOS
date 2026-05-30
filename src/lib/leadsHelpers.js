@@ -6,17 +6,17 @@ export const STAGE_ORDER = [
 ];
 
 export const STAGE_CONFIG = {
-  new:            { label: 'New',             icon: Sparkles,       color: 'text-sky-400',     bg: 'rgba(56,189,248,0.10)',   border: 'rgba(56,189,248,0.22)',   headerBorder: '#38bdf8' },
-  contacted:      { label: 'Contacted',       icon: Phone,          color: 'text-violet-400',  bg: 'rgba(167,139,250,0.10)',  border: 'rgba(167,139,250,0.22)',  headerBorder: '#a78bfa' },
-  viewing_booked: { label: 'Viewing Booked',  icon: Calendar,       color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
-  negotiating:    { label: 'Negotiating',     icon: MessageSquare,  color: 'text-orange-400',  bg: 'rgba(251,146,60,0.10)',   border: 'rgba(251,146,60,0.22)',   headerBorder: '#fb923c' },
-  deposit_taken:  { label: 'Deposit Taken',   icon: DollarSign,     color: 'text-teal-400',    bg: 'rgba(45,212,191,0.10)',   border: 'rgba(45,212,191,0.22)',   headerBorder: '#2dd4bf' },
-  won:            { label: 'Won',             icon: Trophy,         color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
-  lost:           { label: 'Lost',            icon: XCircle,        color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
+  new:            { label: 'New',             icon: Sparkles,       color: 'text-indigo-600',  bg: '#eef2ff',  border: '#c7d2fe',  headerBorder: '#6366f1' },
+  contacted:      { label: 'Contacted',       icon: Phone,          color: 'text-violet-600',  bg: '#f5f3ff',  border: '#ddd6fe',  headerBorder: '#7c3aed' },
+  viewing_booked: { label: 'Viewing Booked',  icon: Calendar,       color: 'text-amber-600',   bg: '#fffbeb',  border: '#fde68a',  headerBorder: '#d97706' },
+  negotiating:    { label: 'Negotiating',     icon: MessageSquare,  color: 'text-orange-600',  bg: '#fff7ed',  border: '#fed7aa',  headerBorder: '#ea580c' },
+  deposit_taken:  { label: 'Deposit Taken',   icon: DollarSign,     color: 'text-teal-600',    bg: '#f0fdfa',  border: '#99f6e4',  headerBorder: '#0d9488' },
+  won:            { label: 'Won',             icon: Trophy,         color: 'text-emerald-600', bg: '#ecfdf5',  border: '#a7f3d0',  headerBorder: '#059669' },
+  lost:           { label: 'Lost',            icon: XCircle,        color: 'text-red-600',     bg: '#fef2f2',  border: '#fecaca',  headerBorder: '#dc2626' },
   // Legacy aliases kept so old DB data still renders
-  test_drive:     { label: 'Test Drive',      icon: Car,            color: 'text-amber-400',   bg: 'rgba(251,191,36,0.10)',   border: 'rgba(251,191,36,0.22)',   headerBorder: '#fbbf24' },
-  closed_won:     { label: 'Closed Won',      icon: Trophy,         color: 'text-emerald-400', bg: 'rgba(52,211,153,0.07)',   border: 'rgba(52,211,153,0.20)',   headerBorder: '#34d399' },
-  closed_lost:    { label: 'Closed Lost',     icon: XCircle,        color: 'text-red-400',     bg: 'rgba(248,113,113,0.07)',  border: 'rgba(248,113,113,0.20)',  headerBorder: '#f87171' },
+  test_drive:     { label: 'Test Drive',      icon: Car,            color: 'text-amber-600',   bg: '#fffbeb',  border: '#fde68a',  headerBorder: '#d97706' },
+  closed_won:     { label: 'Closed Won',      icon: Trophy,         color: 'text-emerald-600', bg: '#ecfdf5',  border: '#a7f3d0',  headerBorder: '#059669' },
+  closed_lost:    { label: 'Closed Lost',     icon: XCircle,        color: 'text-red-600',     bg: '#fef2f2',  border: '#fecaca',  headerBorder: '#dc2626' },
 };
 
 // ─── Loss reasons ──────────────────────────────────────────────────────────────
@@ -66,16 +66,17 @@ export const WHATSAPP_TEMPLATES = [
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
-  drevo_enquiry: { label: 'XDrive Enquiry', bg: 'bg-blue-900/50',    text: 'text-blue-400',    border: 'border-blue-500/30' },
-  walk_in:       { label: 'Walk-In',        bg: 'bg-purple-900/50',  text: 'text-purple-400',  border: 'border-purple-500/30' },
-  mudah:         { label: 'Mudah',          bg: 'bg-orange-900/50',  text: 'text-orange-400',  border: 'border-orange-500/30' },
-  carlist:       { label: 'Carlist',        bg: 'bg-yellow-900/50',  text: 'text-yellow-400',  border: 'border-yellow-500/30' },
-  facebook:      { label: 'Facebook',       bg: 'bg-blue-900/50',    text: 'text-blue-300',    border: 'border-blue-400/30' },
-  tiktok:        { label: 'TikTok',         bg: 'bg-pink-900/50',    text: 'text-pink-400',    border: 'border-pink-500/30' },
-  instagram:     { label: 'Instagram',      bg: 'bg-rose-900/50',    text: 'text-rose-400',    border: 'border-rose-500/30' },
-  whatsapp:      { label: 'WhatsApp',       bg: 'bg-emerald-900/50', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  referral:      { label: 'Referral',       bg: 'bg-green-900/50',   text: 'text-green-400',   border: 'border-green-500/30' },
-  other:         { label: 'Other',          bg: 'bg-gray-800/60',    text: 'text-gray-400',    border: 'border-gray-600/30' },
+  drevo_enquiry: { label: 'Enquiry',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  walk_in:       { label: 'Walk-In',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  mudah:         { label: 'Mudah',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  carlist:       { label: 'Carlist',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  facebook:      { label: 'Facebook',  bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  tiktok:        { label: 'TikTok',    bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  instagram:     { label: 'Instagram', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  whatsapp:      { label: 'WhatsApp',  bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  referral:      { label: 'Referral',  bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  other:         { label: 'Other',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  manual:        { label: 'Manual',    bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
 };
 
 export const INCOME_OPTIONS = [
