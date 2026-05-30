@@ -29,9 +29,14 @@ Current file is a geometric approximation (L inside oval).
 
 ### 3. Hire-purchase / loan tracking per deal
 **Priority: high — biggest pain point for MY dealers**
-- No HP data anywhere in the app.
-- Need: bank name, loan amount, interest rate, tenure, monthly instalment, submission status (pending / approved / rejected / disbursed).
-- Suggest new table: `deal_financing (id, lead_id, listing_id, dealer_id, bank_name, loan_amount, rate, tenure, status, approved_at)`.
+- Replaces: dealer's WhatsApp group + Excel tracker for HP submissions.
+- What it fixes: single screen showing all active submissions across the dealership, days-elapsed per submission, overdue follow-up alerts. Manager blind-spot gone.
+- What it does NOT fix: still 100% manual status updates (no bank API exists in MY except CIMB's closed dealer app).
+- Multiple submissions per deal supported (sequential by bank — never simultaneous, damages CCRIS).
+- Use EIR (reducing balance) for instalment calculations — HPAA 2026 took effect June 1 2026, flat-rate abolished.
+- New table: `deal_financing (id, lead_id, listing_id, dealer_id, bank_name, loan_amount, margin_pct, tenure_months, monthly_install, status enum(pending/approved/rejected/disbursed), submitted_at, approved_at, disbursed_at, rejection_reason, notes)`.
+- PUSPAKOM B7 inspection field per deal (mandatory for every used car HP, RM60, 60-day validity).
+- Manager view: board of all active submissions — bank, salesman, days since submitted, status.
 
 ### 4. Customer record + remarketing
 **Priority: medium**
