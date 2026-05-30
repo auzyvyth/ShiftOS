@@ -2150,11 +2150,6 @@ function BookingsTab({ userId, listings, salesmen }) {
   );
 }
 
-// ─── PipelinePanel — wraps the full LeadsPage (drag-drop, search, filters) ────
-function PipelinePanel() {
-  return <LeadsPage />;
-}
-
 // ─── CRM tab bar styles ────────────────────────────────────────────────────────
 const CRM_CSS = `
   .crm-tabs {
@@ -2192,53 +2187,6 @@ const CRM_CSS = `
 `;
 
 // ─── CRMPanel (exported) ──────────────────────────────────────────────────────
-export default function CRMPanel({ userId, listings, salesmen, onOpenDoc }) {
-  const [tab, setTab] = useState("pipeline");
-
-  const tabs = [
-    { id: "pipeline", label: "Pipeline" },
-    { id: "enquiries", label: "Enquiries" },
-    { id: "bookings", label: "Bookings" },
-  ];
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
-      <style>{CRM_CSS}</style>
-
-      {/* Tab bar */}
-      <div className="crm-tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            className={`crm-tab${tab === t.id ? " active" : ""}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        {tab === "pipeline" && <PipelinePanel userId={userId} />}
-        {tab === "enquiries" && (
-          <EnquiriesTab userId={userId} onOpenDoc={onOpenDoc} />
-        )}
-        {tab === "bookings" && (
-          <BookingsTab
-            userId={userId}
-            listings={listings}
-            salesmen={salesmen}
-          />
-        )}
-      </div>
-    </div>
-  );
+export default function CRMPanel() {
+  return <LeadsPage />;
 }

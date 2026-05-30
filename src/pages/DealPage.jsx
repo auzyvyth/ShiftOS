@@ -1,9 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 function formatRM(n) {
   return 'RM ' + Number(n || 0).toLocaleString('en-MY');
+}
+
+function formatValidUntil(isoStr) {
+  if (!isoStr) return null;
+  return new Date(isoStr).toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function ExpiredView() {
@@ -15,7 +20,7 @@ function ExpiredView() {
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 8, fontFamily: 'DM Sans, sans-serif' }}>This deal sheet has expired</h2>
         <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}>
-          Deal sheets are valid for 1 hour. Ask your salesman to send you a fresh link, or save the PDF next time before it expires.
+          Ask your salesman to send you a fresh link.
         </p>
       </div>
     </div>
@@ -38,6 +43,12 @@ function ServiceIcon({ category }) {
   return <span style={{ fontSize: 14 }}>{icons[category] || '✦'}</span>;
 }
 
+const WA_ICON = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+);
+
 export default function DealPage() {
   const { token } = useParams();
   const [searchParams] = useSearchParams();
@@ -45,27 +56,13 @@ export default function DealPage() {
   const [deal, setDeal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [minsLeft, setMinsLeft] = useState(null);
 
   useEffect(() => {
     supabase.rpc('get_deal_by_token', { p_token: token }).then(({ data }) => {
       setDeal(data || null);
-      if (data?.expires_at) {
-        const mins = Math.round((new Date(data.expires_at) - Date.now()) / 60000);
-        setMinsLeft(mins > 0 ? mins : 0);
-      }
       setLoading(false);
     });
   }, [token]);
-
-  useEffect(() => {
-    if (!deal?.expires_at) return;
-    const id = setInterval(() => {
-      const mins = Math.round((new Date(deal.expires_at) - Date.now()) / 60000);
-      setMinsLeft(mins > 0 ? mins : 0);
-    }, 30000);
-    return () => clearInterval(id);
-  }, [deal?.expires_at]);
 
   const handlePrint = () => window.print();
   const handleCopy = () => {
@@ -85,10 +82,22 @@ export default function DealPage() {
 
   if (!deal) return <ExpiredView />;
 
-  const { car, dealer, addons = [], car_price, addons_total, grand_total, generated_at, expires_at } = deal;
+  const {
+    car, dealer, salesman = null, buyer_name = null,
+    addons = [], fees = {}, financing_calc = null,
+    car_price, addons_total, fees_total = 0, grand_total,
+    generated_at, expires_at,
+  } = deal;
+
+  const isExpired = expires_at && new Date(expires_at) < new Date();
+  if (isExpired) return <ExpiredView />;
+
   const accentColor = dealer?.brand_color || '#dc2626';
   const mainImage = car?.images?.[0] || null;
   const includedServices = car?.included_services || [];
+  const contactWhatsapp = salesman?.whatsapp || dealer?.whatsapp || null;
+  const contactName = salesman?.name || dealer?.name || null;
+  const waMessage = encodeURIComponent(`Hi, I'd like to proceed with the ${car?.year || ''} ${car?.brand || ''} ${car?.model || ''} deal.`);
 
   return (
     <>
@@ -118,18 +127,20 @@ export default function DealPage() {
           <div style={{ background: accentColor, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <p style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.01em' }}>{dealer?.name || 'Dealership'}</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Deal Sheet</p>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+                Deal Sheet{buyer_name ? ` · Prepared for ${buyer_name}` : ''}
+              </p>
             </div>
-            {dealer?.whatsapp && !presentMode && (
+            {contactWhatsapp && !presentMode && (
               <a
-                href={`https://wa.me/${dealer.whatsapp.replace(/\D/g, '')}`}
+                href={`https://wa.me/${contactWhatsapp.replace(/\D/g, '')}?text=${waMessage}`}
                 target="_blank"
                 rel="noreferrer"
                 className="no-print"
                 style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, padding: '8px 14px', color: 'white', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                Contact Dealer
+                {WA_ICON}
+                {contactName ? `Chat with ${contactName.split(' ')[0]}` : 'Contact Dealer'}
               </a>
             )}
           </div>
@@ -161,7 +172,6 @@ export default function DealPage() {
               </div>
             </div>
 
-            {/* Divider */}
             <div style={{ height: 1, background: '#f1f5f9', margin: '20px 0' }} />
 
             {/* Included services */}
@@ -206,14 +216,120 @@ export default function DealPage() {
               </div>
             )}
 
-            {/* Total */}
-            <div style={{ background: accentColor, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <div>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Package</p>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Car + all add-ons</p>
+            {/* Fees */}
+            {(fees.road_tax > 0 || fees.insurance > 0 || fees.puspakom > 0) && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Fees & Registration</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {fees.road_tax > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Road Tax</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.road_tax)}</span>
+                    </div>
+                  )}
+                  {fees.insurance > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Insurance</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.insurance)}</span>
+                    </div>
+                  )}
+                  {fees.puspakom > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                      <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>PUSPAKOM Inspection</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatRM(fees.puspakom)}</span>
+                    </div>
+                  )}
+                </div>
+                {fees_total > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', marginTop: 4 }}>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>Fees subtotal</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{formatRM(fees_total)}</span>
+                  </div>
+                )}
+                <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, paddingLeft: 2 }}>
+                  *Road tax and insurance are estimates based on JPJ tariff rates.
+                </p>
+                <div style={{ height: 1, background: '#f1f5f9', margin: '16px 0 20px' }} />
               </div>
-              <p style={{ fontSize: presentMode ? 32 : 26, fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }}>{formatRM(grand_total)}</p>
+            )}
+
+            {/* HP Financing estimate */}
+            {financing_calc && financing_calc.monthly_install > 0 && (
+              <div style={{ marginBottom: 20, padding: '18px 20px', background: '#f5f3ff', borderRadius: 14, border: '1px solid #e9d5ff' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>HP Financing Estimate</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                  <div>
+                    <p style={{ fontSize: presentMode ? 32 : 26, fontWeight: 900, color: '#7c3aed', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                      {formatRM(financing_calc.monthly_install)}
+                    </p>
+                    <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>per month</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 12, color: '#6b7280' }}>Loan: <strong style={{ color: '#374151' }}>{formatRM(financing_calc.loan_amount)}</strong></p>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>Tenure: <strong style={{ color: '#374151' }}>{financing_calc.tenure_years} years</strong></p>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>Rate: <strong style={{ color: '#374151' }}>{financing_calc.interest_rate}% p.a. flat</strong></p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#ede9fe', color: '#7c3aed', fontWeight: 600 }}>
+                    {financing_calc.dp_pct}% down payment
+                  </span>
+                  <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'rgba(124,58,237,0.08)', color: '#7c3aed', fontWeight: 600 }}>
+                    Total repayment {formatRM(financing_calc.total_repayment)}
+                  </span>
+                </div>
+                <p style={{ fontSize: 10, color: '#9ca3af', lineHeight: 1.5 }}>
+                  *Estimate only. Subject to bank approval and final loan terms.
+                </p>
+              </div>
+            )}
+
+            {/* Total hero */}
+            <div style={{ background: accentColor, borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>On-Road Total</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Car price</span>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{formatRM(car_price)}</span>
+                </div>
+                {addons_total > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Add-ons</span>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{formatRM(addons_total)}</span>
+                  </div>
+                )}
+                {fees_total > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Fees & registration</span>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>{formatRM(fees_total)}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.18)', marginBottom: 16 }} />
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Total</span>
+                <p style={{ fontSize: presentMode ? 40 : 34, fontWeight: 900, color: 'white', letterSpacing: '-0.025em', lineHeight: 1 }}>
+                  {formatRM(grand_total)}
+                </p>
+              </div>
             </div>
+
+            {/* WhatsApp CTA */}
+            {contactWhatsapp && !presentMode && (
+              <div className="no-print" style={{ marginBottom: 20, padding: '22px 20px', background: '#f8fafc', borderRadius: 14, border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Ready to proceed?</p>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 18 }}>Reach your salesman directly on WhatsApp.</p>
+                <a
+                  href={`https://wa.me/${contactWhatsapp.replace(/\D/g, '')}?text=${waMessage}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '13px 28px', borderRadius: 12, background: '#16a34a', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
+                >
+                  {WA_ICON}
+                  WhatsApp {contactName ? contactName.split(' ')[0] : 'Us'}
+                </a>
+              </div>
+            )}
 
             {/* Actions */}
             {!presentMode && (
@@ -223,7 +339,7 @@ export default function DealPage() {
                   style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#111827', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
                   <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                  Download PDF
+                  Save as PDF
                 </button>
                 <button
                   onClick={handleCopy}
@@ -235,17 +351,14 @@ export default function DealPage() {
               </div>
             )}
 
-            {/* Validity */}
-            <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 1.5 }}>
-              {minsLeft !== null && minsLeft > 0
-                ? `This deal sheet expires in ${minsLeft} minute${minsLeft !== 1 ? 's' : ''}.`
-                : minsLeft === 0
-                ? 'This deal sheet has expired.'
-                : null}
+            {/* Footer */}
+            <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 1.7 }}>
+              {expires_at && `Valid until ${formatValidUntil(expires_at)}`}
               {generated_at && (
-                <> Generated {new Date(generated_at).toLocaleString('en-MY', { dateStyle: 'medium', timeStyle: 'short' })} · {dealer?.name}</>
+                <><br />Generated {new Date(generated_at).toLocaleString('en-MY', { dateStyle: 'medium', timeStyle: 'short' })} · {dealer?.name}</>
               )}
             </p>
+
           </div>
         </div>
       </div>
