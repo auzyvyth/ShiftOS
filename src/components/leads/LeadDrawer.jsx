@@ -94,7 +94,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [notesSaved, setNotesSaved]   = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting]       = useState(false);
-  const [stageChanging, setStageChanging] = useState(false);
+
   const [showLossPanel, setShowLossPanel] = useState(false);
   const [selectedLossReason, setSelectedLossReason] = useState('');
   const [lossNotes, setLossNotes]     = useState('');
@@ -336,27 +336,26 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     } catch { toast.error('Failed to save'); }
   }
 
-  // ── Stage change ─────────────────────────────────────────────────────────────
-  async function handleStageChange(newStage) {
+  // ── Stage change — optimistic, fire-and-forget ───────────────────────────────
+  function handleStageChange(newStage) {
     if (newStage === lead.stage) return;
     if (newStage === 'lost') {
       setPendingStage('lost');
       setShowLossPanel(true);
       return;
     }
-    setStageChanging(true);
     const oldStage = lead.stage;
-    setLead(p => ({ ...p, stage: newStage }));
-    try {
-      const updated = await onUpdate(lead.id, { stage: newStage });
-      if (updated) setLead(updated);
-      await addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage });
-      if (newStage === 'won') toast.success('Lead marked as Won!');
-      else toast.success('Stage updated');
-    } catch {
-      setLead(p => ({ ...p, stage: oldStage }));
-      toast.error('Error saving — please try again');
-    } finally { setStageChanging(false); }
+    setLead(p => ({ ...p, stage: newStage })); // instant
+    onUpdate(lead.id, { stage: newStage })
+      .then(updated => {
+        if (updated) setLead(updated);
+        addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage }).catch(() => {});
+        if (newStage === 'won') toast.success('Lead marked as Won!');
+      })
+      .catch(() => {
+        setLead(p => ({ ...p, stage: oldStage }));
+        toast.error('Error saving — please try again');
+      });
   }
 
   async function confirmLoss() {
@@ -562,8 +561,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 <Phone style={{ width: 13, height: 13 }} />Call
               </a>
               {nextStage && !isTerminal && (
-                <button onClick={() => handleStageChange(nextStage)} disabled={stageChanging}
-                  style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: stageChanging ? 0.7 : 1 }}>
+                <button onClick={() => handleStageChange(nextStage)}
+                  style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   <ChevronRight style={{ width: 13, height: 13 }} />Move to {STAGE_CONFIG[nextStage]?.label}
                 </button>
               )}
@@ -578,7 +577,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 const isLast = i === arr.length - 1;
                 return (
                   <React.Fragment key={s}>
-                    <button onClick={() => handleStageChange(s)} disabled={stageChanging} title={cfg.label}
+                    <button onClick={() => handleStageChange(s)} title={cfg.label}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 60, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
                       <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? cfg.headerBorder : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? cfg.headerBorder : past ? '#f3f4f6' : '#fff', transition: 'all 0.15s' }}>
                         {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
@@ -591,7 +590,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 );
               })}
               {/* Lost pill */}
-              <button onClick={() => handleStageChange('lost')} disabled={stageChanging}
+              <button onClick={() => handleStageChange('lost')}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 48, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
                 <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${lead.stage === 'lost' ? '#dc2626' : '#fee2e2'}`, background: lead.stage === 'lost' ? '#dc2626' : '#fff' }}>
                   {lead.stage === 'lost' && <X style={{ width: 10, height: 10, color: '#fff' }} />}

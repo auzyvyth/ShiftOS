@@ -39,16 +39,16 @@ function StageSectionHeader({ stage, count }) {
   const cfg = STAGE_CONFIG[stage];
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 7,
-      padding: '10px 20px 6px',
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '13px 22px 9px',
       background: '#f9fafb',
       borderBottom: '1px solid #f1f3f5',
     }}>
-      <div style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: cfg.headerBorder }}>
+      <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: cfg.headerBorder }}>
         {cfg.label}
       </span>
-      <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 500 }}>{count}</span>
+      <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{count}</span>
     </div>
   );
 }
@@ -238,7 +238,7 @@ export default function LeadsPage() {
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6' }}>
-          <div style={{ margin: '12px', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' }}>
+          <div style={{ margin: '16px', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #e5e7eb' }}>
             {activeStage === 'all' ? (
               STAGE_ORDER.map(stage => {
                 const stageLeads = byStage[stage] || [];
