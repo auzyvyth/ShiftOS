@@ -379,64 +379,147 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .lr { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px 16px; background: #080C14; font-family: 'DM Sans', sans-serif; overflow-y: auto; }
+        /* Layout */
+        .lr { min-height: 100vh; display: flex; background: #080C14; font-family: 'DM Sans', sans-serif; }
 
-        .lr-brand { display: flex; align-items: center; gap: 10px; }
-        .lr-brand-dot { width: 32px; height: 32px; background: #dc2626; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; box-shadow: 0 0 20px rgba(220,38,38,0.35); }
-        .lr-brand-name { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 4px; color: #fff; line-height: 1; }
+        /* Left panel — branding */
+        .lr-left {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 48px 52px;
+          background: #080C14;
+          border-right: 1px solid rgba(255,255,255,0.05);
+          position: relative;
+          overflow: hidden;
+        }
+        .lr-left::before {
+          content: '';
+          position: absolute;
+          top: -120px; left: -120px;
+          width: 480px; height: 480px;
+          background: radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .lr-left::after {
+          content: '';
+          position: absolute;
+          bottom: -80px; right: -80px;
+          width: 320px; height: 320px;
+          background: radial-gradient(circle, rgba(220,38,38,0.07) 0%, transparent 70%);
+          pointer-events: none;
+        }
 
-        .lr-card { width: min(420px, 100%); background: #0f1420; border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 36px 32px 32px; box-shadow: 0 32px 80px rgba(0,0,0,0.5); opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
-        .lr-card.in { opacity: 1; transform: translateY(0); }
+        /* Right panel — form */
+        .lr-right {
+          width: 480px;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 48px 52px;
+          background: #060A12;
+          overflow-y: auto;
+        }
 
-        .lr-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #dc2626; font-weight: 500; margin-bottom: 6px; }
-        .lr-heading { font-family: 'Bebas Neue', sans-serif; font-size: 38px; color: #fff; letter-spacing: 2px; line-height: 1; margin-bottom: 28px; }
+        /* Brand */
+        .lr-brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+        .lr-brand-mark {
+          width: 36px; height: 36px;
+          background: #dc2626;
+          border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff;
+          box-shadow: 0 0 28px rgba(220,38,38,0.45);
+        }
+        .lr-brand-name { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 5px; color: #fff; line-height: 1; }
 
-        .lr-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #e2e8f0; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
-        .lr-google:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.18); }
+        /* Left hero copy */
+        .lr-hero { position: relative; z-index: 1; }
+        .lr-hero-eyebrow {
+          font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+          color: rgba(220,38,38,0.8); font-weight: 600; margin-bottom: 20px;
+          display: flex; align-items: center; gap: 10px;
+        }
+        .lr-hero-eyebrow::before {
+          content: ''; display: inline-block; width: 24px; height: 1px; background: #dc2626;
+        }
+        .lr-hero-title {
+          font-family: 'Bebas Neue', sans-serif;
+          font-size: clamp(44px, 4.5vw, 64px);
+          color: #fff; letter-spacing: 2px; line-height: 1.05;
+          margin-bottom: 20px;
+        }
+        .lr-hero-title span { color: #dc2626; }
+        .lr-hero-sub {
+          font-size: 14px; color: rgba(255,255,255,0.38); line-height: 1.65;
+          max-width: 380px;
+        }
+
+        /* Stats row */
+        .lr-stats { display: flex; gap: 40px; position: relative; z-index: 1; }
+        .lr-stat-num {
+          font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #fff;
+          letter-spacing: 1px; line-height: 1;
+        }
+        .lr-stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+        /* Left footer */
+        .lr-left-footer { font-size: 11px; color: rgba(255,255,255,0.15); position: relative; z-index: 1; }
+
+        /* Form area */
+        .lr-form-head { margin-bottom: 32px; }
+        .lr-form-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: rgba(220,38,38,0.8); font-weight: 600; margin-bottom: 8px; }
+        .lr-form-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: #fff; letter-spacing: 2px; line-height: 1; }
+        .lr-form-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-top: 6px; }
+
+        .lr-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
+        .lr-google:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
 
         .lr-or { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-        .lr-or-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
-        .lr-or-text { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; }
+        .lr-or-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+        .lr-or-text { font-size: 11px; color: rgba(255,255,255,0.18); letter-spacing: 0.1em; }
 
         .lr-field { margin-bottom: 16px; }
         .lr-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
-        .lr-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); font-weight: 500; }
-        .lr-forgot { font-size: 11px; color: rgba(255,255,255,0.3); background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: 'DM Sans', sans-serif; }
-        .lr-forgot:hover { color: rgba(255,255,255,0.6); }
+        .lr-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-weight: 600; }
+        .lr-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: 'DM Sans', sans-serif; }
+        .lr-forgot:hover { color: rgba(255,255,255,0.55); }
         .lr-forgot.active { color: #dc2626; }
 
         .lr-input-wrap { position: relative; }
-        .lr-input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
-        .lr-input::placeholder { color: rgba(255,255,255,0.12); }
-        .lr-input:focus { border-color: rgba(220,38,38,0.6); background: rgba(220,38,38,0.04); }
+        .lr-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
+        .lr-input::placeholder { color: rgba(255,255,255,0.1); }
+        .lr-input:focus { border-color: rgba(220,38,38,0.5); background: rgba(220,38,38,0.03); }
         .lr-input.pr { padding-right: 42px; }
-        .lr-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: rgba(255,255,255,0.25); display: flex; transition: color .2s; }
-        .lr-eye:hover { color: rgba(255,255,255,0.6); }
+        .lr-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: rgba(255,255,255,0.2); display: flex; transition: color .2s; }
+        .lr-eye:hover { color: rgba(255,255,255,0.5); }
 
-        .lr-error { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.25); border-radius: 8px; padding: 10px 14px; color: #f87171; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
+        .lr-error { background: rgba(220,38,38,0.07); border: 1px solid rgba(220,38,38,0.22); border-radius: 8px; padding: 10px 14px; color: #f87171; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
 
-        .lr-magic { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.18); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+        .lr-magic { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
         .lr-magic-title { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 4px; }
-        .lr-magic-body { font-size: 11.5px; color: rgba(251,191,36,0.6); line-height: 1.55; margin-bottom: 10px; }
-        .lr-magic-input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 9px 12px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; margin-bottom: 8px; }
-        .lr-magic-btn { width: 100%; padding: 10px; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); border-radius: 6px; color: #fbbf24; font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: background .15s; }
-        .lr-magic-btn:hover:not(:disabled) { background: rgba(251,191,36,0.2); }
+        .lr-magic-body { font-size: 11.5px; color: rgba(251,191,36,0.55); line-height: 1.55; margin-bottom: 10px; }
+        .lr-magic-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 9px 12px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; margin-bottom: 8px; }
+        .lr-magic-btn { width: 100%; padding: 10px; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.22); border-radius: 6px; color: #fbbf24; font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: background .15s; }
+        .lr-magic-btn:hover:not(:disabled) { background: rgba(251,191,36,0.18); }
         .lr-magic-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .lr-reset-panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
-        .lr-reset-hint { font-size: 11.5px; color: rgba(255,255,255,0.3); margin-bottom: 10px; line-height: 1.5; }
-        .lr-reset-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: rgba(255,255,255,0.55); font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: border-color .15s, color .15s; }
-        .lr-reset-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); }
+        .lr-reset-panel { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+        .lr-reset-hint { font-size: 11.5px; color: rgba(255,255,255,0.28); margin-bottom: 10px; line-height: 1.5; }
+        .lr-reset-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.5); font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: border-color .15s, color .15s; }
+        .lr-reset-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.75); }
         .lr-reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .lr-submit { width: 100%; padding: 14px; background: #dc2626; border: none; border-radius: 10px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; cursor: pointer; position: relative; overflow: hidden; transition: background .2s; margin-top: 4px; }
-        .lr-submit:hover:not(:disabled) { background: #b91c1c; }
+        .lr-submit { width: 100%; padding: 14px; background: #dc2626; border: none; border-radius: 10px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; cursor: pointer; position: relative; overflow: hidden; transition: background .2s, box-shadow .2s; margin-top: 4px; }
+        .lr-submit:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 8px 28px rgba(220,38,38,0.4); }
         .lr-submit:active:not(:disabled) { transform: scale(.99); }
         .lr-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-        .lr-shimmer { position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent); animation: shimmer 2.2s infinite; }
+        .lr-shimmer { position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); animation: shimmer 2.4s infinite; }
         @keyframes shimmer { from{left:-60%} to{left:130%} }
 
         .lr-dots span { animation: blink 1.4s infinite both; font-size: 22px; }
@@ -446,25 +529,78 @@ export default function LoginPage() {
 
         .lr-success { color: #4ade80; font-size: 12px; display: flex; align-items: center; gap: 6px; }
 
-        .lr-below { width: min(420px, 100%); text-align: center; }
-        .lr-create { display: block; padding: 13px; border: 1px solid rgba(220,38,38,0.2); border-radius: 10px; color: #f87171; font-size: 13px; font-weight: 500; text-decoration: none; transition: background .18s, border-color .18s; }
-        .lr-create:hover { background: rgba(220,38,38,0.06); border-color: rgba(220,38,38,0.35); }
-        .lr-tagline { margin-top: 14px; font-size: 10px; color: rgba(255,255,255,0.14); letter-spacing: 0.08em; text-transform: uppercase; }
+        .lr-create-row { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; }
+        .lr-create-text { font-size: 12px; color: rgba(255,255,255,0.25); }
+        .lr-create-link { font-size: 12px; color: #f87171; font-weight: 600; text-decoration: none; transition: color .15s; }
+        .lr-create-link:hover { color: #fca5a5; }
 
-        @media(max-width:480px){ .lr-card{ padding:28px 20px 24px; border-radius:16px; } .lr-heading{ font-size:32px; } }
+        /* Fade-in */
+        .lr-right { opacity: 0; transform: translateX(12px); transition: opacity .5s ease, transform .5s ease; }
+        .lr-right.in { opacity: 1; transform: translateX(0); }
+        .lr-left-content { opacity: 0; transform: translateX(-10px); transition: opacity .6s ease .1s, transform .6s ease .1s; }
+        .lr-left-content.in { opacity: 1; transform: translateX(0); }
+
+        /* Mobile: single column */
+        @media(max-width: 860px) {
+          .lr { flex-direction: column; }
+          .lr-left { display: none; }
+          .lr-right { width: 100%; padding: 40px 24px; min-height: 100vh; }
+        }
       `}</style>
 
       <div className="lr">
-        {/* Brand */}
-        <div className="lr-brand">
-          <div className="lr-brand-dot">S</div>
-          <span className="lr-brand-name">SHIFTOS</span>
+        {/* Left — brand panel */}
+        <div className="lr-left">
+          <div className={`lr-left-content${mounted ? ' in' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+            <div className="lr-brand">
+              <div className="lr-brand-mark">S</div>
+              <span className="lr-brand-name">SHIFTOS</span>
+            </div>
+
+            <div className="lr-hero">
+              <p className="lr-hero-eyebrow">Dealer Management Platform</p>
+              <h1 className="lr-hero-title">
+                The OS for<br />
+                Malaysian<br />
+                <span>Car Dealers</span>
+              </h1>
+              <p className="lr-hero-sub">
+                Pipeline, HP financing, F&I, team management and revenue analytics — built for how Malaysian used car dealerships actually operate.
+              </p>
+            </div>
+
+            <div>
+              <div className="lr-stats">
+                <div>
+                  <div className="lr-stat-num">6</div>
+                  <div className="lr-stat-label">Role Dashboards</div>
+                </div>
+                <div>
+                  <div className="lr-stat-num">15+</div>
+                  <div className="lr-stat-label">Panel Banks</div>
+                </div>
+                <div>
+                  <div className="lr-stat-num">RM1k</div>
+                  <div className="lr-stat-label">Starting / mo</div>
+                </div>
+              </div>
+              <div className="lr-left-footer" style={{ marginTop: 32 }}>
+                &copy; {new Date().getFullYear()} ShiftOS &nbsp;&middot;&nbsp;
+                <a href="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms</a>
+                &nbsp;&middot;&nbsp;
+                <a href="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy</a>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Card */}
-        <div className={`lr-card${mounted ? " in" : ""}`}>
-          <p className="lr-eyebrow">Restricted Access</p>
-          <h2 className="lr-heading">SIGN IN</h2>
+        {/* Right — form panel */}
+        <div className={`lr-right${mounted ? ' in' : ''}`}>
+          <div className="lr-form-head">
+            <p className="lr-form-eyebrow">Restricted Access</p>
+            <h2 className="lr-form-title">SIGN IN</h2>
+            <p className="lr-form-sub">Access your dealership dashboard</p>
+          </div>
 
           {/* Google — first, most prominent */}
           <button
@@ -640,19 +776,11 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-        </div>
 
-        {/* Below card — create account + tagline */}
-        <div className="lr-below">
-          <a href="/onboarding" className="lr-create">
-            Don't have an account? <strong>Create for free →</strong>
-          </a>
-          <p className="lr-tagline">
-            Free for salesmen · 14-day trial for dealers ·{" "}
-            <a href="/terms" style={{ color: "inherit", textDecoration: "underline" }}>Terms</a>
-            {" · "}
-            <a href="/privacy" style={{ color: "inherit", textDecoration: "underline" }}>Privacy</a>
-          </p>
+          <div className="lr-create-row">
+            <span className="lr-create-text">Don't have an account?</span>
+            <a href="/onboarding" className="lr-create-link">Create for free →</a>
+          </div>
         </div>
       </div>
     </>
