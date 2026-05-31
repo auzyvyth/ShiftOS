@@ -67,7 +67,7 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) redirectByRole(data.session.user);
+      if (data.session) redirectByRole(data.session.user, data.session);
     });
   }, []);
 
@@ -107,7 +107,7 @@ export default function LoginPage() {
     if (error) setError(error.message);
   };
 
-  const redirectByRole = async (user) => {
+  const redirectByRole = async (user, session = null) => {
     if (!user?.id) return;
     const { data: profile } = await supabase
       .from("profiles")
@@ -118,31 +118,35 @@ export default function LoginPage() {
     const subdomain = profile?.subdomain;
     const role = profile?.role;
 
+    const getActiveSession = async () => {
+      if (session) return session;
+      const { data: { session: s } } = await supabase.auth.getSession();
+      return s;
+    };
+
     if (role === "superadmin" || role === "dealer") {
       if (profile?.onboarding_complete === false && !subdomain) {
         window.location.href = `${base}/onboarding`;
         return;
       }
       if (subdomain && isProd) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
+        const activeSession = await getActiveSession();
+        window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(activeSession)}`;
       } else {
         window.location.href = `${base}/dashboard`;
       }
     } else if (role === "salesman") {
-      const { data: { session: sess } } = await supabase.auth.getSession();
+      const activeSession = await getActiveSession();
       const target = profile?.dealer_id
         ? "salesman"
         : profile?.plan === "salesman_full"
         ? "salesman-premium"
         : "salesman-lite";
-      const suffix = isProd ? handoffSuffix(sess) : "";
+      const suffix = isProd ? handoffSuffix(activeSession) : "";
       window.location.href = `${base}/${target}${suffix}`;
     } else {
-      const { data: { session: sess } } = await supabase.auth.getSession();
-      const suffix = isProd ? handoffSuffix(sess) : "";
+      const activeSession = await getActiveSession();
+      const suffix = isProd ? handoffSuffix(activeSession) : "";
       window.location.href = `${base}/salesman${suffix}`;
     }
   };
@@ -192,7 +196,11 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    await redirectByRole(data.user);
+    try {
+      await redirectByRole(data.user, data.session);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    }
     setLoading(false);
   };
 
