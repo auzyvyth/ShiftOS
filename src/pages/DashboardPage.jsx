@@ -6275,6 +6275,14 @@ export default function DashboardPage() {
     return () => supabase.removeChannel(ch);
   }, [userId]);
 
+  const [planUsage, setPlanUsage] = useState(null);
+  useEffect(() => {
+    if (!profile?.id) return;
+    const did = (profile.role === 'manager' || profile.role === 'admin') ? profile.dealer_id : profile.id;
+    if (!did) return;
+    supabase.rpc('get_plan_usage', { p_dealer_id: did }).then(({ data }) => { if (data) setPlanUsage(data); });
+  }, [profile?.id]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
@@ -6666,6 +6674,10 @@ export default function DashboardPage() {
       glow: hotCount > 0 ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.03)",
     },
   ];
+
+  const planCfg     = getPlanConfig(profile?.plan);
+  const nextPlan    = nextDealerPlan(profile?.plan);
+  const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
 
   const notifCount = notifications.filter(n => !n.is_read).length;
   const timeAgo = (iso) => {
