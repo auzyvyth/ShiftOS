@@ -15,15 +15,6 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Priority 3 — Monetisation Infrastructure (needed before billing)
-
-### BILLING-3. Multi-branch (Dealer Group tier only)
-- Currently single-dealer tenancy per subdomain
-- Dealer groups: one login, branch-level P&L separation, cross-branch stock visibility
-- Architectural change — scope carefully before starting
-
----
-
 ---
 
 ## Priority 5 — CRM polish
