@@ -23,8 +23,8 @@ const MAX_SLIDES = 5;
 
 const card = {
   position: 'relative',
-  background: 'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#fff',
+  border: '1px solid #e5e7eb',
 };
 
 const btnRed = {
@@ -127,7 +127,7 @@ export default function HeroSlidesPage({ userId, profile }) {
         flexWrap: 'wrap',
       }}>
         <div>
-          <h2 style={{ color: 'white', fontSize: 20, fontWeight: 700, margin: 0 }}>
+          <h2 style={{ color: '#111827', fontSize: 20, fontWeight: 700, margin: 0 }}>
             Hero Carousel
           </h2>
           <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4, maxWidth: 360 }}>
@@ -179,7 +179,7 @@ export default function HeroSlidesPage({ userId, profile }) {
             className="animate-spin"
             style={{
               width: 26, height: 26,
-              border: '2px solid rgba(255,255,255,0.07)',
+              border: '2px solid #e5e7eb',
               borderTopColor: '#dc2626',
               borderRadius: '50%',
             }}
@@ -198,8 +198,8 @@ export default function HeroSlidesPage({ userId, profile }) {
         >
           <div style={{
             width: 56, height: 56, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#374151',
           }}>
@@ -210,7 +210,7 @@ export default function HeroSlidesPage({ userId, profile }) {
             </svg>
           </div>
           <div>
-            <p style={{ color: 'white', fontWeight: 600, fontSize: 16, marginBottom: 6 }}>No slides yet</p>
+            <p style={{ color: '#111827', fontWeight: 600, fontSize: 16, marginBottom: 6 }}>No slides yet</p>
             <p style={{ color: '#6b7280', fontSize: 14 }}>Add your first featured car</p>
           </div>
           <button

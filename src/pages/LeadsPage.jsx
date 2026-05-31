@@ -146,10 +146,10 @@ export default function LeadsPage() {
 
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
         <div>
-          <h1 className="text-base font-bold text-white">Pipeline</h1>
-          <p className="text-xs text-gray-600">{leads.length} lead{leads.length !== 1 ? 's' : ''} total</p>
+          <h1 className="text-base font-bold text-gray-900">Pipeline</h1>
+          <p className="text-xs text-gray-500">{leads.length} lead{leads.length !== 1 ? 's' : ''} total</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
@@ -161,16 +161,16 @@ export default function LeadsPage() {
       </div>
 
       {/* ── Filter + Stage bar ── */}
-      <div className="flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)' }}>
+      <div className="flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
         {/* Search + dropdowns */}
         <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
           <div className="relative flex-1 min-w-[140px] max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6b7280' }} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#9ca3af' }} />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search buyer or car…"
               className="w-full pl-9 pr-8 py-1.5 text-sm rounded-lg focus:outline-none"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#e5e7eb' }}
+              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#111827' }}
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }}>
@@ -180,14 +180,14 @@ export default function LeadsPage() {
           </div>
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
             className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af' }}>
+            style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
             <option value="">All Sources</option>
             {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {teamMembers.length > 0 && (
             <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
               className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af' }}>
+              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
               <option value="">All Salespeople</option>
               {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
             </select>
@@ -205,9 +205,9 @@ export default function LeadsPage() {
           <button onClick={() => setActiveStage('all')} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
             fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-            background: activeStage === 'all' ? '#dc2626' : 'rgba(255,255,255,0.05)',
-            border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid rgba(255,255,255,0.08)',
-            color: activeStage === 'all' ? '#fff' : '#9ca3af',
+            background: activeStage === 'all' ? '#dc2626' : '#f9fafb',
+            border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid #e5e7eb',
+            color: activeStage === 'all' ? '#fff' : '#374151',
           }}>
             All <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts.all}</span>
           </button>
@@ -218,9 +218,9 @@ export default function LeadsPage() {
               <button key={stage} onClick={() => setActiveStage(stage)} style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
                 fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-                background: active ? cfg.headerBorder : 'rgba(255,255,255,0.05)',
-                border: active ? `1px solid ${cfg.headerBorder}` : '1px solid rgba(255,255,255,0.08)',
-                color: active ? '#fff' : '#9ca3af',
+                background: active ? cfg.headerBorder : '#f9fafb',
+                border: active ? `1px solid ${cfg.headerBorder}` : '1px solid #e5e7eb',
+                color: active ? '#fff' : '#374151',
               }}>
                 {cfg.label} <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts[stage]}</span>
               </button>
@@ -237,7 +237,7 @@ export default function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6' }}>
+        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ margin: '8px 0 0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
             {activeStage === 'all' ? (
               STAGE_ORDER.map(stage => {
