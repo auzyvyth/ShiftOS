@@ -393,39 +393,6 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }
   };
 
-  const handleToggleDoc = async (rowId, docKey, current) => {
-    const row = hpRows.find(r => r.id === rowId);
-    const updated = { ...(row?.hp_docs || {}), [docKey]: !current };
-    const { error } = await supabase.from('deal_financing').update({ hp_docs: updated }).eq('id', rowId);
-    if (!error) setHpRows(p => p.map(r => r.id === rowId ? { ...r, hp_docs: updated } : r));
-  };
-
-  // HP-5: JPJ transfer tracking
-  const handleJPJStatus = async (newStatus) => {
-    const patch = { jpj_status: newStatus };
-    if (newStatus === 'submitted') patch.jpj_submitted_at = new Date().toISOString();
-    if (newStatus === 'completed') patch.jpj_completed_at = new Date().toISOString();
-    const { error } = await supabase.from('leads').update(patch).eq('id', lead.id);
-    if (!error) {
-      setLead(p => ({ ...p, ...patch }));
-      toast.success(newStatus === 'submitted' ? 'JPJ submitted' : newStatus === 'completed' ? 'JPJ completed' : 'JPJ reset');
-    }
-  };
-
-  // HP-4: LOU tracking — LOU typically valid 7-14 days
-  const handleSetLOU = async (rowId) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 14);
-    const expiresStr = expires.toISOString().slice(0, 10);
-    const patch = { lou_received_at: new Date().toISOString(), lou_expires_at: expiresStr };
-    const { error } = await supabase.from('deal_financing').update(patch).eq('id', rowId);
-    if (!error) {
-      setHpRows(p => p.map(r => r.id === rowId ? { ...r, ...patch } : r));
-      toast.success('LOU logged — expires in 14 days');
-    }
-  };
-
   const handleGenerateDealLink = async () => {
     if (!car || !lead?.dealer_id) return;
     setGeneratingLink(true);
