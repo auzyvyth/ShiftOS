@@ -227,7 +227,7 @@ function Skeleton() {
 }
 
 /* ─── structured data ─── */
-function useCarSchema(listing) {
+function useCarSchema(listing, dealer) {
   useEffect(() => {
     if (!listing) return;
     const name = [listing.year, listing.brand, listing.model, listing.variant]
@@ -237,6 +237,7 @@ function useCarSchema(listing) {
       "@context": "https://schema.org",
       "@type": "Car",
       name,
+      description: listing.specs || listing.description || undefined,
       brand: { "@type": "Brand", name: listing.brand },
       model: listing.model,
       vehicleModelDate: String(listing.year ?? ""),
@@ -265,6 +266,9 @@ function useCarSchema(listing) {
         itemCondition: listing.is_recon
           ? "https://schema.org/RefurbishedCondition"
           : "https://schema.org/UsedCondition",
+        seller: dealer
+          ? { "@type": "Organization", name: dealer.site_name || dealer.dealership }
+          : undefined,
       },
     };
     const el = document.createElement("script");
@@ -275,7 +279,7 @@ function useCarSchema(listing) {
     return () => {
       document.getElementById("car-schema")?.remove();
     };
-  }, [listing?.id]);
+  }, [listing?.id, dealer?.id]);
 }
 
 /* ─── main ─── */
@@ -634,7 +638,7 @@ export default function CarDetailPage() {
     load();
   }, [slug]);
 
-  useCarSchema(car);
+  useCarSchema(car, dealer);
 
   useEffect(() => {
     if (!car) return;
@@ -900,7 +904,7 @@ export default function CarDetailPage() {
         />
         {(() => {
           const desc = car
-            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale in Malaysia. RM ${Number(car.selling_price).toLocaleString("en-MY")}, ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km, ` : ""}${car.transmission || ""}. Verified dealer on XDrive.`
+            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Verified dealer on XDrive.`
             : "";
           const img = car?.images?.[0] || "https://xdrive.my/og-default.jpg";
           const url = car ? `https://xdrive.my/showroom/${car.slug}` : "https://xdrive.my";
@@ -920,6 +924,15 @@ export default function CarDetailPage() {
             {car && <link rel="canonical" href={url} />}
           </>;
         })()}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://xdrive.my" },
+            { "@type": "ListItem", "position": 2, "name": "Showroom", "item": "https://xdrive.my/showroom" },
+            { "@type": "ListItem", "position": 3, "name": carTitle, "item": `https://xdrive.my/showroom/${car.slug}` }
+          ]
+        })}</script>
       </Helmet>
 
       <style>{`
@@ -1507,7 +1520,7 @@ export default function CarDetailPage() {
           )}
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.26em', color:'#dc2626', fontWeight:700, marginBottom:4 }}>{car.brand}</p>
           <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(2.4rem,9vw,3.2rem)', color: th.text, lineHeight:0.95, letterSpacing:'0.03em', marginBottom:8 }}>
-            {car.model}{car.variant ? ' '+car.variant : ''}
+            {car.year} {car.brand} {car.model}{car.variant ? ' '+car.variant : ''}
           </h1>
           <p style={{ fontSize:12, color:'#475569', letterSpacing:'0.04em', marginBottom:6 }}>
             {[car.year, car.body_type, car.transmission].filter(Boolean).join('  ·  ')}
@@ -2096,7 +2109,7 @@ export default function CarDetailPage() {
                 marginBottom: 10,
               }}
             >
-              {car.model}
+              {car.year} {car.brand} {car.model}
               {car.variant ? " " + car.variant : ""}
             </h1>
             <p

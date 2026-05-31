@@ -512,30 +512,63 @@ export default function MarketplacePage() {
     },
   };
 
+  const pageTitle = (() => {
+    if (hotDeals) return "Hot Deal Cars in Malaysia — Best Prices | XDrive";
+    const parts = [];
+    if (condition === 'recon') parts.push('Recon');
+    else if (condition === 'local') parts.push('Local');
+    if (brand) parts.push(brand);
+    if (bodyType) parts.push(bodyType + 's');
+    const carType = parts.length ? parts.join(' ') + ' ' : '';
+    const loc = state ? ` in ${state}, Malaysia` : ' in Malaysia';
+    return `Used ${carType}Cars for Sale${loc} | XDrive`;
+  })();
+
+  const pageDesc = (() => {
+    const cnt = stats.listings ? `${stats.listings.toLocaleString()}+ ` : '';
+    if (hotDeals) return `Find the best hot deal cars in Malaysia. Browse ${cnt}discounted used cars from verified dealers. Save thousands on Perodua, Proton, Honda, Toyota and more.`;
+    const parts = [];
+    if (condition === 'recon') parts.push('recon');
+    else if (condition === 'local') parts.push('local');
+    if (brand) parts.push(brand);
+    if (bodyType) parts.push(bodyType.toLowerCase());
+    const carType = parts.length ? parts.join(' ') + ' ' : '';
+    const loc = state ? `${state}, Malaysia` : 'Malaysia';
+    return `Browse ${cnt}${carType}cars for sale in ${loc}. Verified dealers, best prices on Perodua, Proton, Honda, Toyota and more.`;
+  })();
+
   return (
     <>
       <Helmet>
-        <title>XDrive — Malaysia's Car Marketplace</title>
-        <meta name="description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia. Find the best deals on Perodua, Proton, Honda, Toyota and more." />
-        <link rel="canonical" href={`https://xdrive.my/marketplace${hotDeals ? '?hot_deals=true' : condition ? `?condition=${condition}` : ''}`} />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDesc} />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <link rel="canonical" href="https://xdrive.my/marketplace" />
         <meta property="og:type"        content="website" />
         <meta property="og:url"         content="https://xdrive.my/marketplace" />
         <meta property="og:locale"      content="en_MY" />
         <meta property="og:site_name"   content="XDrive" />
-        <meta property="og:title"       content="XDrive — Malaysia's Car Marketplace" />
-        <meta property="og:description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia." />
+        <meta property="og:title"       content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
         <meta property="og:image"       content="https://xdrive.my/og-marketplace.jpg" />
         <meta name="twitter:card"        content="summary_large_image" />
-        <meta name="twitter:title"       content="XDrive — Malaysia's Car Marketplace" />
-        <meta name="twitter:description" content="Browse thousands of new, used, and recon cars from verified dealers across Malaysia." />
+        <meta name="twitter:title"       content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
         <meta name="twitter:image"       content="https://xdrive.my/og-marketplace.jpg" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "XDrive Marketplace",
-          "description": "Browse thousands of verified used cars from trusted dealers across Malaysia.",
-          "url": "https://xdrive.my/marketplace",
-          "publisher": { "@type": "Organization", "name": "XDrive", "url": "https://xdrive.my" },
+          "@type": "WebSite",
+          "name": "XDrive",
+          "url": "https://xdrive.my",
+          "description": "Malaysia's car marketplace. Buy and sell new, used, and recon cars from verified dealers.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://xdrive.my/marketplace?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
         })}</script>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
