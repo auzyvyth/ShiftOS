@@ -63,6 +63,7 @@ const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const OversightTab     = React.lazy(() => import("../components/OversightTab"));
+const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -5987,7 +5988,7 @@ export default function DashboardPage() {
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(tabParam || "listings");
+  const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState("listings"); // listings | revenue | marketplace
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
@@ -6557,6 +6558,7 @@ export default function DashboardPage() {
   const { snapshot, loading: snapshotLoading } = useDealerSnapshot(userId);
 
   const TITLES = {
+    overview:  { title: "Overview", sub: "Dealership pulse at a glance" },
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
@@ -6572,6 +6574,7 @@ export default function DashboardPage() {
   };
 
   const NAV = [
+    { id: "overview",   Icon: Gauge,           label: "Overview" },
     { id: "crm",        Icon: MessageCircle,   label: "Leads / CRM" },
     { id: "listings",   Icon: Car,             label: "Listings",          badge: listings.length },
     { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
@@ -7033,6 +7036,11 @@ export default function DashboardPage() {
             </p>
             <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
           </div>
+
+          {/* ── Overview Tab ── */}
+          {activeTab === "overview" && userId && (
+            <OverviewTab dealerId={getDealerIdFromProfile(profile)} />
+          )}
 
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
