@@ -935,7 +935,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                   <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>CCRIS Issue Detected</p>
                   <p style={{ fontSize: 11, color: '#b91c1c', lineHeight: 1.5 }}>
-                    This buyer has a CCRIS rejection. Advise the customer to check their CCRIS report before submitting further applications.
+                    This buyer has a CCRIS rejection. Other banks are likely to reject too. Advise the customer to check their CCRIS report before submitting further applications.
                   </p>
                 </div>
               )}
