@@ -1,4 +1,19 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
+
+class TabErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+        <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
+        <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
+        <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
@@ -6549,22 +6564,22 @@ export default function DashboardPage() {
   };
 
   const NAV = [
-    { id: "listings", Icon: Car, label: "Listings", badge: listings.length },
-    { id: "add", Icon: PlusCircle, label: "Add Listing" },
-    { id: "crm", Icon: MessageCircle, label: "CRM" },
-    { id: "analytics", Icon: BarChart2, label: "Analytics" },
-    { id: "marketplace", Icon: Globe, label: "Marketplace" },
-    { id: "outreach",   Icon: Megaphone, label: "Outreach Hub",     badge: null },
-    { id: "ai_manager", Icon: Bot, label: "AI Sales Manager" },
-    { id: "team", Icon: Users, label: "Team" },
-    { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
-    { id: "stock", Icon: Package, label: "Stock" },
-    { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops",   Icon: BarChart3,  label: "RevOps" },
-    { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
-    { id: "hp",       Icon: CreditCard, label: "HP Board" },
-    { id: "oversight", Icon: Shield, label: "GM Oversight" },
-    { id: "customers", Icon: UserCheck, label: "Customers" },
+    { id: "crm",        Icon: MessageCircle,   label: "Leads / CRM" },
+    { id: "listings",   Icon: Car,             label: "Listings",          badge: listings.length },
+    { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
+    { id: "stock",      Icon: Package,         label: "Stock" },
+    { id: "hp",         Icon: CreditCard,      label: "HP Board" },
+    { id: "analytics",  Icon: BarChart2,       label: "Analytics" },
+    { id: "revops",     Icon: BarChart3,       label: "RevOps" },
+    { id: "team",       Icon: Users,           label: "Team" },
+    { id: "customers",  Icon: UserCheck,       label: "Customers" },
+    { id: "outreach",   Icon: Megaphone,       label: "Outreach Hub" },
+    { id: "ai_manager", Icon: Bot,             label: "AI Sales Manager" },
+    { id: "documents",  Icon: FileText,        label: "Documents" },
+    { id: "services",   Icon: Wrench,          label: "Services & Add-ons" },
+    { id: "hero",       Icon: HeroCarouselIcon,label: "Hero Carousel" },
+    { id: "oversight",  Icon: Shield,          label: "GM Oversight" },
+    { id: "marketplace",Icon: Globe,           label: "Marketplace" },
   ];
 
   const STAT_CARDS = [
@@ -7309,6 +7324,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          <TabErrorBoundary>
           <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
@@ -7390,6 +7406,7 @@ export default function DashboardPage() {
             <CustomersTab dealerId={userId} />
           )}
           </React.Suspense>
+          </TabErrorBoundary>
         </div>
       </main>
 

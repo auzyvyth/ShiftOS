@@ -118,6 +118,14 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 
 ## Done (reference)
 
+- **AUDIT-FIX: callClaude → ai-proxy** — all premium AI features (captions, WA replies, lead scoring, followup suggestions) now route through the working Edge Function instead of direct Anthropic API (which had no key)
+- **AUDIT-FIX: Analytics data scope** — removed dead `dealer_id.eq.${userId}` arm from salesman car fetch; only `assigned_to` filter used
+- **AUDIT-FIX: Loan form data leak** — loanLeads now filtered by `salesman_id` so salesmen only see their own buyers' contacts
+- **AUDIT-FIX: Duplicate leads on appointment** — `.is("dealer_id", null)` replaced with `.eq("dealer_id", profile.dealer_id)` so existing leads are found correctly
+- **AUDIT-FIX: Stale lead logic** — changed OR to AND so a lead is only stale when follow_up is overdue AND no activity in 48h
+- **AUDIT-FIX: Dashboard tab order** — reordered NAV to daily-workflow priority: Leads → Listings → Add → Stock → HP Board → Analytics → RevOps → Team → Customers → ...
+- **AUDIT-FIX: ErrorBoundary on lazy tabs** — TabErrorBoundary class wraps all lazy-loaded dashboard tabs; errors show retry button instead of white screen
+
 - Analytics RPC migration — Salesmanpanel + DashboardPage (rawEvents removed, 3 RPCs deployed)
 - React.memo on CarCard + CarCardMarket (marketplace perf)
 - Self-booking prevention on CarDetailPage
