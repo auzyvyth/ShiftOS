@@ -3,7 +3,7 @@ import { X, UserPlus, Search } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { INCOME_OPTIONS, EMPLOYMENT_OPTIONS, SOURCE_CONFIG, STAGE_ORDER, STAGE_CONFIG } from '../../lib/leadsHelpers';
 
-const inp = "w-full bg-white/[0.05] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+const inp = "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-all";
 const sel = inp + " appearance-none";
 
 const EMPTY = {
@@ -26,7 +26,6 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
   const [saving, setSaving]   = useState(false);
   const [errors, setErrors]   = useState({});
 
-  // Load dealer's active listings
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -90,28 +89,25 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
         className="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-xl overflow-hidden"
-        style={{ background: 'rgba(11,11,15,0.98)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 0 0 1px rgba(220,38,38,0.07), 0 32px 64px rgba(0,0,0,0.72)', fontFamily: "'DM Sans', sans-serif" }}
+        style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', fontFamily: "'DM Sans', sans-serif" }}
       >
-        {/* Top accent */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent 8%,rgba(220,38,38,0.55) 38%,rgba(56,189,248,0.38) 68%,transparent 92%)' }} />
-
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #f3f4f6' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.18)' }}>
-              <UserPlus className="w-3.5 h-3.5 text-red-400" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+              <UserPlus className="w-4 h-4 text-red-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-white text-sm">Add Lead</h3>
-              <p className="text-xs text-gray-600">New buyer enquiry</p>
+              <h3 className="font-semibold text-gray-900 text-sm">Add Lead</h3>
+              <p className="text-xs text-gray-500">New buyer enquiry</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -121,50 +117,50 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Buyer name */}
           <div>
-            <label className="text-xs font-medium text-gray-400 block mb-1.5">Buyer Name <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Buyer Name <span className="text-red-500">*</span></label>
             <input
               value={form.buyer_name}
               onChange={e => set('buyer_name', e.target.value)}
-              className={`${inp} ${errors.buyer_name ? 'border-red-500/50' : ''}`}
+              className={`${inp} ${errors.buyer_name ? 'border-red-400 bg-red-50' : ''}`}
               placeholder="e.g. Ahmad Faiz"
             />
-            {errors.buyer_name && <p className="text-xs text-red-400 mt-1">{errors.buyer_name}</p>}
+            {errors.buyer_name && <p className="text-xs text-red-500 mt-1">{errors.buyer_name}</p>}
           </div>
 
           {/* Phone */}
           <div>
-            <label className="text-xs font-medium text-gray-400 block mb-1.5">Phone Number <span className="text-red-500">*</span></label>
-            <div className={`flex items-center overflow-hidden ${inp.replace('w-full','').trim()} ${errors.phone ? 'border-red-500/50' : ''}`} style={{ padding:0 }}>
-              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Phone Number <span className="text-red-500">*</span></label>
+            <div className={`flex items-center overflow-hidden border rounded-lg ${errors.phone ? 'border-red-400' : 'border-gray-200'} bg-white`}>
+              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
               <input
                 value={(form.phone||'').replace(/^\+?60/,'')}
                 onChange={e => set('phone', '+60'+e.target.value.replace(/\D/g,''))}
-                className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
                 placeholder="X-XXXXXXX"
                 type="tel"
               />
             </div>
-            {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
+            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
           </div>
 
           {/* Source + Stage */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">Lead Source <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Lead Source <span className="text-red-500">*</span></label>
               <select
                 value={form.lead_source}
                 onChange={e => set('lead_source', e.target.value)}
-                className={`${sel} ${errors.lead_source ? 'border-red-500/50' : ''}`}
+                className={`${sel} ${errors.lead_source ? 'border-red-400 bg-red-50' : ''}`}
               >
                 <option value="" disabled>Select…</option>
                 {Object.entries(SOURCE_CONFIG).map(([k, v]) => (
                   <option key={k} value={k}>{v.label}</option>
                 ))}
               </select>
-              {errors.lead_source && <p className="text-xs text-red-400 mt-1">{errors.lead_source}</p>}
+              {errors.lead_source && <p className="text-xs text-red-500 mt-1">{errors.lead_source}</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">Initial Stage</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Initial Stage</label>
               <select value={form.stage} onChange={e => set('stage', e.target.value)} className={sel}>
                 {STAGE_ORDER.map(s => (
                   <option key={s} value={s}>{STAGE_CONFIG[s]?.label || s}</option>
@@ -175,13 +171,13 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Car of interest */}
           <div>
-            <label className="text-xs font-medium text-gray-400 block mb-1.5">Car of Interest</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Car of Interest</label>
             <div className="relative mb-1.5">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               <input
                 value={carSearch}
                 onChange={e => setCarSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm text-white placeholder-gray-600 rounded-lg bg-white/[0.04] border border-white/10 focus:outline-none focus:border-red-600/40"
+                className="w-full pl-9 pr-3 py-2 text-sm text-gray-900 placeholder-gray-400 rounded-lg bg-white border border-gray-200 focus:outline-none focus:border-red-400"
                 placeholder="Search brand, model…"
               />
             </div>
@@ -202,27 +198,26 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Follow-up date */}
           <div>
-            <label className="text-xs font-medium text-gray-400 block mb-1.5">Follow-up Date (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Follow-up Date (optional)</label>
             <input
               type="datetime-local"
               value={form.follow_up_at}
               onChange={e => set('follow_up_at', e.target.value)}
               className={inp}
-              style={{ colorScheme: 'dark' }}
             />
           </div>
 
           {/* Employment + Income */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">Employment</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Employment</label>
               <select value={form.employment_type} onChange={e => set('employment_type', e.target.value)} className={sel}>
                 <option value="">—</option>
                 {EMPLOYMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">Monthly Income</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Monthly Income</label>
               <select value={form.income_bracket} onChange={e => set('income_bracket', e.target.value)} className={sel}>
                 <option value="">—</option>
                 {INCOME_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -233,7 +228,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* Assign to */}
           {teamMembers.length > 0 && (
             <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">Assign To</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Assign To</label>
               <select value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)} className={sel}>
                 <option value="">— Unassigned —</option>
                 {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
@@ -243,7 +238,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Notes */}
           <div>
-            <label className="text-xs font-medium text-gray-400 block mb-1.5">Notes (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Notes (optional)</label>
             <textarea
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
@@ -255,12 +250,11 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
         </form>
 
         {/* Footer */}
-        <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop: '1px solid #f3f4f6' }}>
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white transition-all"
-            style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:text-gray-900 transition-all border border-gray-200 hover:bg-gray-50"
           >
             Cancel
           </button>

@@ -1865,6 +1865,8 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
   const [slugStatsRows, setSlugStatsRows] = useState([]);
   const [dailyRows, setDailyRows] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [lpSearch, setLpSearch] = useState('');
+  const [lpVisible, setLpVisible] = useState(20);
   useEffect(() => {
     if (!profile?.id) return;
     const dealerId = getDealerIdFromProfile(profile);
@@ -2409,16 +2411,33 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           </span>
         </div>
 
+        {/* ── search bar ── */}
+        <div style={{ padding:'0 20px 14px', position:'relative' }}>
+          <Search style={{ position:'absolute', left:32, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'#9ca3af', pointerEvents:'none' }} />
+          <input
+            value={lpSearch}
+            onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
+            placeholder="Search brand, model or variant…"
+            style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
+          />
+        </div>
+
         {listings.length === 0 ? (
           <div style={{ padding:'48px 20px', textAlign:'center', color:'#374151', fontSize:13 }}>
             No listings to analyse yet
           </div>
         ) : (() => {
-          const sorted = [...listings].sort((a, b) => {
+          const allSorted = [...listings].sort((a, b) => {
             const aViews = carStatsMap[a.id]?.views || 0;
             const bViews = carStatsMap[b.id]?.views || 0;
             return bViews - aViews;
           });
+          const lpQ = lpSearch.trim().toLowerCase();
+          const filtered = lpQ
+            ? allSorted.filter(l => `${l.brand} ${l.model} ${l.variant || ''} ${l.year || ''}`.toLowerCase().includes(lpQ))
+            : allSorted;
+          const sorted = filtered.slice(0, lpVisible);
+          const hasMore = filtered.length > lpVisible;
           return (
             <>
               {/* ── desktop table ── */}
@@ -2584,6 +2603,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                   );
                 })}
               </div>
+              {hasMore && (
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6' }}>
+                  <button
+                    onClick={() => setLpVisible(v => v + 20)}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Load more ({filtered.length - lpVisible} remaining)
+                  </button>
+                </div>
+              )}
             </>
           );
         })()}
@@ -5821,7 +5850,7 @@ function CustomersTab({ dealerId }) {
           { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
           { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
         ].map(({ label, val, color }) => (
-          <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
             <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
           </div>

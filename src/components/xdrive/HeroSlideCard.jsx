@@ -3,9 +3,9 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const BADGE_STYLES = {
-  'HOT DEAL':    { bg: 'rgba(220,38,38,0.15)',  border: 'rgba(220,38,38,0.35)',  color: '#f87171' },
-  'RARE FIND':   { bg: 'rgba(124,58,237,0.15)', border: 'rgba(124,58,237,0.35)', color: '#a78bfa' },
-  'NEW ARRIVAL': { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.35)', color: '#34d399' },
+  'HOT DEAL':    { bg: '#fef2f2',  border: '#fca5a5',  color: '#dc2626' },
+  'RARE FIND':   { bg: '#f5f3ff', border: '#ddd6fe', color: '#7c3aed' },
+  'NEW ARRIVAL': { bg: '#ecfdf5', border: '#6ee7b7', color: '#059669' },
 };
 
 export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
@@ -26,8 +26,8 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
     transition,
     opacity: isDragging ? 0.45 : 1,
     position: 'relative',
-    background: 'linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))',
-    border: '1px solid rgba(255,255,255,0.07)',
+    background: '#fff',
+    border: '1px solid #e5e7eb',
     borderRadius: 14,
     padding: '14px 16px',
     display: 'flex',
@@ -53,8 +53,8 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
       {/* ── Thumbnail ── */}
       <div style={{
         width: 80, height: 80, borderRadius: 10, overflow: 'hidden',
-        flexShrink: 0, background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        flexShrink: 0, background: '#f3f4f6',
+        border: '1px solid #e5e7eb',
       }}>
         {slide.image_url ? (
           <img
@@ -81,7 +81,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <span style={{
-            color: 'white', fontWeight: 600, fontSize: 14,
+            color: '#111827', fontWeight: 600, fontSize: 14,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {slide.car_name || '—'}
@@ -125,7 +125,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
             title={slide.active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
             style={{
               position: 'relative', width: 36, height: 18, borderRadius: 9,
-              background: slide.active ? '#dc2626' : 'rgba(255,255,255,0.1)',
+              background: slide.active ? '#dc2626' : '#d1d5db',
               border: 'none', cursor: toggling ? 'not-allowed' : 'pointer',
               padding: 0, transition: 'background 0.2s', opacity: toggling ? 0.6 : 1,
               flexShrink: 0,
@@ -142,7 +142,7 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
         </div>
 
         {/* Separator */}
-        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ width: 1, height: 32, background: '#e5e7eb' }} />
 
         {/* Drag handle */}
         <button
@@ -192,22 +192,22 @@ export default function HeroSlideCard({ slide, onEdit, onDelete, onToggle }) {
         {confirmDelete ? (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 7,
-            background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.2)',
+            background: '#fef2f2', border: '1px solid #fecaca',
             borderRadius: 9, padding: '5px 10px',
           }}>
-            <span style={{ color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#374151', fontSize: 12, whiteSpace: 'nowrap' }}>
               Remove this slide?
             </span>
             <button
               onClick={() => setConfirmDelete(false)}
               style={{
-                background: 'none', border: '1px solid rgba(255,255,255,0.1)',
+                background: '#fff', border: '1px solid #e5e7eb',
                 color: '#6b7280', borderRadius: 6, padding: '2px 9px', fontSize: 12,
                 cursor: 'pointer', transition: 'color 0.12s, border-color 0.12s',
                 fontFamily: "'DM Sans',sans-serif",
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#111827'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
             >
               Cancel
             </button>

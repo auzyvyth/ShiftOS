@@ -23,6 +23,22 @@ export function useLeadActivities(leadId, dealerId) {
     if (!leadId) return;
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Optimistic: add a temp row immediately so UI updates without waiting
+    const tempId = `temp_${Date.now()}`;
+    const tempRow = {
+      id:            tempId,
+      lead_id:       leadId,
+      dealer_id:     dealerId             ?? null,
+      activity_type: payload.activity_type || 'note_added',
+      note:          payload.note          ?? null,
+      from_stage:    payload.from_stage    ?? null,
+      to_stage:      payload.to_stage      ?? null,
+      created_by:    user?.id              ?? null,
+      created_at:    new Date().toISOString(),
+      creator:       null,
+    };
+    setActivities(prev => [...prev, tempRow]);
+
     const row = {
       lead_id:       leadId,
       dealer_id:     dealerId             ?? null,
@@ -35,11 +51,19 @@ export function useLeadActivities(leadId, dealerId) {
 
     const { data, error } = await supabase
       .from('lead_activities')
-      .insert(row);
-    console.log('activity error:', JSON.stringify(error));
-    if (error) throw error;
-    await fetchActivities();
-  }, [leadId, fetchActivities]);
+      .insert(row)
+      .select('*, creator:created_by ( id, full_name )')
+      .single();
+
+    if (error) {
+      // Revert optimistic row on error
+      setActivities(prev => prev.filter(a => a.id !== tempId));
+      throw error;
+    }
+
+    // Replace temp row with real DB row
+    setActivities(prev => prev.map(a => a.id === tempId ? data : a));
+  }, [leadId, dealerId]);
 
   return { activities, loading, fetchActivities, addActivity };
 }
