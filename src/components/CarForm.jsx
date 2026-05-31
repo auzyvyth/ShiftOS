@@ -517,7 +517,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
     <div
       ref={setNodeRef}
       style={style}
-      className="mb-2 rounded-xl border border-gray-800 bg-gray-900"
+      className="mb-2 rounded-xl border border-gray-200 bg-white"
     >
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-t-xl overflow-hidden"
@@ -525,7 +525,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
       >
         <button
           type="button"
-          className="text-gray-600 hover:text-gray-400 touch-none flex-shrink-0"
+          className="text-gray-400 hover:text-gray-600 touch-none flex-shrink-0"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -536,7 +536,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
         <Icon className="w-4 h-4 text-blue-500 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white">{section.label}</span>
+            <span className="text-sm font-semibold text-gray-900">{section.label}</span>
             {complete && <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />}
           </div>
           <p className="text-xs text-gray-500">{section.desc}</p>
@@ -547,7 +547,7 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
         }
       </div>
       {!collapsed && (
-        <div className="px-4 pb-5 pt-1 border-t border-gray-800/70">
+        <div className="px-4 pb-5 pt-1 border-t border-gray-200">
           {children}
         </div>
       )}
@@ -729,10 +729,10 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
         }}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       />
       {open && !disabled && (
-        <ul className="absolute z-[200] w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-2xl">
+        <ul className="absolute z-[200] w-full bg-white border border-gray-200 rounded-xl mt-1 max-h-48 overflow-y-auto shadow-lg">
           {filtered.map((o) => (
             <li
               key={o}
@@ -741,13 +741,13 @@ function Combobox({ value, onChange, options, placeholder, disabled }) {
                 setQuery(o);
                 setOpen(false);
               }}
-              className="px-4 py-2.5 text-white hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer text-sm transition-colors"
+              className="px-4 py-2.5 text-gray-900 hover:bg-blue-50 hover:text-blue-600 cursor-pointer text-sm transition-colors"
             >
               {o}
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="px-4 py-2.5 text-gray-500 text-sm italic">
+            <li className="px-4 py-2.5 text-gray-400 text-sm italic">
               No match — input saved as-is
             </li>
           )}
@@ -765,7 +765,7 @@ function PillSelect({ options, value, onChange }) {
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
         >
           {opt}
         </button>
@@ -778,11 +778,11 @@ function Field({ label, required, hint, children }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-400">
+        <label className="text-sm font-medium text-gray-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        {hint && <span className="text-xs text-gray-600">{hint}</span>}
+        {hint && <span className="text-xs text-gray-500">{hint}</span>}
       </div>
       {children}
     </div>
@@ -790,22 +790,22 @@ function Field({ label, required, hint, children }) {
 }
 
 const inputCls =
-  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors";
+  "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors";
 const selectCls =
-  "w-full px-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors appearance-none cursor-pointer";
+  "w-full px-4 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-colors appearance-none cursor-pointer";
 const textareaCls =
-  "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none";
+  "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
 function VideoPreview({ url }) {
   const embedUrl = getEmbedUrl(url);
   if (!embedUrl)
     return (
-      <p className="text-xs text-yellow-400 mt-1">
+      <p className="text-xs text-yellow-600 mt-1">
         ⚠ Could not parse video URL. Paste a YouTube, TikTok, or Instagram link.
       </p>
     );
   return (
-    <div className="aspect-video w-full max-w-sm rounded-lg overflow-hidden border border-white/10 mt-2">
+    <div className="aspect-video w-full max-w-sm rounded-lg overflow-hidden border border-gray-200 mt-2">
       <iframe
         src={embedUrl}
         className="w-full h-full"
@@ -1640,10 +1640,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           {previews.length === 0 ? (
             <label
               onClick={() => photosInputRef.current?.click()}
-              className="block border-2 border-dashed border-gray-700 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
+              className="block border-2 border-dashed border-gray-300 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
             >
-              <Camera className="w-10 h-10 text-gray-600 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
-              <p className="text-white font-medium mb-1">Choose Photos</p>
+              <Camera className="w-10 h-10 text-gray-400 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
+              <p className="text-gray-900 font-medium mb-1">Choose Photos</p>
               <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
               <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
             </label>
@@ -1652,7 +1652,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               <button
                 type="button"
                 onClick={() => photosInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors"
               >
                 <Camera className="w-3.5 h-3.5" />
                 Add more · {form.images.length}/30
@@ -1662,13 +1662,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           {imgProgress.filter(p => p.status !== 'done').length > 0 && (
             <div className="space-y-1.5">
               {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-800
-                     border border-gray-700 rounded-lg text-xs">
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50
+                     border border-gray-200 rounded-lg text-xs">
                   {p.status === 'uploading'
-                    ? <div className="w-3 h-3 border border-white/30 border-t-white
+                    ? <div className="w-3 h-3 border border-gray-300 border-t-gray-600
                            rounded-full animate-spin flex-shrink-0" />
                     : <span className="text-red-400 flex-shrink-0">✕</span>}
-                  <span className="text-gray-400 truncate">{p.name}</span>
+                  <span className="text-gray-600 truncate">{p.name}</span>
                   <span className={p.status === 'error'
                     ? 'text-red-400 ml-auto flex-shrink-0'
                     : 'text-gray-500 ml-auto flex-shrink-0'}>
@@ -1684,7 +1684,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 Drag to reorder on desktop · use arrows on mobile · Image #1 is
                 the main thumbnail
               </p>
-              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-800 p-1.5 sm:p-2">
+              <div className="max-h-[40vh] sm:max-h-[52vh] overflow-y-auto rounded-xl border border-gray-200 p-1.5 sm:p-2">
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-2">
                   {previews.map((src, i) => (
                     <div
@@ -1694,7 +1694,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                       onDragOver={(e) => dragOver(i, e)}
                       onDrop={(e) => drop(i, e)}
                       onDragEnd={dragEnd}
-                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-800 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-700"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
+                      className={`relative aspect-[4/3] sm:aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-100 border transition-all ${i === dropTargetIndex ? "border-blue-500 ring-2 ring-blue-500/30" : "border-gray-200"} ${i === draggingIndex ? "opacity-70 scale-[0.98]" : ""}`}
                     >
                       <img
                         src={src}
@@ -1753,9 +1753,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           )}
           {/* Walkthrough Video */}
           <div className="space-y-1">
-            <label className="text-sm text-gray-400">
+            <label className="text-sm text-gray-600">
               Walkthrough Video{" "}
-              <span className="text-gray-600">(optional)</span>
+              <span className="text-gray-400">(optional)</span>
             </label>
             <input
               type="url"
@@ -1768,10 +1768,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </div>
 
           {/* Car Documents */}
-          <div className="rounded-2xl border border-gray-800 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-900">
-              <BadgeCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-white">
+          <div className="rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 bg-gray-50">
+              <BadgeCheck className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-semibold text-gray-900">
                 Car Documents
               </span>
               {form.car_documents.length > 0 && (
@@ -1783,7 +1783,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 Puspakom, service history, insurance…
               </span>
             </div>
-            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+            <div className="px-4 pb-4 pt-3 space-y-3 bg-white">
               {form.car_documents.length > 0 && (
                 <div className="space-y-2">
                   {form.car_documents.map((doc, i) => {
@@ -1793,14 +1793,14 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     return (
                       <div
                         key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-800/60 border border-gray-700 rounded-xl"
+                        className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl"
                       >
                         <BadgeCheck
                           className="w-4 h-4 flex-shrink-0"
                           style={{ color: dt.color }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
+                          <p className="text-sm font-medium text-gray-900 truncate">
                             {doc.name}
                           </p>
                           <p className="text-xs" style={{ color: dt.color }}>
@@ -1811,7 +1811,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                           href={doc.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 mr-1 flex-shrink-0"
+                          className="text-xs text-blue-600 hover:text-blue-700 mr-1 flex-shrink-0"
                         >
                           View
                         </a>
@@ -1831,20 +1831,20 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 <select
                   value={docTypeInput}
                   onChange={(e) => setDocTypeInput(e.target.value)}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                 >
                   {DOC_TYPES.map((d) => (
                     <option
                       key={d.key}
                       value={d.key}
-                      style={{ background: "#111827" }}
+                      style={{ background: "#ffffff" }}
                     >
                       {d.label}
                     </option>
                   ))}
                 </select>
                 <label
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-700 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors flex-shrink-0 ${docUploading ? "bg-gray-200 text-gray-400 cursor-wait" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
                 >
                   {docUploading ? (
                     <>
@@ -1865,7 +1865,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   />
                 </label>
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-500">
                 PDF, JPG or PNG — shown to buyers on the listing page and earns
                 a Verified badge on listing cards.
               </p>
@@ -1920,7 +1920,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             />
           </Field>
           {autoFilled && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-900/30 border border-green-700/40 text-green-400 text-xs font-medium">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
               Specs auto-filled — review Step 4 and adjust if needed
             </div>
@@ -2071,7 +2071,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     key={cc}
                     type="button"
                     onClick={() => set("engineCc", String(cc))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-white"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-100 border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
                   >
                     {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
                     cc
@@ -2154,9 +2154,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       case 5: return (
         <div className="space-y-6">
           {/* Toggle */}
-          <div className="flex items-center justify-between p-4 bg-gray-800 border border-gray-700 rounded-2xl">
+          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
-              <p className="text-white font-semibold text-sm">
+              <p className="text-gray-900 font-semibold text-sm">
                 Recon / Grey Import Vehicle
               </p>
               <p className="text-gray-500 text-xs mt-0.5">
@@ -2166,7 +2166,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             <button
               type="button"
               onClick={() => set("isRecon", !form.isRecon)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-600"}`}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-300"}`}
             >
               <span
                 className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
@@ -2214,7 +2214,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                     <button
                       type="button"
                       onClick={() => set("auctionGrade", suggestedGrade)}
-                      className="mt-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
                     >
                       Use suggested: {suggestedGrade}
                     </button>
@@ -2305,7 +2305,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
               {/* Damage map */}
               <Field label="Damage Map" hint="Click car to mark damage areas">
-                <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-2xl">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
                   <DamageMap
                     value={form.damageMap}
                     onChange={(v) => set("damageMap", v)}
@@ -2500,16 +2500,16 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </div>
 
           {/* ── Included Services & Add-ons ── */}
-          <div className="rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="rounded-2xl border border-gray-200 overflow-hidden">
             {/* Header toggle */}
             <button
               type="button"
               onClick={() => setServicesOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-900 hover:bg-gray-800/80 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-2.5">
-                <Tag className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-semibold text-white">
+                <Tag className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-semibold text-gray-900">
                   Included Services &amp; Add-ons
                 </span>
                 {form.included_services.length > 0 && (
@@ -2526,7 +2526,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             </button>
 
             {servicesOpen && (
-              <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-900/50">
+              <div className="px-4 pb-4 pt-3 space-y-3 bg-white">
                 {/* Attached list */}
                 {form.included_services.length > 0 && (
                   <div className="space-y-2">
@@ -2536,19 +2536,19 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                       return (
                         <div
                           key={idx}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-800/60 border border-gray-700"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200"
                         >
                           <CatIcon
                             className="w-4 h-4 flex-shrink-0"
                             style={{ color: cfg.color }}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
+                            <p className="text-sm font-medium text-gray-900 truncate">
                               {svc.name}
                             </p>
                             <p className="text-xs text-gray-500">{cfg.label}</p>
                           </div>
-                          <span className="text-sm font-semibold text-white whitespace-nowrap">
+                          <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
                             RM {Number(svc.selling_price || 0).toLocaleString()}
                           </span>
                           <button
@@ -2581,22 +2581,22 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-700 hover:border-blue-500/40 text-gray-500 hover:text-blue-400 text-sm transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-300 hover:border-blue-400 text-gray-500 hover:text-blue-600 text-sm transition-colors"
                   >
                     <Tag className="w-4 h-4" />
                     Add a service from catalogue
                   </button>
                 ) : (
-                  <div className="rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+                  <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                     {/* Search bar */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
-                      <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200">
+                      <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                       <input
                         type="text"
                         value={serviceSearch}
                         onChange={(e) => setServiceSearch(e.target.value)}
                         placeholder="Search catalogue…"
-                        className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
+                        className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
                         autoFocus
                       />
                       <button
@@ -2605,13 +2605,13 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                           setPickerOpen(false);
                           setServiceSearch("");
                         }}
-                        className="text-gray-500 hover:text-white"
+                        className="text-gray-400 hover:text-gray-700"
                       >
                         <XIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     {/* Catalogue list */}
-                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-700/50">
+                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-100">
                       {serviceCatalogue.length === 0 && (
                         <p className="text-center text-gray-600 text-sm py-6">
                           {catalogueLoaded
@@ -2643,21 +2643,21 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                               type="button"
                               disabled={alreadyAdded}
                               onClick={() => addService(p)}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${alreadyAdded ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-700/50"}`}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${alreadyAdded ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"}`}
                             >
                               <CatIcon
                                 className="w-4 h-4 flex-shrink-0"
                                 style={{ color: cfg.color }}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
+                                <p className="text-sm font-medium text-gray-900 truncate">
                                   {p.name}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {cfg.label}
                                 </p>
                               </div>
-                              <span className="text-sm font-semibold text-white whitespace-nowrap">
+                              <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
                                 RM{" "}
                                 {Number(p.selling_price || 0).toLocaleString()}
                               </span>
@@ -2723,7 +2723,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
       style={{
         fontFamily: "'DM Sans', sans-serif",
         backgroundImage:
-          "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
+          "radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)",
         backgroundSize: "24px 24px",
       }}
     >
@@ -2781,7 +2781,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
             <button
               type="button"
               onClick={handleCopy}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white hover:border-white/20"}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
             >
               {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
             </button>
@@ -2790,7 +2790,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         {capError && (
           <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
             <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 1.5 }}>
+            <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
               Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
             </p>
             <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
