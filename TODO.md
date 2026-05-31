@@ -17,18 +17,6 @@ Current file is a geometric approximation (L inside oval).
 
 ## Priority 3 — Monetisation Infrastructure (needed before billing)
 
-### BILLING-1. Plan tier enforcement
-- 6 tiers: Salesman Lite, Salesman Premium, Dealer Starter (≤20 listings), Dealer Growth (≤60), Dealer Pro (≤150), Dealer Group (unlimited + multi-branch)
-- Add `plan_tier` column to `profiles`
-- Enforce listing cap on car_listings insert (RPC or trigger)
-- Enforce user seat cap on invites
-- Show upgrade prompt when cap is hit
-
-### BILLING-2. Usage tracking
-- Track active listing count, seat count, monthly HP submissions per dealer
-- Visible to superadmin in admin panel
-- Basis for billing and upsell triggers
-
 ### BILLING-3. Multi-branch (Dealer Group tier only)
 - Currently single-dealer tenancy per subdomain
 - Dealer groups: one login, branch-level P&L separation, cross-branch stock visibility

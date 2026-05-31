@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
+import { PLAN_CONFIG } from "../utils/planConfig";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -32,6 +33,98 @@ function MktToggle({ label, value, onChange }) {
         <span style={{ position: "absolute", top: 2, left: value ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "white", transition: "left 0.2s", display: "block" }} />
       </button>
       <span style={{ fontSize: 13, color: "#9ca3af" }}>{label}</span>
+    </div>
+  );
+}
+
+function UsageBar({ used, cap, danger }) {
+  if (cap == null) return <span style={{ fontSize: 11, color: '#4b5563' }}>unlimited</span>;
+  const pct = Math.min(100, (used / cap) * 100);
+  const atCap = used >= cap;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+        <span style={{ fontSize: 11, color: atCap ? '#f87171' : '#9ca3af', fontWeight: atCap ? 700 : 400 }}>{used}/{cap}</span>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', width: 80 }}>
+        <div style={{ height: '100%', borderRadius: 2, background: atCap ? '#dc2626' : (danger ? '#f59e0b' : '#3b82f6'), width: `${pct}%`, transition: 'width 0.3s' }} />
+      </div>
+    </div>
+  );
+}
+
+function BillingTab({ dealers, dealerStats }) {
+  const rows = dealers.map(d => {
+    const cfg = PLAN_CONFIG[d.plan] || null;
+    const ds = dealerStats[d.id] || {};
+    return { ...d, cfg, ds };
+  });
+  const planCounts = {};
+  rows.forEach(r => { const k = r.plan || 'none'; planCounts[k] = (planCounts[k] || 0) + 1; });
+
+  return (
+    <div>
+      {/* Summary chips */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {Object.entries(planCounts).map(([plan, count]) => {
+          const cfg = PLAN_CONFIG[plan];
+          return (
+            <div key={plan} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 14px', minWidth: 120 }}>
+              <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{cfg?.label || plan}</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: '#f0f0f0' }}>{count}</p>
+              {cfg && <p style={{ fontSize: 10, color: '#4b5563' }}>RM {(cfg.price * count).toLocaleString()} MRR</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Per-dealer table */}
+      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                {['Dealer', 'Plan', 'Price/mo', 'Listings', 'Seats', 'Status'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#4b5563' }}>No dealers.</td></tr>
+              ) : rows.map(r => (
+                <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: r.is_active === false ? 0.45 : 1 }}>
+                  <td style={{ padding: '10px 14px' }}>
+                    <p style={{ fontWeight: 600, color: '#f0f0f0' }}>{r.dealership || r.full_name || '—'}</p>
+                    <p style={{ fontSize: 10, color: '#6b7280' }}>{r.email}</p>
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    {r.cfg ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.1)', borderRadius: 4, padding: '2px 7px' }}>{r.cfg.label}</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#4b5563' }}>{r.plan || '—'}</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '10px 14px', color: '#9ca3af' }}>
+                    {r.cfg ? `RM ${r.cfg.price.toLocaleString()}` : '—'}
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    <UsageBar used={r.ds.available ?? r.ds.listings ?? 0} cap={r.cfg?.listingCap ?? null} danger={(r.ds.available ?? 0) >= (r.cfg?.listingCap ?? Infinity) * 0.8} />
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    <UsageBar used={r.ds.team ?? 0} cap={r.cfg?.seatCap ?? null} danger={(r.ds.team ?? 0) >= (r.cfg?.seatCap ?? Infinity) * 0.8} />
+                  </td>
+                  <td style={{ padding: '10px 14px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: r.subscription_status === 'active' ? '#4ade80' : r.subscription_status === 'trial' ? '#facc15' : '#f87171' }}>
+                      {r.subscription_status || '—'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -90,7 +183,7 @@ export default function AdminPage() {
     // Load dealers
     const { data: dealerData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status")
+      .select("id, full_name, email, dealership, subdomain, role, subscription_status, trial_ends_at, created_at, is_active, city, state, whatsapp_number, business_type, payment_status, plan")
       .eq("role", "dealer")
       .order("created_at", { ascending: false });
 
@@ -282,6 +375,7 @@ export default function AdminPage() {
     { id: "waitlist", label: `Waitlist (${waitlist.length})` },
     { id: "platform",    label: "Platform Stats" },
     { id: "marketplace", label: "Marketplace" },
+    { id: "billing",     label: "Billing" },
   ];
 
   return (
@@ -1040,6 +1134,9 @@ export default function AdminPage() {
               )}
             </div>
 
+          ) : activeTab === "billing" ? (
+            /* ── BILLING TAB ── */
+            <BillingTab dealers={dealers} dealerStats={dealerStats} />
           ) : (
             /* ── DEALERS TAB ── */
             <>
