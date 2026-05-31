@@ -63,9 +63,9 @@ function BankScorecard({ rows }) {
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <tr style={{ borderBottom: '1px solid #EAECF0' }}>
               {['Bank', 'Submitted', 'Approval Rate', 'Avg Decision', 'Disbursed', 'Top Rejection Reason'].map(h => (
-                <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -77,13 +77,13 @@ function BankScorecard({ rows }) {
               const topRejLabel = topRejection ? REJECTION_CATEGORIES.find(c => c.value === topRejection[0])?.label ?? topRejection[0] : '—';
               const rateColor = approvalRate >= 70 ? '#22c55e' : approvalRate >= 40 ? '#f59e0b' : '#ef4444';
               return (
-                <tr key={b.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '9px 12px', fontWeight: 700, color: '#e5e7eb' }}>{b.name}</td>
-                  <td style={{ padding: '9px 12px', color: '#9ca3af' }}>{b.total}</td>
+                <tr key={b.name} style={{ borderBottom: '1px solid #EAECF0' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 700, color: '#111827' }}>{b.name}</td>
+                  <td style={{ padding: '9px 12px', color: '#374151' }}>{b.total}</td>
                   <td style={{ padding: '9px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 700, color: rateColor }}>{approvalRate}%</span>
-                      <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                      <div style={{ width: 60, height: 4, background: '#E5E7EB', borderRadius: 2 }}>
                         <div style={{ width: `${approvalRate}%`, height: '100%', background: rateColor, borderRadius: 2 }} />
                       </div>
                     </div>
@@ -226,8 +226,8 @@ export default function HPBoard({ dealerId }) {
             onClick={() => setFilter(k)}
             style={{
               fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-              background: filter === k ? `${color}15` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${filter === k ? `${color}30` : 'rgba(255,255,255,0.07)'}`,
+              background: filter === k ? `${color}15` : '#F7F8FA',
+              border: `1px solid ${filter === k ? `${color}30` : '#EAECF0'}`,
               color: filter === k ? color : '#6b7280',
             }}
           >
@@ -244,9 +244,9 @@ export default function HPBoard({ dealerId }) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <tr style={{ borderBottom: '1px solid #EAECF0' }}>
                 {['Bank', 'Buyer', 'Car', 'Salesman', 'Amount', 'Tenure', 'Monthly', 'Days', 'Rejection', 'Status', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -260,14 +260,14 @@ export default function HPBoard({ dealerId }) {
                   ? REJECTION_CATEGORIES.find(c => c.value === row.rejection_reason_category)?.label ?? row.rejection_reason_category
                   : '—';
                 return (
-                  <tr key={row.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: overdue ? 'rgba(239,68,68,0.03)' : 'transparent' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#e5e7eb' }}>{row.bank_name}</td>
-                    <td style={{ padding: '10px 12px', color: '#d1d5db' }}>{row.lead?.buyer_name || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{car ? `${car.year} ${car.brand} ${car.model}` : '—'}</td>
+                  <tr key={row.id} style={{ borderBottom: '1px solid #EAECF0', background: overdue ? 'rgba(239,68,68,0.04)' : 'transparent' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#111827' }}>{row.bank_name}</td>
+                    <td style={{ padding: '10px 12px', color: '#374151' }}>{row.lead?.buyer_name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>{car ? `${car.year} ${car.brand} ${car.model}` : '—'}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.lead?.salesman?.full_name || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#f3f4f6', fontWeight: 600 }}>{fmtRM(row.loan_amount)}</td>
-                    <td style={{ padding: '10px 12px', color: '#9ca3af' }}>{row.tenure_months}m</td>
-                    <td style={{ padding: '10px 12px', color: '#9ca3af' }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#111827', fontWeight: 600 }}>{fmtRM(row.loan_amount)}</td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.tenure_months}m</td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
                     <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#6b7280', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: 12 }}>{rejLabel}</td>
                     <td style={{ padding: '10px 12px' }}>

@@ -4278,7 +4278,7 @@ function ListingDetailDrawer({
       >
         {/* Panel */}
         <div
-          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: 'rgba(11,11,15,0.99)', border: '1px solid #e5e7eb', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
+          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
           onClick={e => e.stopPropagation()}
         >
           {/* Close */}
@@ -4309,7 +4309,7 @@ function ListingDetailDrawer({
                   ))}
                 </div>
                 {/* Main image */}
-                <div style={{ flex: 1, position: 'relative', background: '#0d0d0d', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ flex: 1, position: 'relative', background: '#F3F4F6', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
                     src={images[imgIdx]}
                     alt=""
@@ -4385,7 +4385,7 @@ function ListingDetailDrawer({
                   <button
                     key={tab}
                     onClick={() => setDrawerTab(tab)}
-                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#f3f4f6' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
+                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
                   >
                     {tabLabel[tab]}
                   </button>
@@ -4499,14 +4499,14 @@ function ListingDetailDrawer({
                     <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
                   </button>
                   {showAssign && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#0f172a', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 -8px 32px rgba(0,0,0,0.7)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#FFFFFF', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
                       {listing.assigned_to && (
-                        <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
+                        <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>
                           <X style={{ width: 12, height: 12 }} />Unassign
                         </button>
                       )}
                       {salesmen.map(s => (
-                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(168,85,247,0.1)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#c084fc' : '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
+                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(220,38,38,0.06)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#DC2626' : '#374151', fontSize: 12, cursor: 'pointer' }}>
                           <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
@@ -6677,10 +6677,10 @@ export default function DashboardPage() {
   if (!profile) return <SciFiLoader />;
 
   if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
-      <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
+    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
+      <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+      <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
     </div>
   );
 
