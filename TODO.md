@@ -13,59 +13,25 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Priority 1 — Enterprise HP Workflow (closes the biggest dealer pain)
+## Priority 1 — Enterprise HP Workflow (remaining gaps)
 
-### HP-1. Bank performance scorecard
-The single most valuable GM/owner insight tool missing from the platform.
-- Add `bank_name`, `rejection_reason_category` (dropdown: DSR / CCRIS / valuation gap / employment type / vehicle age / margin), `days_to_decision` (auto from submitted_at → status change) to `deal_financing`
-- Build bank scorecard view in FIPanel + DashboardPage: approval rate %, avg days to decision, rejection breakdown by reason, per-bank table sortable by approval rate
-- This is the data model that enables a future bank recommendation engine
+### HP-1. Bank scorecard — surface in FIPanel
+Scorecard logic already exists in HPBoard. Missing: embed it as a sub-tab or section
+inside FIPanel so F&I officers see approval rate %, avg days to decision, and
+rejection breakdown per bank without leaving the FI panel.
 
 ### HP-2. Sequential multi-bank queue with CCRIS warning
-- When a submission is rejected, prompt "Try next bank?" with a dropdown + CCRIS counter (warn at 3 submissions: "further applications will damage buyer's credit score")
-- Store submission sequence order on `deal_financing` (attempt_number column)
-- Show full bank attempt history per deal in LeadDrawer and FIPanel
+CCRIS warning alert and queue_order tracking exist. Missing:
+- `attempt_number` column on `deal_financing`
+- "Try next bank?" prompt after a rejection (dropdown pre-filled with remaining banks)
+- CCRIS counter: warn at 3 cumulative submissions across all deals for the same buyer
+- Full bank attempt history visible in LeadDrawer and FIPanel
 
-### HP-3. PUSPAKOM B7 expiry tracking
-- Add `puspakom_b7_date` and `puspakom_b7_expiry` (auto = b7_date + 60 days) to `leads` or `deal_financing`
-- Show expiry badge in LeadDrawer (green / yellow <14 days / red expired)
-- Alert in manager dashboard for deals with B7 expiring within 7 days
-
-### HP-4. LOU (Letter of Offer) tracking
-- Add `lou_issued_at`, `lou_signed_at`, `lou_document_url` to `deal_financing`
-- Stage milestone: Approved → LOU Issued → LOU Signed → JPJ → Disbursed
-- LeadDrawer HP section shows which milestone the deal is at
-
-### HP-5. JPJ transfer tracking
-- Add `jpj_submitted_at`, `jpj_completed_at`, `jpj_notes` to `deal_financing` or a separate `deal_jpj` table
-- Visible in LeadDrawer and FIPanel deal view
-- Disbursement gate: JPJ completed triggers disbursement-ready status
-
-### HP-6. HP document checklist per deal
-- Checklist tied to `deal_financing`: IC copy, payslips (x3), EPF statement, bank statements (x6 for self-employed), SSM cert, tax returns, booking receipt
-- Employment type auto-selects checklist template (employed / self-employed / commission-based)
-- Incomplete checklist blocks HP submission with warning
-
----
-
-## Priority 2 — Owner / GM Oversight (what justifies the price)
-
-### GM-1. Real-time owner P&L dashboard
-- Today's gross: units sold today × avg gross per unit
-- Month-to-date: units sold, gross profit, F&I gross, total revenue
-- Cash flow view: disbursements expected this week (approved HP deals pending JPJ)
-- Days-on-lot aging: stock older than 30 / 60 / 90 days with carrying cost estimate
-- Accessible from DashboardPage owner home tab, not buried in analytics
-
-### GM-2. Audit trail
-- Log every status change across leads, deal_financing, car_listings with: who changed it, from/to value, timestamp
-- New `activity_log` table: entity_type, entity_id, actor_id, field, old_value, new_value, created_at
-- Viewable per-deal in LeadDrawer (timeline) and per-entity in admin panel
-- Required for any compliance or dispute resolution claim
-
-### GM-3. Salesman quality score
-- Per-salesman metrics visible to owner/manager: submission rejection rate, avg doc completeness at submission, avg days from lead to won, close rate %
-- Shown in TeamTab alongside existing leaderboard
+### HP-6. HP document checklist — remaining gaps
+Checkbox checklist per deal exists (8 docs). Missing:
+- Employment type field on deal_financing auto-selects the checklist template
+  (employed: payslips; self-employed: bank statements + SSM + tax returns)
+- Incomplete checklist blocks the "Submit to Bank" button with a warning
 
 ---
 
@@ -118,35 +84,24 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 
 ## Done (reference)
 
-- **DESIGN-SYSTEM (layer 1): Premium-light tokens + primitives** — new `src/theme/tokens.js` (calm near-black primary, red reserved for alerts, soft surfaces, DM Sans only) and `src/components/ui/*` primitives (Card, Button, Stat, Badge, SectionHeader, SubTabBar). Living style guide at `/style-guide`. NEXT: migrate dashboard tabs onto the system one by one (GM Oversight is the natural first since it's already light).
-
-- **AUDIT-FIX (ARCH): Dashboard tabs merged** — Analytics now holds Listings / Revenue (was RevOps) / Marketplace as sub-tabs; new Storefront tab holds Hero Carousel / Services & Add-ons as sub-tabs. Nav dropped from 16 to 13 items. Legacy deep-links (/dashboard/revops, /services, /hero, /marketplace) alias to the new parent+sub-tab so old URLs still work. New reusable SubTabBar component.
-- **AUDIT-FIX (C2): Auth token leakage hardened** — cross-subdomain session handoff now passes tokens in the URL hash fragment (never sent in Referer headers or server logs) instead of the query string; new `src/lib/authHandoff.js` helper, wired into LoginPage, AuthCallbackPage, useTenant, DashboardPage, Salesmanpanel, SalesmanLite, SalesmanPremium (also fixed premium leaving tokens uncleared in URL). Backward-compatible reader so in-flight redirects during deploy don't break. NOTE: full one-time-exchange-code flow still ideal long-term but needs cross-subdomain testing.
-- **AUDIT-FIX (C5): Tenant spoofing closed** — `?tenant=` storefront override now gated to localhost/vercel preview only; ignored in production so nobody can serve a competitor's storefront under xdrive.my
-- **AUDIT-FIX (H1): Managers/admins can access dashboard** — useRoleRedirect now accepts an array of allowed roles; DashboardPage allows dealer/superadmin/owner/manager/admin instead of redirecting managers to the stripped /manager route
-- **AUDIT-FIX (M2): Category definitions unified** — serviceCategories.js is now the single source; DashboardPage PRODUCT_CATEGORIES and ServicesPage CATEGORIES derive from it (removed 3-way drift in labels/colors)
-- **AUDIT-FIX (M5): Dealership name-change cap enforced server-side** — DB trigger `enforce_dealership_change_cap` owns the counter/timestamp and rejects changes past 2 (superadmin exempt); client can no longer bypass via direct API call
-- **AUDIT-FIX: Stale lead logic (SalesmanPremium)** — same OR→AND fix applied to premium panel
-- **AUDIT-FIX: callClaude → ai-proxy** — all premium AI features (captions, WA replies, lead scoring, followup suggestions) now route through the working Edge Function instead of direct Anthropic API (which had no key)
-- **AUDIT-FIX: Analytics data scope** — removed dead `dealer_id.eq.${userId}` arm from salesman car fetch; only `assigned_to` filter used
-- **AUDIT-FIX: Loan form data leak** — loanLeads now filtered by `salesman_id` so salesmen only see their own buyers' contacts
-- **AUDIT-FIX: Duplicate leads on appointment** — `.is("dealer_id", null)` replaced with `.eq("dealer_id", profile.dealer_id)` so existing leads are found correctly
-- **AUDIT-FIX: Stale lead logic** — changed OR to AND so a lead is only stale when follow_up is overdue AND no activity in 48h
-- **AUDIT-FIX: Dashboard tab order** — reordered NAV to daily-workflow priority: Leads → Listings → Add → Stock → HP Board → Analytics → RevOps → Team → Customers → ...
-- **AUDIT-FIX: ErrorBoundary on lazy tabs** — TabErrorBoundary class wraps all lazy-loaded dashboard tabs; errors show retry button instead of white screen
-
-- Analytics RPC migration — Salesmanpanel + DashboardPage (rawEvents removed, 3 RPCs deployed)
-- React.memo on CarCard + CarCardMarket (marketplace perf)
-- Self-booking prevention on CarDetailPage
-- Brand strip layout fix and horizontal alignment fix
-- Real brand SVGs: Kia, Audi, Subaru, Volkswagen (simple-icons)
-- Team tab leaderboard (gold/silver/bronze ranks, sold count + commission per salesman)
-- Per-salesman Sales stat tile
-- Customer records (Phase 1) — customers table, DB trigger on lead won, Customers tab + expiry colour-coding
-- Manager approval workflow — RPCs, Approvals tab, rejection reason to salesman
-- Deal presentation screen — shareable token, 7-day expiry, PDF, WA CTA
-- Accountant payroll payout — Commissions Ledger sub-tab, mark-as-paid
-- F&I module — FIPanel rewrite: Deals tab, HP submissions per deal, Calculator
-- HP loan tracking — deal_financing table, EIR (HPAA 2026), HPBoard, HP Board tab
-- Pipeline redesign — list view, stage stepper, instant stage changes
-- Deal sheet v2 — inline HP/on-road calculator, road tax (JPJ formula), insurance (tariff + NCD + SST), buyer name + salesman in snapshot
+- **DESIGN-SYSTEM: Tokens replaced with user-specified lean definition** — `src/theme/tokens.js` now contains exactly the 5 color keys, border, radius, font, stageColors, activityDot specified. All UI primitives updated to inline removed constants.
+- **DESIGN-SYSTEM (layer 1): Premium-light tokens + primitives** — `src/components/ui/*` primitives (Card, Button, Stat, Badge, SectionHeader, SubTabBar). Living style guide at `/style-guide`.
+- **HP-3: PUSPAKOM B7 expiry tracking** — `puspakom_b7_date` on stock_units, expiry badge in LeadDrawer, "expired B7" and "missing B7" alerts in OversightTab.
+- **HP-4: LOU tracking** — `lou_received_at`, `lou_expires_at` on deal_financing; "Log LOU Received" button; 14-day expiry with red/orange/green status; milestone shown in LeadDrawer.
+- **HP-5: JPJ transfer tracking** — `jpj_status`, `jpj_submitted_at`, `jpj_completed_at` on leads; 3-state milestone (pending → submitted → completed); overdue detection (>7 days); full section in LeadDrawer.
+- **HP-6 (partial): HP document checklist** — `hp_docs` JSONB on deal_financing; 8-doc checkbox checklist in LeadDrawer; docs completion counter. (Employment type template + submission blocking still pending above.)
+- **HP-1 (partial): Bank scorecard** — `bank_name`, `rejection_reason_category`, approval rate %, avg days to decision in HPBoard. (FIPanel surface still pending above.)
+- **HP-2 (partial): CCRIS warning** — warning alert when rejection_reason_category === 'ccris_issue'; queue_order on insert. (Sequential prompt + attempt_number still pending above.)
+- **GM-1: Real-time owner P&L dashboard** — OversightTab with `gm_pnl_snapshot` RPC; MTD/LMTD revenue & gross; units sold; days-on-lot aging; capital tied; 30-day sparkline; goal pace tracking.
+- **GM-2: Audit trail** — `activity_log` table; timeline in OversightTab with anomaly detection; filters by entity type.
+- **GM-3: Salesman quality score** — `gm_salesman_scores` RPC; ranked scorecard in OversightTab: conversion rate, response time, avg gross, doc completion rate, close rate.
+- **AUDIT-FIX (ARCH): Dashboard tabs merged** — Analytics now holds Listings / Revenue (was RevOps) / Marketplace as sub-tabs; new Storefront tab holds Hero Carousel / Services & Add-ons as sub-tabs. Nav dropped from 16 to 13 items. Legacy deep-links alias to new parent+sub-tab.
+- **AUDIT-FIX (C2): Auth token leakage hardened** — cross-subdomain session handoff now passes tokens in the URL hash fragment; new `src/lib/authHandoff.js` helper, wired into LoginPage, AuthCallbackPage, useTenant, DashboardPage, Salesmanpanel, SalesmanLite, SalesmanPremium.
+- **AUDIT-FIX (C5): Tenant spoofing closed** — `?tenant=` storefront override now gated to localhost/vercel preview only.
+- **AUDIT-FIX (H1): Managers/admins can access dashboard** — useRoleRedirect now accepts an array of allowed roles.
+- **AUDIT-FIX (M2): Category definitions unified** — serviceCategories.js is the single source.
+- **AUDIT-FIX (M5): Dealership name-change cap enforced server-side** — DB trigger `enforce_dealership_change_cap`.
+- **AUDIT-FIX: Stale lead logic** — OR→AND fix in Salesmanpanel and SalesmanPremium.
+- **AUDIT-FIX: callClaude → ai-proxy** — all AI features route through working Edge Function.
+- **AUDIT-FIX: Analytics data scope, loan form data leak, duplicate leads on appointment, dashboard tab order, ErrorBoundary on lazy tabs.**
+- Analytics RPC migration, React.memo on CarCard, self-booking prevention, brand SVGs, team leaderboard, customer records, manager approval workflow, deal presentation screen, accountant payroll payout, F&I module, HP loan tracking, pipeline redesign, deal sheet v2.
