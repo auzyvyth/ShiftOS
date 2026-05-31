@@ -106,7 +106,7 @@ const HDR_CSS = `
   .hdr-link {
     position: relative;
     font-size: 13px; font-weight: 500;
-    color: rgba(140,140,150,0.85);
+    color: rgba(185,185,195,0.92);
     text-decoration: none; white-space: nowrap;
     transition: color 0.22s; padding: 5px 0;
     letter-spacing: 0.01em;
@@ -464,8 +464,8 @@ export default function Header() {
           {/* Desktop actions */}
           <div className="hdr-actions hdr-desktop">
             <div className="hdr-lang">
-              <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`}>EN</button>
-              <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`}>BM</button>
+              <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`} aria-label="Switch to English" aria-pressed={isEn}>EN</button>
+              <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`} aria-label="Switch to Malay" aria-pressed={!isEn}>BM</button>
             </div>
             {isLoggedIn && (
               <button
@@ -487,8 +487,8 @@ export default function Header() {
           {/* Mobile controls */}
           <div className="hdr-mobile-only" style={{ alignItems: "center", gap: "8px" }}>
             <div className="hdr-lang">
-              <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`}>EN</button>
-              <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`}>BM</button>
+              <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`} aria-label="Switch to English" aria-pressed={isEn}>EN</button>
+              <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`} aria-label="Switch to Malay" aria-pressed={!isEn}>BM</button>
             </div>
             <button className="hdr-burger" onClick={() => setMobileOpen((v) => !v)} aria-label="Menu">
               {mobileOpen

@@ -936,10 +936,12 @@ export default function HeroCarousel({ siteName, waNumber }) {
         {/* Progress bar */}
         <div className="hc-progress" style={{ width: `${progress}%` }} />
 
-        {/* ── Background: ALL images in DOM, only active one visible ── */}
+        {/* ── Background: only active + next image mounted ── */}
         <div className="hc-bg">
-          {slides.map((slide, i) =>
-            slide.image_url ? (
+          {slides.map((slide, i) => {
+            const nextIdx = (idx + 1) % slides.length;
+            if (i !== idx && i !== nextIdx) return null;
+            return slide.image_url ? (
               <img
                 key={`bg-${i}`}
                 src={slide.image_url}
@@ -948,8 +950,8 @@ export default function HeroCarousel({ siteName, waNumber }) {
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
               />
-            ) : null,
-          )}
+            ) : null;
+          })}
           <div className="hc-overlay" />
           <div className="hc-overlay-side" />
         </div>
@@ -986,6 +988,7 @@ export default function HeroCarousel({ siteName, waNumber }) {
                       className="hc-search-input"
                       type="text"
                       placeholder="Search brand or model…"
+                      aria-label="Search cars by brand or model"
                       value={heroSearch}
                       onChange={(e) => setHeroSearch(e.target.value)}
                     />
@@ -1019,8 +1022,10 @@ export default function HeroCarousel({ siteName, waNumber }) {
                   alt=""
                   style={{ visibility: "hidden", display: "block" }}
                 />
-                {slides.map((slide, i) =>
-                  slide.image_url ? (
+                {slides.map((slide, i) => {
+                  const nextIdx = (idx + 1) % slides.length;
+                  if (i !== idx && i !== nextIdx) return null;
+                  return slide.image_url ? (
                     <img
                       key={`card-${i}`}
                       src={slide.image_url}
@@ -1028,8 +1033,8 @@ export default function HeroCarousel({ siteName, waNumber }) {
                       className={`hc-card-img${i === idx ? " active" : ""}`}
                       loading={i === 0 ? "eager" : "lazy"}
                     />
-                  ) : null,
-                )}
+                  ) : null;
+                })}
                 <div className="hc-trust-badge">
                   <div className="hc-trust-dot" />
                   <span className="hc-trust-text">Verified · No Hidden Fees</span>

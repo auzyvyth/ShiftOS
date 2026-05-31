@@ -202,8 +202,11 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
         }
       `}</style>
 
-      <div
+      <article
         className={`cc-root${isHot ? ' hot' : ''}${xdrive ? ' xdrive' : ''}`}
+        tabIndex={isSold ? undefined : 0}
+        role="article"
+        aria-label={`${year} ${brand} ${model}${isSold ? ' — Sold' : ''}`}
         onClick={() => {
           if (isSold || !(car.slug || car.id)) return;
           trackEvent(supabase, 'card_click', {
@@ -213,6 +216,13 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
             metadata:  { source: 'car_card' },
           });
           navigate((isSubdomain() ? '/cars/' : '/showroom/') + (car.slug || car.id));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (isSold || !(car.slug || car.id)) return;
+            navigate((isSubdomain() ? '/cars/' : '/showroom/') + (car.slug || car.id));
+          }
         }}
         style={{
           background:    xd.cardBg,
@@ -252,6 +262,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
                 alt={`${year} ${brand} ${model}`}
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
+                sizes="(max-width: 520px) calc(100vw - 32px), (max-width: 768px) calc(50vw - 24px), 380px"
                 onError={() => setImgError(true)}
                 onLoad={() => setImgLoaded(true)}
                 style={{
@@ -526,7 +537,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false }
 
           </div>
         </div>
-      </div>
+      </article>
     </>
   );
 };

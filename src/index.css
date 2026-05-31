@@ -71,6 +71,16 @@
   }
 }
 
+/* Global focus-visible ring — keyboard navigation indicator */
+:focus-visible {
+  outline: 2px solid #dc2626 !important;
+  outline-offset: 2px !important;
+}
+/* Remove outline for mouse/touch (only show for keyboard) */
+:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
 @layer utilities {
   .font-display {
     font-family: 'Bebas Neue', sans-serif;

@@ -906,8 +906,9 @@ export default function CarDetailPage() {
           const desc = car
             ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Verified dealer on XDrive.`
             : "";
-          const img = car?.images?.[0] || "https://xdrive.my/og-default.jpg";
-          const url = car ? `https://xdrive.my/showroom/${car.slug}` : "https://xdrive.my";
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my';
+          const img = car?.images?.[0] || `${origin}/og-default.jpg`;
+          const url = car ? `${origin}/showroom/${car.slug}` : origin;
           return <>
             <meta name="description" content={desc} />
             <meta property="og:type" content="website" />
@@ -928,15 +929,14 @@ export default function CarDetailPage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://xdrive.my" },
-            { "@type": "ListItem", "position": 2, "name": "Showroom", "item": "https://xdrive.my/showroom" },
-            { "@type": "ListItem", "position": 3, "name": carTitle, "item": `https://xdrive.my/showroom/${car.slug}` }
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my' },
+            { "@type": "ListItem", "position": 2, "name": "Showroom", "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my'}/showroom` },
+            { "@type": "ListItem", "position": 3, "name": carTitle, "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my'}/showroom/${car.slug}` }
           ]
         })}</script>
       </Helmet>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #060c14; overflow-x: hidden; }
 
@@ -3169,18 +3169,21 @@ export default function CarDetailPage() {
             <p className="text-gray-500 text-sm mb-4">Enter your details to continue to WhatsApp</p>
             <input
               placeholder="Your name"
+              aria-label="Your name"
               value={enquiryForm.name}
               onChange={e => setEnquiryForm(p => ({ ...p, name: e.target.value }))}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
             />
             <input
               placeholder="Phone number (e.g. 0123456789)"
+              aria-label="Phone number"
               value={enquiryForm.phone}
               onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-3 outline-none focus:border-red-500"
             />
             <select
               value={enquiryForm.state}
+              aria-label="Your state"
               onChange={e => setEnquiryForm(p => ({ ...p, state: e.target.value }))}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-500"
               style={{ cursor: 'pointer' }}
@@ -3263,21 +3266,21 @@ export default function CarDetailPage() {
               ) : (
                 <form onSubmit={handleBook} style={{ padding:'20px 28px 32px' }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
-                    <input type="text" placeholder="Your name" required value={form.name}
+                    <input type="text" placeholder="Your name" aria-label="Your name" required value={form.name}
                       onChange={e => setForm(f => ({...f, name: e.target.value}))}
                       onFocus={() => setFocused('bk_name')} onBlur={() => setFocused(null)}
                       style={inputStyle(focusedField === 'bk_name', th)} />
-                    <input type="tel" placeholder="Phone number" required value={form.phone}
+                    <input type="tel" placeholder="Phone number" aria-label="Phone number" required value={form.phone}
                       onChange={e => setForm(f => ({...f, phone: e.target.value}))}
                       onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
                       style={inputStyle(focusedField === 'bk_phone', th)} />
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:0 }}>
-                    <input type="date" required min={today} value={form.date}
+                    <input type="date" aria-label="Preferred date" required min={today} value={form.date}
                       onChange={e => setForm(f => ({...f, date: e.target.value}))}
                       onFocus={() => setFocused('bk_date')} onBlur={() => setFocused(null)}
                       style={{ ...inputStyle(focusedField === 'bk_date', th), colorScheme: isXdrive ? 'light' : 'dark' }} />
-                    <select value={form.time}
+                    <select aria-label="Preferred time" value={form.time}
                       onChange={e => setForm(f => ({...f, time: e.target.value}))}
                       onFocus={() => setFocused('bk_time')} onBlur={() => setFocused(null)}
                       style={{ ...inputStyle(focusedField === 'bk_time', th), cursor:'pointer' }}>
@@ -3288,7 +3291,7 @@ export default function CarDetailPage() {
                       ))}
                     </select>
                   </div>
-                  <select value={form.state}
+                  <select aria-label="Your state" value={form.state}
                     onChange={e => setForm(f => ({...f, state: e.target.value}))}
                     onFocus={() => setFocused('bk_state')} onBlur={() => setFocused(null)}
                     style={{ ...inputStyle(focusedField === 'bk_state', th), cursor:'pointer', width:'100%' }}>
@@ -3297,7 +3300,7 @@ export default function CarDetailPage() {
                       <option key={s} value={s} style={{ background: th.card }}>{s}</option>
                     ))}
                   </select>
-                  <textarea placeholder="Notes (optional)" rows={2} value={form.notes}
+                  <textarea placeholder="Notes (optional)" aria-label="Notes (optional)" rows={2} value={form.notes}
                     onChange={e => setForm(f => ({...f, notes: e.target.value}))}
                     onFocus={() => setFocused('bk_notes')} onBlur={() => setFocused(null)}
                     style={{ ...inputStyle(focusedField === 'bk_notes', th), resize:'none', width:'100%' }} />
