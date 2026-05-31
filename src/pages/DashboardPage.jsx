@@ -6067,7 +6067,23 @@ export default function DashboardPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingCopied, setOnboardingCopied] = useState(false);
   const [onboardingToast,  setOnboardingToast]  = useState(false);
+  const [planUsage, setPlanUsage] = useState(null);
   const loadedUidRef = useRef(null);
+
+  const planCfg     = getPlanConfig(profile?.plan);
+  const nextPlan    = nextDealerPlan(profile?.plan);
+  const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const dealerIdForUsage = profile.role === 'manager' || profile.role === 'admin'
+      ? profile.dealer_id
+      : profile.id;
+    if (!dealerIdForUsage) return;
+    supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
+      if (data) setPlanUsage(data);
+    });
+  }, [profile?.id]);
 
   const getStorefrontUrl = () => {
     if (!profile?.subdomain || profile?.role === 'superadmin') {
