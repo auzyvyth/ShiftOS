@@ -17,12 +17,6 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Priority 5 — CRM polish
-
-### CRM-1. Customer remarketing — Phase 2
-- WhatsApp blast to customers whose road tax / insurance expires in the next 30 days
-- "Send reminder" flow in Customers tab that pre-fills WA message template
-
 ---
 
 ## Done (reference)
