@@ -494,14 +494,12 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Photos",    icon: Camera,      desc: "Upload images first" },
-  { id: 2, label: "Identity",  icon: Car,         desc: "Brand & model" },
-  { id: 3, label: "Condition", icon: Check,       desc: "Mileage & colour" },
-  { id: 4, label: "Specs",     icon: Gauge,       desc: "Type & engine" },
-  { id: 5, label: "History",   icon: ShieldCheck, desc: "Recon & import" },
-  { id: 6, label: "Location",  icon: MapPin,      desc: "State & city" },
-  { id: 7, label: "Pricing",   icon: DollarSign,  desc: "Prices & discount" },
-  { id: 8, label: "Details",   icon: FileText,    desc: "Specs, features & docs" },
+  { id: 1, label: "Photos",      icon: Camera,      desc: "Upload images first" },
+  { id: 2, label: "Car Details", icon: Car,         desc: "Brand, model & condition" },
+  { id: 3, label: "Technical",   icon: Gauge,       desc: "Specs & history" },
+  { id: 4, label: "Location",    icon: MapPin,      desc: "State & city" },
+  { id: 5, label: "Pricing",     icon: DollarSign,  desc: "Prices & add-ons" },
+  { id: 6, label: "Details",     icon: FileText,    desc: "Features & documents" },
 ];
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
@@ -1321,13 +1319,14 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     if (photosInputRef.current) photosInputRef.current.value = "";
   };
 
-  // Auto-focus first input whenever step changes
+  // Scroll the form back to the top and focus the first input whenever step changes
   useEffect(() => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     const t = setTimeout(() => {
       const el = formRef.current?.querySelector(
         'input:not([type="file"]):not([type="hidden"]):not([disabled]), select:not([disabled])',
       );
-      el?.focus();
+      el?.focus({ preventScroll: true });
     }, 60);
     return () => clearTimeout(t);
   }, [step]);
@@ -1368,12 +1367,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
   const canNext = () => {
     if (step === 1) return form.images.length > 0;
-    if (step === 2) return form.brand && form.model && form.year;
-    if (step === 3) return form.mileage && form.colour && form.condition;
-    if (step === 4) return form.bodyType && form.fuelType;
-    if (step === 5) return true;
-    if (step === 6) return form.state && form.city;
-    if (step === 7) return form.basePrice && form.sellingPrice;
+    if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
+    if (step === 3) return form.bodyType && form.fuelType;
+    if (step === 4) return form.state && form.city;
+    if (step === 5) return form.basePrice && form.sellingPrice;
     return true;
   };
 
@@ -1613,13 +1610,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   function isSectionComplete(id) {
     switch (id) {
       case 1: return form.images.length > 0;
-      case 2: return !!(form.brand && form.model && form.year);
-      case 3: return !!(form.mileage && form.colour && form.condition);
-      case 4: return !!(form.bodyType && form.fuelType);
-      case 5: return true;
-      case 6: return !!(form.state && form.city);
-      case 7: return !!(form.basePrice && form.sellingPrice);
-      case 8: return true;
+      case 2: return !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
+      case 3: return !!(form.bodyType && form.fuelType);
+      case 4: return !!(form.state && form.city);
+      case 5: return !!(form.basePrice && form.sellingPrice);
+      case 6: return true;
       default: return false;
     }
   }
@@ -1922,13 +1917,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           {autoFilled && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
-              Specs auto-filled — review Step 4 and adjust if needed
+              Specs auto-filled — review Technical section and adjust if needed
             </div>
           )}
-        </div>
-      );
-      case 3: return (
-        <div className="space-y-5">
           <Field label="Condition" required>
             <PillSelect
               options={CONDITIONS}
@@ -2022,7 +2013,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </Field>
         </div>
       );
-      case 4: return (
+      case 3: return (
         <div className="space-y-6">
           <Field label="Body Type" required>
             <PillSelect
@@ -2149,10 +2140,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-        </div>
-      );
-      case 5: return (
-        <div className="space-y-6">
           {/* Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
@@ -2316,7 +2303,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           )}
         </div>
       );
-      case 6: return (
+      case 4: return (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -2351,7 +2338,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </Field>
         </div>
       );
-      case 7: return (
+      case 5: return (
         <div className="space-y-5">
           <Field label="Payment Type" required>
             <PillSelect
@@ -2677,7 +2664,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </div>
         </div>
       );
-      case 8: return (
+      case 6: return (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea
@@ -2747,69 +2734,120 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         </div>
       )}
 
-      {/* Sections */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleSectionDragEnd}
-      >
-        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-          {sectionOrder.map((id) => {
-            const section = STEPS.find((s) => s.id === id);
+      {/* Step progress indicator — click a step to jump to it */}
+      <div className="mb-5 bg-white border border-gray-200 rounded-2xl px-3 sm:px-4 py-4">
+        <div className="flex items-start">
+          {STEPS.map((s, i) => {
+            const complete = isSectionComplete(s.id);
+            const isCurrent = step === s.id;
+            const isLast = i === STEPS.length - 1;
             return (
-              <SortableSection
-                key={id}
-                id={id}
-                section={section}
-                complete={isSectionComplete(id)}
-                collapsed={!!collapsed[id]}
-                onToggle={() =>
-                  setCollapsed((p) => ({ ...p, [id]: !p[id] }))
-                }
-              >
-                {renderSectionContent(id)}
-              </SortableSection>
+              <React.Fragment key={s.id}>
+                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setStep(s.id)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 ${
+                      isCurrent
+                        ? "bg-white border-red-600 text-red-600 ring-2 ring-red-100"
+                        : complete
+                        ? "bg-red-600 border-red-600 text-white"
+                        : "bg-white border-gray-300 text-gray-400"
+                    }`}
+                  >
+                    {complete && !isCurrent ? <Check className="w-4 h-4" /> : <span>{s.id}</span>}
+                  </button>
+                  <span className={`text-[10px] font-medium whitespace-nowrap ${isCurrent ? "text-red-600" : complete ? "text-gray-600" : "text-gray-400"}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {!isLast && (
+                  <div className={`flex-1 h-0.5 mx-1 mt-4 rounded-full transition-all ${complete ? "bg-red-600" : "bg-gray-200"}`} />
+                )}
+              </React.Fragment>
             );
           })}
-        </SortableContext>
-      </DndContext>
+        </div>
+      </div>
 
-      {/* Submit */}
-      <div className="mt-6">
-        {listing && (
-          <div className="flex justify-end mb-3">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
-            >
-              {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied!</> : <><Clipboard className="w-3.5 h-3.5" />Copy Data</>}
-            </button>
-          </div>
+      {/* Current step only */}
+      <div className="bg-white border border-gray-200 rounded-2xl px-4 sm:px-6 py-5">
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+          {(() => {
+            const sec = STEPS.find((s) => s.id === step);
+            const Icon = sec?.icon;
+            return (
+              <>
+                {Icon && <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0"><Icon className="w-4.5 h-4.5 text-red-600" /></div>}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">Step {step} of {STEPS.length} · {sec?.label}</p>
+                  <p className="text-xs text-gray-500">{sec?.desc}</p>
+                </div>
+                {listing && (
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className={`ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
+                  >
+                    {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied</> : <><Clipboard className="w-3.5 h-3.5" />Copy</>}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+
+        {renderSectionContent(step)}
+      </div>
+
+      {/* Listing cap warning */}
+      {capError && step === STEPS.length && (
+        <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginTop: 16 }}>
+          <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
+          <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
+            Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
+          </p>
+          <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+            Upgrade Plan
+          </a>
+        </div>
+      )}
+
+      {/* Wizard navigation */}
+      <div className="mt-5 flex items-center gap-3">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={() => setStep((s) => Math.max(1, s - 1))}
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all hover:border-gray-300"
+          >
+            <ChevronLeft className="w-4 h-4" />Back
+          </button>
         )}
-        {capError && (
-          <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-            <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
-            <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
-              Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
-            </p>
-            <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-              Upgrade Plan
-            </a>
-          </div>
+
+        {step < STEPS.length ? (
+          <button
+            type="button"
+            onClick={() => canNext() && setStep((s) => Math.min(STEPS.length, s + 1))}
+            disabled={!canNext()}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continue<ChevronRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {uploading ? (
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
+            ) : (
+              <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
+            )}
+          </button>
         )}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
-          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {uploading ? (
-            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
-          ) : (
-            <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
-          )}
-        </button>
       </div>
     </div>
   );

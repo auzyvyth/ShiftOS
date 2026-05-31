@@ -37,7 +37,7 @@ function Skeleton({ h = "h-8", w = "w-full" }) {
   return (
     <div
       className={`${h} ${w} rounded-lg animate-pulse`}
-      style={{ background: "rgba(255,255,255,0.05)" }}
+      style={{ background: "#E5E7EB" }}
     />
   );
 }
@@ -54,10 +54,8 @@ function MetricCard({
     <div
       className="relative flex flex-col gap-1.5 p-4 rounded-lg stat-card"
       style={{
-        background:
-          "linear-gradient(145deg,rgba(255,255,255,0.032),rgba(255,255,255,0.008))",
-        border: "1px solid rgba(255,255,255,0.06)",
-        backdropFilter: "blur(12px)",
+        background: "#FFFFFF",
+        border: "1px solid #EAECF0",
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -92,7 +90,7 @@ function MetricCard({
             fontFamily: "'Bebas Neue',cursive",
             fontSize: 28,
             letterSpacing: "0.04em",
-            color: "#f8fafc",
+            color: "#111827",
             lineHeight: 1,
           }}
         >
@@ -113,16 +111,16 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
     <div
       className="rounded-lg overflow-hidden"
       style={{
-        background: "rgba(255,255,255,0.022)",
-        border: "1px solid rgba(255,255,255,0.055)",
+        background: "#FFFFFF",
+        border: "1px solid #EAECF0",
       }}
     >
       {title && (
         <div
           className="px-5 py-3.5 flex items-center gap-2"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.048)" }}
+          style={{ borderBottom: "1px solid #EAECF0" }}
         >
-          <span className="text-sm font-semibold text-white">{title}</span>
+          <span className="text-sm font-semibold" style={{ color: "#111827" }}>{title}</span>
         </div>
       )}
       <div className="p-4 sm:p-5" style={{ minHeight: `${skeletonRows * 40}px` }}>
@@ -143,16 +141,16 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
 function AlertBanner({ type, message, onDismiss }) {
   const styles = {
     red: {
-      bg: "rgba(220,38,38,0.08)",
-      border: "rgba(220,38,38,0.22)",
+      bg: "rgba(220,38,38,0.06)",
+      border: "rgba(220,38,38,0.18)",
       icon: "#ef4444",
-      text: "#fca5a5",
+      text: "#374151",
     },
     amber: {
-      bg: "rgba(217,119,6,0.08)",
-      border: "rgba(217,119,6,0.22)",
-      icon: "#fbbf24",
-      text: "#fde68a",
+      bg: "rgba(217,119,6,0.06)",
+      border: "rgba(217,119,6,0.18)",
+      icon: "#d97706",
+      text: "#374151",
     },
   };
   const s = styles[type] || styles.amber;
@@ -626,7 +624,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
             fontFamily: "'Bebas Neue',cursive",
             fontSize: 32,
             letterSpacing: "0.06em",
-            color: "#f8fafc",
+            color: "#111827",
             lineHeight: 1,
           }}
         >
@@ -725,7 +723,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               style={{
                 fontFamily: "'Bebas Neue',cursive",
                 fontSize: 26,
-                color: "#f8fafc",
+                color: "#111827",
               }}
             >
               {leadData?.total ?? "—"}
@@ -749,7 +747,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               style={{
                 fontFamily: "'Bebas Neue',cursive",
                 fontSize: 26,
-                color: "#f8fafc",
+                color: "#111827",
               }}
             >
               {leadData?.viewingRate != null ? `${leadData.viewingRate}%` : "—"}
@@ -804,7 +802,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                     style={{
                       fontFamily: "'Bebas Neue',cursive",
                       fontSize: 26,
-                      color: "#f8fafc",
+                      color: "#111827",
                     }}
                   >
                     {leadData.avgResponseMin}
@@ -853,7 +851,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               style={{
                 fontFamily: "'Bebas Neue',cursive",
                 fontSize: 26,
-                color: "#f8fafc",
+                color: "#111827",
               }}
             >
               {trafficData?.pageVisits ?? "—"}
@@ -878,7 +876,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
               style={{
                 fontFamily: "'Bebas Neue',cursive",
                 fontSize: 26,
-                color: "#f8fafc",
+                color: "#111827",
               }}
             >
               {trafficData?.carViews ?? "—"}
@@ -960,7 +958,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                     alignItems: "center",
                     gap: 10,
                     padding: "6px 0",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    borderBottom: "1px solid #EAECF0",
                   }}
                 >
                   <span
@@ -977,7 +975,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   <span
                     style={{
                       fontSize: 13,
-                      color: "#e5e7eb",
+                      color: "#111827",
                       flex: 1,
                       minWidth: 0,
                       overflow: "hidden",
@@ -1031,7 +1029,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   style={{
                     fontFamily: "'Bebas Neue',cursive",
                     fontSize: 24,
-                    color: "#f8fafc",
+                    color: "#111827",
                   }}
                 >
                   {stockData.total}
@@ -1053,7 +1051,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   style={{
                     fontFamily: "'Bebas Neue',cursive",
                     fontSize: 24,
-                    color: "#f8fafc",
+                    color: "#111827",
                   }}
                 >
                   {stockData.avgDays != null ? stockData.avgDays : "—"}
@@ -1075,7 +1073,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   style={{
                     fontFamily: "'Bebas Neue',cursive",
                     fontSize: 24,
-                    color: stockData.aged45.length > 0 ? "#fbbf24" : "#f8fafc",
+                    color: stockData.aged45.length > 0 ? "#fbbf24" : "#111827",
                   }}
                 >
                   {stockData.aged45.length}
@@ -1100,7 +1098,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                   style={{
                     fontFamily: "'Bebas Neue',cursive",
                     fontSize: 24,
-                    color: stockData.aged60.length > 0 ? "#f87171" : "#f8fafc",
+                    color: stockData.aged60.length > 0 ? "#f87171" : "#111827",
                   }}
                 >
                   {stockData.aged60.length > 0 && (
@@ -1135,15 +1133,15 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                 </p>
                 <div
                   className="rounded-lg overflow-hidden"
-                  style={{ border: "1px solid rgba(255,255,255,0.055)" }}
+                  style={{ border: "1px solid #EAECF0" }}
                 >
                   {/* Table header */}
                   <div
                     className="grid gap-2 px-3 py-2 hidden sm:grid"
                     style={{
                       gridTemplateColumns: "1fr 1fr 60px 90px 100px",
-                      borderBottom: "1px solid rgba(255,255,255,0.05)",
-                      background: "rgba(255,255,255,0.02)",
+                      borderBottom: "1px solid #EAECF0",
+                      background: "#F7F8FA",
                     }}
                   >
                     {["Brand", "Model", "Year", "Days", "Asking"].map((h) => (
@@ -1172,7 +1170,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                         style={{
                           gridTemplateColumns: "1fr 1fr 60px 90px 100px",
                           borderLeft: `3px solid ${borderColor}`,
-                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          borderBottom: "1px solid #EAECF0",
                           background: "transparent",
                           cursor: onNavigateToStock ? "pointer" : "default",
                         }}
@@ -1180,7 +1178,7 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
                         <span
                           style={{
                             fontSize: 13,
-                            color: "#e5e7eb",
+                            color: "#111827",
                             fontWeight: 500,
                           }}
                         >
@@ -1303,8 +1301,8 @@ export default function RevOpsPage({ userId, onNavigateToStock }) {
           <div
             className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg"
             style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.055)",
+              background: "#F7F8FA",
+              border: "1px solid #EAECF0",
             }}
           >
             <span

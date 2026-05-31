@@ -63,6 +63,7 @@ const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const OversightTab     = React.lazy(() => import("../components/OversightTab"));
+const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
@@ -4257,7 +4258,7 @@ function ListingDetailDrawer({
   const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
   const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
 
-  const btnBase = { width: '100%', background: '#f9fafb', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#9ca3af' };
+  const btnBase = { width: '100%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'DM Sans', sans-serif", color: '#e5e7eb' };
 
   const specRows = [
     { k: 'Year',              v: listing.year || '—' },
@@ -4272,12 +4273,12 @@ function ListingDetailDrawer({
     <>
       {/* Backdrop */}
       <div
-        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
         onClick={onClose}
       >
         {/* Panel */}
         <div
-          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: 'rgba(11,11,15,0.99)', border: '1px solid #e5e7eb', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
+          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
           onClick={e => e.stopPropagation()}
         >
           {/* Close */}
@@ -4308,7 +4309,7 @@ function ListingDetailDrawer({
                   ))}
                 </div>
                 {/* Main image */}
-                <div style={{ flex: 1, position: 'relative', background: '#0d0d0d', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ flex: 1, position: 'relative', background: '#F3F4F6', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
                     src={images[imgIdx]}
                     alt=""
@@ -4384,7 +4385,7 @@ function ListingDetailDrawer({
                   <button
                     key={tab}
                     onClick={() => setDrawerTab(tab)}
-                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#f3f4f6' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
+                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}
                   >
                     {tabLabel[tab]}
                   </button>
@@ -4461,51 +4462,51 @@ function ListingDetailDrawer({
               )}
             </div>
 
-            {/* RIGHT */}
-            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none' }}>
-              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
-                <p style={{ fontSize: 10, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
+            {/* RIGHT — dark premium sidebar */}
+            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none', background: isMobile ? '#fff' : '#111827' }}>
+              <div style={{ background: 'transparent', borderRadius: 8, padding: isMobile ? 18 : '18px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
+                <p style={{ fontSize: 10, color: isMobile ? '#6b7280' : '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
 
                 {/* Edit */}
-                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
                 </button>
 
                 {/* TikTok */}
-                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
-                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                 </button>
 
                 {/* Copy */}
-                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
                 {/* Financing Calculator */}
-                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                 </button>
 
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                     <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
                   </button>
                   {showAssign && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#0f172a', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 -8px 32px rgba(0,0,0,0.7)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#FFFFFF', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
                       {listing.assigned_to && (
-                        <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
+                        <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>
                           <X style={{ width: 12, height: 12 }} />Unassign
                         </button>
                       )}
                       {salesmen.map(s => (
-                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(168,85,247,0.1)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#c084fc' : '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
+                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(220,38,38,0.06)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#DC2626' : '#374151', fontSize: 12, cursor: 'pointer' }}>
                           <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
@@ -4517,22 +4518,22 @@ function ListingDetailDrawer({
 
                 {/* Mark Sold */}
                 {!isSold && (
-                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                     <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
                   </button>
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
 
                 {/* Metadata */}
-                <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
+                <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                  <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: sCfg.tx, textTransform: 'capitalize' }}>{listing.status || 'available'}</span>
+                    <span style={{ fontSize: 11, color: '#e5e7eb', textTransform: 'capitalize' }}>{listing.status || 'available'}</span>
                   </div>
                 </div>
               </div>
@@ -5987,7 +5988,7 @@ export default function DashboardPage() {
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(tabParam || "listings");
+  const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState("listings"); // listings | revenue | marketplace
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
@@ -6557,6 +6558,7 @@ export default function DashboardPage() {
   const { snapshot, loading: snapshotLoading } = useDealerSnapshot(userId);
 
   const TITLES = {
+    overview:  { title: "Overview", sub: "Dealership pulse at a glance" },
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
@@ -6572,6 +6574,7 @@ export default function DashboardPage() {
   };
 
   const NAV = [
+    { id: "overview",   Icon: Gauge,           label: "Overview" },
     { id: "crm",        Icon: MessageCircle,   label: "Leads / CRM" },
     { id: "listings",   Icon: Car,             label: "Listings",          badge: listings.length },
     { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
@@ -6674,10 +6677,10 @@ export default function DashboardPage() {
   if (!profile) return <SciFiLoader />;
 
   if (!subLoading && status === 'expired') return (
-    <div style={{ background: '#0d0d0d', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
-      <p style={{ color: 'white', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
+    <div style={{ background: '#F7F8FA', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", gap: 16 }}>
+      <p style={{ color: '#111827', fontSize: 22, fontWeight: 600 }}>Your trial has ended</p>
       <p style={{ color: '#6b7280', fontSize: 14 }}>Contact us to activate your ShiftOS subscription.</p>
-      <a href="https://wa.me/60174155191" style={{ background: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
+      <a href="https://wa.me/60174155191" style={{ background: '#DC2626', color: '#ffffff', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Upgrade Now</a>
     </div>
   );
 
@@ -7033,6 +7036,11 @@ export default function DashboardPage() {
             </p>
             <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
           </div>
+
+          {/* ── Overview Tab ── */}
+          {activeTab === "overview" && userId && (
+            <OverviewTab dealerId={getDealerIdFromProfile(profile)} />
+          )}
 
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
@@ -7427,7 +7435,7 @@ export default function DashboardPage() {
             <OutreachHub dealerId={userId} listings={listings} />
           )}
           {activeTab === "oversight" && userId && (
-            <OversightTab dealerId={getDealerIdFromProfile(profile)} />
+            <OversightTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />

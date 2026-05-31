@@ -2,26 +2,10 @@
 
 ## Dev tasks
 
-### C. CarForm full redesign (light theme + UX overhaul)
-`src/components/CarForm.jsx` still uses the old dark theme throughout all 8 steps.
-Needs a complete redesign: white background, proper section cards, clean label/input pairs,
-step indicator, mobile-friendly layout. Do NOT start until user says "do carform".
-
-### D. Eyes Here → action on arrow click (OversightTab)
-The "Eyes Here" alert cards in `src/components/OversightTab.jsx` have `>` arrows
-but clicking them does nothing. Each alert type should navigate to the relevant tab:
-- "missing PUSPAKOM B7" → navigate to Stock tab and filter
-- "leads with no activity" → navigate to CRM tab and filter by stale
-- "anomalous edits" → navigate to OversightTab Activity Trail > Anomalies filter
-Implement only after CarForm is done.
 
 ---
 
 ## User-action required (blocked on user)
-
-### A. Vercel env var
-Add `VITE_SUPABASE_ANON_KEY` to Vercel project env vars in the Vercel dashboard.
-Once done, remove the hardcoded fallback key from `src/lib/supabaseClient.js`.
 
 ### B. Lexus logo
 Real Lexus SVG is not available in simple-icons or any accessible npm package.
