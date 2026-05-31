@@ -98,6 +98,7 @@ function App() {
           <Route path="/signup" element={<OnboardingPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/onboarding/:plan" element={<OnboardingPage />} />
           <Route path="/auth/confirm" element={<AuthConfirmPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />
