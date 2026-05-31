@@ -1,4 +1,18 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
+import DOMPurify from "dompurify";
+import SuspendedBanner from "../components/SuspendedBanner";
+import { createPortal } from 'react-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
+import { Helmet } from "react-helmet";
+import { toast } from "sonner";
+import { useDebouncedCallback } from 'use-debounce';
+import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { supabase } from "../supabaseClient";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import SciFiLoader from "../components/SciFiLoader";
 
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -18,17 +32,18 @@ class TabErrorBoundary extends Component {
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
 function SubTabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 mb-4 border-b border-gray-800">
+    <div className="flex gap-1 mb-4" style={{ borderBottom: '1px solid #EAECF0' }}>
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={
-            "px-3 py-2 text-xs font-medium -mb-px border-b-2 transition-colors " +
-            (active === t.id
-              ? "border-red-600 text-white"
-              : "border-transparent text-gray-500 hover:text-gray-300")
-          }
+          style={{
+            padding: '8px 12px', fontSize: 13, fontWeight: 500,
+            borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
+            color: active === t.id ? '#DC2626' : '#9AA1AD',
+            background: 'none', border: 'none',
+            cursor: 'pointer', transition: 'color 0.15s', marginBottom: -1,
+          }}
         >
           {t.label}
         </button>
@@ -36,20 +51,6 @@ function SubTabBar({ tabs, active, onChange }) {
     </div>
   );
 }
-import DOMPurify from "dompurify";
-import SuspendedBanner from "../components/SuspendedBanner";
-import { createPortal } from 'react-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
-import { Helmet } from "react-helmet";
-import { toast } from "sonner";
-import { useDebouncedCallback } from 'use-debounce';
-import { useNavigate, useParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { supabase } from "../supabaseClient";
-import { getDealerIdFromProfile } from "../hooks/useProfile";
-import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
-import SciFiLoader from "../components/SciFiLoader";
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
@@ -67,6 +68,7 @@ import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
+import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
@@ -146,91 +148,90 @@ const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
-  .grad-red    { background: linear-gradient(135deg,#93c5fd,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-blue   { background: linear-gradient(135deg,#60a5fa,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-cyan   { background: linear-gradient(135deg,#67e8f9,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-green  { background: linear-gradient(135deg,#6ee7b7,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-purple { background: linear-gradient(135deg,#d8b4fe,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 
-  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; z-index:1; }
-  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(255,255,255,0.07) 38%,rgba(255,255,255,0.04) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
+  *, *::before, *::after { box-sizing: border-box; }
 
-  .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
-  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(255,255,255,0.1); }
-  .nav-active { background:rgba(220,38,38,0.08)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #dc2626!important; box-shadow:inset 0 1px 0 rgba(220,38,38,0.08),inset 0 -1px 0 rgba(0,0,0,0.1); }
+  body { background: #F7F8FA; color: #0F172A; font-family: 'DM Sans', sans-serif; }
 
-  .stat-card { transition:transform 0.18s,box-shadow 0.18s; }
-  .stat-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.08); }
+  /* ── Sidebar nav ── */
+  .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
+  .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; border-left-color: #D1D5DB; color: #0F172A !important; }
+  .nav-active { background: #FEF2F2 !important; border-left: 2px solid #DC2626 !important; color: #DC2626 !important; }
 
-  .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
-  .data-row:hover { background:rgba(255,255,255,0.025)!important; border-left-color:rgba(255,255,255,0.12); }
+  /* ── Cards ── */
+  .dash-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
+  .stat-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); transition: box-shadow 0.18s, transform 0.18s; }
+  .stat-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.10); transform: translateY(-1px); }
 
+  /* ── Table rows ── */
+  .data-row { border-left: 2px solid transparent; transition: background 0.12s, border-left-color 0.12s; }
+  .data-row:hover { background: #F7F8FA !important; border-left-color: #DC2626; }
 
-  @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
-  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
-  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  /* ── Modals ── */
+  .glass-modal, .modal-top { background: #FFFFFF; border: 1px solid #EAECF0; box-shadow: 0 20px 60px rgba(15,23,42,0.15); }
 
-  .discount-chip { transition:box-shadow 0.15s; }
-  .discount-chip:hover { box-shadow:0 0 10px rgba(255,255,255,0.08); }
+  /* ── Misc ── */
+  .settings-section { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; overflow: hidden; }
+  .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:24px; background:linear-gradient(to left,rgba(247,248,250,0.9),transparent); pointer-events:none; }
 
-  .btn-shimmer { position:relative; overflow:hidden; }
-  .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
+  .btn-shimmer { position: relative; overflow: hidden; }
+  .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); animation:shimmer 3s ease infinite; }
   @keyframes shimmer { to { left:150%; } }
 
-  .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
+  .sold-btn:hover { background: rgba(34,197,94,0.08) !important; border-color: rgba(34,197,94,0.4) !important; color: #16a34a !important; }
+  .discount-chip { transition: box-shadow 0.15s; }
 
-  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; }
-  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; }
+  /* ── Gradient text (keep for charts/badges) ── */
+  .grad-red    { background: linear-gradient(135deg,#dc2626,#f87171); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-blue   { background: linear-gradient(135deg,#2563eb,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-green  { background: linear-gradient(135deg,#16a34a,#4ade80); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-gold   { background: linear-gradient(135deg,#d97706,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:28px; background:linear-gradient(to left,rgba(8,10,18,0.85),transparent); pointer-events:none; border-radius:0 8px 8px 0; }
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9AA1AD; }
 
-  .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
-  .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
-  .glass-pill { background:rgba(255,255,255,0.08); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
-  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
-
-  ::-webkit-scrollbar { width:4px; height:4px; }
-  ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
-
-  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
+  .blue-glow { animation: hotpulse 2.2s ease-in-out infinite; }
 `;
 
 const T = {
   card: {
     position: 'relative',
-    background: 'linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.008))',
-    border: '1px solid rgba(255,255,255,0.055)',
-    backdropFilter: 'blur(12px)',
+    background: '#FFFFFF',
+    border: '1px solid #EAECF0',
+    borderRadius: 12,
+    boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
   },
   cardDark: {
     position: 'relative',
-    background: 'rgba(8,10,18,0.95)',
-    border: '1px solid rgba(255,255,255,0.055)',
+    background: '#F7F8FA',
+    border: '1px solid #EAECF0',
+    borderRadius: 12,
   },
   modal: {
     position: 'relative',
-    background: 'rgba(5,7,14,0.99)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
+    background: '#FFFFFF',
+    border: '1px solid #EAECF0',
+    boxShadow: '0 20px 60px rgba(15,23,42,0.15)',
   },
-  divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
+  divider: { borderBottom: '1px solid #EAECF0' },
   btnRed: {
-    background: 'linear-gradient(135deg, rgba(59,130,246,0.9), rgba(29,78,216,0.95))',
-    backdropFilter: 'blur(8px)',
-    boxShadow: '0 2px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)',
-    border: '1px solid rgba(255,255,255,0.12)',
+    background: '#DC2626',
+    boxShadow: '0 1px 4px rgba(220,38,38,0.3)',
+    border: 'none',
   },
 };
 
 const iCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all";
+  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 const taCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
+  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -6731,56 +6732,52 @@ export default function DashboardPage() {
     </Helmet>
     <style>{STYLES}</style>
     <div
-      className="min-h-screen text-white flex"
+      className="min-h-screen flex"
       style={{
         fontFamily: "'DM Sans',sans-serif",
-        background:
-          "radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
-        backgroundSize: "24px 24px, auto, auto",
+        background: color.appBg,
+        color: color.ink,
       }}
     >
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/65 z-20 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-20 lg:hidden"
+          style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)' }}
           onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ background: '#07090f' }}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
-        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
+        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-              boxShadow: "0 0 18px rgba(59,130,246,0.42), 0 2px 8px rgba(0,0,0,0.5)",
-            }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white flex-shrink-0"
+            style={{ background: '#DC2626', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
           >
             S
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-black tracking-wider text-sm grad-blue">
-              ShiftOS
-            </p>
-            <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: color.ink, letterSpacing: '0.05em' }}>ShiftOS</p>
+            <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>XDrive Dashboard</p>
           </div>
-          {/* Bell in sidebar header */}
+          {/* Bell */}
           <div ref={sidebarBellRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => {
               const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
               setSidebarBellRect(notifOpen ? null : rect);
               setNotifOpen(p => !p);
-            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
-              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#3b82f6', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
           <button
             onClick={() => startTransition(() => setSidebarOpen(false))}
-            className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
+            className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
+            style={{ color: color.textMuted }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -6791,15 +6788,15 @@ export default function DashboardPage() {
             <button
               key={id}
               onClick={() => handleTabChange(id)}
-              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
+              style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
             >
-              <Icon
-                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-blue-400" : ""}`}
-              />
+              <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
               {badge !== undefined && (
                 <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-blue-300 bg-blue-950/70" : "text-gray-600 bg-white/[0.05]"}`}
+                  className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
+                  style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
                 >
                   {badge}
                 </span>
@@ -6809,7 +6806,8 @@ export default function DashboardPage() {
           {profile?.role === 'superadmin' && (
             <a
               href="/platform"
-              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
+              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+              style={{ color: color.textMuted }}
             >
               <Shield className="w-4 h-4 flex-shrink-0" />
               Admin Panel
@@ -6817,7 +6815,8 @@ export default function DashboardPage() {
           )}
           <button
             onClick={() => window.open(getStorefrontUrl(), '_blank')}
-            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
+            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+            style={{ color: color.textMuted }}
           >
             <Home className="w-4 h-4 flex-shrink-0" />
             View Site
@@ -6825,19 +6824,16 @@ export default function DashboardPage() {
           </button>
         </nav>
 
-        {/* ── Sidebar bottom: profile + settings + logout ── */}
-        <div
-          className="shrink-0 p-3 space-y-1 border-t border-gray-800"
-          style={{}}
-        >
+        {/* ── Sidebar bottom ── */}
+        <div className="shrink-0 p-3 space-y-1" style={{ borderTop: '1px solid #EAECF0' }}>
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
             <Avatar size="lg" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
+              <p style={{ fontSize: 13, fontWeight: 600, color: color.ink }} className="truncate">
                 {profile?.full_name || "—"}
               </p>
-              <p className="text-xs text-gray-600 truncate">
+              <p style={{ fontSize: 11, color: color.textMuted }} className="truncate">
                 {profile?.email || ""}
               </p>
             </div>
@@ -6847,16 +6843,10 @@ export default function DashboardPage() {
           {profile?.dealership && (
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-              }}
+              style={{ background: '#F7F8FA', border: '1px solid #EAECF0' }}
             >
-              <Building2 className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-              <p className="text-xs font-semibold text-gray-300 truncate flex-1">
+              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: color.textMuted }} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: color.ink }} className="truncate flex-1">
                 {profile.dealership}
               </p>
             </div>
@@ -6864,67 +6854,59 @@ export default function DashboardPage() {
 
           {/* Plan tier chip */}
           {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
-            <div
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 8,
-                padding: '8px 10px',
-                margin: '0 4px',
-              }}
-            >
+            <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Plan</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.12)', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
               {planUsage && planCfg.listingCap != null && (
                 <div style={{ marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Listings</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ fontSize: 10, color: color.textMuted }}>Listings</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : color.ink }}>
                       {planUsage.active_listings ?? 0}/{planCfg.listingCap}
                     </span>
                   </div>
-                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
               {planUsage && planCfg.seatCap != null && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Seats</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ fontSize: 10, color: color.textMuted }}>Seats</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : color.ink }}>
                       {planUsage.seat_count ?? 0}/{planCfg.seatCap}
                     </span>
                   </div>
-                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
               {nextPlanCfg && (
-                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#60a5fa', textDecoration: 'none' }}>
+                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}
                 </a>
               )}
             </div>
           )}
 
-          {/* Settings button */}
+          {/* Settings */}
           <button
             onClick={() => handleTabChange("settings")}
-            className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+            style={{ color: activeTab === "settings" ? '#DC2626' : color.textMuted }}
           >
-            <Settings
-              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-500" : ""}`}
-            />
+            <Settings className="w-4 h-4 flex-shrink-0" />
             Settings
           </button>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-white hover:bg-white/[0.04] transition-all"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all"
+            style={{ color: color.textMuted }}
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -6936,42 +6918,35 @@ export default function DashboardPage() {
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
         {/* Mobile topbar */}
         <div
-          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 backdrop-blur-xl"
-          style={{
-            background: 'rgba(5,7,14,0.7)',
-            backdropFilter: 'blur(32px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03)',
-          }}
+          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5"
+          style={{ background: '#FFFFFF', borderBottom: '1px solid #EAECF0', boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
         >
           <button
             onClick={() => startTransition(() => setSidebarOpen(true))}
-            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0"
+            style={{ color: color.textMuted }}
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
-              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 0 8px rgba(220,38,38,0.3)' }}
+              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs text-white"
+              style={{ background: '#DC2626' }}
             >
               S
             </div>
-            <span className="font-bold text-white text-xs tracking-tight hidden xs:inline">ShiftOS</span>
+            <span style={{ fontWeight: 700, fontSize: 12, color: color.ink }} className="hidden xs:inline">ShiftOS</span>
           </div>
-          <span className="text-gray-500 text-xs truncate flex-1 min-w-0">
+          <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setNotifOpen(p => !p)}
               style={{
-                position: 'relative',
-                background: 'transparent',
+                position: 'relative', background: 'transparent',
                 border: 'none', borderRadius: 8, padding: 6,
-                cursor: 'pointer',
-                color: notifCount > 0 ? '#f3f4f6' : '#6b7280',
+                cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted,
                 display: 'flex',
               }}
             >
@@ -6979,11 +6954,10 @@ export default function DashboardPage() {
               {notifCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -3, right: -3,
-                  background: '#dc2626', color: '#fff',
+                  background: '#DC2626', color: '#fff',
                   fontSize: 8, fontWeight: 800, borderRadius: '50%',
                   width: 14, height: 14,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1.5px solid #05070e',
                 }}>
                   {notifCount > 9 ? '9+' : notifCount}
                 </span>
@@ -6992,21 +6966,21 @@ export default function DashboardPage() {
             {notifOpen && (
               <>
                 <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
-                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,23,42,0.12)', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: color.ink }}>Notifications</span>
+                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: color.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
                   </div>
                   {notifications.length === 0 ? (
-                    <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+                    <p style={{ fontSize: 13, color: color.textMuted, padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#FEF2F2', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#FEF2F2'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#DC2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
-                          {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
-                          <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
+                          {n.body && <p style={{ fontSize: 12, color: color.textMuted, margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
+                          <p style={{ fontSize: 10, color: color.textMuted, margin: 0 }}>{timeAgo(n.created_at)}</p>
                         </div>
                       </div>
                     </div>
@@ -7020,33 +6994,30 @@ export default function DashboardPage() {
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
-              {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare className="w-3.5 h-3.5 text-gray-400" />
+                  <div style={{ width: 28, height: 28, background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5" style={{ color: '#D97706' }} />
                   </div>
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
-                    <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
+                    <p style={{ fontSize: 11, color: '#92400E', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setOnboardingDismissed(true)}
-                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', color: color.textMuted, cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Progress bar */}
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#ef4444)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              <div style={{ height: 4, background: '#FDE68A', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: '#D97706', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
-              {/* Checklist */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {onboardingItems.map((item, i) => (
                   <div
@@ -7058,20 +7029,20 @@ export default function DashboardPage() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 7,
                       padding: '6px 12px',
-                      background: item.done ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                      background: item.done ? '#F0FDF4' : '#FFFFFF',
+                      border: `1px solid ${item.done ? '#BBF7D0' : '#EAECF0'}`,
                       borderRadius: 8,
                       cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.18)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? '#86EFAC' : '#D1D5DB'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? '#BBF7D0' : '#EAECF0'; }}
                   >
                     {item.done
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                      ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#16A34A' }} />
+                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid #D1D5DB', flexShrink: 0 }} />
                     }
-                    <span style={{ fontSize: 12, color: item.done ? '#6ee7b7' : '#9ca3af', fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 12, color: item.done ? '#16A34A' : color.textMuted, fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
                       {item.label}
                       {item.isCopy && item.done && ' ✓'}
                       {item.isCopy && !item.done && ' (click to copy)'}
@@ -7089,72 +7060,50 @@ export default function DashboardPage() {
           <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#111118', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Setup complete!</p>
-              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Your storefront is fully configured.</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0 }}>Setup complete!</p>
+              <p style={{ fontSize: 12, color: color.textMuted, margin: 0 }}>Your storefront is fully configured.</p>
             </div>
           </div>
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <div className="hidden sm:block mb-4 sm:mb-6">
-            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
             </h1>
-            <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
+            <p style={{ fontSize: 13, color: color.textMuted, marginTop: 3 }}>
               {TITLES[activeTab]?.sub}
             </p>
-            <div
-              className="mt-4 h-px"
-              style={{
-                background:
-                  "linear-gradient(90deg,rgba(59,130,246,0.4),rgba(99,102,241,0.2) 38%,transparent 65%)",
-              }}
-            />
+            <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
           </div>
 
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
-                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow, spark, sparkColor }) => (
-                  <div
-                    key={label}
-                    className="stat-card card-top rounded-2xl overflow-hidden glass"
-                    style={{ position: 'relative' }}
-                  >
-                    <div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 95% 5%, rgba(59,130,246,0.05) 0%, transparent 50%)",
-                      }}
-                    />
+                {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
+                  <div key={label} className="stat-card overflow-hidden" style={{ position: 'relative' }}>
                     {spark && (
                       <div className="relative px-3.5 pt-3">
-                        <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
+                        <Sparkline data={spark} color={sparkColor || '#2563EB'} width={120} height={32} />
                       </div>
                     )}
-                    <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
+                    <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                        <p style={{ fontSize: 10, fontWeight: 600, color: color.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                           {label}
                         </p>
                         <div
                           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: glow,
-                            boxShadow: `0 0 14px ${glow}`,
-                          }}
+                          style={{ background: glow + '22', color: glow }}
                         >
-                          <Icon className="w-4 h-4 opacity-80" />
+                          <Icon className="w-4 h-4" />
                         </div>
                       </div>
-                      <p
-                        className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
-                      >
+                      <p style={{ fontSize: 26, fontWeight: 700, color: color.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                         {val}
                       </p>
-                      <p className="text-xs text-gray-600 mt-1 relative truncate">
+                      <p style={{ fontSize: 12, color: color.textMuted, marginTop: 4 }} className="truncate">
                         {sub}
                       </p>
                     </div>
@@ -7163,11 +7112,11 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,20,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', fontFamily: "'DM Sans', sans-serif" }}>
-                <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
+                <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 600, color: '#f9fafb', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
+                      <h2 style={{ fontSize: 17, fontWeight: 600, color: color.ink, fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 6, padding: '2px 8px', lineHeight: 1.5 }}>
                         {filteredListings.length}
                       </span>
