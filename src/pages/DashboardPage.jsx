@@ -1015,6 +1015,12 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 </div>
               )}
             </div>
+            {planUsage.hp_submissions_mtd != null && (
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px', gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>HP SUBMISSIONS THIS MONTH</p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: '#E8EDF5' }}>{planUsage.hp_submissions_mtd}</p>
+              </div>
+            )}
           </div>
           {nextPlanCfg && (
             <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, textDecoration: 'none' }}>
@@ -6840,7 +6846,56 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ✅ Settings button — sits right under username */}
+          {/* Plan tier chip */}
+          {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                padding: '8px 10px',
+                margin: '0 4px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Plan</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.12)', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+              </div>
+              {planUsage && planCfg.listingCap != null && (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Listings</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                      {planUsage.active_listings ?? 0}/{planCfg.listingCap}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              )}
+              {planUsage && planCfg.seatCap != null && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Seats</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                      {planUsage.seat_count ?? 0}/{planCfg.seatCap}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              )}
+              {nextPlanCfg && (
+                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#60a5fa', textDecoration: 'none' }}>
+                  Upgrade to {nextPlanCfg.label}
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Settings button */}
           <button
             onClick={() => handleTabChange("settings")}
             className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}

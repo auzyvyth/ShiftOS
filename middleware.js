@@ -1,18 +1,24 @@
 /* eslint-env browser */
-// Vercel Edge Middleware — rate-limits public form submission routes only.
-// Fails open if Upstash credentials are not yet configured so the site
-// continues to work during local dev and before env vars are added.
+// Vercel Edge Middleware — rate-limits public form submissions and dealer AI calls.
+// Fails open if Upstash credentials are not configured so the site continues to
+// work during local dev and before env vars are added.
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
-const PROTECTED = new Set(['/api/enquiry', '/api/booking', '/api/waitlist']);
+const PROTECTED = new Set([
+  '/api/enquiry',
+  '/api/booking',
+  '/api/waitlist',
+  '/api/ai-messages',
+]);
 
-// Limits: enquiry 5/min, booking 3/min, waitlist 3/5min per IP
+// Per-IP sliding-window limits
 const LIMITS = {
-  '/api/enquiry': { window: '60 s', max: 5, prefix: 'rl:enquiry' },
-  '/api/booking': { window: '60 s', max: 3, prefix: 'rl:booking' },
-  '/api/waitlist': { window: '300 s', max: 3, prefix: 'rl:waitlist' },
+  '/api/enquiry':    { window: '60 s',  max: 5,  prefix: 'rl:enquiry' },
+  '/api/booking':    { window: '60 s',  max: 3,  prefix: 'rl:booking' },
+  '/api/waitlist':   { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
+  '/api/ai-messages':{ window: '60 s',  max: 20, prefix: 'rl:ai' },
 };
 
 let limiters = null;
@@ -65,5 +71,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/booking', '/api/waitlist'],
+  matcher: ['/api/enquiry', '/api/booking', '/api/waitlist', '/api/ai-messages'],
 };
