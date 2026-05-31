@@ -263,12 +263,12 @@ export default function HPBoard({ dealerId }) {
                   <tr key={row.id} style={{ borderBottom: '1px solid #EAECF0', background: overdue ? 'rgba(239,68,68,0.04)' : 'transparent' }}>
                     <td style={{ padding: '10px 12px', fontWeight: 700, color: '#111827' }}>{row.bank_name}</td>
                     <td style={{ padding: '10px 12px', color: '#374151' }}>{row.lead?.buyer_name || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>{car ? `${car.year} ${car.brand} ${car.model}` : '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.lead?.salesman?.full_name || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#374151', whiteSpace: 'nowrap' }}>{car ? `${car.year} ${car.brand} ${car.model}` : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#374151' }}>{row.lead?.salesman?.full_name || '—'}</td>
                     <td style={{ padding: '10px 12px', color: '#111827', fontWeight: 600 }}>{fmtRM(row.loan_amount)}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.tenure_months}m</td>
-                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
-                    <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#6b7280', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
+                    <td style={{ padding: '10px 12px', color: '#374151', fontWeight: 500 }}>{row.monthly_install ? fmtRM(row.monthly_install) : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#374151', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: 12 }}>{rejLabel}</td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>{s.label}</span>
