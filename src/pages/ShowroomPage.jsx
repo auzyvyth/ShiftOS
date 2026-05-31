@@ -356,9 +356,39 @@ export default function ShowroomPage() {
   return (
     <>
       <Helmet>
-        <title>{brand ? `${brand} Cars for Sale in Malaysia – XDrive Showroom` : 'Showroom – Browse Used Cars in Malaysia | XDrive'}</title>
-        <meta name="description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Filter by brand, price, location, body type and more." />
+        <title>{(() => {
+          if (hotDeals) return "Hot Deal Cars in Malaysia — Best Prices | XDrive";
+          const parts = [];
+          if (condition === 'recon') parts.push('Recon');
+          if (brand) parts.push(brand);
+          if (bodyType) parts.push(bodyType + 's');
+          const carType = parts.length ? parts.join(' ') + ' ' : '';
+          const loc = state ? ` in ${state}, Malaysia` : ' in Malaysia';
+          return `Used ${carType}Cars for Sale${loc} | XDrive`;
+        })()}</title>
+        <meta name="description" content={(() => {
+          if (hotDeals) return 'Find the best hot deal cars in Malaysia. Save thousands on verified used cars from trusted dealers on XDrive.';
+          const parts = [];
+          if (condition === 'recon') parts.push('recon');
+          if (brand) parts.push(brand);
+          if (bodyType) parts.push(bodyType.toLowerCase());
+          const carType = parts.length ? parts.join(' ') + ' ' : '';
+          const loc = state ? `${state}, Malaysia` : 'Malaysia';
+          return `Browse verified ${carType}cars for sale in ${loc}. Filter by brand, price, body type and more on XDrive.`;
+        })()} />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <link rel="canonical" href="https://xdrive.my/showroom" />
+        <meta property="og:type"        content="website" />
+        <meta property="og:url"         content="https://xdrive.my/showroom" />
+        <meta property="og:locale"      content="en_MY" />
+        <meta property="og:site_name"   content="XDrive" />
+        <meta property="og:title"       content={brand ? `${brand} Cars for Sale in Malaysia | XDrive` : 'XDrive Showroom — Browse Used Cars in Malaysia'} />
+        <meta property="og:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia. Filter by brand, price, location, body type and more." />
+        <meta property="og:image"       content="https://xdrive.my/og-marketplace.jpg" />
+        <meta name="twitter:card"        content="summary_large_image" />
+        <meta name="twitter:title"       content={brand ? `${brand} Cars for Sale in Malaysia | XDrive` : 'XDrive Showroom — Browse Used Cars in Malaysia'} />
+        <meta name="twitter:description" content="Browse thousands of verified used cars from trusted dealers across Malaysia." />
+        <meta name="twitter:image"       content="https://xdrive.my/og-marketplace.jpg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </Helmet>
