@@ -13,26 +13,6 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Priority 1 — Enterprise HP Workflow (remaining gaps)
-
-### HP-1. Bank scorecard — surface in FIPanel
-Scorecard logic already exists in HPBoard. Missing: embed it as a sub-tab or section
-inside FIPanel so F&I officers see approval rate %, avg days to decision, and
-rejection breakdown per bank without leaving the FI panel.
-
-### HP-2. Sequential multi-bank queue with CCRIS warning
-CCRIS warning alert and queue_order tracking exist. Missing:
-- `attempt_number` column on `deal_financing`
-- "Try next bank?" prompt after a rejection (dropdown pre-filled with remaining banks)
-- CCRIS counter: warn at 3 cumulative submissions across all deals for the same buyer
-- Full bank attempt history visible in LeadDrawer and FIPanel
-
-### HP-6. HP document checklist — remaining gaps
-Checkbox checklist per deal exists (8 docs). Missing:
-- Employment type field on deal_financing auto-selects the checklist template
-  (employed: payslips; self-employed: bank statements + SSM + tax returns)
-- Incomplete checklist blocks the "Submit to Bank" button with a warning
-
 ---
 
 ## Priority 3 — Monetisation Infrastructure (needed before billing)
@@ -89,9 +69,9 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 - **HP-3: PUSPAKOM B7 expiry tracking** — `puspakom_b7_date` on stock_units, expiry badge in LeadDrawer, "expired B7" and "missing B7" alerts in OversightTab.
 - **HP-4: LOU tracking** — `lou_received_at`, `lou_expires_at` on deal_financing; "Log LOU Received" button; 14-day expiry with red/orange/green status; milestone shown in LeadDrawer.
 - **HP-5: JPJ transfer tracking** — `jpj_status`, `jpj_submitted_at`, `jpj_completed_at` on leads; 3-state milestone (pending → submitted → completed); overdue detection (>7 days); full section in LeadDrawer.
-- **HP-6 (partial): HP document checklist** — `hp_docs` JSONB on deal_financing; 8-doc checkbox checklist in LeadDrawer; docs completion counter. (Employment type template + submission blocking still pending above.)
-- **HP-1 (partial): Bank scorecard** — `bank_name`, `rejection_reason_category`, approval rate %, avg days to decision in HPBoard. (FIPanel surface still pending above.)
-- **HP-2 (partial): CCRIS warning** — warning alert when rejection_reason_category === 'ccris_issue'; queue_order on insert. (Sequential prompt + attempt_number still pending above.)
+- **HP-6: HP document checklist** — employment type toggle (Employed/Self-Employed/Commission) auto-populates required doc checklist; Submit blocked with "X doc(s) missing" until all required docs ticked; checklist pre-saved to hp_docs on insert.
+- **HP-1: Bank scorecard in FIPanel** — BankScorecard component in HP Board tab; per-bank approval rate %, avg days to decision, approved/rejected/pending counts sorted by approval rate.
+- **HP-2: Sequential multi-bank queue** — rejection category dropdown (DSR/CCRIS/valuation gap/employment/vehicle age/margin) before confirming reject; "Try next bank?" prompt after rejection with dropdown of untried banks; 3+ attempt warning banner; attempt_number saved to deal_financing.
 - **GM-1: Real-time owner P&L dashboard** — OversightTab with `gm_pnl_snapshot` RPC; MTD/LMTD revenue & gross; units sold; days-on-lot aging; capital tied; 30-day sparkline; goal pace tracking.
 - **GM-2: Audit trail** — `activity_log` table; timeline in OversightTab with anomaly detection; filters by entity type.
 - **GM-3: Salesman quality score** — `gm_salesman_scores` RPC; ranked scorecard in OversightTab: conversion rate, response time, avg gross, doc completion rate, close rate.
