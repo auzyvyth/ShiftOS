@@ -494,14 +494,12 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
 const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
-  { id: 1, label: "Photos",    icon: Camera,      desc: "Upload images first" },
-  { id: 2, label: "Identity",  icon: Car,         desc: "Brand & model" },
-  { id: 3, label: "Condition", icon: Check,       desc: "Mileage & colour" },
-  { id: 4, label: "Specs",     icon: Gauge,       desc: "Type & engine" },
-  { id: 5, label: "History",   icon: ShieldCheck, desc: "Recon & import" },
-  { id: 6, label: "Location",  icon: MapPin,      desc: "State & city" },
-  { id: 7, label: "Pricing",   icon: DollarSign,  desc: "Prices & discount" },
-  { id: 8, label: "Details",   icon: FileText,    desc: "Specs, features & docs" },
+  { id: 1, label: "Photos",      icon: Camera,      desc: "Upload images first" },
+  { id: 2, label: "Car Details", icon: Car,         desc: "Brand, model & condition" },
+  { id: 3, label: "Technical",   icon: Gauge,       desc: "Specs & history" },
+  { id: 4, label: "Location",    icon: MapPin,      desc: "State & city" },
+  { id: 5, label: "Pricing",     icon: DollarSign,  desc: "Prices & add-ons" },
+  { id: 6, label: "Details",     icon: FileText,    desc: "Features & documents" },
 ];
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
@@ -1368,12 +1366,10 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
   const canNext = () => {
     if (step === 1) return form.images.length > 0;
-    if (step === 2) return form.brand && form.model && form.year;
-    if (step === 3) return form.mileage && form.colour && form.condition;
-    if (step === 4) return form.bodyType && form.fuelType;
-    if (step === 5) return true;
-    if (step === 6) return form.state && form.city;
-    if (step === 7) return form.basePrice && form.sellingPrice;
+    if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
+    if (step === 3) return form.bodyType && form.fuelType;
+    if (step === 4) return form.state && form.city;
+    if (step === 5) return form.basePrice && form.sellingPrice;
     return true;
   };
 
@@ -1613,13 +1609,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   function isSectionComplete(id) {
     switch (id) {
       case 1: return form.images.length > 0;
-      case 2: return !!(form.brand && form.model && form.year);
-      case 3: return !!(form.mileage && form.colour && form.condition);
-      case 4: return !!(form.bodyType && form.fuelType);
-      case 5: return true;
-      case 6: return !!(form.state && form.city);
-      case 7: return !!(form.basePrice && form.sellingPrice);
-      case 8: return true;
+      case 2: return !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
+      case 3: return !!(form.bodyType && form.fuelType);
+      case 4: return !!(form.state && form.city);
+      case 5: return !!(form.basePrice && form.sellingPrice);
+      case 6: return true;
       default: return false;
     }
   }
@@ -1922,13 +1916,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           {autoFilled && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
-              Specs auto-filled — review Step 4 and adjust if needed
+              Specs auto-filled — review Technical section and adjust if needed
             </div>
           )}
-        </div>
-      );
-      case 3: return (
-        <div className="space-y-5">
           <Field label="Condition" required>
             <PillSelect
               options={CONDITIONS}
@@ -2022,7 +2012,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </Field>
         </div>
       );
-      case 4: return (
+      case 3: return (
         <div className="space-y-6">
           <Field label="Body Type" required>
             <PillSelect
@@ -2149,10 +2139,6 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               />
             </Field>
           </div>
-        </div>
-      );
-      case 5: return (
-        <div className="space-y-6">
           {/* Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
@@ -2316,7 +2302,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           )}
         </div>
       );
-      case 6: return (
+      case 4: return (
         <div className="space-y-5">
           <Field label="State" required>
             <div className="relative">
@@ -2351,7 +2337,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </Field>
         </div>
       );
-      case 7: return (
+      case 5: return (
         <div className="space-y-5">
           <Field label="Payment Type" required>
             <PillSelect
@@ -2677,7 +2663,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           </div>
         </div>
       );
-      case 8: return (
+      case 6: return (
         <div className="space-y-5">
           <Field label="Specs">
             <textarea
@@ -2746,6 +2732,39 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
           <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
         </div>
       )}
+
+      {/* Step progress indicator */}
+      <div className="mb-5 bg-white border border-gray-200 rounded-2xl px-4 py-4">
+        <div className="flex items-center">
+          {STEPS.map((s, i) => {
+            const complete = isSectionComplete(s.id);
+            const isLast = i === STEPS.length - 1;
+            return (
+              <React.Fragment key={s.id}>
+                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCollapsed((p) => ({ ...p, [s.id]: !p[s.id] }))}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 ${
+                      complete
+                        ? "bg-red-600 border-red-600 text-white"
+                        : "bg-white border-gray-300 text-gray-400"
+                    }`}
+                  >
+                    {complete ? <Check className="w-4 h-4" /> : <span>{s.id}</span>}
+                  </button>
+                  <span className={`text-[10px] font-medium whitespace-nowrap ${complete ? "text-red-600" : "text-gray-400"}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {!isLast && (
+                  <div className={`flex-1 h-0.5 mx-1 mb-5 rounded-full transition-all ${complete ? "bg-red-600" : "bg-gray-200"}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Sections */}
       <DndContext
