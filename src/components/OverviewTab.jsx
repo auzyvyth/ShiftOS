@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STAGE_COLORS = {
@@ -17,9 +17,27 @@ const STAGE_LABELS = {
   presented: 'Presented', reserved: 'Reserved', documents: 'Documents',
   hp_submitted: 'HP Submitted', sold: 'Sold', lost: 'Lost',
 };
+const SOURCE_LABELS = {
+  drevo_enquiry: 'Enquiry', walk_in: 'Walk-In', mudah: 'Mudah',
+  carlist: 'Carlist', facebook: 'Facebook', tiktok: 'TikTok',
+  instagram: 'Instagram', whatsapp: 'WhatsApp', referral: 'Referral',
+  other: 'Other', manual: 'Manual',
+};
+const ROLE_LABELS = {
+  salesman: null, manager: 'Manager', admin: 'Admin',
+  accountant: 'Accounts', fi_officer: 'F&I', owner: 'Owner',
+  dealer: 'Owner', superadmin: 'Owner',
+};
 const SOURCE_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#F97316', '#EC4899'];
 const ACTIVE_STAGES = ['new','contacted','negotiating','presented','reserved','documents','hp_submitted'];
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','#DC2626','#06B6D4'];
+
+const ACT_CFG = {
+  whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle, color: '#16A34A', bg: '#F0FDF4' },
+  stage_changed:  { label: 'Stage',    icon: ArrowRightLeft, color: '#3B82F6', bg: '#EFF6FF' },
+  note_added:     { label: 'Note',     icon: FileText,       color: '#6B7280', bg: '#F9FAFB' },
+  created:        { label: 'New lead', icon: UserPlus,       color: '#8B5CF6', bg: '#F5F3FF' },
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -99,74 +117,88 @@ function SectionHeader({ title, sub, live }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function OverviewTab({ dealerId }) {
   const [pnl, setPnl]           = useState(null);
-  const [scores, setScores]     = useState([]);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading]   = useState(true);
-  const [tick, setTick]         = useState(0); // bump to trigger re-fetch of live data
+  const [tick, setTick]         = useState(0);
   const subRef = useRef(null);
 
   // ── Static data (expensive RPCs — load once) ─────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
-    Promise.all([
-      supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId }),
-      supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId }),
-    ]).then(([p, s]) => {
-      setPnl(p.data);
-      setScores(s.data || []);
-    });
+    supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId }).then(({ data }) => setPnl(data));
   }, [dealerId]);
 
-  // ── Live data (leads + listings + salesmen — re-runs on realtime tick) ───
+  // ── Live data (re-runs on realtime tick) ─────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
     const now = Date.now();
 
     Promise.all([
+      // All leads
       supabase.from('leads')
-        .select('id, stage, source, created_at, updated_at, customer_name, salesman_id')
+        .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
         .eq('dealer_id', dealerId)
         .order('updated_at', { ascending: false })
         .limit(300),
+      // Listings
       supabase.from('car_listings')
         .select('id, status, created_at')
         .eq('dealer_id', dealerId),
+      // Appointments today
       supabase.from('appointments')
         .select('id, appointment_date')
         .eq('dealer_id', dealerId)
         .gte('appointment_date', new Date().toISOString().slice(0, 10)),
+      // All staff: staff rows (dealer_id = dealerId) + dealer owner row (id = dealerId)
       supabase.from('profiles')
-        .select('id, full_name, slug, last_sign_in_at')
+        .select('id, full_name, slug, role')
+        .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)
+        .in('role', ['salesman', 'manager', 'admin', 'accountant', 'fi_officer', 'owner', 'dealer', 'superadmin']),
+      // Recent lead activities for online detection + conversations feed
+      supabase.from('lead_activities')
+        .select('id, activity_type, note, created_at, lead_id, created_by, to_stage, creator:created_by(full_name)')
         .eq('dealer_id', dealerId)
-        .in('role', ['salesman', 'manager', 'admin']),
-    ]).then(([l, cl, apt, sm]) => {
-      const allLeads    = l.data  || [];
-      const allListings = cl.data || [];
-      const aptsToday   = apt.data || [];
-      const salesmen    = sm.data || [];
+        .order('created_at', { ascending: false })
+        .limit(200),
+    ]).then(([l, cl, apt, sm, acts]) => {
+      const allLeads      = l.data    || [];
+      const allListings   = cl.data   || [];
+      const aptsToday     = apt.data  || [];
+      const staff         = sm.data   || [];
+      const activities    = acts.data || [];
 
-      const smById = Object.fromEntries(salesmen.map(s => [s.id, s]));
+      // Build lookup maps
+      const leadsById = Object.fromEntries(allLeads.map(l => [l.id, l]));
 
-      // Active leads per salesman
+      // Last activity timestamp per user (from lead_activities)
+      const lastActivityByUser = {};
+      for (const a of activities) {
+        if (!a.created_by) continue;
+        const cur = lastActivityByUser[a.created_by];
+        if (!cur || new Date(a.created_at) > new Date(cur)) {
+          lastActivityByUser[a.created_by] = a.created_at;
+        }
+      }
+
+      // Active lead count + last lead touch per salesman (from leads.salesman_id)
       const activeLeads = allLeads.filter(l => !['sold','lost'].includes(l.stage));
       const leadsPerSm  = {};
-      const lastActivitySm = {};
+      const lastLeadTouchSm = {};
       for (const l of allLeads) {
         if (!l.salesman_id) continue;
-        leadsPerSm[l.salesman_id] = (leadsPerSm[l.salesman_id] || 0) + (activeLeads.includes(l) ? 1 : 0);
-        // track most recent lead touch per salesman
-        const cur = lastActivitySm[l.salesman_id];
-        if (!cur || new Date(l.updated_at) > new Date(cur)) lastActivitySm[l.salesman_id] = l.updated_at;
+        if (activeLeads.includes(l)) leadsPerSm[l.salesman_id] = (leadsPerSm[l.salesman_id] || 0) + 1;
+        const cur = lastLeadTouchSm[l.salesman_id];
+        if (!cur || new Date(l.updated_at) > new Date(cur)) lastLeadTouchSm[l.salesman_id] = l.updated_at;
       }
 
       // Pipeline
       const stageCounts = {};
       for (const l of allLeads) stageCounts[l.stage] = (stageCounts[l.stage] || 0) + 1;
 
-      // Source breakdown (active only, cleaner)
+      // Source breakdown (active only)
       const sourceCounts = {};
       for (const l of activeLeads) {
-        const src = l.source || 'unknown';
+        const src = l.lead_source || 'unknown';
         sourceCounts[src] = (sourceCounts[src] || 0) + 1;
       }
 
@@ -176,27 +208,34 @@ export default function OverviewTab({ dealerId }) {
         ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length) : 0;
       const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
 
-      // Team rows — salesman is "active" if touched a lead in last 8h
-      const teamRows = salesmen.map((sm, idx) => ({
-        id: sm.id,
-        name: sm.full_name || sm.slug || 'Salesman',
-        active: leadsPerSm[sm.id] || 0,
-        isActive: isActiveToday(lastActivitySm[sm.id]),
-        lastActivity: lastActivitySm[sm.id] || null,
-        avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
-      })).sort((a, b) => b.active - a.active);
+      // Team rows — all staff, any role
+      const teamRows = staff.map((s, idx) => {
+        const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
+        return {
+          id: s.id,
+          name: s.full_name || s.slug || 'Team',
+          role: ROLE_LABELS[s.role] || null,
+          active: leadsPerSm[s.id] || 0,
+          isActive: isActiveToday(lastAct),
+          lastActivity: lastAct,
+          avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+        };
+      }).sort((a, b) => {
+        if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+        return b.active - a.active;
+      });
 
-      // Recent leads sorted by updated_at (most recently touched)
-      const recent = allLeads.slice(0, 8).map(l => ({
-        ...l,
-        salesmanName: smById[l.salesman_id]?.full_name || smById[l.salesman_id]?.slug || '—',
+      // Recent conversations: latest lead_activities feed
+      const recentActivities = activities.slice(0, 12).map(a => ({
+        ...a,
+        lead: leadsById[a.lead_id] || null,
       }));
 
       setSnapshot({
         activeLeads: activeLeads.length,
         activeListings: available.length,
         stageCounts, sourceCounts, teamRows, avgDays, stale,
-        aptsToday: aptsToday.length, recent,
+        aptsToday: aptsToday.length, recentActivities,
       });
       setLoading(false);
     });
@@ -205,12 +244,11 @@ export default function OverviewTab({ dealerId }) {
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
+    const bump = () => setTick(t => t + 1);
     subRef.current = supabase
       .channel(`overview-${dealerId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'leads',
-        filter: `dealer_id=eq.${dealerId}`,
-      }, () => setTick(t => t + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `dealer_id=eq.${dealerId}` }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_activities', filter: `dealer_id=eq.${dealerId}` }, bump)
       .subscribe();
     return () => { subRef.current?.unsubscribe(); };
   }, [dealerId]);
@@ -226,7 +264,10 @@ export default function OverviewTab({ dealerId }) {
     : [];
 
   const sourceData = snapshot
-    ? Object.entries(snapshot.sourceCounts).map(([k, v]) => ({ name: k.replace(/_/g, ' '), value: v })).sort((a, b) => b.value - a.value).slice(0, 6)
+    ? Object.entries(snapshot.sourceCounts)
+        .map(([k, v]) => ({ name: SOURCE_LABELS[k] || k.replace(/_/g, ' '), value: v }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6)
     : [];
 
   const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.day?.slice(5), rev: Number(d.revenue || 0) }));
@@ -234,7 +275,6 @@ export default function OverviewTab({ dealerId }) {
   if (loading || !snapshot) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Skeleton KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} style={{ background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px', height: 100 }}>
@@ -254,10 +294,10 @@ export default function OverviewTab({ dealerId }) {
 
       {/* ── KPI Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
-        <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}   sub="Active pipeline"                       iconColor="#3B82F6" />
-        <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings} sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'} iconColor="#8B5CF6" />
-        <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}          sub="Month to date"  trend={unitTrend}      iconColor="#10B981" />
-        <KpiCard icon={TrendingUp} label="MTD Gross Profit" value={fmt(mtd.gross_profit)}   sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'} trend={gpTrend} iconColor="#DC2626" />
+        <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}    sub="Active pipeline"                                                  iconColor="#3B82F6" />
+        <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings}  sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'}   iconColor="#8B5CF6" />
+        <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}           sub="Month to date"  trend={unitTrend}                                iconColor="#10B981" />
+        <KpiCard icon={TrendingUp} label="MTD Gross Profit" value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'}   trend={gpTrend} iconColor="#DC2626" />
       </div>
 
       {/* ── Revenue + Stock ── */}
@@ -318,9 +358,14 @@ export default function OverviewTab({ dealerId }) {
         </Panel>
 
         <Panel>
-          <SectionHeader title="Lead Sources" sub="Active leads by origin" />
+          <SectionHeader title="Lead Sources" sub="Where your leads come from" />
           {sourceData.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>No leads yet.</p>
+            <div>
+              <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>No leads yet.</p>
+              <p style={{ fontSize: 11, color: '#D1D5DB', marginTop: 4, lineHeight: 1.5 }}>
+                Source is set when a salesman adds a lead — channels include Walk-In, WhatsApp, Facebook, Mudah, Carlist, TikTok, Instagram, and Referral.
+              </p>
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <div style={{ flexShrink: 0 }}>
@@ -337,7 +382,7 @@ export default function OverviewTab({ dealerId }) {
                   <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: SOURCE_COLORS[i % SOURCE_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: '#374151', textTransform: 'capitalize' }}>{s.name}</span>
+                      <span style={{ fontSize: 11, color: '#374151' }}>{s.name}</span>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#111827' }}>{s.value}</span>
                   </div>
@@ -348,35 +393,35 @@ export default function OverviewTab({ dealerId }) {
         </Panel>
       </div>
 
-      {/* ── Team on Duty + Recent Leads ── */}
+      {/* ── Team on Duty + Recent Conversations ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
 
-        {/* Team panel — Efferd style */}
+        {/* Team panel */}
         <Panel style={{ padding: '18px 16px' }}>
-          <SectionHeader title="Team on Duty" sub="Who is carrying the queue right now" live />
+          <SectionHeader title="Team on Duty" sub={`${snapshot.teamRows.filter(r => r.isActive).length} online now`} live />
           {snapshot.teamRows.length === 0 ? (
             <p style={{ fontSize: 12, color: '#9CA3AF' }}>No team members yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {snapshot.teamRows.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 6px', borderRadius: 8, transition: 'background 0.15s', cursor: 'default' }}
+                <div key={r.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 6px', borderRadius: 8, transition: 'background 0.15s', cursor: 'default' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  {/* Avatar with status dot */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: r.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>
                       {r.name.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{
-                      position: 'absolute', bottom: 1, right: 1,
-                      width: 10, height: 10, borderRadius: '50%',
-                      background: r.isActive ? '#22C55E' : '#9CA3AF',
-                      border: '2px solid #fff',
-                    }} />
+                    <span style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: r.isActive ? '#22C55E' : '#9CA3AF', border: '2px solid #fff' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
+                      {r.role && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#6B7280', background: '#F3F4F6', borderRadius: 4, padding: '1px 5px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.role}</span>
+                      )}
+                    </div>
                     <p style={{ fontSize: 11, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ color: r.isActive ? '#16A34A' : '#9CA3AF' }}>
                         {r.isActive ? 'Online' : (r.lastActivity ? timeAgo(r.lastActivity) : 'Away')}
@@ -395,54 +440,46 @@ export default function OverviewTab({ dealerId }) {
           )}
         </Panel>
 
-        {/* Recent leads — sorted by last touch */}
+        {/* Recent Conversations — activity feed */}
         <Panel>
-          <SectionHeader title="Recent Conversations" sub="Latest lead activity across all salesmen" live />
-          {snapshot.recent.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#9CA3AF' }}>No leads yet.</p>
+          <SectionHeader title="Recent Conversations" sub="WhatsApp sends, stage changes, notes — across all salesmen" live />
+          {snapshot.recentActivities.length === 0 ? (
+            <p style={{ fontSize: 12, color: '#9CA3AF' }}>No activity yet.</p>
           ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    {['Customer', 'Stage', 'Salesman', 'Wait', 'Status'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', paddingBottom: 8, color: '#9CA3AF', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', paddingRight: 12 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {snapshot.recent.map((l, i) => {
-                    const stageCfg = { color: STAGE_COLORS[l.stage] || '#9CA3AF', label: STAGE_LABELS[l.stage] || l.stage };
-                    const isNew = (Date.now() - new Date(l.updated_at)) < 3600_000;
-                    return (
-                      <tr key={l.id} style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}>
-                        <td style={{ padding: '8px 12px 8px 0', color: '#111827', fontWeight: 600, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {l.customer_name || 'Unknown'}
-                        </td>
-                        <td style={{ padding: '8px 12px 8px 0', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: stageCfg.color, display: 'inline-block', flexShrink: 0 }} />
-                            <span style={{ color: '#374151' }}>{stageCfg.label}</span>
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 12px 8px 0', color: '#6B7280', whiteSpace: 'nowrap' }}>{l.salesmanName}</td>
-                        <td style={{ padding: '8px 12px 8px 0', color: '#9CA3AF', whiteSpace: 'nowrap' }}>{timeAgo(l.updated_at)}</td>
-                        <td style={{ padding: '8px 0' }}>
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
-                            background: isNew ? '#F0FDF4' : l.stage === 'new' ? '#EFF6FF' : '#F9FAFB',
-                            color: isNew ? '#16A34A' : l.stage === 'new' ? '#3B82F6' : '#6B7280',
-                            border: `1px solid ${isNew ? '#BBF7D0' : l.stage === 'new' ? '#BFDBFE' : '#E5E7EB'}`,
-                            whiteSpace: 'nowrap',
-                          }}>
-                            {isNew ? 'Active' : l.stage === 'new' ? 'In queue' : STAGE_LABELS[l.stage] || l.stage}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {snapshot.recentActivities.map((a, i) => {
+                const cfg   = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
+                const Icon  = cfg.icon;
+                const who   = a.creator?.full_name || 'Salesman';
+                const cust  = a.lead?.buyer_name || 'Unknown';
+                const stage = a.to_stage ? STAGE_LABELS[a.to_stage] || a.to_stage : null;
+                const note  = a.note ? (a.note.length > 50 ? a.note.slice(0, 47) + '…' : a.note) : null;
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                      <Icon style={{ width: 13, height: 13, color: cfg.color }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{cust}</span>
+                        <span style={{ fontSize: 11, color: '#6B7280' }}>
+                          {a.activity_type === 'whatsapp_sent' && 'WhatsApp sent'}
+                          {a.activity_type === 'stage_changed' && (stage ? `moved to ${stage}` : 'stage changed')}
+                          {a.activity_type === 'note_added' && (note || 'note added')}
+                          {a.activity_type === 'created' && 'lead created'}
+                          {!ACT_CFG[a.activity_type] && (note || a.activity_type.replace(/_/g, ' '))}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>
+                        {who} · {timeAgo(a.created_at)}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 5, padding: '2px 7px', flexShrink: 0, alignSelf: 'center' }}>
+                      {cfg.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Panel>
