@@ -1,5 +1,22 @@
 # ShiftOS — Pending Tasks
 
+## Dev tasks
+
+### C. CarForm full redesign (light theme + UX overhaul)
+`src/components/CarForm.jsx` still uses the old dark theme throughout all 8 steps.
+Needs a complete redesign: white background, proper section cards, clean label/input pairs,
+step indicator, mobile-friendly layout. Do NOT start until user says "do carform".
+
+### D. Eyes Here → action on arrow click (OversightTab)
+The "Eyes Here" alert cards in `src/components/OversightTab.jsx` have `>` arrows
+but clicking them does nothing. Each alert type should navigate to the relevant tab:
+- "missing PUSPAKOM B7" → navigate to Stock tab and filter
+- "leads with no activity" → navigate to CRM tab and filter by stale
+- "anomalous edits" → navigate to OversightTab Activity Trail > Anomalies filter
+Implement only after CarForm is done.
+
+---
+
 ## User-action required (blocked on user)
 
 ### A. Vercel env var
@@ -16,12 +33,6 @@ Current file is a geometric approximation (L inside oval).
 ---
 
 ---
-
-## Priority 5 — CRM polish
-
-### CRM-1. Customer remarketing — Phase 2
-- WhatsApp blast to customers whose road tax / insurance expires in the next 30 days
-- "Send reminder" flow in Customers tab that pre-fills WA message template
 
 ---
 

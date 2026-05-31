@@ -108,8 +108,8 @@ function RejectModal({ onConfirm, onCancel }) {
   const [category, setCategory] = useState('');
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 28, width: 340 }}>
-        <p style={{ fontWeight: 700, color: '#e5e7eb', marginBottom: 6 }}>Rejection Reason</p>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 28, width: 340 }}>
+        <p style={{ fontWeight: 700, color: '#111827', marginBottom: 6 }}>Rejection Reason</p>
         <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 18 }}>Select the bank's rejection reason to track performance.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
           {REJECTION_CATEGORIES.map(c => (
@@ -118,9 +118,9 @@ function RejectModal({ onConfirm, onCancel }) {
               onClick={() => setCategory(c.value)}
               style={{
                 padding: '9px 14px', borderRadius: 8, textAlign: 'left', fontSize: 13, cursor: 'pointer',
-                background: category === c.value ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${category === c.value ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.07)'}`,
-                color: category === c.value ? '#f87171' : '#9ca3af',
+                background: category === c.value ? '#fef2f2' : '#f9fafb',
+                border: `1px solid ${category === c.value ? '#fca5a5' : '#e5e7eb'}`,
+                color: category === c.value ? '#dc2626' : '#374151',
                 fontWeight: category === c.value ? 600 : 400,
               }}
             >
@@ -129,7 +129,7 @@ function RejectModal({ onConfirm, onCancel }) {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
           <button
             onClick={() => category && onConfirm(category)}
             disabled={!category}

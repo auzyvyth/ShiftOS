@@ -149,7 +149,8 @@ function SalesmanScores({ scores }) {
   }
   return (
     <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
             {['#', 'Salesman', 'Score', 'Conv.', 'Response', 'Avg GP', 'Docs', 'Leads'].map((h, i) => (
@@ -191,6 +192,7 @@ function SalesmanScores({ scores }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

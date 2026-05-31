@@ -1,4 +1,18 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
+import DOMPurify from "dompurify";
+import SuspendedBanner from "../components/SuspendedBanner";
+import { createPortal } from 'react-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
+import { Helmet } from "react-helmet";
+import { toast } from "sonner";
+import { useDebouncedCallback } from 'use-debounce';
+import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { supabase } from "../supabaseClient";
+import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
+import SciFiLoader from "../components/SciFiLoader";
 
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -18,17 +32,18 @@ class TabErrorBoundary extends Component {
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
 function SubTabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 mb-4 border-b border-gray-800">
+    <div className="flex gap-1 mb-4" style={{ borderBottom: '1px solid #EAECF0' }}>
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={
-            "px-3 py-2 text-xs font-medium -mb-px border-b-2 transition-colors " +
-            (active === t.id
-              ? "border-red-600 text-white"
-              : "border-transparent text-gray-500 hover:text-gray-300")
-          }
+          style={{
+            padding: '8px 12px', fontSize: 13, fontWeight: 500,
+            borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
+            color: active === t.id ? '#DC2626' : '#9AA1AD',
+            background: 'none', border: 'none',
+            cursor: 'pointer', transition: 'color 0.15s', marginBottom: -1,
+          }}
         >
           {t.label}
         </button>
@@ -36,20 +51,6 @@ function SubTabBar({ tabs, active, onChange }) {
     </div>
   );
 }
-import DOMPurify from "dompurify";
-import SuspendedBanner from "../components/SuspendedBanner";
-import { createPortal } from 'react-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
-import { Helmet } from "react-helmet";
-import { toast } from "sonner";
-import { useDebouncedCallback } from 'use-debounce';
-import { useNavigate, useParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { supabase } from "../supabaseClient";
-import { getDealerIdFromProfile } from "../hooks/useProfile";
-import { useRoleRedirect } from "../hooks/useRoleRedirect";
-import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
-import SciFiLoader from "../components/SciFiLoader";
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
@@ -67,6 +68,7 @@ import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
+import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import {
@@ -146,91 +148,90 @@ const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const STYLES = `
-  .grad-red    { background: linear-gradient(135deg,#93c5fd,#fb923c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-blue   { background: linear-gradient(135deg,#60a5fa,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-cyan   { background: linear-gradient(135deg,#67e8f9,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-green  { background: linear-gradient(135deg,#6ee7b7,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-purple { background: linear-gradient(135deg,#d8b4fe,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-gold   { background: linear-gradient(135deg,#fde68a,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-white  { background: linear-gradient(135deg,#f8fafc,#94a3b8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 
-  .card-top::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; z-index:1; }
-  .modal-top::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 8%,rgba(255,255,255,0.07) 38%,rgba(255,255,255,0.04) 68%,transparent 92%); border-radius:16px 16px 0 0; pointer-events:none; z-index:2; }
+  *, *::before, *::after { box-sizing: border-box; }
 
-  .nav-item { border-left:2px solid transparent; transition:all 0.15s; }
-  .nav-item:hover:not(.nav-active) { background:rgba(255,255,255,0.04)!important; border-left-color:rgba(255,255,255,0.1); }
-  .nav-active { background:rgba(220,38,38,0.08)!important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:2px solid #dc2626!important; box-shadow:inset 0 1px 0 rgba(220,38,38,0.08),inset 0 -1px 0 rgba(0,0,0,0.1); }
+  body { background: #F7F8FA; color: #0F172A; font-family: 'DM Sans', sans-serif; }
 
-  .stat-card { transition:transform 0.18s,box-shadow 0.18s; }
-  .stat-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.08); }
+  /* ── Sidebar nav ── */
+  .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
+  .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; border-left-color: #D1D5DB; color: #0F172A !important; }
+  .nav-active { background: #FEF2F2 !important; border-left: 2px solid #DC2626 !important; color: #DC2626 !important; }
 
-  .data-row { border-left:2px solid transparent; transition:background 0.12s,border-left-color 0.12s; }
-  .data-row:hover { background:rgba(255,255,255,0.025)!important; border-left-color:rgba(255,255,255,0.12); }
+  /* ── Cards ── */
+  .dash-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
+  .stat-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); transition: box-shadow 0.18s, transform 0.18s; }
+  .stat-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.10); transform: translateY(-1px); }
 
+  /* ── Table rows ── */
+  .data-row { border-left: 2px solid transparent; transition: background 0.12s, border-left-color 0.12s; }
+  .data-row:hover { background: #F7F8FA !important; border-left-color: #DC2626; }
 
-  @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
-  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
-  .blue-glow { animation:hotpulse 2.2s ease-in-out infinite; }
+  /* ── Modals ── */
+  .glass-modal, .modal-top { background: #FFFFFF; border: 1px solid #EAECF0; box-shadow: 0 20px 60px rgba(15,23,42,0.15); }
 
-  .discount-chip { transition:box-shadow 0.15s; }
-  .discount-chip:hover { box-shadow:0 0 10px rgba(255,255,255,0.08); }
+  /* ── Misc ── */
+  .settings-section { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; overflow: hidden; }
+  .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:24px; background:linear-gradient(to left,rgba(247,248,250,0.9),transparent); pointer-events:none; }
 
-  .btn-shimmer { position:relative; overflow:hidden; }
-  .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); animation:shimmer 3s ease infinite; }
+  .btn-shimmer { position: relative; overflow: hidden; }
+  .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); animation:shimmer 3s ease infinite; }
   @keyframes shimmer { to { left:150%; } }
 
-  .sold-btn:hover { background:rgba(34,197,94,0.15) !important; border-color:rgba(34,197,94,0.45) !important; color:#4ade80 !important; }
+  .sold-btn:hover { background: rgba(34,197,94,0.08) !important; border-color: rgba(34,197,94,0.4) !important; color: #16a34a !important; }
+  .discount-chip { transition: box-shadow 0.15s; }
 
-  .settings-section { position:relative; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; }
-  .settings-section::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 35%,rgba(255,255,255,0.03) 65%,transparent); pointer-events:none; }
+  /* ── Gradient text (keep for charts/badges) ── */
+  .grad-red    { background: linear-gradient(135deg,#dc2626,#f87171); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-blue   { background: linear-gradient(135deg,#2563eb,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-green  { background: linear-gradient(135deg,#16a34a,#4ade80); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .grad-gold   { background: linear-gradient(135deg,#d97706,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .table-wrap { position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:28px; background:linear-gradient(to left,rgba(8,10,18,0.85),transparent); pointer-events:none; border-radius:0 8px 8px 0; }
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9AA1AD; }
 
-  .glass { background:rgba(255,255,255,0.045); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.12),inset 0 -1px 0 rgba(0,0,0,0.2); }
-  .glass-blue { background:rgba(59,130,246,0.08); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid rgba(59,130,246,0.18); box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(59,130,246,0.2),inset 0 -1px 0 rgba(0,0,0,0.15); }
-  .glass-pill { background:rgba(255,255,255,0.08); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 16px rgba(0,0,0,0.3); }
-  .glass-modal, .modal-top { background:rgba(8,12,22,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:1px solid rgba(255,255,255,0.09); box-shadow:0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.08); }
-
-  ::-webkit-scrollbar { width:4px; height:4px; }
-  ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
-
-  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
+  .blue-glow { animation: hotpulse 2.2s ease-in-out infinite; }
 `;
 
 const T = {
   card: {
     position: 'relative',
-    background: 'linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.008))',
-    border: '1px solid rgba(255,255,255,0.055)',
-    backdropFilter: 'blur(12px)',
+    background: '#FFFFFF',
+    border: '1px solid #EAECF0',
+    borderRadius: 12,
+    boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
   },
   cardDark: {
     position: 'relative',
-    background: 'rgba(8,10,18,0.95)',
-    border: '1px solid rgba(255,255,255,0.055)',
+    background: '#F7F8FA',
+    border: '1px solid #EAECF0',
+    borderRadius: 12,
   },
   modal: {
     position: 'relative',
-    background: 'rgba(5,7,14,0.99)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
+    background: '#FFFFFF',
+    border: '1px solid #EAECF0',
+    boxShadow: '0 20px 60px rgba(15,23,42,0.15)',
   },
-  divider: { borderBottom: '1px solid rgba(255,255,255,0.048)' },
+  divider: { borderBottom: '1px solid #EAECF0' },
   btnRed: {
-    background: 'linear-gradient(135deg, rgba(59,130,246,0.9), rgba(29,78,216,0.95))',
-    backdropFilter: 'blur(8px)',
-    boxShadow: '0 2px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)',
-    border: '1px solid rgba(255,255,255,0.12)',
+    background: '#DC2626',
+    boxShadow: '0 1px 4px rgba(220,38,38,0.3)',
+    border: 'none',
   },
 };
 
 const iCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all";
+  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 const taCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
+  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -356,9 +357,9 @@ function SettingsSection({
           <Icon className={`w-4 h-4 ${iconColor}`} />
         </div>
         <div>
-          <p className="text-white text-sm font-semibold">{title}</p>
+          <p className="text-gray-900 text-sm font-semibold">{title}</p>
           {subtitle && (
-            <p className="text-gray-600 text-xs mt-0.5">{subtitle}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
@@ -486,7 +487,7 @@ function ProductsCatalogue({ dealerId }) {
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)' }}
+      style={{ border: '1px solid #e5e7eb', background: '#f9fafb' }}
     >
       {/* Collapsible header */}
       <button
@@ -498,7 +499,7 @@ function ProductsCatalogue({ dealerId }) {
             <Tag className="w-4 h-4 text-red-400" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-white">Services & Add-ons</p>
+            <p className="text-sm font-semibold text-gray-900">Services & Add-ons</p>
             {!loading && <p className="text-xs text-gray-600 mt-px">{products.length} product{products.length !== 1 ? 's' : ''} configured</p>}
           </div>
         </div>
@@ -506,13 +507,13 @@ function ProductsCatalogue({ dealerId }) {
       </button>
 
       {open && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ borderTop: '1px solid #e5e7eb' }}>
           {/* Toolbar */}
           <div className="flex items-center justify-between px-5 py-3">
             <p className="text-xs text-gray-500">Products your dealership sells as add-ons</p>
             <button
               onClick={openAdd}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600"
               style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
             >
               <PlusCircle className="w-3 h-3" />Add Product
@@ -521,7 +522,7 @@ function ProductsCatalogue({ dealerId }) {
 
           {loading ? (
             <div className="px-5 pb-5 space-y-2">
-              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)}
+              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: '#f9fafb' }} />)}
             </div>
           ) : products.length === 0 ? (
             <div className="px-5 pb-5">
@@ -532,9 +533,9 @@ function ProductsCatalogue({ dealerId }) {
                     key={i}
                     onClick={() => seedProduct(s)}
                     className="text-left p-3 rounded-lg border transition-all hover:border-red-600/30 hover:bg-red-600/[0.04]"
-                    style={{ background: 'rgba(255,255,255,0.025)', border: '1px dashed rgba(255,255,255,0.1)' }}
+                    style={{ background: '#f9fafb', border: '1px dashed #d1d5db' }}
                   >
-                    <p className="text-xs font-semibold text-white">{s.name}</p>
+                    <p className="text-xs font-semibold text-gray-900">{s.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">RM {s.selling_price.toLocaleString()} selling</p>
                   </button>
                 ))}
@@ -542,19 +543,19 @@ function ProductsCatalogue({ dealerId }) {
             </div>
           ) : (
             <div className="px-5 pb-5">
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
                 {/* Header row */}
-                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.025)' }}>
+                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
                   <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
                 </div>
                 {products.map(p => {
                   const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
                   const stockCount = stockCountMap[p.id] || 0;
                   return (
-                    <div key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <div className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px' }}>
                         <div className="min-w-0">
-                          <span className="text-sm text-white font-medium truncate block">{p.name}</span>
+                          <span className="text-sm text-gray-900 font-medium truncate block">{p.name}</span>
                           {stockCount > 0 && (
                             <span className="text-[10px] text-cyan-400/70 font-medium">
                               In {stockCount} listing{stockCount !== 1 ? 's' : ''}
@@ -571,7 +572,7 @@ function ProductsCatalogue({ dealerId }) {
                             : <ToggleLeft className="w-5 h-5 text-gray-600" />}
                         </button>
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-gray-900 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
                           <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
@@ -587,10 +588,10 @@ function ProductsCatalogue({ dealerId }) {
       {/* ── Add / Edit Modal ── */}
       {showModal && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="w-full max-w-md rounded-xl relative" style={{ background: 'rgba(5,7,14,0.99)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <p className="font-semibold text-white text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+          <div className="w-full max-w-md rounded-xl relative" style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <p className="font-semibold text-gray-900 text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 space-y-3.5">
               <div>
@@ -961,7 +962,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const ErrMsg = ({ k }) =>
     errors[k] ? (
-      <p className="text-blue-400 text-xs mt-1.5 flex items-center gap-1.5">
+      <p className="text-red-600 text-xs mt-1.5 flex items-center gap-1.5">
         <AlertTriangle className="w-3 h-3 flex-shrink-0" />
         {errors[k]}
       </p>
@@ -975,57 +976,57 @@ function SettingsTab({ profile, onProfileUpdate }) {
     <div className="space-y-4 max-w-2xl">
       {/* ── Plan Usage ── */}
       {planUsage && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
               <p style={{ fontSize: 11, letterSpacing: 2, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: '#E8EDF5' }}>{planCfg.label}</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>{planCfg.label}</p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#E8EDF5' }}>RM {planCfg.price.toLocaleString()}</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>/month</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>RM {planCfg.price.toLocaleString()}</p>
+              <p style={{ fontSize: 11, color: '#6b7280' }}>/month</p>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: nextPlanCfg ? 16 : 0 }}>
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>LISTINGS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#f87171' : '#E8EDF5' }}>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>LISTINGS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#111827' }}>
                 {planUsage.active_listings ?? 0}
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}>
                   {planUsage.listing_cap ? ` / ${planUsage.listing_cap}` : ' / unlimited'}
                 </span>
               </p>
               {planUsage.listing_cap && (
-                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px' }}>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>TEAM SEATS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#f87171' : '#E8EDF5' }}>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>TEAM SEATS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#111827' }}>
                 {planUsage.seat_count ?? 0}
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}>
                   {planUsage.seat_cap ? ` / ${planUsage.seat_cap}` : ' / unlimited'}
                 </span>
               </p>
               {planUsage.seat_cap && (
-                <div style={{ marginTop: 8, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
             {planUsage.hp_submissions_mtd != null && (
-              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px', gridColumn: '1 / -1' }}>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>HP SUBMISSIONS THIS MONTH</p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: '#E8EDF5' }}>{planUsage.hp_submissions_mtd}</p>
+              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>HP SUBMISSIONS THIS MONTH</p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{planUsage.hp_submissions_mtd}</p>
               </div>
             )}
           </div>
           {nextPlanCfg && (
-            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, textDecoration: 'none' }}>
-              <span style={{ fontSize: 13, color: '#f87171', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
+            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
+              <span style={{ fontSize: 13, color: '#6b7280' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
             </a>
           )}
         </div>
@@ -1082,12 +1083,12 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
         {profile?.role !== 'superadmin' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Subdomain <span className="text-gray-500 text-xs">(your Drevo storefront URL)</span>
             </label>
             <div className="flex items-center gap-2 flex-1">
-              <div className="flex items-center bg-gray-800 border border-gray-700 rounded-lg overflow-hidden flex-1">
-                <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-700 py-2">xdrive.my/</span>
+              <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden flex-1">
+                <span className="px-3 text-gray-500 text-sm select-none border-r border-gray-200 py-2 bg-gray-50">xdrive.my/</span>
                 <input
                   type="text"
                   value={subdomain}
@@ -1097,7 +1098,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                     checkSubdomain(clean);
                   }}
                   placeholder="your-dealership"
-                  className="flex-1 bg-transparent py-2 px-3 text-white text-sm outline-none"
+                  className="flex-1 bg-transparent py-2 px-3 text-gray-900 text-sm outline-none"
                 />
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
@@ -1138,10 +1139,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
               value={brandColor}
               onChange={(e) => setBrandColor(e.target.value)}
               placeholder="#c9a84c"
-              className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-red-400 transition-all font-mono"
             />
             <div
-              className="w-10 h-10 rounded-lg flex-shrink-0 border border-white/10"
+              className="w-10 h-10 rounded-lg flex-shrink-0 border border-gray-200"
               style={{ background: brandColor }}
             />
           </div>
@@ -1195,13 +1196,13 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </SettingsField>
           <SettingsField label="Phone Number">
             <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
-              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
               <input
                 type="tel"
                 value={(contactPhone||'').replace(/^\+?60/,'')}
                 onChange={(e) => setContactPhone('+60'+e.target.value.replace(/\D/g,''))}
                 placeholder="X-XXXXXXX"
-                className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
               />
             </div>
           </SettingsField>
@@ -1259,14 +1260,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-sky-400" />
-              <p className="text-white text-sm font-semibold">
+              <Megaphone className="w-4 h-4 text-sky-500" />
+              <p className="text-gray-900 text-sm font-semibold">
                 Announcement Bar
               </p>
             </div>
             <button
               onClick={() => setAnnouncementOn((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-blue-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-blue-600" : "bg-gray-300"}`}
             >
               <span
                 className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${announcementOn ? "left-5" : "left-0.5"}`}
@@ -1328,10 +1329,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </SettingsField>
 
         {/* ── Hero Video ── */}
-        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: heroVideoEnabled ? 12 : 0 }}>
             <div>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6' }}>Frontpage Video Section</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Frontpage Video Section</p>
               <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Show a YouTube / TikTok video on your store's homepage</p>
             </div>
             <button
@@ -1339,7 +1340,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               onClick={() => setHeroVideoEnabled(p => !p)}
               style={{
                 width: 44, height: 24, borderRadius: 12, flexShrink: 0, cursor: 'pointer', border: 'none',
-                background: heroVideoEnabled ? '#dc2626' : 'rgba(255,255,255,0.1)',
+                background: heroVideoEnabled ? '#dc2626' : '#d1d5db',
                 position: 'relative', transition: 'background 0.2s',
               }}
             >
@@ -1372,7 +1373,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 const embed = getEmbedUrl(heroVideoUrl);
                 return embed
                   ? (
-                    <div style={{ aspectRatio: '16/9', maxWidth: 360, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginTop: 8 }}>
+                    <div style={{ aspectRatio: '16/9', maxWidth: 360, borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb', marginTop: 8 }}>
                       <iframe src={embed} style={{ width: '100%', height: '100%' }} allowFullScreen title="Video preview" />
                     </div>
                   )
@@ -1435,11 +1436,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Send className="w-4 h-4 text-sky-400" />
-              <p className="text-white text-sm font-semibold">Auto-Post New Listings</p>
+              <p className="text-gray-900 text-sm font-semibold">Auto-Post New Listings</p>
             </div>
             <button
               onClick={() => setTgAutoPost((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-blue-600" : "bg-white/10"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-blue-600" : "bg-gray-300"}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${tgAutoPost ? "left-5" : "left-0.5"}`} />
             </button>
@@ -1471,11 +1472,11 @@ function SettingsTab({ profile, onProfileUpdate }) {
             className={iCls}
           />
           <p className="text-xs text-gray-700 mt-1">
-            Add your bot as <span className="text-white">Admin</span> to the channel first, then paste the username or numeric ID.
+            Add your bot as <span className="font-semibold text-gray-900">Admin</span> to the channel first, then paste the username or numeric ID.
           </p>
         </SettingsField>
 
-        <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl p-4 space-y-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Setup</p>
           {[
             "Open Telegram → search @BotFather → /newbot",
@@ -1485,7 +1486,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
             "Click Test Connection to verify, then Save",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2.5">
-              <span className="w-4 h-4 rounded-full bg-white/5 border border-white/10 text-[10px] text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">{i + 1}</span>
+              <span className="w-4 h-4 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">{i + 1}</span>
               <p className="text-xs text-gray-500 leading-relaxed">{step}</p>
             </div>
           ))}
@@ -1642,14 +1643,14 @@ function PriceEditModal({ listing, onClose, onSave }) {
           style={T.divider}
         >
           <div>
-            <h3 className="font-semibold text-white">Adjust Price</h3>
+            <h3 className="font-semibold text-gray-900">Adjust Price</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               {listing.brand} {listing.model} {listing.variant || ""}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white p-1 transition-colors"
+            className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1663,7 +1664,7 @@ function PriceEditModal({ listing, onClose, onSave }) {
                   RM {orig.toLocaleString()}
                 </span>
               )}
-              <span className="font-semibold grad-white">
+              <span className="font-semibold text-gray-900">
                 RM {cur.toLocaleString()}
               </span>
               {orig && (
@@ -1690,13 +1691,13 @@ function PriceEditModal({ listing, onClose, onSave }) {
                 }}
                 min="0"
                 autoFocus
-                className="w-full pl-12 pr-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-lg font-semibold focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/15 transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 text-lg font-semibold focus:outline-none focus:border-red-400 transition-all"
               />
             </div>
           </div>
           {npv > 0 && npv !== cur && (
             <div
-              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : isUp ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : isHot ? "bg-blue-500/10 border-red-500/20 text-blue-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}
+              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-50 border-cyan-200 text-cyan-700" : isUp ? "bg-amber-50 border-amber-200 text-amber-700" : isHot ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
             >
               {isReset && (
                 <p className="font-medium">
@@ -1734,15 +1735,14 @@ function PriceEditModal({ listing, onClose, onSave }) {
             </div>
           )}
           {err && (
-            <p className="text-blue-400 text-xs bg-blue-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               ⚠ {err}
             </p>
           )}
           <div className="flex gap-3 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-              style={{ border: "1px solid rgba(255,255,255,0.09)" }}
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200"
             >
               Cancel
             </button>
@@ -1781,14 +1781,14 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
       >
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="font-semibold text-white">Mark as Sold?</h3>
+            <h3 className="font-semibold text-gray-900">Mark as Sold?</h3>
             <p className="text-gray-500 text-xs mt-0.5">
               {listing.brand} {listing.model} {listing.variant || ""}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white p-1 transition-colors"
+            className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1800,12 +1800,12 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
             border: "1px solid rgba(34,197,94,0.18)",
           }}
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-emerald-300 text-sm font-semibold">
+            <p className="text-emerald-700 text-sm font-semibold">
               Sold count will update automatically
             </p>
-            <p className="text-emerald-500/60 text-xs mt-0.5">
+            <p className="text-emerald-600 text-xs mt-0.5">
               This listing moves to "Sold" and the sold counter updates in
               real-time.
             </p>
@@ -1814,8 +1814,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200"
           >
             Cancel
           </button>
@@ -1866,6 +1865,8 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
   const [slugStatsRows, setSlugStatsRows] = useState([]);
   const [dailyRows, setDailyRows] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [lpSearch, setLpSearch] = useState('');
+  const [lpVisible, setLpVisible] = useState(20);
   useEffect(() => {
     if (!profile?.id) return;
     const dealerId = getDealerIdFromProfile(profile);
@@ -2036,7 +2037,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       sub: avgAge >= 30 ? "⚠ Aging" : "Healthy",
       grad: avgAge >= 30 ? "grad-gold" : "grad-white",
       icon: <Clock className="w-4 h-4" />,
-      glow: avgAge >= 30 ? "rgba(251,191,36,0.14)" : "rgba(255,255,255,0.03)",
+      glow: avgAge >= 30 ? "rgba(251,191,36,0.08)" : "transparent",
     },
   ];
 
@@ -2073,7 +2074,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 </div>
               </div>
               <p
-                className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
+                className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-gray-900"}`}
               >
                 {val}
               </p>
@@ -2088,8 +2089,8 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         {/* Header + summary pills */}
         <div className="flex items-center justify-between p-4 flex-wrap gap-3" style={T.divider}>
           <div>
-            <h2 className="font-semibold text-white text-sm">Engagement Overview</h2>
-            <p className="text-xs text-gray-600 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
+            <h2 className="font-semibold text-gray-900 text-sm">Engagement Overview</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Last 30 days · drag the range slider to zoom into any period</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {[
@@ -2101,11 +2102,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             ].map(({ label, val, color }) => (
               <div key={label}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
                 <span className="text-xs text-gray-500">{label}</span>
-                <span className="text-xs font-bold text-white tabular-nums">
+                <span className="text-xs font-bold text-gray-900 tabular-nums">
                   {eventsLoading ? '…' : val}
                 </span>
               </div>
@@ -2119,7 +2120,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={dailyChart} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 10, fill: '#6b7280' }}
@@ -2135,14 +2136,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 />
                 <Tooltip
                   contentStyle={{
-                    background: '#0f1117',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: '#fff',
+                    border: '1px solid #e5e7eb',
                     borderRadius: 8,
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: 12,
                   }}
-                  itemStyle={{ color: '#e5e7eb' }}
-                  labelStyle={{ color: '#9ca3af', marginBottom: 4 }}
+                  itemStyle={{ color: '#111827' }}
+                  labelStyle={{ color: '#6b7280', marginBottom: 4 }}
                   cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
                 />
                 <Legend
@@ -2172,18 +2173,18 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
           <div className="flex items-center gap-2 p-4" style={T.divider}>
             <BarChart2 className="w-4 h-4 text-blue-400" />
-            <p className="font-semibold text-white text-sm">
+            <p className="font-semibold text-gray-900 text-sm">
               Salesman Performance
             </p>
           </div>
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-gray-100">
             {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
               <div key={slug} className="flex items-center gap-3 px-4 py-3">
-                <span className="text-xs text-gray-600 w-4 tabular-nums">
+                <span className="text-xs text-gray-400 w-4 tabular-nums">
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">
+                  <p className="text-gray-900 text-sm font-medium truncate">
                     /{slug}
                   </p>
                   <div className="flex items-center gap-3 mt-0.5">
@@ -2233,7 +2234,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
               >
                 <div className="flex items-center gap-2 mb-3">
                   <AlertCircle className="w-4 h-4 text-amber-400" />
-                  <p className="text-amber-300 text-sm font-semibold">
+                  <p className="text-amber-700 text-sm font-semibold">
                     {visibleStale.length} listing{visibleStale.length > 1 ? "s" : ""} aging 30+ days — needs attention
                   </p>
                 </div>
@@ -2249,13 +2250,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <img
                             src={l.images[0]}
                             alt=""
-                            className="w-8 h-8 rounded-lg object-cover bg-gray-800 flex-shrink-0"
+                            className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-white/5 flex-shrink-0" />
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
                         )}
                         <div>
-                          <p className="text-white text-sm font-medium">
+                          <p className="text-gray-900 text-sm font-medium">
                             {l.brand} {l.model}
                           </p>
                           <p className="text-gray-500 text-xs">
@@ -2264,7 +2265,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-amber-400 text-xs font-semibold bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                        <span className="text-amber-700 text-xs font-semibold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
                           {getListingAge(l.created_at)}d
                         </span>
                         {onEditListing && (
@@ -2300,7 +2301,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
               >
                 <div className="flex items-center gap-2 mb-3">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <p className="text-emerald-300 text-sm font-semibold">
+                  <p className="text-emerald-700 text-sm font-semibold">
                     {adjustedStale.length} listing{adjustedStale.length > 1 ? "s" : ""} adjusted — 30+ days old, repriced or updated
                   </p>
                 </div>
@@ -2316,13 +2317,13 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           <img
                             src={l.images[0]}
                             alt=""
-                            className="w-8 h-8 rounded-lg object-cover bg-gray-800 flex-shrink-0"
+                            className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-white/5 flex-shrink-0" />
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
                         )}
                         <div>
-                          <p className="text-white text-sm font-medium">
+                          <p className="text-gray-900 text-sm font-medium">
                             {l.brand} {l.model}
                           </p>
                           <p className="text-gray-500 text-xs">
@@ -2331,20 +2332,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 text-xs font-semibold bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
+                        <span className="text-emerald-700 text-xs font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                           {getListingAge(l.created_at)}d · adjusted
                         </span>
                         {onEditListing && (
                           <button
                             onClick={() => onEditListing(l)}
                             className="text-xs px-2.5 py-1 rounded-lg transition-all"
-                            style={{
-                              background: "rgba(255,255,255,0.04)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              color: "#6b7280",
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#e5e7eb"}
-                            onMouseLeave={e => e.currentTarget.style.color = "#6b7280"}
+                            style={{ background: "#f9fafb", border: "1px solid #e5e7eb", color: "#6b7280" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "#f3f4f6"}
+                            onMouseLeave={e => e.currentTarget.style.background = "#f9fafb"}
                           >
                             Edit again
                           </button>
@@ -2360,8 +2357,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       })()}
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <style>{`
-          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.05); }
-          /* ── desktop table ── */
+          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e5e7eb; }
           .lp-table-wrap { display:block; }
           .lp-table { width:100%; border-collapse:collapse; table-layout:fixed; }
           .lp-table colgroup col:nth-child(1) { width:22%; }
@@ -2373,32 +2369,31 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
           .lp-table colgroup col:nth-child(7) { width:10%; }
           .lp-table colgroup col:nth-child(8) { width:8%; }
           .lp-table colgroup col:nth-child(9) { width:9%; }
-          .lp-th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:rgba(107,114,128,0.8); text-align:left; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); }
-          .lp-row { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; }
+          .lp-th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#6b7280; text-align:left; background:#f9fafb; border-bottom:1px solid #e5e7eb; }
+          .lp-row { border-bottom:1px solid #f3f4f6; transition:background 0.15s; }
           .lp-row:last-child { border-bottom:none; }
-          .lp-row:hover { background:rgba(255,255,255,0.025); }
-          .lp-row.stale { background:rgba(251,191,36,0.03); }
-          .lp-row.stale:hover { background:rgba(251,191,36,0.06); }
+          .lp-row:hover { background:#f9fafb; }
+          .lp-row.stale { background:#fffbeb; }
+          .lp-row.stale:hover { background:#fef3c7; }
           .lp-td { padding:13px 14px; vertical-align:middle; }
-          .lp-stat { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:24px; padding:0 8px; border-radius:6px; font-size:12px; font-weight:700; tabular-nums; letter-spacing:0.02em; }
-          .lp-stat.sky  { background:rgba(56,189,248,0.1);  color:#38bdf8; border:1px solid rgba(56,189,248,0.18); }
-          .lp-stat.green{ background:rgba(34,197,94,0.1);   color:#4ade80; border:1px solid rgba(34,197,94,0.18); }
-          .lp-stat.purple{ background:rgba(168,85,247,0.1); color:#c084fc; border:1px solid rgba(168,85,247,0.18); }
-          .lp-stat.amber{ background:rgba(251,191,36,0.1);  color:#fbbf24; border:1px solid rgba(251,191,36,0.18); }
-          .lp-stat.dim  { background:rgba(255,255,255,0.03); color:rgba(75,85,99,0.9); border:1px solid rgba(255,255,255,0.06); }
-          .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#111827; }
-          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
-          /* ── mobile cards ── */
+          .lp-stat { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:24px; padding:0 8px; border-radius:6px; font-size:12px; font-weight:700; letter-spacing:0.02em; }
+          .lp-stat.sky   { background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; }
+          .lp-stat.green { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+          .lp-stat.purple{ background:#faf5ff; color:#7e22ce; border:1px solid #e9d5ff; }
+          .lp-stat.amber { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+          .lp-stat.dim   { background:#f9fafb; color:#9ca3af; border:1px solid #e5e7eb; }
+          .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
+          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
           .lp-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
-          .lp-card { border-radius:10px; overflow:hidden; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); transition:border-color 0.15s; }
-          .lp-card.stale { border-color:rgba(251,191,36,0.2); background:rgba(251,191,36,0.02); }
+          .lp-card { border-radius:10px; overflow:hidden; background:#fff; border:1px solid #e5e7eb; transition:border-color 0.15s; }
+          .lp-card.stale { border-color:#fde68a; background:#fffbeb; }
           .lp-card-top { display:flex; align-items:center; gap:12px; padding:12px 14px 10px; }
-          .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#111827; }
-          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
-          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:rgba(255,255,255,0.05); border-top:1px solid rgba(255,255,255,0.05); }
-          .lp-card-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:9px 4px; background:rgba(6,12,20,0.6); gap:2px; }
-          .lp-card-stat-val { font-size:13px; font-weight:800; tabular-nums; letter-spacing:0.02em; }
-          .lp-card-stat-lbl { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#374151; }
+          .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
+          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
+          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:#e5e7eb; border-top:1px solid #e5e7eb; }
+          .lp-card-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:9px 4px; background:#fff; gap:2px; }
+          .lp-card-stat-val { font-size:13px; font-weight:800; letter-spacing:0.02em; }
+          .lp-card-stat-lbl { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; }
           @media(max-width:640px) {
             .lp-table-wrap { display:none !important; }
             .lp-cards { display:flex !important; }
@@ -2408,12 +2403,23 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
         {/* ── header ── */}
         <div className="lp-header">
           <div>
-            <h2 style={{ fontSize:14, fontWeight:700, color:'white', margin:0, letterSpacing:'-0.01em' }}>Listing Performance</h2>
-            <p style={{ fontSize:11, color:'#374151', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
+            <h2 style={{ fontSize:14, fontWeight:700, color:'#111827', margin:0, letterSpacing:'-0.01em' }}>Listing Performance</h2>
+            <p style={{ fontSize:11, color:'#6b7280', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
           </div>
-          <span style={{ fontSize:11, fontWeight:600, color:'#374151', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:6, padding:'4px 10px' }}>
+          <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
             {listings.length} listing{listings.length !== 1 ? 's' : ''}
           </span>
+        </div>
+
+        {/* ── search bar ── */}
+        <div style={{ padding:'0 20px 14px', position:'relative' }}>
+          <Search style={{ position:'absolute', left:32, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'#9ca3af', pointerEvents:'none' }} />
+          <input
+            value={lpSearch}
+            onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
+            placeholder="Search brand, model or variant…"
+            style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"'DM Sans',sans-serif" }}
+          />
         </div>
 
         {listings.length === 0 ? (
@@ -2421,11 +2427,17 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             No listings to analyse yet
           </div>
         ) : (() => {
-          const sorted = [...listings].sort((a, b) => {
+          const allSorted = [...listings].sort((a, b) => {
             const aViews = carStatsMap[a.id]?.views || 0;
             const bViews = carStatsMap[b.id]?.views || 0;
             return bViews - aViews;
           });
+          const lpQ = lpSearch.trim().toLowerCase();
+          const filtered = lpQ
+            ? allSorted.filter(l => `${l.brand} ${l.model} ${l.variant || ''} ${l.year || ''}`.toLowerCase().includes(lpQ))
+            : allSorted;
+          const sorted = filtered.slice(0, lpVisible);
+          const hasMore = filtered.length > lpVisible;
           return (
             <>
               {/* ── desktop table ── */}
@@ -2465,7 +2477,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                                 : <div className="lp-vehicle-placeholder" />
                               }
                               <div style={{ minWidth:0 }}>
-                                <p style={{ fontSize:13, fontWeight:700, color:'white', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                                <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
                                   {l.brand} {l.model}
                                 </p>
                                 <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -2476,7 +2488,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                           </td>
                           {/* Price */}
                           <td className="lp-td">
-                            <p style={{ fontSize:13, fontWeight:800, color:'#f3f4f6', margin:0, letterSpacing:'-0.02em', tabularNums:true }}>
+                            <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, letterSpacing:'-0.02em', tabularNums:true }}>
                               RM {l.selling_price?.toLocaleString() || '—'}
                             </p>
                           </td>
@@ -2551,7 +2563,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
                             <div style={{ minWidth:0 }}>
-                              <p style={{ fontSize:13, fontWeight:800, color:'white', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                              <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
                                 {l.brand} {l.model}
                               </p>
                               <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
@@ -2563,7 +2575,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                             </span>
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-                            <span style={{ fontSize:14, fontWeight:800, color:'#f3f4f6', letterSpacing:'-0.02em' }}>
+                            <span style={{ fontSize:14, fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>
                               RM {l.selling_price?.toLocaleString() || '—'}
                             </span>
                             <AgeBadge createdAt={l.created_at} />
@@ -2591,6 +2603,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                   );
                 })}
               </div>
+              {hasMore && (
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6' }}>
+                  <button
+                    onClick={() => setLpVisible(v => v + 20)}
+                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    Load more ({filtered.length - lpVisible} remaining)
+                  </button>
+                </div>
+              )}
             </>
           );
         })()}
@@ -2598,34 +2620,30 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
         <button
           onClick={() => setChatOpen((v) => !v)}
-          className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{
-                background: "rgba(59,130,246,0.1)",
-                border: "1px solid rgba(59,130,246,0.18)",
-                boxShadow: "0 0 12px rgba(59,130,246,0.12)",
-              }}
+              style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
             >
-              <Bot className="w-4 h-4 text-blue-400" />
+              <Bot className="w-4 h-4 text-blue-600" />
             </div>
             <div className="text-left">
-              <p className="text-white text-sm font-semibold">
+              <p className="text-gray-900 text-sm font-semibold">
                 AI Performance Advisor
               </p>
-              <p className="text-gray-600 text-xs mt-0.5">
+              <p className="text-gray-500 text-xs mt-0.5">
                 Ask anything about your inventory & performance
               </p>
             </div>
           </div>
           <ChevronRight
-            className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${chatOpen ? "rotate-90" : ""}`}
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${chatOpen ? "rotate-90" : ""}`}
           />
         </button>
         {chatOpen && (
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ borderTop: "1px solid #e5e7eb" }}>
             <div className="h-72 overflow-y-auto p-4 space-y-3">
               {messages.map((m, i) => (
                 <div
@@ -2635,27 +2653,17 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                   {m.role === "assistant" && (
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{
-                        background: "rgba(59,130,246,0.12)",
-                        border: "1px solid rgba(59,130,246,0.18)",
-                      }}
+                      style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
                     >
-                      <Bot className="w-3 h-3 text-blue-400" />
+                      <Bot className="w-3 h-3 text-blue-600" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "text-white rounded-tr-sm" : "text-gray-300 rounded-tl-sm"}`}
+                    className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "text-white rounded-tr-sm" : "text-gray-700 rounded-tl-sm"}`}
                     style={
                       m.role === "user"
-                        ? {
-                            background:
-                              "linear-gradient(135deg,#3b82f6,#1d4ed8)",
-                            boxShadow: "0 2px 8px rgba(59,130,246,0.22)",
-                          }
-                        : {
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                          }
+                        ? { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", boxShadow: "0 2px 8px rgba(59,130,246,0.22)" }
+                        : { background: "#f9fafb", border: "1px solid #e5e7eb" }
                     }
                   >
                     {m.content}
@@ -2666,27 +2674,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                 <div className="flex gap-2.5">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{
-                      background: "rgba(59,130,246,0.12)",
-                      border: "1px solid rgba(59,130,246,0.18)",
-                    }}
+                    style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
                   >
-                    <Bot className="w-3 h-3 text-blue-400" />
+                    <Bot className="w-3 h-3 text-blue-600" />
                   </div>
-                  <div
-                    className="px-3.5 py-3 rounded-2xl rounded-tl-sm"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
+                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className="w-1.5 h-1.5 bg-blue-500/40 rounded-full animate-bounce"
-                          style={{ animationDelay: `${i * 0.15}s` }}
-                        />
+                        <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                       ))}
                     </div>
                   </div>
@@ -2700,44 +2695,27 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
                   <button
                     key={p}
                     onClick={() => setInput(p)}
-                    className="text-xs px-3 py-1.5 rounded-full text-gray-500 hover:text-white transition-all"
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
+                    className="text-xs px-3 py-1.5 rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                    style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
                   >
                     {p}
                   </button>
                 ))}
               </div>
             )}
-            <div
-              className="p-3 flex gap-2 items-end"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-            >
+            <div className="p-3 flex gap-2 items-end" style={{ borderTop: "1px solid #e5e7eb" }}>
               <textarea
                 rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
                 }}
                 placeholder="Ask about your listings, pricing, leads…"
-                className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none resize-none transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  maxHeight: "120px",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "rgba(59,130,246,0.4)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-                }
+                className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none transition-colors"
+                style={{ background: "#fff", border: "1px solid #e5e7eb", maxHeight: "120px" }}
+                onFocus={(e) => (e.target.style.borderColor = "#93c5fd")}
+                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
               <button
                 onClick={send}
@@ -2908,7 +2886,7 @@ function MarketplaceAnalyticsTab({ profile }) {
     return `${Math.floor(secs / 60)}m ${secs % 60}s`;
   }
 
-  const cardStyle = { background: "#111827", border: "1px solid #1f2937" };
+  const cardStyle = { background: "#fff", border: "1px solid #e5e7eb" };
   const labelCls = "text-[10px] text-gray-500 uppercase tracking-widest font-medium mb-3";
   const pageMax = pageBreakdown[0]?.visits || 1;
 
@@ -2925,7 +2903,7 @@ function MarketplaceAnalyticsTab({ profile }) {
     <div className="space-y-5 pb-10">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-base font-semibold text-white">Marketplace Analytics</h2>
+          <h2 className="text-base font-semibold text-gray-900">Marketplace Analytics</h2>
           <p className="text-xs text-gray-500 mt-0.5">XDrive public traffic — all visitors, all pages</p>
         </div>
         <div className="flex gap-1.5">
@@ -2934,7 +2912,7 @@ function MarketplaceAnalyticsTab({ profile }) {
               key={d}
               onClick={() => setRange(d)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                range === d ? "bg-red-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                range === d ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {d}d
@@ -2967,8 +2945,8 @@ function MarketplaceAnalyticsTab({ profile }) {
           {avgTimeSecs !== null && (
             <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={cardStyle}>
               <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-400">Avg time on page:</span>
-              <span className="text-sm text-white font-semibold">{fmtTime(avgTimeSecs)}</span>
+              <span className="text-sm text-gray-500">Avg time on page:</span>
+              <span className="text-sm text-gray-900 font-semibold">{fmtTime(avgTimeSecs)}</span>
             </div>
           )}
 
@@ -2977,12 +2955,12 @@ function MarketplaceAnalyticsTab({ profile }) {
               <p className={labelCls}>Daily Visits</p>
               <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="date" tick={{ fill: "#4b5563", fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: "#4b5563", fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "#94a3b8" }}
+                    contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "#6b7280" }}
                   />
                   <Line type="monotone" dataKey="visits" stroke="#dc2626" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -3000,14 +2978,14 @@ function MarketplaceAnalyticsTab({ profile }) {
                   {pageBreakdown.map(({ path, visits, unique, avgTime }) => (
                     <div key={path}>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-mono text-gray-300 truncate max-w-[160px]">{path}</span>
+                        <span className="font-mono text-gray-700 truncate max-w-[160px]">{path}</span>
                         <span className="text-gray-500 ml-2 shrink-0">
                           {visits} visits · {unique} uniq{avgTime ? ` · ${fmtTime(avgTime)}` : ""}
                         </span>
                       </div>
-                      <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-red-700 rounded-full"
+                          className="h-full bg-red-600 rounded-full"
                           style={{ width: `${(visits / pageMax) * 100}%` }}
                         />
                       </div>
@@ -3026,12 +3004,12 @@ function MarketplaceAnalyticsTab({ profile }) {
                   {sources.map(({ name, count }) => (
                     <div key={name}>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-300">{name}</span>
+                        <span className="text-gray-700">{name}</span>
                         <span className="text-gray-500">{count}</span>
                       </div>
-                      <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-600 rounded-full"
+                          className="h-full bg-blue-500 rounded-full"
                           style={{ width: `${(count / sourceMax) * 100}%` }}
                         />
                       </div>
@@ -3049,15 +3027,15 @@ function MarketplaceAnalyticsTab({ profile }) {
                 {topCars.map(({ name, views }, i) => (
                   <div key={name}>
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-300">
-                        <span className="text-gray-600 mr-1.5">{i + 1}.</span>
+                      <span className="text-gray-700">
+                        <span className="text-gray-400 mr-1.5">{i + 1}.</span>
                         {name}
                       </span>
                       <span className="text-gray-500">{views} views</span>
                     </div>
-                    <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-indigo-600 rounded-full"
+                        className="h-full bg-indigo-500 rounded-full"
                         style={{ width: `${(views / carMax) * 100}%` }}
                       />
                     </div>
@@ -3355,7 +3333,7 @@ function TeamTab({ managerDealership, dealerId }) {
     ? Math.round((activeCount / salespeople.length) * 100)
     : 0;
   const inputCls =
-    "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-red-600/10 transition-all";
+    "w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 
   return (
     <div className="space-y-4">
@@ -3376,10 +3354,10 @@ function TeamTab({ managerDealership, dealerId }) {
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="flex-1">
-          <p className="text-emerald-300 text-sm font-semibold">
+          <p className="text-emerald-700 text-sm font-semibold">
             {teamSoldCount} car{teamSoldCount !== 1 ? "s" : ""} sold
           </p>
-          <p className="text-emerald-600/60 text-xs">
+          <p className="text-emerald-600 text-xs">
             Live count · updates automatically
           </p>
         </div>
@@ -3393,8 +3371,8 @@ function TeamTab({ managerDealership, dealerId }) {
           style={T.divider}
         >
           <div>
-            <h2 className="font-semibold text-white">Salespeople</h2>
-            <p className="text-xs text-gray-600 mt-0.5 hidden sm:block">
+            <h2 className="font-semibold text-gray-900">Salespeople</h2>
+            <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
               {salespeople.length > 0
                 ? `${activeCount} active · ${inactiveCount} inactive · ${activeRate}% active rate`
                 : "Manage accounts, links, and status."}
@@ -3415,7 +3393,7 @@ function TeamTab({ managerDealership, dealerId }) {
           </button>
         </div>
         {/* Role tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', overflowX: 'auto' }}>
           {ROLE_TABS.map(({ role, label, color }) => {
             const count = salespeople.filter(s => s.role === role).length;
             return (
@@ -3429,7 +3407,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   cursor: 'pointer',
                   border: 'none',
                   background: 'none',
-                  color: teamTab === role ? '#f3f4f6' : '#6b7280',
+                  color: teamTab === role ? '#111827' : '#6b7280',
                   borderBottom: teamTab === role ? `2px solid ${color}` : '2px solid transparent',
                   fontFamily: "'DM Sans', sans-serif",
                   transition: 'color 0.15s',
@@ -3445,8 +3423,8 @@ function TeamTab({ managerDealership, dealerId }) {
                 <span style={{
                   fontSize: 11, fontWeight: 700,
                   padding: '1px 7px', borderRadius: 10,
-                  background: teamTab === role ? `${color}18` : 'rgba(255,255,255,0.05)',
-                  color: teamTab === role ? color : '#4b5563',
+                  background: teamTab === role ? `${color}18` : '#f3f4f6',
+                  color: teamTab === role ? color : '#6b7280',
                 }}>{count}</span>
               </button>
             );
@@ -3454,11 +3432,8 @@ function TeamTab({ managerDealership, dealerId }) {
         </div>
         {teamError && (
           <div
-            className="m-4 rounded-lg px-3 py-2.5 text-amber-300 text-xs"
-            style={{
-              background: "rgba(251,191,36,0.06)",
-              border: "1px solid rgba(251,191,36,0.14)",
-            }}
+            className="m-4 rounded-lg px-3 py-2.5 text-amber-700 text-xs"
+            style={{ background: "#fffbeb", border: "1px solid #fde68a" }}
           >
             ⚠ {teamError}
           </div>
@@ -3515,11 +3490,11 @@ function TeamTab({ managerDealership, dealerId }) {
               return (
                 <>
                   {leaderboard && (
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Leaderboard</p>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Leaderboard</p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {leaderboard.map((s, i) => {
-                          const rc = rankColors[i] || { bg: 'rgba(255,255,255,0.04)', color: '#374151', border: 'rgba(255,255,255,0.06)' };
+                          const rc = rankColors[i] || { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' };
                           return (
                             <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{
@@ -3529,10 +3504,10 @@ function TeamTab({ managerDealership, dealerId }) {
                                 background: rc.bg, color: rc.color,
                                 border: `1px solid ${rc.border}`,
                               }}>{i + 1}</span>
-                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#34d399' : '#374151', minWidth: 18, textAlign: 'right' }}>{s.sold}</span>
-                              <span style={{ fontSize: 10, color: '#4b5563', marginRight: 6 }}>sold</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', minWidth: 72, textAlign: 'right' }}>
+                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#16a34a' : '#9ca3af', minWidth: 18, textAlign: 'right' }}>{s.sold}</span>
+                              <span style={{ fontSize: 10, color: '#9ca3af', marginRight: 6 }}>sold</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', minWidth: 72, textAlign: 'right' }}>
                                 RM {s.commission > 0 ? s.commission.toLocaleString() : '0'}
                               </span>
                             </div>
@@ -3549,7 +3524,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   {filteredTeam.map((s) => (
               <div
                 key={s.id}
-                className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-white/[0.02]"}`}
+                className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-gray-50"}`}
               >
                 <div className="flex items-start gap-3">
                   {s.avatar_url ? (
@@ -3571,11 +3546,11 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0 }} />
-                      <p className="font-semibold text-white truncate">
+                      <p className="font-semibold text-gray-900 truncate">
                         {s.full_name}
                       </p>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : "bg-white/5 text-gray-500 border-white/8"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}
                       >
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
@@ -3593,21 +3568,18 @@ function TeamTab({ managerDealership, dealerId }) {
                       <div className="flex items-center gap-2 mb-3">
                         <div
                           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
-                          style={{
-                            background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                          }}
+                          style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
                         >
-                          <Link className="w-3 h-3 text-gray-600" />
+                          <Link className="w-3 h-3 text-gray-400" />
                           /cars?ref=
-                          <span className="text-white font-medium">
+                          <span className="text-gray-900 font-medium">
                             {s.slug}
                           </span>
                         </div>
                         <button
                           onClick={() => copyLink(s)}
-                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white rounded-lg px-2 py-1.5 transition-all"
-                          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 rounded-lg px-2 py-1.5 transition-all"
+                          style={{ border: "1px solid #e5e7eb" }}
                         >
                           {copiedId === s.id ? (
                             <>
@@ -3644,17 +3616,14 @@ function TeamTab({ managerDealership, dealerId }) {
                         <div
                           key={lbl}
                           className="rounded-lg px-2.5 py-2"
-                          style={{
-                            background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                          }}
+                          style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
                         >
                           <p
-                            className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "grad-white"}`}
+                            className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "text-gray-900"}`}
                           >
                             {v}
                           </p>
-                          <p className="text-[10px] text-gray-600 mt-0.5">
+                          <p className="text-[10px] text-gray-500 mt-0.5">
                             {lbl}
                           </p>
                         </div>
@@ -3665,8 +3634,8 @@ function TeamTab({ managerDealership, dealerId }) {
                     <button
                       onClick={() => toggleActive(s)}
                       disabled={togglingId === s.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-white transition-all disabled:opacity-40"
-                      style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 transition-all disabled:opacity-40"
+                      style={{ border: "1px solid #e5e7eb" }}
                     >
                       {s.is_active !== false ? (
                         <>
@@ -3709,14 +3678,14 @@ function TeamTab({ managerDealership, dealerId }) {
           >
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-white">Remove Salesman?</h3>
+                <h3 className="font-semibold text-gray-900">Remove Salesman?</h3>
                 <p className="text-gray-500 text-xs mt-0.5">
                   Deletes their account and referral link permanently.
                 </p>
               </div>
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3724,8 +3693,7 @@ function TeamTab({ managerDealership, dealerId }) {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200"
               >
                 Cancel
               </button>
@@ -3748,39 +3716,39 @@ function TeamTab({ managerDealership, dealerId }) {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md relative"
-            style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "#fff", border: "1px solid #e5e7eb" }}
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.22)" }}
+                  style={{ background: "#ecfdf5", border: "1px solid #6ee7b7" }}
                 >
-                  <Check className="w-5 h-5 text-emerald-400" />
+                  <Check className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white text-sm">Account Created</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm">Account Created</h3>
                   <p className="text-gray-500 text-xs mt-0.5">Share these credentials with your salesman</p>
                 </div>
               </div>
               <button
                 onClick={() => setCreatedAccount(null)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-3 mb-4">
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Name</p>
-                <p className="text-white text-sm font-medium">{createdAccount.full_name}</p>
+                <p className="text-gray-900 text-sm font-medium">{createdAccount.full_name}</p>
               </div>
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Email</p>
-                <p className="text-white text-sm font-medium">{createdAccount.email}</p>
+                <p className="text-gray-900 text-sm font-medium">{createdAccount.email}</p>
               </div>
-              <div className="rounded-xl px-3.5 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl px-3.5 py-3" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Temporary Password</p>
                   <button
@@ -3792,12 +3760,12 @@ function TeamTab({ managerDealership, dealerId }) {
                     className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all"
                     style={copiedPw
                       ? { color: "#34d399", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }
-                      : { color: "#9ca3af", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      : { color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb" }}
                   >
                     {copiedPw ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                   </button>
                 </div>
-                <p className="text-white text-base font-mono font-bold tracking-widest">{createdAccount.temp_password}</p>
+                <p className="text-gray-900 text-base font-mono font-bold tracking-widest">{createdAccount.temp_password}</p>
               </div>
             </div>
 
@@ -3805,9 +3773,9 @@ function TeamTab({ managerDealership, dealerId }) {
               className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
               style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.16)" }}
             >
-              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-amber-300/80 text-xs leading-relaxed">
-                This password will <span className="font-semibold text-amber-300">not be shown again</span>. Share it securely with your salesman now.
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-700 text-xs leading-relaxed">
+                This password will <span className="font-semibold text-amber-800">not be shown again</span>. Share it securely with your salesman now.
               </p>
             </div>
 
@@ -3824,7 +3792,7 @@ function TeamTab({ managerDealership, dealerId }) {
       {/* ── Message Team Panel ── */}
       {(() => {
         const MSG_ROLES = [
-          { value: 'all',        label: 'Everyone',    color: '#f3f4f6' },
+          { value: 'all',        label: 'Everyone',    color: '#111827' },
           { value: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
           { value: 'manager',    label: 'Managers',    color: '#f97316' },
           { value: 'accountant', label: 'Accountants', color: '#22c55e' },
@@ -3853,9 +3821,9 @@ function TeamTab({ managerDealership, dealerId }) {
         return (
           <div className="rounded-xl overflow-hidden" style={T.cardDark}>
             {/* Header */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Message Team</h2>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Message Team</h2>
                 <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Sends to each member's dashboard notification</p>
               </div>
               <Send style={{ width: 16, height: 16, color: '#4b5563' }} />
@@ -3875,8 +3843,8 @@ function TeamTab({ managerDealership, dealerId }) {
                       onClick={() => setMsgTarget(value)}
                       style={{
                         padding: '6px 14px', borderRadius: 20,
-                        border: `1px solid ${msgTarget === value ? color : 'rgba(255,255,255,0.08)'}`,
-                        background: msgTarget === value ? `${color}18` : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${msgTarget === value ? color : '#e5e7eb'}`,
+                        background: msgTarget === value ? `${color}18` : '#f9fafb',
                         color: msgTarget === value ? color : '#6b7280',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         fontFamily: "'DM Sans',sans-serif",
@@ -3887,7 +3855,7 @@ function TeamTab({ managerDealership, dealerId }) {
                       {label}
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
-                        background: msgTarget === value ? `${color}22` : 'rgba(255,255,255,0.05)',
+                        background: msgTarget === value ? `${color}22` : '#f3f4f6',
                         color: msgTarget === value ? color : '#4b5563',
                       }}>{cnt}</span>
                     </button>
@@ -3899,7 +3867,7 @@ function TeamTab({ managerDealership, dealerId }) {
               {recipients.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {recipients.map(s => (
-                    <span key={s.id} style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span key={s.id} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0, display: 'inline-block' }} />
                       {s.full_name}
                     </span>
@@ -3916,8 +3884,8 @@ function TeamTab({ managerDealership, dealerId }) {
                 placeholder="Type your message here…"
                 style={{
                   width: '100%', boxSizing: 'border-box', resize: 'vertical',
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 10, padding: '10px 12px', color: '#f3f4f6', fontSize: 13,
+                  background: '#f9fafb', border: '1px solid #e5e7eb',
+                  borderRadius: 10, padding: '10px 12px', color: '#111827', fontSize: 13,
                   fontFamily: "'DM Sans',sans-serif", outline: 'none', lineHeight: 1.6,
                   marginBottom: 12,
                 }}
@@ -3932,7 +3900,7 @@ function TeamTab({ managerDealership, dealerId }) {
                   fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 600,
                   border: 'none', transition: 'all 0.15s',
                   ...(msgDone
-                    ? { background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }
+                    ? { background: '#ecfdf5', color: '#15803d', border: '1px solid #86efac' }
                     : { ...T.btnRed, opacity: (!msgText.trim() || recipients.length === 0) ? 0.4 : 1 }),
                 }}
               >
@@ -3963,14 +3931,14 @@ function TeamTab({ managerDealership, dealerId }) {
               style={T.divider}
             >
               <div>
-                <h3 className="font-semibold text-white">Add Salesman</h3>
+                <h3 className="font-semibold text-gray-900">Add Salesman</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Create account and trackable referral link
                 </p>
               </div>
               <button
                 onClick={() => setShowAddForm(false)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3981,21 +3949,21 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
                     style={{
-                      background: "rgba(52,211,153,0.12)",
-                      border: "1px solid rgba(52,211,153,0.22)",
+                      background: "#ecfdf5",
+                      border: "1px solid #6ee7b7",
                     }}
                   >
-                    <Check className="w-6 h-6 text-emerald-400" />
+                    <Check className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <p className="text-emerald-400 font-semibold mb-1">
+                  <p className="text-emerald-700 font-semibold mb-1">
                     Salesman added!
                   </p>
                   <p className="text-gray-500 text-sm mb-6">{addSuccess}</p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-                      style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all"
+                      style={{ border: "1px solid #e5e7eb" }}
                     >
                       Done
                     </button>
@@ -4028,8 +3996,8 @@ function TeamTab({ managerDealership, dealerId }) {
                           style={{
                             padding: '8px 14px',
                             borderRadius: 8,
-                            border: `1px solid ${newRole === role ? color : 'rgba(255,255,255,0.08)'}`,
-                            background: newRole === role ? `${color}18` : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${newRole === role ? color : '#e5e7eb'}`,
+                            background: newRole === role ? `${color}18` : '#f9fafb',
                             cursor: 'pointer',
                             fontFamily: "'DM Sans',sans-serif",
                             transition: 'all 0.15s',
@@ -4037,7 +4005,7 @@ function TeamTab({ managerDealership, dealerId }) {
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: newRole === role ? color : '#9ca3af' }}>{label}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: newRole === role ? color : '#374151' }}>{label}</span>
                           </div>
                           <p style={{ fontSize: 10, color: '#4b5563', margin: '2px 0 0', textAlign: 'left' }}>{desc}</p>
                         </button>
@@ -4078,14 +4046,14 @@ function TeamTab({ managerDealership, dealerId }) {
                         Phone
                       </label>
                       <div className={`flex items-center overflow-hidden ${inputCls}`} style={{ padding:0 }}>
-                        <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
+                        <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
                         <input
                           type="tel"
                           value={(phone||'').replace(/^\+?60/,'')}
                           onChange={(e) => setPhone('+60'+e.target.value.replace(/\D/g,''))}
                           placeholder="X-XXXXXXX"
                           autoComplete="off"
-                          className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                          className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
                         />
                       </div>
                     </div>
@@ -4107,10 +4075,10 @@ function TeamTab({ managerDealership, dealerId }) {
                     {newRole === "salesman" && (
                       <div className="flex items-end">
                         <div
-                          className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-400"
+                          className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-700"
                           style={{
-                            background: "rgba(52,211,153,0.06)",
-                            border: "1px solid rgba(52,211,153,0.18)",
+                            background: "#f0fdf4",
+                            border: "1px solid #86efac",
                           }}
                         >
                           Password auto-generated — shown once after creation.
@@ -4124,12 +4092,8 @@ function TeamTab({ managerDealership, dealerId }) {
                     </label>
                     <div className="flex">
                       <span
-                        className="rounded-l-xl px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRight: "none",
-                        }}
+                        className="rounded-l-xl px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap bg-gray-50"
+                        style={{ border: "1px solid #e5e7eb", borderRight: "none" }}
                       >
                         /cars?ref=
                       </span>
@@ -4139,11 +4103,8 @@ function TeamTab({ managerDealership, dealerId }) {
                         value={slug}
                         onChange={(e) => setSlug(slugify(e.target.value))}
                         autoComplete="off"
-                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-blue-500/50 transition-colors"
-                        style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                        }}
+                        className="flex-1 rounded-r-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-colors"
+                        style={{ background: "#fff", border: "1px solid #e5e7eb" }}
                       />
                     </div>
                     <p className="text-xs text-gray-700 mt-1">
@@ -4152,11 +4113,8 @@ function TeamTab({ managerDealership, dealerId }) {
                   </div>
                   {addError && (
                     <div
-                      className="rounded-xl px-3 py-2.5 text-blue-400 text-xs"
-                      style={{
-                        background: "rgba(59,130,246,0.07)",
-                        border: "1px solid rgba(59,130,246,0.18)",
-                      }}
+                      className="rounded-xl px-3 py-2.5 text-red-600 text-xs"
+                      style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
                     >
                       ⚠ {addError}
                     </div>
@@ -4164,8 +4122,8 @@ function TeamTab({ managerDealership, dealerId }) {
                   <div className="flex gap-3 pt-1">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-                      style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all"
+                      style={{ border: "1px solid #e5e7eb" }}
                     >
                       Cancel
                     </button>
@@ -4202,8 +4160,8 @@ function DrawerDamageMap({ damageMap }) {
   const zones = Array.isArray(damageMap) ? damageMap : [];
   const byZone = {};
   zones.forEach(z => { byZone[z.zone] = z.type; });
-  const fill   = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]] + '44' : 'rgba(255,255,255,0.035)';
-  const stroke = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]]       : 'rgba(255,255,255,0.09)';
+  const fill   = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]] + '44' : '#f3f4f6';
+  const stroke = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]]       : '#e5e7eb';
   return (
     <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 16 }}>
       <svg viewBox="0 0 170 220" width={150} height={220} style={{ flexShrink: 0 }}>
@@ -4299,7 +4257,7 @@ function ListingDetailDrawer({
   const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
   const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon' };
 
-  const btnBase = { width: '100%', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid rgba(255,255,255,0.08)', fontFamily: "'DM Sans', sans-serif", color: '#9ca3af' };
+  const btnBase = { width: '100%', background: '#f9fafb', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: '1px solid #e5e7eb', fontFamily: "'DM Sans', sans-serif", color: '#9ca3af' };
 
   const specRows = [
     { k: 'Year',              v: listing.year || '—' },
@@ -4319,13 +4277,13 @@ function ListingDetailDrawer({
       >
         {/* Panel */}
         <div
-          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: 'rgba(11,11,15,0.99)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
+          style={{ position: 'relative', margin: isMobile ? 0 : '24px auto', maxWidth: isMobile ? '100vw' : 1100, width: isMobile ? '100vw' : 'calc(100vw - 48px)', height: isMobile ? '100dvh' : undefined, maxHeight: isMobile ? '100dvh' : 'calc(100vh - 48px)', background: 'rgba(11,11,15,0.99)', border: '1px solid #e5e7eb', borderRadius: isMobile ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}
           onClick={e => e.stopPropagation()}
         >
           {/* Close */}
           <button
             onClick={onClose}
-            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.9)', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </button>
@@ -4333,7 +4291,7 @@ function ListingDetailDrawer({
           {/* Body */}
           <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowY: 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
             {/* LEFT */}
-            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)', overflowY: isMobile ? 'visible' : 'auto' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
               {/* Gallery */}
               <div style={{ display: 'flex', gap: 8 }}>
@@ -4343,7 +4301,7 @@ function ListingDetailDrawer({
                     <div
                       key={i}
                       onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#0d0d0d', border: i === imgIdx ? '1px solid rgba(59,130,246,0.6)' : '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#f3f4f6', border: i === imgIdx ? '1px solid #3b82f6' : '1px solid #e5e7eb', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
                     </div>
@@ -4359,19 +4317,19 @@ function ListingDetailDrawer({
                   />
                   {images.length > 1 && (
                     <>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ChevronLeft style={{ width: 14, height: 14 }} />
                       </button>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ChevronRight style={{ width: 14, height: 14 }} />
                       </button>
                     </>
                   )}
-                  <button onClick={() => setLbOpen(true)} style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={() => setLbOpen(true)} style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ZoomIn style={{ width: 13, height: 13 }} />
                   </button>
                   {images.length > 1 && (
-                    <span style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, color: '#9ca3af', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 7px' }}>{imgIdx + 1} / {images.length}</span>
+                    <span style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, color: '#fff', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 7px' }}>{imgIdx + 1} / {images.length}</span>
                   )}
                 </div>
               </div>
@@ -4379,7 +4337,7 @@ function ListingDetailDrawer({
               {/* Car header */}
               <div style={{ marginTop: 20 }}>
                 <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.15em', margin: 0 }}>{listing.brand}</p>
-                <p style={{ fontSize: 22, fontWeight: 300, color: '#f3f4f6', margin: '4px 0 0', lineHeight: 1.2 }}>{listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
+                <p style={{ fontSize: 22, fontWeight: 300, color: '#111827', margin: '4px 0 0', lineHeight: 1.2 }}>{listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
                 <p style={{ fontSize: 12, color: '#6b7280', margin: '6px 0 0' }}>
                   {[listing.year, listing.body_type, listing.transmission, listing.fuel_type].filter(Boolean).join(' · ')}
                 </p>
@@ -4393,7 +4351,7 @@ function ListingDetailDrawer({
 
               {/* Price row */}
               <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#f3f4f6', margin: 0, lineHeight: 1 }}>RM {sp.toLocaleString()}</p>
+                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#111827', margin: 0, lineHeight: 1 }}>RM {sp.toLocaleString()}</p>
                 {saving > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
@@ -4404,7 +4362,7 @@ function ListingDetailDrawer({
               </div>
 
               {/* Specs strip */}
-              <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: '16px 0', padding: '12px 0', gap: 0, overflowX: 'auto' }}>
+              <div style={{ display: 'flex', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', margin: '16px 0', padding: '12px 0', gap: 0, overflowX: 'auto' }}>
                 {[
                   { Icon: Gauge,    label: 'Mileage',       value: listing.mileage ? `${Number(listing.mileage).toLocaleString()} km` : '—' },
                   { Icon: Settings, label: 'Engine',        value: listing.engine_cc ? `${Number(listing.engine_cc).toLocaleString()} cc` : '—' },
@@ -4412,16 +4370,16 @@ function ListingDetailDrawer({
                   { Icon: Droplets, label: 'Fuel',          value: listing.fuel_type || '—' },
                   { Icon: Palette,  label: 'Colour',        value: listing.colour || '—' },
                 ].map(({ Icon, label, value }, i, arr) => (
-                  <div key={label} style={{ flex: '1 0 80px', textAlign: 'center', padding: '0 12px', borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <div key={label} style={{ flex: '1 0 80px', textAlign: 'center', padding: '0 12px', borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
                     <Icon style={{ width: 13, height: 13, color: '#6b7280', marginBottom: 4 }} />
                     <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', marginBottom: 3 }}>{label}</p>
-                    <p style={{ fontSize: 13, color: '#f3f4f6' }}>{value}</p>
+                    <p style={{ fontSize: 13, color: '#111827' }}>{value}</p>
                   </div>
                 ))}
               </div>
 
               {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
                 {tabs.map(tab => (
                   <button
                     key={tab}
@@ -4437,7 +4395,7 @@ function ListingDetailDrawer({
               {drawerTab === 'specs' && (
                 <div>
                   {specRows.map(({ k, v, dot }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
                       <span style={{ fontSize: 13, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
                         {dot && v !== '—' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />}
@@ -4452,7 +4410,7 @@ function ListingDetailDrawer({
               {drawerTab === 'features' && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {features.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No features listed.</p> : features.map((f, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '4px 10px' }}>{f}</span>
+                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{f}</span>
                   ))}
                 </div>
               )}
@@ -4461,7 +4419,7 @@ function ListingDetailDrawer({
               {drawerTab === 'options' && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {options.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No options listed.</p> : options.map((o, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '4px 10px' }}>{o}</span>
+                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{o}</span>
                   ))}
                 </div>
               )}
@@ -4470,14 +4428,14 @@ function ListingDetailDrawer({
               {drawerTab === 'recon' && listing.is_recon && (
                 <div>
                   {gradeMeta && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.04)', border: `1px solid ${gradeMeta}25`, borderRadius: 6, padding: '10px 16px', marginBottom: 20 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#f9fafb', border: `1px solid ${gradeMeta}25`, borderRadius: 6, padding: '10px 16px', marginBottom: 20 }}>
                       <div>
                         <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Ext. Grade</p>
                         <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: gradeMeta, lineHeight: 1 }}>{listing.auction_grade}</p>
                       </div>
                       {listing.interior_grade && (
                         <>
-                          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
+                          <div style={{ width: 1, height: 40, background: '#e5e7eb' }} />
                           <div>
                             <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
                             <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
@@ -4492,7 +4450,7 @@ function ListingDetailDrawer({
                     { k: 'Exterior Grade', v: listing.auction_grade },
                     { k: 'Interior Grade', v: listing.interior_grade },
                   ].filter(r => r.v).map(({ k, v }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
                       <span style={{ fontSize: 13, color: '#9ca3af' }}>{v}</span>
                     </div>
@@ -4504,43 +4462,43 @@ function ListingDetailDrawer({
             </div>
 
             {/* RIGHT */}
-            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-              <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 200px', width: isMobile ? '100%' : undefined, padding: isMobile ? '12px 16px 24px' : 20, display: 'flex', flexDirection: 'column', gap: 0, borderTop: isMobile ? '1px solid #e5e7eb' : 'none' }}>
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#6b7280', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>Actions</p>
 
                 {/* Edit */}
-                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(56,189,248,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
                 </button>
 
                 {/* TikTok */}
-                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setTiktokListing(listing)} style={{ ...btnBase, border: '1px solid rgba(255,100,100,0.25)', color: '#ff6b6b' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   <Video style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                 </button>
 
                 {/* Price */}
-                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.3)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                 </button>
 
                 {/* Copy */}
-                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(139,195,74,0.25)', color: copiedListingId === listing.id ? '#4ade80' : '#8bc34a' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
 
                 {/* Financing Calculator */}
-                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#ef4444' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                 </button>
 
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(100,180,255,0.25)', color: '#64b4ff' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                     <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
                   </button>
                   {showAssign && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, boxShadow: '0 -8px 32px rgba(0,0,0,0.7)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: 4, background: '#0f172a', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 -8px 32px rgba(0,0,0,0.7)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
                       {listing.assigned_to && (
                         <button onClick={() => { handleUnassign(listing.id); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, cursor: 'pointer' }}>
                           <X style={{ width: 12, height: 12 }} />Unassign
@@ -4559,18 +4517,18 @@ function ListingDetailDrawer({
 
                 {/* Mark Sold */}
                 {!isSold && (
-                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(52,211,153,0.25)', color: '#34d399' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                     <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
                   </button>
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.09)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                <button onClick={() => { setDeleteId(listing.id); onClose(); }} style={{ ...btnBase, border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }} onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'} onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
 
                 {/* Metadata */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
+                <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginTop: 4, gridColumn: isMobile ? '1 / -1' : undefined }}>
                   <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>Listed {age === 0 ? 'today' : `${age} day${age !== 1 ? 's' : ''} ago`}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: sCfg.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -4592,7 +4550,7 @@ function ListingDetailDrawer({
           {/* Close */}
           <button
             onClick={() => setLbOpen(false)}
-            style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+            style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 8, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
           >
             <X style={{ width: 18, height: 18 }} />
           </button>
@@ -4606,7 +4564,7 @@ function ListingDetailDrawer({
           {images.length > 1 && (
             <button
               onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }}
-              style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronLeft style={{ width: 22, height: 22 }} />
             </button>
@@ -4622,7 +4580,7 @@ function ListingDetailDrawer({
           {images.length > 1 && (
             <button
               onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }}
-              style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e5e5e5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ChevronRight style={{ width: 22, height: 22 }} />
             </button>
@@ -4636,13 +4594,13 @@ function ListingDetailDrawer({
           onClick={e => { if (e.target === e.currentTarget) setCalcOpen(false); }}
           className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif" }}
         >
-          <div style={{ width: '100%', maxWidth: 860, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ width: '100%', maxWidth: 860, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
                 <p style={{ color: 'white', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
                 <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
               </div>
-              <button onClick={() => setCalcOpen(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
+              <button onClick={() => setCalcOpen(false)} style={{ background: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
@@ -4792,7 +4750,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
 
   const statusBadge = (s) => {
     const map = { in_stock: ['#34d399','rgba(52,211,153,0.12)'], sold: ['#9ca3af','rgba(156,163,175,0.1)'], reserved: ['#fbbf24','rgba(251,191,36,0.12)'] };
-    const [color, bg] = map[s] || ['#9ca3af','rgba(255,255,255,0.05)'];
+    const [color, bg] = map[s] || ['#9ca3af','#f3f4f6'];
     return <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, border: `1px solid ${color}33`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s?.replace('_',' ') || '—'}</span>;
   };
 
@@ -4802,7 +4760,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
     { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
     { label: 'Sold This Month',      val: thisMonth.length,                     Icon: CheckCircle2,  glow: 'rgba(110,231,183,0.13)',                                           grad: 'grad-green'                                                         },
-    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.04)', grad: agingUnits.length > 0 ? 'grad-red' : ''              },
+    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.08)' : 'transparent', grad: agingUnits.length > 0 ? 'grad-red' : ''              },
   ];
 
   return (
@@ -4820,22 +4778,22 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                 <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
               </div>
-              <p className={`text-xl sm:text-2xl font-black leading-none tabular-nums ${grad || 'text-white'}`}>{val}</p>
+              <p className={`text-xl sm:text-2xl font-black leading-none tabular-nums ${grad || 'text-gray-900'}`}>{val}</p>
             </div>
           </div>
         ))}
       </div>
 
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Stock Units</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Stock Units</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <button disabled title="CSV import coming soon" className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg opacity-40 cursor-not-allowed" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>
         {/* Available / Sold tab toggle */}
-        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid #e5e7eb' }}>
           {[
             { id: 'available', label: 'Available', count: activeUnits.length },
             { id: 'sold',      label: 'Sold',      count: soldUnits.length   },
@@ -4865,7 +4823,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                 fontWeight: 700,
                 padding: '1px 7px',
                 borderRadius: 10,
-                background: stockView === id ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+                background: stockView === id ? '#EFF6FF' : '#f9fafb',
                 color: stockView === id ? '#93c5fd' : '#4b5563',
               }}>{count}</span>
             </button>
@@ -4886,7 +4844,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
               <>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                     {stockView === 'available'
                       ? ['Car', 'Age', 'Purchase Price', 'Recon', 'Asking', 'Days', 'Gross Profit', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)
                       : ['Car', 'Age', 'Purchase Price', 'Recon', 'Days in Stock', 'Gross Profit', 'Status', 'Sold Price', 'Sold Date'].map(h => <th key={h} style={thStyle}>{h}</th>)
@@ -4905,11 +4863,11 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                     const carYear = car?.year ? Number(car.year) : null;
                     const carAge = carYear ? currentYear - carYear : null;
                     return (
-                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
+                      <tr key={u.id} title={isAging ? '60+ days in stock' : undefined} style={{ borderBottom: '1px solid #f3f4f6', background: isAging ? 'rgba(220,38,38,0.05)' : 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.08)' : '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(220,38,38,0.05)' : 'transparent'}>
                         <td style={{ padding: '12px 14px', minWidth: 140 }}>
                           {car ? (
                             <>
-                              <p style={{ fontSize: 13, color: '#f3f4f6', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
+                              <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
                               <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p>
                               {u.status === 'in_stock' && (() => {
                                 const ps = puspakomStatus(u.puspakom_b7_date);
@@ -4931,7 +4889,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                             ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
                             : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
+                        <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
                         <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
                         {stockView === 'available' && (
                           <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
@@ -4965,7 +4923,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                 </tbody>
               </table>
               {hasMore && (
-                <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
                   <button
                     onClick={() => setVisibleCount(c => c + 30)}
                     style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
@@ -4985,13 +4943,13 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-white">Add Stock Unit</h3>
-              <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+              <h3 className="font-semibold text-gray-900">Add Stock Unit</h3>
+              <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="overflow-y-auto p-5 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
                   <option value="">Select listing...</option>
                   {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}{l.plate_number ? ` · ${l.plate_number}` : ''}</option>)}
                 </select>
@@ -5013,7 +4971,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
             </div>
           </div>
@@ -5025,15 +4983,15 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-white">Mark as Sold</h3>
-              <button onClick={() => setSoldTarget(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+              <h3 className="font-semibold text-gray-900">Mark as Sold</h3>
+              <button onClick={() => setSoldTarget(null)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Price (RM)</label><input type="number" value={soldForm.sold_price} onChange={e => setSoldForm(p => ({ ...p, sold_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Date</label><input type="date" value={soldForm.sold_date} onChange={e => setSoldForm(p => ({ ...p, sold_date: e.target.value }))} className={iCls} /></div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleMarkSold} disabled={soldSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{soldSaving ? 'Saving...' : 'Confirm Sale'}</button>
             </div>
           </div>
@@ -5290,8 +5248,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   return (
     <div className="space-y-4">
       <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Documents</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Documents</h2>
           <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
         </div>
         <div className="table-wrap">
@@ -5302,7 +5260,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   {['Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
@@ -5310,13 +5268,13 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               </thead>
               <tbody>
                 {documents.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr key={doc.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
-                    <td style={{ padding: '12px 14px', color: '#f3f4f6', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.car_label || (doc.car_listings ? `${doc.car_listings.brand} ${doc.car_listings.model}` : '—')}</td>
                     <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#9ca3af', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}><Printer className="w-3 h-3" />Print</button>
+                      <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#9ca3af', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}><Printer className="w-3 h-3" />Print</button>
                     </td>
                   </tr>
                 ))}
@@ -5331,14 +5289,14 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-white">Generate Document</h3>
-              <button onClick={() => setShowGen(false)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+              <h3 className="font-semibold text-gray-900">Generate Document</h3>
+              <button onClick={() => setShowGen(false)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="overflow-y-auto p-5 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Document Type</label>
-                <select value={genForm.doc_type} onChange={e => setGenForm(p => ({ ...p, doc_type: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  {DOC_TYPES.map(t => <option key={t} value={t} style={{ background: '#111118' }}>{t}</option>)}
+                <select value={genForm.doc_type} onChange={e => setGenForm(p => ({ ...p, doc_type: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                  {DOC_TYPES.map(t => <option key={t} value={t} style={{ background: '#fff' }}>{t}</option>)}
                 </select>
               </div>
               {/* Rich Car Listing Selector */}
@@ -5348,19 +5306,19 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                   <button
                     type="button"
                     onClick={() => setListingDropOpen(p => !p)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
                   >
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
                           <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
-                          <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
                           </div>
                         )}
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
                           <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 1 }}>
                             {selectedListing.plate_number && <span>{selectedListing.plate_number}</span>}
                             {selectedListing.colour && <span>{selectedListing.colour}</span>}
@@ -5379,7 +5337,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                   {listingDropOpen && (
                     <>
                       <div onClick={() => setListingDropOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, zIndex: 50, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, zIndex: 50, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
                         {listings.length === 0 ? (
                           <div style={{ padding: '12px 14px', fontSize: 13, color: '#6b7280' }}>No active listings</div>
                         ) : listings.map(l => (
@@ -5388,18 +5346,18 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             type="button"
                             onClick={() => handleListingSelect(l)}
                             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.1)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif', transition: 'background 0.15s" }}
-                            onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                            onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f3f4f6'; }}
                             onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
                           >
                             {l.images?.[0] ? (
                               <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                             ) : (
-                              <div style={{ width: 44, height: 34, borderRadius: 6, background: 'rgba(255,255,255,0.08)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
                               </div>
                             )}
                             <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
                               <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
                                 {l.plate_number && <span>{l.plate_number}</span>}
                                 {l.colour && <span>{l.colour}</span>}
@@ -5421,28 +5379,28 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer IC</label><input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5" /></div></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
 
               {/* Sales Advisor Details */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span><input type="tel" value={(genForm.sa_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, sa_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5" /></div></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.sa_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, sa_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
                 </div>
                 <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>
 
               {/* Financing — Sales Agreement only */}
               {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
                     <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
-                    <span style={{ fontSize: 13, color: '#d1d5db', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
+                    <span style={{ fontSize: 13, color: '#374151', fontFamily: "'DM Sans', sans-serif" }}>Include Financing Details</span>
                   </label>
                   {genForm.include_financing && (
                     <div className="space-y-3">
@@ -5466,7 +5424,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               )}
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancel</button>
+              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating...' : 'Generate'}</button>
             </div>
           </div>
@@ -5637,9 +5595,9 @@ function OutreachHub({ dealerId, listings }) {
       <div className="outreach-body">
 
         {/* LEFT — Lead list */}
-        <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
           {/* Segment tabs */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid #e5e7eb' }}>
             {Object.entries(SEGS).map(([key, seg]) => {
               const count = scored.filter(seg.filter).length;
               const active = segment === key;
@@ -5648,7 +5606,7 @@ function OutreachHub({ dealerId, listings }) {
                   style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${seg.color}` : '2px solid transparent', color: active ? seg.color : '#374151', fontFamily:"'DM Sans',sans-serif", cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, transition:'all 0.15s' }}>
                   <seg.Icon size={14} />
                   <span style={{ fontSize:10, fontWeight: active ? 700 : 500 }}>{seg.label}</span>
-                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : 'rgba(255,255,255,0.04)', color: active ? seg.color : '#374151' }}>{count}</span>
+                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? `${seg.color}18` : '#f3f4f6', color: active ? seg.color : '#374151' }}>{count}</span>
                 </button>
               );
             })}
@@ -5673,7 +5631,7 @@ function OutreachHub({ dealerId, listings }) {
                   {/* SVG score ring */}
                   <div style={{ flexShrink:0, position:'relative', width:34, height:34 }}>
                     <svg width="34" height="34" viewBox="0 0 34 34" style={{ transform:'rotate(-90deg)' }}>
-                      <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+                      <circle cx="17" cy="17" r="14" fill="none" stroke="#e5e7eb" strokeWidth="3" />
                       <circle cx="17" cy="17" r="14" fill="none" stroke={uc} strokeWidth="3" strokeDasharray={`${dash} ${circumference}`} strokeLinecap="round" />
                     </svg>
                     <span style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:uc }}>{lead.score}</span>
@@ -5693,7 +5651,7 @@ function OutreachHub({ dealerId, listings }) {
           </div>
 
           {/* Refresh footer */}
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ borderTop:'1px solid #e5e7eb', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span style={{ fontSize:11, color:'#1e293b' }}>{scored.length} unique contacts</span>
             <button onClick={() => { setLoading(true); setRefreshKey(k => k + 1); }} style={{ background:'none', border:'none', color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:"'DM Sans',sans-serif", padding:'2px 6px', borderRadius:6, transition:'color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.color='#94a3b8'} onMouseLeave={e => e.currentTarget.style.color='#374151'}>
@@ -5703,7 +5661,7 @@ function OutreachHub({ dealerId, listings }) {
         </div>
 
         {/* RIGHT — Message Studio */}
-        <div style={{ background:'rgba(255,255,255,0.018)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:16, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
           {!selected ? (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, minHeight:340, gap:14, color:'#374151' }}>
               <div style={{ width:56, height:56, borderRadius:16, background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26 }}>💬</div>
@@ -5717,7 +5675,7 @@ function OutreachHub({ dealerId, listings }) {
                   { icon:'⚡', text:'Personalized messages per buyer & car' },
                   { icon:'📈', text:'Campaign blast up to 10 contacts at once' },
                 ].map(({ icon, text }) => (
-                  <div key={text} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8, border:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div key={text} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', background:'#f9fafb', borderRadius:8, border:'1px solid #e5e7eb' }}>
                     <span style={{ fontSize:14 }}>{icon}</span>
                     <span style={{ fontSize:11, color:'#4b5563' }}>{text}</span>
                   </div>
@@ -5732,7 +5690,7 @@ function OutreachHub({ dealerId, listings }) {
                   {(selected.buyer_name || '?')[0].toUpperCase()}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:700, color:'white', marginBottom:2 }}>{selected.buyer_name || 'Unknown'}</p>
+                  <p style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:2 }}>{selected.buyer_name || 'Unknown'}</p>
                   <p style={{ fontSize:11, color:'#6b7280' }}>{selected.buyer_phone} · {fmtAge(selected)}</p>
                 </div>
                 {selected.listing && (
@@ -5746,7 +5704,7 @@ function OutreachHub({ dealerId, listings }) {
               {/* Intent score bar */}
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700, flexShrink:0 }}>Intent Score</p>
-                <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.06)', borderRadius:3, overflow:'hidden' }}>
+                <div style={{ flex:1, height:6, background:'#e5e7eb', borderRadius:3, overflow:'hidden' }}>
                   <div style={{ height:'100%', width:`${selected.score}%`, background:`linear-gradient(90deg, ${urgencyColor[selected.urgency]}, ${urgencyColor[selected.urgency]}cc)`, borderRadius:3, transition:'width 0.4s ease' }} />
                 </div>
                 <span style={{ fontSize:12, fontWeight:700, color:urgencyColor[selected.urgency], flexShrink:0 }}>{selected.score}/100</span>
@@ -5758,7 +5716,7 @@ function OutreachHub({ dealerId, listings }) {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
                   {Object.entries(TEMPLATES).map(([key, t]) => (
                     <button key={key} onClick={() => setTemplate(key)}
-                      style={{ padding:'9px 12px', borderRadius:9, background: template===key ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)', border: template===key ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(255,255,255,0.07)', color: template===key ? '#93c5fd' : '#6b7280', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, transition:'all 0.15s', textAlign:'left' }}>
+                      style={{ padding:'9px 12px', borderRadius:9, background: template===key ? '#EFF6FF' : '#f9fafb', border: template===key ? '1px solid #93c5fd' : '1px solid #e5e7eb', color: template===key ? '#93c5fd' : '#6b7280', fontSize:12, fontWeight: template===key ? 600 : 400, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:6, transition:'all 0.15s', textAlign:'left' }}>
                       <span>{t.icon}</span> {t.label}
                     </button>
                   ))}
@@ -5769,9 +5727,9 @@ function OutreachHub({ dealerId, listings }) {
               <div style={{ flex:1 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                   <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:'#374151', fontWeight:700 }}>Preview</p>
-                  <span style={{ fontSize:10, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:5, padding:'2px 8px', color:'#4ade80', fontWeight:600 }}>WhatsApp</span>
+                  <span style={{ fontSize:10, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:5, padding:'2px 8px', color:'#15803d', fontWeight:600 }}>WhatsApp</span>
                 </div>
-                <div style={{ background:'#0c1018', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:200, overflowY:'auto' }}>
+                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px', minHeight:120, maxHeight:200, overflowY:'auto' }}>
                   <p style={{ fontSize:13, color:'#94a3b8', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{TEMPLATES[template]?.gen(selected)}</p>
                 </div>
               </div>
@@ -5791,7 +5749,7 @@ function OutreachHub({ dealerId, listings }) {
         <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(167,139,250,0.4),transparent)' }} />
         <Megaphone size={18} style={{ color:'#a78bfa', flexShrink:0 }} />
         <div style={{ flex:1, minWidth:200 }}>
-          <p style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>Bulk Campaign · {React.createElement(SEGS[segment].Icon, { size: 13 })} {SEGS[segment].label} Leads</p>
+          <p style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>Bulk Campaign · {React.createElement(SEGS[segment].Icon, { size: 13 })} {SEGS[segment].label} Leads</p>
           <p style={{ fontSize:11, color:'#6b7280', lineHeight:1.5 }}>
             Send the selected template to all {SEGS[segment].label.toLowerCase()} leads.
             {' '}<span style={{ color:'#a78bfa', fontWeight:600 }}>{Math.min(visibleLeads.length, 10)} WhatsApp chats</span> will open one by one (browser must allow popups).
@@ -5800,8 +5758,8 @@ function OutreachHub({ dealerId, listings }) {
         <div style={{ display:'flex', gap:8, flexShrink:0 }}>
           {/* Template quick-pick in campaign */}
           <select value={template} onChange={e => setTemplate(e.target.value)}
-            style={{ padding:'9px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:9, color:'#d1d5db', fontSize:12, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', outline:'none' }}>
-            {Object.entries(TEMPLATES).map(([k, t]) => <option key={k} value={k} style={{ background:'#111118' }}>{t.icon} {t.label}</option>)}
+            style={{ padding:'9px 12px', background:'#fff', border:'1px solid #e5e7eb', borderRadius:9, color:'#374151', fontSize:12, fontFamily:"'DM Sans',sans-serif", cursor:'pointer', outline:'none' }}>
+            {Object.entries(TEMPLATES).map(([k, t]) => <option key={k} value={k} style={{ background:'#fff' }}>{t.icon} {t.label}</option>)}
           </select>
           <button onClick={launchCampaign}
             style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:'#c4b5fd', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', transition:'all 0.15s' }}
@@ -5819,7 +5777,7 @@ function OutreachHub({ dealerId, listings }) {
           { icon:'🔁', tip:'Re-engage cold leads every 2 weeks with a new angle' },
           { icon:'📊', tip:'Price drop alerts have the highest open rate of any template' },
         ].map(({ icon, tip }) => (
-          <div key={tip} style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:8, flex:'1 1 auto' }}>
+          <div key={tip} style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 12px', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:8, flex:'1 1 auto' }}>
             <span style={{ fontSize:13, flexShrink:0 }}>{icon}</span>
             <span style={{ fontSize:11, color:'#374151', lineHeight:1.4 }}>{tip}</span>
           </div>
@@ -5892,7 +5850,7 @@ function CustomersTab({ dealerId }) {
           { label: "Road Tax Expiring", val: rtExpiring, color: "#fbbf24" },
           { label: "Insurance Expiring", val: insExpiring, color: "#c084fc" },
         ].map(({ label, val, color }) => (
-          <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</p>
             <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color, lineHeight: 1, margin: 0 }}>{val}</p>
           </div>
@@ -5906,17 +5864,17 @@ function CustomersTab({ dealerId }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name or phone…"
-          className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-gray-600"
+          className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-red-400"
         />
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full border-collapse" style={{ fontFamily: "'DM Sans',sans-serif" }}>
           <thead>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-gray-100">
               {["Customer", "Phone", "Car Bought", "Purchase Date", "Road Tax", "Insurance", ""].map(h => (
-                <th key={h} className="px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold text-left whitespace-nowrap">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-widest font-semibold text-left whitespace-nowrap bg-gray-50">{h}</th>
               ))}
             </tr>
           </thead>
@@ -5925,22 +5883,22 @@ function CustomersTab({ dealerId }) {
               const rtDiff = c.road_tax_expiry ? (new Date(c.road_tax_expiry) - today) / 86400000 : null;
               const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
               return (
-                <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5">
-                    <p className="text-sm font-semibold text-gray-100 m-0">{c.name || "—"}</p>
+                    <p className="text-sm font-semibold text-gray-900 m-0">{c.name || "—"}</p>
                   </td>
-                  <td className="px-4 py-2.5 text-sm text-gray-400">
+                  <td className="px-4 py-2.5 text-sm text-gray-500">
                     {c.phone ? (
-                      <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 flex items-center gap-1 no-underline">
+                      <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700 flex items-center gap-1 no-underline">
                         <Phone className="w-3 h-3" />{c.phone}
                       </a>
                     ) : "—"}
                   </td>
                   <td className="px-4 py-2.5">
-                    <p className="text-sm text-gray-200 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
+                    <p className="text-sm text-gray-700 m-0">{[c.car_brand, c.car_model].filter(Boolean).join(" ") || "—"}</p>
                     {c.car_plate && <p className="text-[11px] text-gray-500 mt-0.5 m-0">{c.car_plate}{c.car_year ? ` · ${c.car_year}` : ""}</p>}
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
                     {c.purchase_date ? new Date(c.purchase_date).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </td>
                   <td className="px-4 py-2.5 text-xs whitespace-nowrap font-medium" style={{ color: expiryColor(rtDiff) }}>
@@ -5950,7 +5908,7 @@ function CustomersTab({ dealerId }) {
                     {expiryLabel(c.insurance_expiry, insDiff)}
                   </td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 transition-colors">
+                    <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors">
                       Edit
                     </button>
                   </td>
@@ -5971,13 +5929,13 @@ function CustomersTab({ dealerId }) {
       {/* Edit modal */}
       {editing && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-base font-semibold text-gray-100 m-0">{editing.name}</p>
+                <p className="text-base font-semibold text-gray-900 m-0">{editing.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{[editing.car_brand, editing.car_model, editing.car_plate].filter(Boolean).join(" · ")}</p>
               </div>
-              <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
+              <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3 mb-4">
               {[
@@ -5987,27 +5945,27 @@ function CustomersTab({ dealerId }) {
                 { label: "IC Number", key: "ic_number", type: "text" },
               ].map(({ label, key, type }) => (
                 <div key={key}>
-                  <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">{label}</label>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">{label}</label>
                   <input
                     type={type}
                     value={editing[key] || ""}
                     onChange={e => setEditing(p => ({ ...p, [key]: e.target.value }))}
-                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-400"
                   />
                 </div>
               ))}
               <div>
-                <label className="block text-[10px] text-red-500 uppercase tracking-widest font-bold mb-1">Notes</label>
+                <label className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Notes</label>
                 <textarea
                   rows={3}
                   value={editing.notes || ""}
                   onChange={e => setEditing(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-gray-600 resize-none"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-400 resize-none"
                 />
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl border border-gray-800 text-gray-400 text-sm hover:text-gray-200 transition-colors">Cancel</button>
+              <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm hover:text-gray-900 transition-colors">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-60">
                 {saving ? "Saving…" : "Save"}
               </button>
@@ -6662,7 +6620,7 @@ export default function DashboardPage() {
       sub: hotCount > 0 ? "On homepage" : "No discounts",
       grad: hotCount > 0 ? "grad-red" : "",
       Icon: Flame,
-      glow: hotCount > 0 ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.03)",
+      glow: hotCount > 0 ? "rgba(248,113,113,0.08)" : "transparent",
     },
   ];
 
@@ -6731,56 +6689,52 @@ export default function DashboardPage() {
     </Helmet>
     <style>{STYLES}</style>
     <div
-      className="min-h-screen text-white flex"
+      className="min-h-screen flex"
       style={{
         fontFamily: "'DM Sans',sans-serif",
-        background:
-          "radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(ellipse 80% 50% at 0% 0%, rgba(30,58,138,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 100%, rgba(49,46,129,0.06) 0%, transparent 55%), #05070e",
-        backgroundSize: "24px 24px, auto, auto",
+        background: color.appBg,
+        color: color.ink,
       }}
     >
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/65 z-20 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-20 lg:hidden"
+          style={{ background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)' }}
           onClick={() => startTransition(() => setSidebarOpen(false))}
         />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 glass ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ background: '#07090f' }}
+        className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
-        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={T.divider}>
+        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-              boxShadow: "0 0 18px rgba(59,130,246,0.42), 0 2px 8px rgba(0,0,0,0.5)",
-            }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white flex-shrink-0"
+            style={{ background: '#DC2626', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
           >
             S
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-black tracking-wider text-sm grad-blue">
-              ShiftOS
-            </p>
-            <p className="text-xs text-gray-600 mt-px">XDrive Admin</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: color.ink, letterSpacing: '0.05em' }}>ShiftOS</p>
+            <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>XDrive Dashboard</p>
           </div>
-          {/* Bell in sidebar header */}
+          {/* Bell */}
           <div ref={sidebarBellRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => {
               const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
               setSidebarBellRect(notifOpen ? null : rect);
               setNotifOpen(p => !p);
-            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#93c5fd' : '#4b5563', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
-              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#3b82f6', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0a0a0e' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
           <button
             onClick={() => startTransition(() => setSidebarOpen(false))}
-            className="lg:hidden p-1.5 text-gray-600 hover:text-white rounded-lg transition-colors flex-shrink-0"
+            className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
+            style={{ color: color.textMuted }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -6791,15 +6745,15 @@ export default function DashboardPage() {
             <button
               key={id}
               onClick={() => handleTabChange(id)}
-              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+              className={`nav-item w-full flex items-center gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id ? "nav-active" : ""}`}
+              style={{ color: activeTab === id ? '#DC2626' : color.textMuted }}
             >
-              <Icon
-                className={`w-4 h-4 flex-shrink-0 ${activeTab === id ? "text-blue-400" : ""}`}
-              />
+              <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
               {badge !== undefined && (
                 <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${activeTab === id ? "text-blue-300 bg-blue-950/70" : "text-gray-600 bg-white/[0.05]"}`}
+                  className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
+                  style={{ background: activeTab === id ? '#FEE2E2' : '#F1F3F5', color: activeTab === id ? '#DC2626' : color.textMuted }}
                 >
                   {badge}
                 </span>
@@ -6809,7 +6763,8 @@ export default function DashboardPage() {
           {profile?.role === 'superadmin' && (
             <a
               href="/platform"
-              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
+              className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+              style={{ color: color.textMuted }}
             >
               <Shield className="w-4 h-4 flex-shrink-0" />
               Admin Panel
@@ -6817,7 +6772,8 @@ export default function DashboardPage() {
           )}
           <button
             onClick={() => window.open(getStorefrontUrl(), '_blank')}
-            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-white transition-all"
+            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+            style={{ color: color.textMuted }}
           >
             <Home className="w-4 h-4 flex-shrink-0" />
             View Site
@@ -6825,19 +6781,16 @@ export default function DashboardPage() {
           </button>
         </nav>
 
-        {/* ── Sidebar bottom: profile + settings + logout ── */}
-        <div
-          className="shrink-0 p-3 space-y-1 border-t border-gray-800"
-          style={{}}
-        >
+        {/* ── Sidebar bottom ── */}
+        <div className="shrink-0 p-3 space-y-1" style={{ borderTop: '1px solid #EAECF0' }}>
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
             <Avatar size="lg" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
+              <p style={{ fontSize: 13, fontWeight: 600, color: color.ink }} className="truncate">
                 {profile?.full_name || "—"}
               </p>
-              <p className="text-xs text-gray-600 truncate">
+              <p style={{ fontSize: 11, color: color.textMuted }} className="truncate">
                 {profile?.email || ""}
               </p>
             </div>
@@ -6847,16 +6800,10 @@ export default function DashboardPage() {
           {profile?.dealership && (
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-              }}
+              style={{ background: '#F7F8FA', border: '1px solid #EAECF0' }}
             >
-              <Building2 className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-              <p className="text-xs font-semibold text-gray-300 truncate flex-1">
+              <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: color.textMuted }} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: color.ink }} className="truncate flex-1">
                 {profile.dealership}
               </p>
             </div>
@@ -6864,67 +6811,59 @@ export default function DashboardPage() {
 
           {/* Plan tier chip */}
           {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
-            <div
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 8,
-                padding: '8px 10px',
-                margin: '0 4px',
-              }}
-            >
+            <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Plan</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.12)', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
               {planUsage && planCfg.listingCap != null && (
                 <div style={{ marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Listings</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ fontSize: 10, color: color.textMuted }}>Listings</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : color.ink }}>
                       {planUsage.active_listings ?? 0}/{planCfg.listingCap}
                     </span>
                   </div>
-                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
               {planUsage && planCfg.seatCap != null && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Seats</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ fontSize: 10, color: color.textMuted }}>Seats</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : color.ink }}>
                       {planUsage.seat_count ?? 0}/{planCfg.seatCap}
                     </span>
                   </div>
-                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: 3, borderRadius: 2, background: '#EAECF0', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#DC2626' : '#2563EB', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
                   </div>
                 </div>
               )}
               {nextPlanCfg && (
-                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#60a5fa', textDecoration: 'none' }}>
+                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
                   Upgrade to {nextPlanCfg.label}
                 </a>
               )}
             </div>
           )}
 
-          {/* Settings button */}
+          {/* Settings */}
           <button
             onClick={() => handleTabChange("settings")}
-            className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
+            className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+            style={{ color: activeTab === "settings" ? '#DC2626' : color.textMuted }}
           >
-            <Settings
-              className={`w-4 h-4 flex-shrink-0 ${activeTab === "settings" ? "text-red-500" : ""}`}
-            />
+            <Settings className="w-4 h-4 flex-shrink-0" />
             Settings
           </button>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-white hover:bg-white/[0.04] transition-all"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all"
+            style={{ color: color.textMuted }}
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -6936,42 +6875,35 @@ export default function DashboardPage() {
       <main className="flex-1 lg:ml-60 min-w-0 flex flex-col">
         {/* Mobile topbar */}
         <div
-          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 backdrop-blur-xl"
-          style={{
-            background: 'rgba(5,7,14,0.7)',
-            backdropFilter: 'blur(32px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03)',
-          }}
+          className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5"
+          style={{ background: '#FFFFFF', borderBottom: '1px solid #EAECF0', boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
         >
           <button
             onClick={() => startTransition(() => setSidebarOpen(true))}
-            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all flex-shrink-0"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0"
+            style={{ color: color.textMuted }}
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
-              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 0 8px rgba(220,38,38,0.3)' }}
+              className="w-5 h-5 rounded flex items-center justify-center font-black text-xs text-white"
+              style={{ background: '#DC2626' }}
             >
               S
             </div>
-            <span className="font-bold text-white text-xs tracking-tight hidden xs:inline">ShiftOS</span>
+            <span style={{ fontWeight: 700, fontSize: 12, color: color.ink }} className="hidden xs:inline">ShiftOS</span>
           </div>
-          <span className="text-gray-500 text-xs truncate flex-1 min-w-0">
+          <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setNotifOpen(p => !p)}
               style={{
-                position: 'relative',
-                background: 'transparent',
+                position: 'relative', background: 'transparent',
                 border: 'none', borderRadius: 8, padding: 6,
-                cursor: 'pointer',
-                color: notifCount > 0 ? '#f3f4f6' : '#6b7280',
+                cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted,
                 display: 'flex',
               }}
             >
@@ -6979,11 +6911,10 @@ export default function DashboardPage() {
               {notifCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -3, right: -3,
-                  background: '#dc2626', color: '#fff',
+                  background: '#DC2626', color: '#fff',
                   fontSize: 8, fontWeight: 800, borderRadius: '50%',
                   width: 14, height: 14,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1.5px solid #05070e',
                 }}>
                   {notifCount > 9 ? '9+' : notifCount}
                 </span>
@@ -6992,21 +6923,21 @@ export default function DashboardPage() {
             {notifOpen && (
               <>
                 <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#111118', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', fontFamily: "'DM Sans', sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
-                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,23,42,0.12)', fontFamily: "'DM Sans', sans-serif" }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: color.ink }}>Notifications</span>
+                    {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: color.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
                   </div>
                   {notifications.length === 0 ? (
-                    <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
+                    <p style={{ fontSize: 13, color: color.textMuted, padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#FEF2F2', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#FEF2F2'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
+                        {!n.is_read && <div style={{ width: 6, height: 6, background: '#DC2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
-                          {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
-                          <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: '0 0 2px', lineHeight: 1.3 }}>{n.title || 'Notification'}</p>
+                          {n.body && <p style={{ fontSize: 12, color: color.textMuted, margin: '0 0 4px', lineHeight: 1.4 }}>{n.body}</p>}
+                          <p style={{ fontSize: 10, color: color.textMuted, margin: 0 }}>{timeAgo(n.created_at)}</p>
                         </div>
                       </div>
                     </div>
@@ -7020,33 +6951,30 @@ export default function DashboardPage() {
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '14px 24px', fontFamily: "'DM Sans',sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
-              {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare className="w-3.5 h-3.5 text-gray-400" />
+                  <div style={{ width: 28, height: 28, background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5" style={{ color: '#D97706' }} />
                   </div>
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
-                    <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
+                    <p style={{ fontSize: 11, color: '#92400E', margin: 0 }}>{onboardingDoneCount} of {onboardingItems.length} complete</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setOnboardingDismissed(true)}
-                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', color: color.textMuted, cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 }}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Progress bar */}
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: 'linear-gradient(90deg,#dc2626,#ef4444)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              <div style={{ height: 4, background: '#FDE68A', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: '#D97706', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
-              {/* Checklist */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {onboardingItems.map((item, i) => (
                   <div
@@ -7058,20 +6986,20 @@ export default function DashboardPage() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 7,
                       padding: '6px 12px',
-                      background: item.done ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                      background: item.done ? '#F0FDF4' : '#FFFFFF',
+                      border: `1px solid ${item.done ? '#BBF7D0' : '#EAECF0'}`,
                       borderRadius: 8,
                       cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.18)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'; }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? '#86EFAC' : '#D1D5DB'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? '#BBF7D0' : '#EAECF0'; }}
                   >
                     {item.done
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                      ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#16A34A' }} />
+                      : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid #D1D5DB', flexShrink: 0 }} />
                     }
-                    <span style={{ fontSize: 12, color: item.done ? '#6ee7b7' : '#9ca3af', fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 12, color: item.done ? '#16A34A' : color.textMuted, fontWeight: item.done ? 500 : 400, whiteSpace: 'nowrap' }}>
                       {item.label}
                       {item.isCopy && item.done && ' ✓'}
                       {item.isCopy && !item.done && ' (click to copy)'}
@@ -7086,75 +7014,53 @@ export default function DashboardPage() {
 
         {/* ── Congrats toast ── */}
         {onboardingToast && (
-          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#111118', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
+          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 99, background: '#fff', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "'DM Sans',sans-serif", animation: 'slideUp 0.3s ease' }}>
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>Setup complete!</p>
-              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Your storefront is fully configured.</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0 }}>Setup complete!</p>
+              <p style={{ fontSize: 12, color: color.textMuted, margin: 0 }}>Your storefront is fully configured.</p>
             </div>
           </div>
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <div className="hidden sm:block mb-4 sm:mb-6">
-            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
             </h1>
-            <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
+            <p style={{ fontSize: 13, color: color.textMuted, marginTop: 3 }}>
               {TITLES[activeTab]?.sub}
             </p>
-            <div
-              className="mt-4 h-px"
-              style={{
-                background:
-                  "linear-gradient(90deg,rgba(59,130,246,0.4),rgba(99,102,241,0.2) 38%,transparent 65%)",
-              }}
-            />
+            <div className="mt-4 h-px" style={{ background: '#EAECF0' }} />
           </div>
 
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
-                {STAT_CARDS.map(({ label, val, sub, grad, Icon, glow, spark, sparkColor }) => (
-                  <div
-                    key={label}
-                    className="stat-card card-top rounded-2xl overflow-hidden glass"
-                    style={{ position: 'relative' }}
-                  >
-                    <div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 95% 5%, rgba(59,130,246,0.05) 0%, transparent 50%)",
-                      }}
-                    />
+                {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
+                  <div key={label} className="stat-card overflow-hidden" style={{ position: 'relative' }}>
                     {spark && (
                       <div className="relative px-3.5 pt-3">
-                        <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
+                        <Sparkline data={spark} color={sparkColor || '#2563EB'} width={120} height={32} />
                       </div>
                     )}
-                    <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
+                    <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
+                        <p style={{ fontSize: 10, fontWeight: 600, color: color.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                           {label}
                         </p>
                         <div
                           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: glow,
-                            boxShadow: `0 0 14px ${glow}`,
-                          }}
+                          style={{ background: glow + '22', color: glow }}
                         >
-                          <Icon className="w-4 h-4 opacity-80" />
+                          <Icon className="w-4 h-4" />
                         </div>
                       </div>
-                      <p
-                        className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-white"}`}
-                      >
+                      <p style={{ fontSize: 26, fontWeight: 700, color: color.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                         {val}
                       </p>
-                      <p className="text-xs text-gray-600 mt-1 relative truncate">
+                      <p style={{ fontSize: 12, color: color.textMuted, marginTop: 4 }} className="truncate">
                         {sub}
                       </p>
                     </div>
@@ -7163,11 +7069,11 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Listings panel ── */}
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,12,20,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', fontFamily: "'DM Sans', sans-serif" }}>
-                <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "'DM Sans', sans-serif" }}>
+                <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 600, color: '#f9fafb', fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
+                      <h2 style={{ fontSize: 17, fontWeight: 600, color: color.ink, fontFamily: "'DM Sans', sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 6, padding: '2px 8px', lineHeight: 1.5 }}>
                         {filteredListings.length}
                       </span>
@@ -7179,7 +7085,7 @@ export default function DashboardPage() {
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder="Search…"
-                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#f3f4f6', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 160 }}
+                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#111827', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 160 }}
                         />
                         {searchQuery && (
                           <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
@@ -7206,7 +7112,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* ── Status filter tabs ── */}
-                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginTop: 14 }}>
+                  <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14 }}>
                     {[
                       { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                       { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
@@ -7230,7 +7136,7 @@ export default function DashboardPage() {
                         {label}
                         <span style={{
                           fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 4, lineHeight: 1.6,
-                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : 'rgba(255,255,255,0.04)',
+                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : '#f9fafb',
                           color: statusFilter === key ? '#f87171' : '#374151',
                         }}>
                           {count}
@@ -7261,7 +7167,7 @@ export default function DashboardPage() {
                     <div className="hidden md:block" style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                         <thead>
-                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                             {['', 'Vehicle', 'Price', 'Year / Km', 'Grade', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
                             ))}
@@ -7279,27 +7185,27 @@ export default function DashboardPage() {
                               <tr
                                 key={l.id}
                                 onClick={() => setDetailListing(l)}
-                                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1 }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
                                 {/* Thumbnail */}
                                 <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
                                   {l.images?.[0]
                                     ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
-                                    : <div style={{ width: 72, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
+                                    : <div style={{ width: 72, height: 48, borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
                                 {/* Vehicle */}
                                 <td style={{ padding: '12px 16px', minWidth: 165 }}>
                                   <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, fontWeight: 600 }}>{l.brand}</p>
-                                  <p style={{ fontSize: 14, color: '#f9fafb', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0' }}>{l.model}</p>
+                                  <p style={{ fontSize: 14, color: '#111827', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0' }}>{l.model}</p>
                                   {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{l.variant}</p>}
                                   {(l.vin || l.vin_number) && <p style={{ fontSize: 10, color: '#374151', margin: '3px 0 0', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</p>}
                                 </td>
                                 {/* Price */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  <p style={{ fontSize: 14, color: '#f9fafb', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</p>
+                                  <p style={{ fontSize: 14, color: '#111827', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</p>
                                   {pct > 0 && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                                       <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
@@ -7309,7 +7215,7 @@ export default function DashboardPage() {
                                 </td>
                                 {/* Year / Km */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  {l.year && <p style={{ fontSize: 13, color: '#d1d5db', fontWeight: 600, margin: 0 }}>{l.year}</p>}
+                                  {l.year && <p style={{ fontSize: 13, color: '#374151', fontWeight: 600, margin: 0 }}>{l.year}</p>}
                                   {l.mileage
                                     ? <p style={{ fontSize: 11, color: '#6b7280', margin: l.year ? '2px 0 0' : 0 }}>{Number(l.mileage).toLocaleString()} km</p>
                                     : !l.year && <span style={{ color: '#374151', fontSize: 13 }}>—</span>
@@ -7361,20 +7267,20 @@ export default function DashboardPage() {
                           <div
                             key={l.id}
                             onClick={() => setDetailListing(l)}
-                            style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: isSold ? 0.55 : 1, cursor: 'pointer' }}
+                            style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', opacity: isSold ? 0.55 : 1, cursor: 'pointer' }}
                           >
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                               {/* Image */}
                               {l.images?.[0]
                                 ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
-                                : <div style={{ width: 80, height: 60, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
+                                : <div style={{ width: 80, height: 60, borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                                   <div style={{ minWidth: 0 }}>
                                     <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0, fontWeight: 600 }}>{l.brand}{l.year ? ` · ${l.year}` : ''}</p>
-                                    <p style={{ fontSize: 15, color: '#f9fafb', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
+                                    <p style={{ fontSize: 15, color: '#111827', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.model}</p>
                                     {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.variant}</p>}
                                   </div>
                                   <span onClick={e => e.stopPropagation()} style={{ flexShrink: 0, marginTop: 1 }}>
@@ -7383,7 +7289,7 @@ export default function DashboardPage() {
                                 </div>
                                 {/* Price */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
-                                  <span style={{ fontSize: 15, color: '#f9fafb', fontWeight: 700, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</span>
+                                  <span style={{ fontSize: 15, color: '#111827', fontWeight: 700, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</span>
                                   {pct > 0 && (
                                     <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '1px 6px' }}>−{pct}%</span>
                                   )}
@@ -7571,25 +7477,25 @@ export default function DashboardPage() {
             width: 320,
             maxHeight: 420,
             overflowY: 'auto',
-            background: '#111118',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#fff',
+            border: '1px solid #e5e7eb',
             borderRadius: 12,
             boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
             fontFamily: "'DM Sans', sans-serif",
             zIndex: 9999,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6' }}>Notifications</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>Notifications</span>
               {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
             </div>
             {notifications.length === 0 ? (
               <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
             ) : notifications.slice(0, 10).map(n => (
-              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#f9fafb' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{n.title || 'Notification'}</p>
                     {n.body && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 4px' }}>{n.body}</p>}
                     <p style={{ fontSize: 10, color: '#4b5563', margin: 0 }}>{timeAgo(n.created_at)}</p>
                   </div>
@@ -7610,7 +7516,7 @@ export default function DashboardPage() {
         >
           <div
             className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm overflow-hidden"
-            style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }}
+            style={{ background: '#0f1623', border: '1px solid #e5e7eb' }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -7621,7 +7527,7 @@ export default function DashboardPage() {
                   {svcPopupListing.brand} {svcPopupListing.model} {svcPopupListing.variant || ''}
                 </p>
               </div>
-              <button onClick={() => setSvcPopupListing(null)} className="text-gray-500 hover:text-white p-1 transition-colors">
+              <button onClick={() => setSvcPopupListing(null)} className="text-gray-500 hover:text-gray-900 p-1 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -7634,10 +7540,10 @@ export default function DashboardPage() {
                   <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <CatIcon className="w-4 h-4 flex-shrink-0" style={{ color: cfg.color }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{svc.name}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{svc.name}</p>
                       <p className="text-xs text-gray-500">{cfg.label}</p>
                     </div>
-                    <span className="text-sm font-semibold text-white whitespace-nowrap">
+                    <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
                       RM {Number(svc.selling_price || 0).toLocaleString()}
                     </span>
                   </div>
@@ -7666,7 +7572,7 @@ export default function DashboardPage() {
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>
                 <p style={{ margin: '2px 0 0', fontSize: 11, color: '#4b5563' }}>2 steps — live in 30 seconds</p>
               </div>
-              <button onClick={() => setShowFastModal(false)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 8, color: '#6b7280', width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+              <button onClick={() => setShowFastModal(false)} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, color: '#6b7280', width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
             <CarFormFast
               onCreate={(car) => {
@@ -7690,14 +7596,14 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-white">Delete Listing?</h3>
+                <h3 className="font-semibold text-gray-900">Delete Listing?</h3>
                 <p className="text-gray-500 text-xs mt-0.5">
                   This cannot be undone.
                 </p>
               </div>
               <button
                 onClick={() => setDeleteId(null)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -7708,8 +7614,7 @@ export default function DashboardPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all"
-                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200"
               >
                 Cancel
               </button>
@@ -7778,7 +7683,7 @@ export default function DashboardPage() {
               style={T.divider}
             >
               <div>
-                <h3 className="font-semibold text-white">Edit Listing</h3>
+                <h3 className="font-semibold text-gray-900">Edit Listing</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {editListing.brand} {editListing.model}{" "}
                   {editListing.variant || ""}
@@ -7786,7 +7691,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => setEditListing(null)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-500 hover:text-gray-900 p-1 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -7817,10 +7722,10 @@ export default function DashboardPage() {
           <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col" style={undefined}>
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
               <div>
-                <h3 className="font-semibold text-white">Add Purchase Details?</h3>
+                <h3 className="font-semibold text-gray-900">Add Purchase Details?</h3>
                 <p className="text-gray-500 text-xs mt-0.5">{pendingStockListing.brand} {pendingStockListing.model} {pendingStockListing.year}</p>
               </div>
-              <button onClick={() => setPendingStockListing(null)} className="text-gray-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+              <button onClick={() => setPendingStockListing(null)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -7836,8 +7741,8 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Source</label>
-                  <select value={pendingStockForm.purchase_source} onChange={e => setPendingStockForm(p => ({ ...p, purchase_source: e.target.value }))} className={iCls} style={{ background: 'rgba(255,255,255,0.05)' }}>
-                    {['Auction','Direct Buy','Trade-in','Other'].map(s => <option key={s} value={s} style={{ background: '#111118' }}>{s}</option>)}
+                  <select value={pendingStockForm.purchase_source} onChange={e => setPendingStockForm(p => ({ ...p, purchase_source: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                    {['Auction','Direct Buy','Trade-in','Other'].map(s => <option key={s} value={s} style={{ background: '#fff' }}>{s}</option>)}
                   </select>
                 </div>
                 <div>
@@ -7847,7 +7752,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white transition-all" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Skip</button>
+              <button onClick={() => setPendingStockListing(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Skip</button>
               <button
                 disabled={pendingStockSaving || !pendingStockForm.purchase_price}
                 onClick={async () => {
