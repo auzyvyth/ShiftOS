@@ -359,31 +359,35 @@ export default function OverviewTab({ dealerId }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {snapshot.teamRows.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 6px', borderRadius: 8, transition: 'background 0.15s' }}
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 6px', borderRadius: 8, transition: 'background 0.15s', cursor: 'default' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  {/* Avatar with online dot */}
+                  {/* Avatar with status dot */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: r.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: r.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>
                       {r.name.charAt(0).toUpperCase()}
                     </div>
                     <span style={{
                       position: 'absolute', bottom: 1, right: 1,
-                      width: 9, height: 9, borderRadius: '50%',
+                      width: 10, height: 10, borderRadius: '50%',
                       background: r.isActive ? '#22C55E' : '#9CA3AF',
                       border: '2px solid #fff',
                     }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
-                    <p style={{ fontSize: 11, color: r.isActive ? '#16A34A' : '#9CA3AF', margin: 0 }}>
-                      {r.isActive ? 'Active' : (r.lastActivity ? timeAgo(r.lastActivity) : 'No activity')}
+                    <p style={{ fontSize: 11, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ color: r.isActive ? '#16A34A' : '#9CA3AF' }}>
+                        {r.isActive ? 'Online' : (r.lastActivity ? timeAgo(r.lastActivity) : 'Away')}
+                      </span>
+                      {r.active > 0 && (
+                        <>
+                          <span style={{ color: '#D1D5DB' }}>•</span>
+                          <span style={{ color: '#374151', fontWeight: 600 }}>{r.active} assigned</span>
+                        </>
+                      )}
                     </p>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: r.active > 0 ? '#111827' : '#9CA3AF' }}>{r.active}</span>
-                    <p style={{ fontSize: 10, color: '#9CA3AF', margin: 0 }}>assigned</p>
                   </div>
                 </div>
               ))}
