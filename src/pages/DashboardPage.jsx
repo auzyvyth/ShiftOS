@@ -3147,7 +3147,7 @@ function TeamTab({ managerDealership, dealerId }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
-        fetchSold,
+        () => { fetchSold(); fetchSoldPerSalesman(); },
       )
       .subscribe();
     return () => supabase.removeChannel(ch);

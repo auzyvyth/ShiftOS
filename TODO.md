@@ -36,22 +36,6 @@ Current file is a geometric approximation (L inside oval).
 
 ---
 
-## Priority 4 — Role completeness QA (must work before first paying customer)
-
-### V1. `invites` edge function — non-salesman roles
-Confirm that manager / accountant / fi_officer / admin creation via the `invites` Edge Function
-actually creates a Supabase auth user (not just inserts a profile row).
-If it only inserts a profile row those users cannot log in.
-
-### V2. Commission realtime subscription scope
-TeamTab realtime channel only calls `fetchSold` (team count).
-Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
-
-### V3. Salesman Lite vs Premium feature gates
-- Confirm which features are visible/hidden per salesman tier
-- Lite: basic pipeline, lead stages, WA messaging
-- Premium: deal sheet generator, HP submissions, financing calculator, customer records
-
 ---
 
 ## Priority 5 — CRM polish
@@ -64,6 +48,9 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 
 ## Done (reference)
 
+- **V1: `invites` edge function deployed** — manager/accountant/fi_officer/admin creation now calls `auth.admin.createUser()` via the new `invites` edge function; profile upserted with retry loop; DELETE path also deletes auth user. These roles can now actually log in.
+- **V2: TeamTab realtime wired to fetchSoldPerSalesman** — car_listings change event now calls both `fetchSold` (total count) and `fetchSoldPerSalesman` (per-salesman tiles) so commission tiles update live without a manual refresh.
+- **V3: Salesman Lite vs Premium gates confirmed** — Lite: dashboard, listings, leads, inbox, performance. Premium (salesman_full): all Lite tabs + loans/HP submissions, financing calculator, deal sheet generator, AI features, customer records. Gated via `isPremium = profile.plan === 'salesman_full'` in SalesmanPremium.
 - **DESIGN-SYSTEM: Tokens replaced with user-specified lean definition** — `src/theme/tokens.js` now contains exactly the 5 color keys, border, radius, font, stageColors, activityDot specified. All UI primitives updated to inline removed constants.
 - **DESIGN-SYSTEM (layer 1): Premium-light tokens + primitives** — `src/components/ui/*` primitives (Card, Button, Stat, Badge, SectionHeader, SubTabBar). Living style guide at `/style-guide`.
 - **HP-3: PUSPAKOM B7 expiry tracking** — `puspakom_b7_date` on stock_units, expiry badge in LeadDrawer, "expired B7" and "missing B7" alerts in OversightTab.
