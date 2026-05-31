@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { handoffSuffix } from '../lib/authHandoff';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -40,18 +41,13 @@ export default function AuthCallbackPage() {
 
       if (role === 'dealer' || role === 'superadmin') {
         if (subdomain) {
-          const accessToken = session.access_token;
-          const refreshToken = session.refresh_token;
-          window.location.href = `https://${subdomain}.xdrive.my/dashboard?_at=${accessToken}&_rt=${refreshToken}`;
+          window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
         } else {
           navigate('/dashboard');
         }
       } else if (role === 'salesman') {
-        const at = session.access_token;
-        const rt = session.refresh_token;
         const target = dealer_id ? 'salesman' : 'salesman-lite';
-        const suffix = at && rt ? `?_at=${at}&_rt=${rt}` : '';
-        window.location.href = `https://xdrive.my/${target}${suffix}`;
+        window.location.href = `https://xdrive.my/${target}${handoffSuffix(session)}`;
       } else if (role === 'manager') {
         navigate('/manager');
       } else if (role === 'accountant') {

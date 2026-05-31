@@ -1674,7 +1674,7 @@ export default function ShiftOSPage() {
                 ))}
               </ul>
               <Link
-                to="/onboarding"
+                to="/onboarding/lite"
                 className="shiftos-btn-ghost"
                 style={{ justifyContent: "center" }}
               >
@@ -1731,7 +1731,7 @@ export default function ShiftOSPage() {
                 ))}
               </ul>
               <Link
-                to="/onboarding"
+                to="/onboarding/premium"
                 className="shiftos-btn-red"
                 style={{ justifyContent: "center" }}
               >

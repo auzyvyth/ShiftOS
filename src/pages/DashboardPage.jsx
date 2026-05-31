@@ -1,4 +1,41 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component } from "react";
+
+class TabErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+        <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
+        <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
+        <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+// Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
+function SubTabBar({ tabs, active, onChange }) {
+  return (
+    <div className="flex gap-1 mb-4 border-b border-gray-800">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={
+            "px-3 py-2 text-xs font-medium -mb-px border-b-2 transition-colors " +
+            (active === t.id
+              ? "border-red-600 text-white"
+              : "border-transparent text-gray-500 hover:text-gray-300")
+          }
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
@@ -11,6 +48,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
@@ -27,7 +65,7 @@ const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
-import { getCategoryCfg } from "../utils/serviceCategories";
+import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
@@ -344,16 +382,8 @@ function SettingsField({ label, hint, children }) {
 }
 
 // ─── ProductsCatalogue ────────────────────────────────────────────────────────
-const PRODUCT_CATEGORIES = [
-  { value: 'protection',   label: 'Protection Film' },
-  { value: 'window_tint',  label: 'Window Tint' },
-  { value: 'warranty',     label: 'Extended Warranty' },
-  { value: 'insurance',    label: 'Insurance' },
-  { value: 'road_tax',     label: 'Road Tax' },
-  { value: 'service',      label: 'Service Package' },
-  { value: 'accessories',  label: 'Accessories' },
-  { value: 'other',        label: 'Other' },
-];
+// Category options sourced from serviceCategories.js (single source of truth).
+const PRODUCT_CATEGORIES = PRODUCT_CATEGORY_OPTIONS;
 
 const PRODUCT_SEEDS = [
   { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
@@ -764,7 +794,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
       clearSiteProfileCache(); // so public pages pick up new settings on next load
       flash(key);
     } catch (e) {
-      setErrors((p) => ({ ...p, [key]: e.message }));
+      const msg = e.message?.includes("dealership_name_change_limit_reached")
+        ? "Dealership name can only be changed twice. Contact support to change it again."
+        : e.message;
+      setErrors((p) => ({ ...p, [key]: msg }));
     }
     setSaving((p) => ({ ...p, [key]: false }));
   };
@@ -982,6 +1015,12 @@ function SettingsTab({ profile, onProfileUpdate }) {
                 </div>
               )}
             </div>
+            {planUsage.hp_submissions_mtd != null && (
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px 16px', gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>HP SUBMISSIONS THIS MONTH</p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: '#E8EDF5' }}>{planUsage.hp_submissions_mtd}</p>
+              </div>
+            )}
           </div>
           {nextPlanCfg && (
             <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, textDecoration: 'none' }}>
@@ -3114,7 +3153,7 @@ function TeamTab({ managerDealership, dealerId }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
-        fetchSold,
+        () => { fetchSold(); fetchSoldPerSalesman(); },
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -5985,12 +6024,14 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { tab: tabParam } = useParams();
   const { t } = useTranslation();
-  const redirectByRole = useRoleRedirect("dealer");
+  const redirectByRole = useRoleRedirect(["dealer", "superadmin", "owner", "manager", "admin"]);
   const { status, loading: subLoading } = useSubscription();
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(tabParam || "listings");
+  const [analyticsSub, setAnalyticsSub] = useState("listings"); // listings | revenue | marketplace
+  const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -6131,15 +6172,13 @@ export default function DashboardPage() {
     // can trigger SIGNED_OUT during its failed auto-refresh — if we're already
     // subscribed when that fires, we'd redirect to xdrive.my/login before our
     // new tokens even get a chance to run.
-    const _params = new URLSearchParams(window.location.search);
-    const _at = _params.get('_at');
-    const _rt = _params.get('_rt');
+    const { at: _at, rt: _rt } = readHandoffTokens();
     let unsubscribe = () => {};
 
     (async () => {
       let session;
       if (_at && _rt) {
-        window.history.replaceState({}, '', window.location.pathname);
+        clearHandoffTokens();
         const { data } = await supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
         if (!active) return;
         session = data?.session ?? null;
@@ -6240,8 +6279,24 @@ export default function DashboardPage() {
     });
   }, [navigate]);
 
+  // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
+  // old deep-links and saved URLs don't render a blank pane.
   useEffect(() => {
-    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
+    if (!tabParam) return;
+    const ALIAS = {
+      revops:      { tab: "analytics",  sub: ["analytics", "revenue"] },
+      marketplace: { tab: "analytics",  sub: ["analytics", "marketplace"] },
+      services:    { tab: "storefront", sub: ["storefront", "services"] },
+      hero:        { tab: "storefront", sub: ["storefront", "hero"] },
+    };
+    const mapped = ALIAS[tabParam];
+    if (mapped) {
+      if (mapped.sub[0] === "analytics") setAnalyticsSub(mapped.sub[1]);
+      if (mapped.sub[0] === "storefront") setStorefrontSub(mapped.sub[1]);
+      if (activeTab !== mapped.tab) setActiveTab(mapped.tab);
+      return;
+    }
+    if (tabParam !== activeTab) setActiveTab(tabParam);
   }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleDelete = async (id) => {
     const { error } = await supabase
@@ -6531,40 +6586,31 @@ export default function DashboardPage() {
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
-    analytics: { title: "Analytics", sub: "Performance & AI advisor" },
-    marketplace: { title: "Marketplace", sub: "XDrive traffic & visitor analytics" },
+    analytics: { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
-    hero: {
-      title: "Hero Carousel",
-      sub: "Manage your XDrive homepage spotlight — up to 5 slides",
-    },
+    storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
-    revops:    { title: "RevOps",    sub: "Revenue operations & deal health" },
-    services:  { title: "Services",  sub: "Add-ons & product catalogue" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
   };
 
   const NAV = [
-    { id: "listings", Icon: Car, label: "Listings", badge: listings.length },
-    { id: "add", Icon: PlusCircle, label: "Add Listing" },
-    { id: "crm", Icon: MessageCircle, label: "CRM" },
-    { id: "analytics", Icon: BarChart2, label: "Analytics" },
-    { id: "marketplace", Icon: Globe, label: "Marketplace" },
-    { id: "outreach",   Icon: Megaphone, label: "Outreach Hub",     badge: null },
-    { id: "ai_manager", Icon: Bot, label: "AI Sales Manager" },
-    { id: "team", Icon: Users, label: "Team" },
-    { id: "hero", Icon: HeroCarouselIcon, label: "Hero Carousel" },
-    { id: "stock", Icon: Package, label: "Stock" },
-    { id: "documents", Icon: FileText, label: "Documents" },
-    { id: "revops",   Icon: BarChart3,  label: "RevOps" },
-    { id: "services", Icon: Wrench,    label: "Services & Add-ons" },
-    { id: "hp",       Icon: CreditCard, label: "HP Board" },
-    { id: "oversight", Icon: Shield, label: "GM Oversight" },
-    { id: "customers", Icon: UserCheck, label: "Customers" },
+    { id: "crm",        Icon: MessageCircle,   label: "Leads / CRM" },
+    { id: "listings",   Icon: Car,             label: "Listings",          badge: listings.length },
+    { id: "add",        Icon: PlusCircle,      label: "Add Listing" },
+    { id: "stock",      Icon: Package,         label: "Stock" },
+    { id: "hp",         Icon: CreditCard,      label: "HP Board" },
+    { id: "analytics",  Icon: BarChart2,       label: "Analytics" },
+    { id: "team",       Icon: Users,           label: "Team" },
+    { id: "customers",  Icon: UserCheck,       label: "Customers" },
+    { id: "outreach",   Icon: Megaphone,       label: "Outreach Hub" },
+    { id: "ai_manager", Icon: Bot,             label: "AI Sales Manager" },
+    { id: "documents",  Icon: FileText,        label: "Documents" },
+    { id: "storefront", Icon: Globe,           label: "Storefront" },
+    { id: "oversight",  Icon: Shield,          label: "GM Oversight" },
   ];
 
   const STAT_CARDS = [
@@ -6800,7 +6846,56 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ✅ Settings button — sits right under username */}
+          {/* Plan tier chip */}
+          {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                padding: '8px 10px',
+                margin: '0 4px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Plan</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.12)', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+              </div>
+              {planUsage && planCfg.listingCap != null && (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Listings</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.active_listings >= planCfg.listingCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                      {planUsage.active_listings ?? 0}/{planCfg.listingCap}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planCfg.listingCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.active_listings ?? 0) / planCfg.listingCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              )}
+              {planUsage && planCfg.seatCap != null && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Seats</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: planUsage.seat_count >= planCfg.seatCap ? '#f87171' : 'rgba(255,255,255,0.5)' }}>
+                      {planUsage.seat_count ?? 0}/{planCfg.seatCap}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planCfg.seatCap ? '#dc2626' : '#3b82f6', width: `${Math.min(100, ((planUsage.seat_count ?? 0) / planCfg.seatCap) * 100)}%`, transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              )}
+              {nextPlanCfg && (
+                <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#60a5fa', textDecoration: 'none' }}>
+                  Upgrade to {nextPlanCfg.label}
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Settings button */}
           <button
             onClick={() => handleTabChange("settings")}
             className={`nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "nav-active text-white" : "text-gray-500 hover:text-white"}`}
@@ -7309,6 +7404,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          <TabErrorBoundary>
           <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
           {activeTab === "add" && (
             <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
@@ -7316,17 +7412,33 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === "analytics" && (
-            <AnalyticsTab
-              listings={listings}
-              profile={profile}
-              salesmen={salesmen}
-              onEditListing={setEditListing}
-              onStaleAdjusted={handleStaleAdjusted}
-              adjustedStaleIds={adjustedStaleIds}
-            />
-          )}
-          {activeTab === "marketplace" && (
-            <MarketplaceAnalyticsTab profile={profile} />
+            <>
+              <SubTabBar
+                active={analyticsSub}
+                onChange={setAnalyticsSub}
+                tabs={[
+                  { id: "listings",    label: "Listings" },
+                  { id: "revenue",     label: "Revenue" },
+                  { id: "marketplace", label: "Marketplace" },
+                ]}
+              />
+              {analyticsSub === "listings" && (
+                <AnalyticsTab
+                  listings={listings}
+                  profile={profile}
+                  salesmen={salesmen}
+                  onEditListing={setEditListing}
+                  onStaleAdjusted={handleStaleAdjusted}
+                  adjustedStaleIds={adjustedStaleIds}
+                />
+              )}
+              {analyticsSub === "revenue" && userId && (
+                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
+              )}
+              {analyticsSub === "marketplace" && (
+                <MarketplaceAnalyticsTab profile={profile} />
+              )}
+            </>
           )}
           {activeTab === "ai_manager" && snapshot && (
             <AISalesManager
@@ -7356,20 +7468,29 @@ export default function DashboardPage() {
               onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }}
             />
           )}
-          {activeTab === "hero" && userId && (
-            <HeroSlidesPage userId={userId} profile={profile} />
+          {activeTab === "storefront" && userId && (
+            <>
+              <SubTabBar
+                active={storefrontSub}
+                onChange={setStorefrontSub}
+                tabs={[
+                  { id: "hero",     label: "Hero Carousel" },
+                  { id: "services", label: "Services & Add-ons" },
+                ]}
+              />
+              {storefrontSub === "hero" && (
+                <HeroSlidesPage userId={userId} profile={profile} />
+              )}
+              {storefrontSub === "services" && (
+                <ServicesPage userId={userId} />
+              )}
+            </>
           )}
           {activeTab === "stock" && userId && (
             <StockTab userId={userId} listings={listings} />
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
-          )}
-          {activeTab === "revops" && userId && (
-            <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
-          )}
-          {activeTab === "services" && userId && (
-            <ServicesPage userId={userId} />
           )}
           {activeTab === "hp" && userId && (
             <div className="space-y-2">
@@ -7390,6 +7511,7 @@ export default function DashboardPage() {
             <CustomersTab dealerId={userId} />
           )}
           </React.Suspense>
+          </TabErrorBoundary>
         </div>
       </main>
 

@@ -38,6 +38,27 @@ const calcEIR = (principal, annualRate, months) => {
   return principal * r / (1 - Math.pow(1 + r, -months));
 };
 
+const REJECTION_CATEGORIES = [
+  { value: 'dsr',            label: 'DSR (Debt Service Ratio)' },
+  { value: 'ccris_issue',    label: 'CCRIS Issue' },
+  { value: 'valuation_gap',  label: 'Valuation Gap' },
+  { value: 'employment_type',label: 'Employment Type' },
+  { value: 'vehicle_age',    label: 'Vehicle Age' },
+  { value: 'margin',         label: 'Margin / LTV' },
+  { value: 'other',          label: 'Other' },
+];
+
+const EMP_TEMPLATES = {
+  employed:         ['ic','payslip','bank_stmt','epf','driving_license','grant','insurance','roadtax'],
+  self_employed:    ['ic','bank_stmt','epf','driving_license','grant','insurance','roadtax','ssm','tax_return'],
+  commission_based: ['ic','payslip','bank_stmt','epf','driving_license','grant','insurance','roadtax'],
+};
+const HP_DOCS_MAP = {
+  ic: 'IC (Buyer)', payslip: 'Payslip (3mo)', bank_stmt: 'Bank Statement (3mo)',
+  epf: 'EPF Statement', driving_license: 'Driving License', grant: 'Vehicle Grant',
+  insurance: 'Insurance', roadtax: 'Road Tax', ssm: 'SSM Certificate', tax_return: 'Tax Return (2yr)',
+};
+
 // ─── Section label ─────────────────────────────────────────────────────────────
 function SLabel({ children }) {
   return (
@@ -177,6 +198,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [showAddHP, setShowAddHP] = useState(false);
   const [hpForm, setHpForm]     = useState({ bank: '', amount: '', tenure: 84, rate: 3.5, notes: '' });
   const [hpSaving, setHpSaving] = useState(false);
+  const [rejectingRowId, setRejectingRowId] = useState(null);
+  const [rejectCategory, setRejectCategory] = useState('');
+  const [nextBankPrompt, setNextBankPrompt] = useState(false);
+  const [nextBank, setNextBank] = useState('');
+  const [nextBankSaving, setNextBankSaving] = useState(false);
+  const [hpEmpType, setHpEmpType] = useState('employed');
+  const [hpDocCheck, setHpDocCheck] = useState({});
 
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
@@ -263,8 +291,15 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   const handleAddHP = async () => {
     if (!hpForm.bank || !hpForm.amount || Number(hpForm.amount) <= 0) { toast.error('Bank and loan amount required'); return; }
+    const requiredDocs = EMP_TEMPLATES[hpEmpType] || EMP_TEMPLATES.employed;
+    const missingDocs = requiredDocs.filter(k => !hpDocCheck[k]);
+    if (missingDocs.length > 0) {
+      toast.error(`${missingDocs.length} required doc(s) missing — tick all before submitting`);
+      return;
+    }
     setHpSaving(true);
     const car = lead?.car_listing;
+    const prefilledDocs = Object.fromEntries(requiredDocs.map(k => [k, !!hpDocCheck[k]]));
     const { data, error } = await supabase.from('deal_financing').insert({
       dealer_id: lead.dealer_id, lead_id: lead.id, listing_id: lead.car_listing_id || null,
       bank_name: hpForm.bank, loan_amount: Number(hpForm.amount), tenure_months: hpForm.tenure,
@@ -272,22 +307,57 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       margin_pct: car?.selling_price ? Number(((Number(hpForm.amount) / car.selling_price) * 100).toFixed(1)) : null,
       notes: hpForm.notes.trim() || null, submitted_at: new Date().toISOString(),
       queue_order: hpRows.length + 1,
+      attempt_number: hpRows.length + 1,
+      employment_type: hpEmpType,
+      hp_docs: prefilledDocs,
     }).select().single();
     if (error) { toast.error('Failed to add HP submission'); } else {
       setHpRows(p => [data, ...p]);
       setShowAddHP(false);
       setHpForm({ bank: '', amount: '', tenure: 84, rate: 3.5, notes: '' });
+      setHpDocCheck({});
+      setHpEmpType('employed');
       toast.success('HP submission added');
     }
     setHpSaving(false);
   };
 
-  const handleUpdateHPStatus = async (id, status) => {
+  const handleUpdateHPStatus = async (id, status, category) => {
     const patch = { status };
     if (status === 'approved') patch.approved_at = new Date().toISOString();
     if (status === 'disbursed') patch.disbursed_at = new Date().toISOString();
+    if (status === 'rejected' && category) patch.rejection_reason_category = category;
     const { error } = await supabase.from('deal_financing').update(patch).eq('id', id);
-    if (!error) setHpRows(p => p.map(r => r.id === id ? { ...r, ...patch } : r));
+    if (!error) {
+      setHpRows(p => p.map(r => r.id === id ? { ...r, ...patch } : r));
+      if (status === 'rejected') { setRejectingRowId(null); setRejectCategory(''); setNextBankPrompt(true); setNextBank(''); }
+    }
+  };
+
+  const handleSubmitNextBank = async () => {
+    if (!nextBank) return;
+    setNextBankSaving(true);
+    const car = lead?.car_listing;
+    const prevRow = hpRows.find(r => r.status === 'rejected');
+    const { data, error } = await supabase.from('deal_financing').insert({
+      dealer_id: lead.dealer_id, lead_id: lead.id, listing_id: lead.car_listing_id || null,
+      bank_name: nextBank,
+      loan_amount: prevRow?.loan_amount || 0,
+      tenure_months: prevRow?.tenure_months || 84,
+      annual_rate_pct: prevRow?.annual_rate_pct || 3.5,
+      monthly_install: prevRow?.monthly_install || 0,
+      margin_pct: prevRow?.margin_pct || null,
+      submitted_at: new Date().toISOString(),
+      attempt_number: hpRows.length + 1,
+      queue_order: hpRows.length + 1,
+    }).select().single();
+    if (error) { toast.error('Failed'); } else {
+      setHpRows(p => [data, ...p]);
+      setNextBankPrompt(false);
+      setNextBank('');
+      toast.success(`Submitted to ${nextBank}`);
+    }
+    setNextBankSaving(false);
   };
 
   const handleToggleDoc = async (rowId, docKey, current) => {
@@ -852,12 +922,20 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   </span>
                 )}
               </div>
-              {/* HP-2: CCRIS warning */}
+              {/* HP-2: submission count + CCRIS warnings */}
+              {hpRows.length >= 3 && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <AlertTriangle style={{ width: 13, height: 13, color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontSize: 11, color: '#92400e', lineHeight: 1.5, margin: 0 }}>
+                    <strong>{hpRows.length} bank attempts</strong> — further applications may affect the buyer's CCRIS score.
+                  </p>
+                </div>
+              )}
               {hpRows.some(r => r.rejection_reason_category === 'ccris_issue') && (
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                   <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>CCRIS Issue Detected</p>
                   <p style={{ fontSize: 11, color: '#b91c1c', lineHeight: 1.5 }}>
-                    This buyer has a CCRIS rejection. Other banks are likely to reject too. Advise the customer to check their CCRIS report before submitting further applications.
+                    This buyer has a CCRIS rejection. Advise the customer to check their CCRIS report before submitting further applications.
                   </p>
                 </div>
               )}
@@ -907,13 +985,32 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                             ))}
                           </div>
                         </details>
-                        {row.status === 'pending' && (
+                        {row.status === 'pending' && rejectingRowId !== row.id && (
                           <div style={{ display: 'flex', gap: 6 }}>
-                            {['approved','rejected'].map(s => (
-                              <button key={s} onClick={() => handleUpdateHPStatus(row.id, s)} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: s === 'approved' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${s === 'approved' ? '#bbf7d0' : '#fecaca'}`, color: s === 'approved' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                                {s === 'approved' ? 'Approve' : 'Reject'}
+                            <button onClick={() => handleUpdateHPStatus(row.id, 'approved')} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontWeight: 600 }}>
+                              Approve
+                            </button>
+                            <button onClick={() => { setRejectingRowId(row.id); setRejectCategory(''); }} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600 }}>
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {rejectingRowId === row.id && (
+                          <div style={{ marginTop: 6, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px' }}>
+                            <p style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}>Rejection reason</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 8 }}>
+                              {REJECTION_CATEGORIES.map(c => (
+                                <button key={c.value} onClick={() => setRejectCategory(c.value)} style={{ padding: '5px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'left', background: rejectCategory === c.value ? '#fee2e2' : '#fff', border: `1px solid ${rejectCategory === c.value ? '#fca5a5' : '#e5e7eb'}`, color: rejectCategory === c.value ? '#dc2626' : '#6b7280' }}>
+                                  {c.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setRejectingRowId(null)} style={{ flex: 1, padding: '6px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                              <button onClick={() => handleUpdateHPStatus(row.id, 'rejected', rejectCategory)} disabled={!rejectCategory} style={{ flex: 1, padding: '6px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: !rejectCategory ? 0.5 : 1 }}>
+                                Confirm Rejection
                               </button>
-                            ))}
+                            </div>
                           </div>
                         )}
                         {row.status === 'approved' && (() => {
@@ -943,6 +1040,32 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       </div>
                     );
                   })}
+                  {/* HP-2: Try next bank prompt */}
+                  {nextBankPrompt && !showAddHP && (() => {
+                    const triedBanks = new Set(hpRows.map(r => r.bank_name));
+                    const remainingBanks = MY_BANKS.filter(b => !triedBanks.has(b));
+                    return (
+                      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '12px', marginBottom: 8 }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 8 }}>Try next bank?</p>
+                        {remainingBanks.length === 0 ? (
+                          <p style={{ fontSize: 11, color: '#b45309' }}>All banks have been attempted.</p>
+                        ) : (
+                          <>
+                            <select value={nextBank} onChange={e => setNextBank(e.target.value)} style={{ ...w.inp, marginBottom: 8, appearance: 'none' }} className="ld-inp">
+                              <option value="">— Select bank —</option>
+                              {remainingBanks.map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setNextBankPrompt(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Dismiss</button>
+                              <button onClick={handleSubmitNextBank} disabled={nextBankSaving || !nextBank} style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#d97706', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: (!nextBank || nextBankSaving) ? 0.5 : 1 }}>
+                                {nextBankSaving ? 'Submitting…' : `Submit to ${nextBank || 'bank'}`}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {!showAddHP ? (
                     <button onClick={() => setShowAddHP(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', width: '100%', justifyContent: 'center', fontWeight: 600 }}>
                       <Plus style={{ width: 12, height: 12 }} />Add HP Submission
@@ -950,6 +1073,35 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   ) : (
                     <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 8, padding: 12 }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New HP Submission</p>
+                      {/* HP-6: employment type */}
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                        {[['employed','Employed'],['self_employed','Self-Employed'],['commission_based','Commission']].map(([val, label]) => (
+                          <button key={val} onClick={() => { setHpEmpType(val); setHpDocCheck({}); }} style={{ flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: hpEmpType === val ? '#ede9fe' : '#f3f4f6', border: `1px solid ${hpEmpType === val ? '#c4b5fd' : '#e5e7eb'}`, color: hpEmpType === val ? '#7c3aed' : '#6b7280' }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* HP-6: doc checklist */}
+                      {(() => {
+                        const required = EMP_TEMPLATES[hpEmpType] || EMP_TEMPLATES.employed;
+                        const collected = required.filter(k => hpDocCheck[k]).length;
+                        return (
+                          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 7, padding: '10px 12px', marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Required Docs</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: collected === required.length ? '#16a34a' : '#d97706' }}>{collected}/{required.length}</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                              {required.map(k => (
+                                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: hpDocCheck[k] ? '#16a34a' : '#6b7280', cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={!!hpDocCheck[k]} onChange={() => setHpDocCheck(d => ({ ...d, [k]: !d[k] }))} style={{ accentColor: '#7c3aed' }} />
+                                  {HP_DOCS_MAP[k]}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
                         <select value={hpForm.bank} onChange={e => setHpForm(f => ({ ...f, bank: e.target.value }))} style={{ ...w.inp, gridColumn: '1/-1', appearance: 'none' }} className="ld-inp">
                           <option value="">— Select bank —</option>
@@ -971,9 +1123,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       )}
                       <input value={hpForm.notes} onChange={e => setHpForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ ...w.inp, marginBottom: 8 }} className="ld-inp" />
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => setShowAddHP(false)} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={() => { setShowAddHP(false); setHpDocCheck({}); setHpEmpType('employed'); }} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                         <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#7c3aed', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
-                          {hpSaving ? 'Submitting…' : 'Submit'}
+                          {hpSaving ? 'Submitting…' : (() => { const req = EMP_TEMPLATES[hpEmpType] || []; const missing = req.filter(k => !hpDocCheck[k]).length; return missing > 0 ? `${missing} doc(s) missing` : 'Submit'; })()}
                         </button>
                       </div>
                     </div>

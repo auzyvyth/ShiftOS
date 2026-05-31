@@ -355,6 +355,85 @@ function DealCard({ deal, catalog, hpRows, onHPAdd, onHPUpdate, onHPDelete, deal
   );
 }
 
+// ─── Bank Scorecard ────────────────────────────────────────────────────────────
+function BankScorecard({ rows }) {
+  const [open, setOpen] = useState(false);
+  const banks = useMemo(() => {
+    const map = {};
+    rows.forEach(r => {
+      if (!r.bank_name) return;
+      if (!map[r.bank_name]) map[r.bank_name] = { total: 0, approved: 0, rejected: 0, daysSum: 0, daysCount: 0 };
+      const b = map[r.bank_name];
+      b.total++;
+      const isApproved = r.status === 'approved' || r.status === 'disbursed';
+      if (isApproved) {
+        b.approved++;
+        if (r.approved_at && r.submitted_at) {
+          b.daysSum += Math.max(0, Math.floor((new Date(r.approved_at) - new Date(r.submitted_at)) / 86400000));
+          b.daysCount++;
+        }
+      }
+      if (r.status === 'rejected') {
+        b.rejected++;
+        if (r.updated_at && r.submitted_at) {
+          b.daysSum += Math.max(0, Math.floor((new Date(r.updated_at) - new Date(r.submitted_at)) / 86400000));
+          b.daysCount++;
+        }
+      }
+    });
+    return Object.entries(map).map(([name, b]) => ({
+      name,
+      total: b.total,
+      approved: b.approved,
+      rejected: b.rejected,
+      pending: b.total - b.approved - b.rejected,
+      approvalRate: b.total > 0 ? Math.round((b.approved / b.total) * 100) : 0,
+      avgDays: b.daysCount > 0 ? Math.round(b.daysSum / b.daysCount) : null,
+    })).sort((a, b) => b.approvalRate - a.approvalRate);
+  }, [rows]);
+
+  if (banks.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 20, background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: 12, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', color: ACCENT }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Bank Performance Scorecard</span>
+        {open ? <ChevronUp style={{ width: 14, height: 14 }} /> : <ChevronDown style={{ width: 14, height: 14 }} />}
+      </button>
+      {open && (
+        <div style={{ padding: '0 16px 14px', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Bank','Total','Approved','Rejected','Pending','Approval %','Avg Days'].map(h => (
+                  <th key={h} style={{ padding: '6px 10px', textAlign: h === 'Bank' ? 'left' : 'right', fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {banks.map(b => (
+                <tr key={b.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '8px 10px', color: '#e5e7eb', fontWeight: 600 }}>{b.name}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#9ca3af' }}>{b.total}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#22c55e', fontWeight: 600 }}>{b.approved}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#ef4444' }}>{b.rejected}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#f59e0b' }}>{b.pending}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                    <span style={{ fontWeight: 700, color: b.approvalRate >= 60 ? '#22c55e' : b.approvalRate >= 30 ? '#f59e0b' : '#ef4444' }}>
+                      {b.approvalRate}%
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#9ca3af' }}>{b.avgDays != null ? `${b.avgDays}d` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── HP Board Tab ─────────────────────────────────────────────────────────────
 function HPBoardTab({ dealerId }) {
   const [rows, setRows] = useState([]);
@@ -389,6 +468,7 @@ function HPBoardTab({ dealerId }) {
 
   return (
     <div>
+      <BankScorecard rows={rows} />
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {[['all', 'All', '#6b7280'], ...Object.entries(HP_STATUS).map(([k, v]) => [k, v.label, v.color])].map(([k, label, color]) => (

@@ -58,6 +58,7 @@ import {
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
@@ -305,8 +306,10 @@ export default function SalesmanPanel() {
  setStaleLeads(
  leads.filter((l) => {
  if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
- return (l.follow_up_at && new Date(l.follow_up_at) <= now)
- || (l.updated_at && new Date(l.updated_at) < cutoff);
+ // stale = overdue follow-up AND no activity in 48h (both must be true)
+ const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at) <= now;
+ const noRecentActivity = l.updated_at && new Date(l.updated_at) < cutoff;
+ return overdueFollowUp && noRecentActivity;
  })
  );
  }, [leads]);
@@ -336,12 +339,10 @@ export default function SalesmanPanel() {
 
  // auth + profile
  useEffect(() => {
- const _params = new URLSearchParams(window.location.search);
- const _at = _params.get('_at');
- const _rt = _params.get('_rt');
+ const { at: _at, rt: _rt } = readHandoffTokens();
  const authReady = _at && _rt
    ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
-       .then(() => { window.history.replaceState({}, '', window.location.pathname); })
+       .then(() => { clearHandoffTokens(); })
    : Promise.resolve();
  authReady.then(() => supabase.auth.getUser()).then(async ({ data: { user }, error }) => {
  if (error ||!user) {
@@ -388,7 +389,7 @@ export default function SalesmanPanel() {
  const { data: assignedCars } = await supabase
    .from("car_listings")
    .select("id")
-   .or(`assigned_to.eq.${userId},dealer_id.eq.${userId}`);
+   .eq("assigned_to", userId);
  const assignedCarIds = (assignedCars || []).map((c) => c.id);
 
  if (assignedCarIds.length > 0) {
@@ -650,6 +651,7 @@ Rules:
  .from("leads")
  .select("id, buyer_name, phone")
  .eq("dealer_id", dealerId)
+ .eq("salesman_id", profile.id)
  .eq("is_deleted", false)
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanLeads(data || []));
@@ -878,7 +880,7 @@ Rules:
  const autoUpsertLeadFromAppt = async (apt) => {
  const phone = (apt.buyer_phone || "").replace(/\D/g, "");
  if (!phone) return;
- const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).is("dealer_id", null).eq("phone", phone).maybeSingle();
+ const { data: existing } = await supabase.from("leads").select("id, stage").eq("salesman_id", userId).eq("dealer_id", profile?.dealer_id || "none").eq("phone", phone).maybeSingle();
  if (existing) {
  const STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won","lost"];
  const curIdx = STAGES.indexOf(existing.stage);

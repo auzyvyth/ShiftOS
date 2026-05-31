@@ -49,6 +49,7 @@ const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage        = lazy(() => import("./pages/PrivacyPage"));
 const DealPage           = lazy(() => import("./pages/DealPage"));
+const StyleGuidePage     = lazy(() => import("./pages/StyleGuidePage"));
 
 const COMPARE_PATHS = ["/", "/cars", "/marketplace", "/showroom", "/compare", "/saved"];
 
@@ -92,10 +93,12 @@ function App() {
           <Route path="/guides" element={<GuidesPage />} />
 
           {/* Auth */}
+          <Route path="/style-guide" element={<StyleGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<OnboardingPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/onboarding/:plan" element={<OnboardingPage />} />
           <Route path="/auth/confirm" element={<AuthConfirmPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/reset" element={<ResetPasswordPage />} />

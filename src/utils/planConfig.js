@@ -35,13 +35,6 @@ export const PLAN_CONFIG = {
     seatCap: 15,
     isDealer: true,
   },
-  dealer_group: {
-    label: 'Dealer Group',
-    price: 2999,
-    listingCap: null,
-    seatCap: null,
-    isDealer: true,
-  },
 };
 
 export function getPlanConfig(plan) {
@@ -53,7 +46,6 @@ export const DEALER_PLAN_ORDER = [
   'dealer_starter',
   'dealer_growth',
   'dealer_pro',
-  'dealer_group',
 ];
 
 export function nextDealerPlan(currentPlan) {

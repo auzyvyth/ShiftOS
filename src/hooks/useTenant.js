@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 
 export const MARKETPLACE_DOMAIN = "xdrive.my";
 export const DASHBOARD_DOMAIN = "shiftos.com";
@@ -12,10 +13,23 @@ const PROFILE_SELECT =
   "hero_title, hero_subtitle, hero_cta_text, " +
   "announcement_bar, announcement_bar_enabled";
 
+// The ?tenant= override is a dev/preview convenience only. Allowing it in
+// production would let anyone spoof a competitor's storefront under the
+// xdrive.my domain (phishing / brand-confusion vector), so it is gated to
+// localhost and Vercel preview hosts.
+function isDevHost(hostname) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.startsWith("192.168") ||
+    hostname.endsWith(".vercel.app")
+  );
+}
+
 export function getSubdomain() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("tenant")) return params.get("tenant");
   const hostname = window.location.hostname;
+  const params = new URLSearchParams(window.location.search);
+  if (isDevHost(hostname) && params.get("tenant")) return params.get("tenant");
   // Root domains and local dev → no subdomain, show public marketplace
   if (
     hostname === "localhost" ||
@@ -34,8 +48,6 @@ export function getSubdomain() {
 }
 
 export function isSubdomain() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("tenant")) return true;
   return !!getSubdomain();
 }
 
@@ -48,18 +60,14 @@ export default function useTenant() {
     let realtimeChannel = null;
 
     async function resolve() {
-      const params = new URLSearchParams(window.location.search);
-      const accessToken = params.get("_at");
-      const refreshToken = params.get("_rt");
+      const { at: accessToken, rt: refreshToken } = readHandoffTokens();
 
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-        // Clean the URL
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, "", cleanUrl);
+        clearHandoffTokens();
       }
 
       const subdomain = getSubdomain();

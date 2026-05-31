@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+
+const PLAN_ROUTE_MAP = {
+  lite:    { accountType: "salesman", plan: "salesman_lite" },
+  premium: { accountType: "salesman", plan: "salesman_full" },
+  dealer:  { accountType: "dealership", plan: "dealer_starter" },
+};
 
 const STATES = [
   "Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka",
@@ -14,23 +20,22 @@ const DEALER_TYPES = [
 const FLEET = ["1–5 cars","6–15 cars","16–30 cars","31–50 cars","50+ cars"];
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
-function buildStages(accountType, hasUser) {
-  const s = [
-    { id: "type",  field: "accountType", q: "I'm signing up as…",      type: "cards" },
-    { id: "legal", field: "_legal",       q: "Terms & Privacy Consent", type: "legal" },
-    { id: "name",  field: "fullName",     q: "What's your name?",       type: "text", ph: "Ahmad bin Abdullah" },
-    { id: "phone", field: "phone",        q: "Your WhatsApp number?",   type: "tel",  ph: "+60123456789" },
-    {
-      id: "ic", field: "ic", q: "IC number (MyKad)?", type: "text",
-      ph: "901231-10-1234", opt: true,
-      hint: "Optional now — required within 10 days or account is terminated.",
-    },
-  ];
+function buildStages(accountType, hasUser, presetType) {
+  const s = [];
+  if (!presetType)
+    s.push({ id: "type", field: "accountType", q: "I'm signing up as…", type: "cards" });
+  s.push(
+    { id: "legal", field: "_legal",   q: "Terms & Privacy Consent", type: "legal" },
+    { id: "name",  field: "fullName", q: "What's your name?",       type: "text", ph: "Ahmad bin Abdullah" },
+    { id: "phone", field: "phone",    q: "Your WhatsApp number?",   type: "tel",  ph: "+60123456789" },
+    { id: "ic",    field: "ic",       q: "IC number (MyKad)?",      type: "text", ph: "901231-10-1234", opt: true,
+      hint: "Optional now — required within 10 days or account is terminated." },
+  );
   if (!hasUser)
     s.push(
-      { id: "email", field: "email",    q: "Email address?",      type: "email", ph: "you@example.com" },
-      { id: "pw",    field: "password", q: "Create a password",   type: "pw",    ph: "Min 8 chars, mixed + symbol" },
-      { id: "cpw",   field: "confirm",  q: "Confirm your password", type: "pw",  ph: "Repeat it" },
+      { id: "email", field: "email",    q: "Email address?",          type: "email", ph: "you@example.com" },
+      { id: "pw",    field: "password", q: "Create a password",       type: "pw",    ph: "Min 8 chars, mixed + symbol" },
+      { id: "cpw",   field: "confirm",  q: "Confirm your password",   type: "pw",    ph: "Repeat it" },
     );
   if (accountType === "dealership")
     s.push(
@@ -57,6 +62,8 @@ function buildStages(accountType, hasUser) {
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const { plan: planSlug } = useParams();
+  const presetCfg = PLAN_ROUTE_MAP[planSlug] || null;
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [authReady, setAuthReady] = useState(false);
@@ -79,7 +86,9 @@ export default function OnboardingPage() {
   const slugTouched = useRef(false);
 
   const [v, setV] = useState({
-    accountType: "", fullName: "", phone: "+60", ic: "",
+    accountType: presetCfg?.accountType || "",
+    plan: presetCfg?.plan || "",
+    fullName: "", phone: "+60", ic: "",
     email: "", password: "", confirm: "",
     dealerName: "", dealerType: "", state: "", city: "",
     subdomain: "", ssmNumber: "", fleetSize: "",
@@ -87,7 +96,7 @@ export default function OnboardingPage() {
   });
   const upd = (k) => (val) => setV((p) => ({ ...p, [k]: val }));
 
-  const stages = buildStages(v.accountType, !!userId);
+  const stages = buildStages(v.accountType, !!userId, presetCfg);
   const si = Math.min(idx, stages.length - 1);
   const stage = stages[si];
   const val = v[stage.field] ?? "";
@@ -107,9 +116,11 @@ export default function OnboardingPage() {
       if (prof) {
         setProfileData(prof);
         const updates = {};
-        if (prof.role === "dealer" || prof.role === "superadmin") updates.accountType = "dealership";
-        else if (prof.role === "salesman") updates.accountType = "salesman";
-        else if (savedType) updates.accountType = savedType;
+        if (!presetCfg) {
+          if (prof.role === "dealer" || prof.role === "superadmin") updates.accountType = "dealership";
+          else if (prof.role === "salesman") updates.accountType = "salesman";
+          else if (savedType) updates.accountType = savedType;
+        }
         if (prof.full_name) updates.fullName = prof.full_name;
         else if (!v.fullName && (meta.full_name || meta.name)) updates.fullName = meta.full_name || meta.name;
         if (prof.phone) updates.phone = prof.phone;
@@ -209,7 +220,7 @@ export default function OnboardingPage() {
       setLoading(true); setError("");
       const { data, error: err } = await supabase.auth.signUp({
         email: v.email.trim(), password: v.password,
-        options: { emailRedirectTo: `${window.location.origin}/onboarding` },
+        options: { emailRedirectTo: `${window.location.origin}/onboarding${planSlug ? `/${planSlug}` : ''}` },
       });
       if (err) { setError(err.message); setLoading(false); return; }
       if (data.user) {
@@ -234,7 +245,7 @@ export default function OnboardingPage() {
         const payload = isS
           ? {
               id: userId, email: v.email || userEmail, full_name: v.fullName.trim(),
-              phone: v.phone, role: "salesman", plan: "salesman_lite", dealer_id: null,
+              phone: v.phone, role: "salesman", plan: v.plan || "salesman_lite", dealer_id: null,
               is_active: true, onboarding_complete: true, slug: v.salesmanSlug,
               dealership: v.salesmanBrand.trim(),
               location: v.salesmanCity ? `${v.salesmanCity}, ${v.salesmanState}` : v.salesmanState,
@@ -308,7 +319,7 @@ export default function OnboardingPage() {
     if (v.accountType) sessionStorage.setItem("ob_account_type", v.accountType);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/onboarding` },
+      options: { redirectTo: `${window.location.origin}/onboarding${planSlug ? `/${planSlug}` : ''}` },
     });
     if (error) setError(error.message);
   };
@@ -390,7 +401,14 @@ export default function OnboardingPage() {
             <div className="ob-lm">⚡</div>
             <span className="ob-lt">SHIFTOS</span>
           </div>
-          <span className="ob-counter">{String(si + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {presetCfg && (
+              <span style={{ fontFamily: "'Azeret Mono',monospace", fontSize: 9, letterSpacing: "2px", color: "rgba(220,38,38,0.8)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 3, padding: "3px 8px", textTransform: "uppercase" }}>
+                {planSlug === "lite" ? "Salesman Lite · Free" : planSlug === "premium" ? "Salesman Premium · RM99/mo" : "Dealer · 14-day trial"}
+              </span>
+            )}
+            <span className="ob-counter">{String(si + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}</span>
+          </div>
         </div>
 
         <div className={`ob-body${isLegal ? " ob-body-legal" : ""}`}>
