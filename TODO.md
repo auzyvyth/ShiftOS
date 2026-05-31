@@ -118,6 +118,7 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 
 ## Done (reference)
 
+- **AUDIT-FIX (ARCH): Dashboard tabs merged** — Analytics now holds Listings / Revenue (was RevOps) / Marketplace as sub-tabs; new Storefront tab holds Hero Carousel / Services & Add-ons as sub-tabs. Nav dropped from 16 to 13 items. Legacy deep-links (/dashboard/revops, /services, /hero, /marketplace) alias to the new parent+sub-tab so old URLs still work. New reusable SubTabBar component.
 - **AUDIT-FIX (C2): Auth token leakage hardened** — cross-subdomain session handoff now passes tokens in the URL hash fragment (never sent in Referer headers or server logs) instead of the query string; new `src/lib/authHandoff.js` helper, wired into LoginPage, AuthCallbackPage, useTenant, DashboardPage, Salesmanpanel, SalesmanLite, SalesmanPremium (also fixed premium leaving tokens uncleared in URL). Backward-compatible reader so in-flight redirects during deploy don't break. NOTE: full one-time-exchange-code flow still ideal long-term but needs cross-subdomain testing.
 - **AUDIT-FIX (C5): Tenant spoofing closed** — `?tenant=` storefront override now gated to localhost/vercel preview only; ignored in production so nobody can serve a competitor's storefront under xdrive.my
 - **AUDIT-FIX (H1): Managers/admins can access dashboard** — useRoleRedirect now accepts an array of allowed roles; DashboardPage allows dealer/superadmin/owner/manager/admin instead of redirecting managers to the stripped /manager route

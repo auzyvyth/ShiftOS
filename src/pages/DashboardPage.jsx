@@ -14,6 +14,28 @@ class TabErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+// Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
+function SubTabBar({ tabs, active, onChange }) {
+  return (
+    <div className="flex gap-1 mb-4 border-b border-gray-800">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={
+            "px-3 py-2 text-xs font-medium -mb-px border-b-2 transition-colors " +
+            (active === t.id
+              ? "border-red-600 text-white"
+              : "border-transparent text-gray-500 hover:text-gray-300")
+          }
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { createPortal } from 'react-dom';
@@ -6002,6 +6024,8 @@ export default function DashboardPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(tabParam || "listings");
+  const [analyticsSub, setAnalyticsSub] = useState("listings"); // listings | revenue | marketplace
+  const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -6249,8 +6273,24 @@ export default function DashboardPage() {
     });
   }, [navigate]);
 
+  // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
+  // old deep-links and saved URLs don't render a blank pane.
   useEffect(() => {
-    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
+    if (!tabParam) return;
+    const ALIAS = {
+      revops:      { tab: "analytics",  sub: ["analytics", "revenue"] },
+      marketplace: { tab: "analytics",  sub: ["analytics", "marketplace"] },
+      services:    { tab: "storefront", sub: ["storefront", "services"] },
+      hero:        { tab: "storefront", sub: ["storefront", "hero"] },
+    };
+    const mapped = ALIAS[tabParam];
+    if (mapped) {
+      if (mapped.sub[0] === "analytics") setAnalyticsSub(mapped.sub[1]);
+      if (mapped.sub[0] === "storefront") setStorefrontSub(mapped.sub[1]);
+      if (activeTab !== mapped.tab) setActiveTab(mapped.tab);
+      return;
+    }
+    if (tabParam !== activeTab) setActiveTab(tabParam);
   }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleDelete = async (id) => {
     const { error } = await supabase
@@ -6540,18 +6580,12 @@ export default function DashboardPage() {
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
-    analytics: { title: "Analytics", sub: "Performance & AI advisor" },
-    marketplace: { title: "Marketplace", sub: "XDrive traffic & visitor analytics" },
+    analytics: { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
-    hero: {
-      title: "Hero Carousel",
-      sub: "Manage your XDrive homepage spotlight — up to 5 slides",
-    },
+    storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
-    revops:    { title: "RevOps",    sub: "Revenue operations & deal health" },
-    services:  { title: "Services",  sub: "Add-ons & product catalogue" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
@@ -6564,16 +6598,13 @@ export default function DashboardPage() {
     { id: "stock",      Icon: Package,         label: "Stock" },
     { id: "hp",         Icon: CreditCard,      label: "HP Board" },
     { id: "analytics",  Icon: BarChart2,       label: "Analytics" },
-    { id: "revops",     Icon: BarChart3,       label: "RevOps" },
     { id: "team",       Icon: Users,           label: "Team" },
     { id: "customers",  Icon: UserCheck,       label: "Customers" },
     { id: "outreach",   Icon: Megaphone,       label: "Outreach Hub" },
     { id: "ai_manager", Icon: Bot,             label: "AI Sales Manager" },
     { id: "documents",  Icon: FileText,        label: "Documents" },
-    { id: "services",   Icon: Wrench,          label: "Services & Add-ons" },
-    { id: "hero",       Icon: HeroCarouselIcon,label: "Hero Carousel" },
+    { id: "storefront", Icon: Globe,           label: "Storefront" },
     { id: "oversight",  Icon: Shield,          label: "GM Oversight" },
-    { id: "marketplace",Icon: Globe,           label: "Marketplace" },
   ];
 
   const STAT_CARDS = [
@@ -7326,17 +7357,33 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === "analytics" && (
-            <AnalyticsTab
-              listings={listings}
-              profile={profile}
-              salesmen={salesmen}
-              onEditListing={setEditListing}
-              onStaleAdjusted={handleStaleAdjusted}
-              adjustedStaleIds={adjustedStaleIds}
-            />
-          )}
-          {activeTab === "marketplace" && (
-            <MarketplaceAnalyticsTab profile={profile} />
+            <>
+              <SubTabBar
+                active={analyticsSub}
+                onChange={setAnalyticsSub}
+                tabs={[
+                  { id: "listings",    label: "Listings" },
+                  { id: "revenue",     label: "Revenue" },
+                  { id: "marketplace", label: "Marketplace" },
+                ]}
+              />
+              {analyticsSub === "listings" && (
+                <AnalyticsTab
+                  listings={listings}
+                  profile={profile}
+                  salesmen={salesmen}
+                  onEditListing={setEditListing}
+                  onStaleAdjusted={handleStaleAdjusted}
+                  adjustedStaleIds={adjustedStaleIds}
+                />
+              )}
+              {analyticsSub === "revenue" && userId && (
+                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
+              )}
+              {analyticsSub === "marketplace" && (
+                <MarketplaceAnalyticsTab profile={profile} />
+              )}
+            </>
           )}
           {activeTab === "ai_manager" && snapshot && (
             <AISalesManager
@@ -7366,20 +7413,29 @@ export default function DashboardPage() {
               onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }}
             />
           )}
-          {activeTab === "hero" && userId && (
-            <HeroSlidesPage userId={userId} profile={profile} />
+          {activeTab === "storefront" && userId && (
+            <>
+              <SubTabBar
+                active={storefrontSub}
+                onChange={setStorefrontSub}
+                tabs={[
+                  { id: "hero",     label: "Hero Carousel" },
+                  { id: "services", label: "Services & Add-ons" },
+                ]}
+              />
+              {storefrontSub === "hero" && (
+                <HeroSlidesPage userId={userId} profile={profile} />
+              )}
+              {storefrontSub === "services" && (
+                <ServicesPage userId={userId} />
+              )}
+            </>
           )}
           {activeTab === "stock" && userId && (
             <StockTab userId={userId} listings={listings} />
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
-          )}
-          {activeTab === "revops" && userId && (
-            <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} />
-          )}
-          {activeTab === "services" && userId && (
-            <ServicesPage userId={userId} />
           )}
           {activeTab === "hp" && userId && (
             <div className="space-y-2">
