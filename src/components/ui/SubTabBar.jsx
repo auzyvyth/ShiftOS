@@ -1,13 +1,11 @@
 import React from 'react';
-import { color, font, space } from '../../theme/tokens';
+import { color, font } from '../../theme/tokens';
 
-// Underline sub-tab switcher (light theme). Active = ink text + ink underline.
-//   tabs: [{ id, label }]
 export default function SubTabBar({ tabs, active, onChange, style }) {
   return (
     <div style={{
-      display: 'flex', gap: space[1], marginBottom: space[5],
-      borderBottom: `1px solid ${color.border}`, ...style,
+      display: 'flex', gap: 4, marginBottom: 20,
+      borderBottom: '1px solid #EAECF0', ...style,
     }}>
       {tabs.map((t) => {
         const on = active === t.id;

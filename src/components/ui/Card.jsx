@@ -1,17 +1,11 @@
 import React from 'react';
-import { color, shadow, radius, space } from '../../theme/tokens';
+import { color, radius } from '../../theme/tokens';
 
-// Premium surface. Separation comes from shadow + space, not borders.
-// Props:
-//   padding  – token step (default 5 = 20px) or any number
-//   hover    – lift slightly on hover (for clickable cards)
-//   muted    – sunken/secondary surface
-//   as       – element/component override
 export default function Card({
-  children, padding = 5, hover = false, muted = false,
+  children, padding = 20, hover = false, muted = false,
   as: Tag = 'div', style, className, ...rest
 }) {
-  const pad = typeof padding === 'number' && padding <= 12 ? space[padding] ?? padding : padding;
+  const pad = typeof padding === 'number' && padding <= 12 ? padding * 4 : padding;
   const [isHover, setHover] = React.useState(false);
 
   return (
@@ -20,9 +14,11 @@ export default function Card({
       onMouseEnter={hover ? () => setHover(true) : undefined}
       onMouseLeave={hover ? () => setHover(false) : undefined}
       style={{
-        background: muted ? color.surfaceMuted : color.surface,
+        background: muted ? '#F4F5F7' : color.surface,
         borderRadius: radius.lg,
-        boxShadow: hover && isHover ? shadow.md : shadow.sm,
+        boxShadow: hover && isHover
+          ? '0 4px 8px -2px rgba(16,24,40,0.08), 0 2px 4px -2px rgba(16,24,40,0.04)'
+          : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
         padding: pad,
         transition: 'box-shadow 0.16s ease, transform 0.16s ease',
         transform: hover && isHover ? 'translateY(-1px)' : 'none',

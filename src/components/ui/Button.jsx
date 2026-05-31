@@ -1,15 +1,9 @@
 import React from 'react';
-import { color, radius, font, shadow } from '../../theme/tokens';
+import { color, radius, font } from '../../theme/tokens';
 
-// Variants:
-//   primary   – calm near-black, the single main action per view
-//   secondary – white with hairline border
-//   ghost     – text-only, low emphasis
-//   danger    – red, reserved for destructive actions
-// Sizes: sm | md
 const SIZES = {
   sm: { padding: '6px 12px', fontSize: font.size.sm, height: 32 },
-  md: { padding: '9px 16px', fontSize: font.size.md, height: 40 },
+  md: { padding: '9px 16px', fontSize: font.size.base, height: 40 },
 };
 
 export default function Button({
@@ -21,27 +15,27 @@ export default function Button({
 
   const variants = {
     primary: {
-      background: hover ? color.primaryHover : color.primary,
-      color: color.primaryText,
+      background: hover ? '#1E293B' : color.ink,
+      color: '#FFFFFF',
       border: '1px solid transparent',
-      boxShadow: shadow.xs,
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
     },
     secondary: {
-      background: hover ? color.surfaceMuted : color.surface,
+      background: hover ? '#F4F5F7' : color.surface,
       color: color.ink,
-      border: `1px solid ${color.borderStrong}`,
-      boxShadow: shadow.xs,
+      border: '1px solid #D1D5DB',
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
     },
     ghost: {
-      background: hover ? color.surfaceMuted : 'transparent',
-      color: color.textSecondary,
+      background: hover ? '#F4F5F7' : 'transparent',
+      color: color.textMuted,
       border: '1px solid transparent',
     },
     danger: {
-      background: hover ? '#B91C1C' : color.danger,
+      background: hover ? '#B91C1C' : color.accent,
       color: '#FFFFFF',
       border: '1px solid transparent',
-      boxShadow: shadow.xs,
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
     },
   };
 
