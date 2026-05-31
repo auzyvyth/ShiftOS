@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { handoffSuffix } from "../lib/authHandoff";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -126,28 +127,22 @@ export default function LoginPage() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        const accessToken = session.access_token;
-        const refreshToken = session.refresh_token;
-        window.location.href = `https://${subdomain}.xdrive.my/dashboard?_at=${accessToken}&_rt=${refreshToken}`;
+        window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
       } else {
         window.location.href = `${base}/dashboard`;
       }
     } else if (role === "salesman") {
       const { data: { session: sess } } = await supabase.auth.getSession();
-      const at = sess?.access_token;
-      const rt = sess?.refresh_token;
       const target = profile?.dealer_id
         ? "salesman"
         : profile?.plan === "salesman_full"
         ? "salesman-premium"
         : "salesman-lite";
-      const suffix = at && rt && isProd ? `?_at=${at}&_rt=${rt}` : "";
+      const suffix = isProd ? handoffSuffix(sess) : "";
       window.location.href = `${base}/${target}${suffix}`;
     } else {
       const { data: { session: sess } } = await supabase.auth.getSession();
-      const at = sess?.access_token;
-      const rt = sess?.refresh_token;
-      const suffix = at && rt && isProd ? `?_at=${at}&_rt=${rt}` : "";
+      const suffix = isProd ? handoffSuffix(sess) : "";
       window.location.href = `${base}/salesman${suffix}`;
     }
   };

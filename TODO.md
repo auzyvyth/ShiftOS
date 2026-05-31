@@ -118,6 +118,12 @@ Wire it to also call `fetchSoldPerSalesman` so per-salesman tiles update live.
 
 ## Done (reference)
 
+- **AUDIT-FIX (C2): Auth token leakage hardened** — cross-subdomain session handoff now passes tokens in the URL hash fragment (never sent in Referer headers or server logs) instead of the query string; new `src/lib/authHandoff.js` helper, wired into LoginPage, AuthCallbackPage, useTenant, DashboardPage, Salesmanpanel, SalesmanLite, SalesmanPremium (also fixed premium leaving tokens uncleared in URL). Backward-compatible reader so in-flight redirects during deploy don't break. NOTE: full one-time-exchange-code flow still ideal long-term but needs cross-subdomain testing.
+- **AUDIT-FIX (C5): Tenant spoofing closed** — `?tenant=` storefront override now gated to localhost/vercel preview only; ignored in production so nobody can serve a competitor's storefront under xdrive.my
+- **AUDIT-FIX (H1): Managers/admins can access dashboard** — useRoleRedirect now accepts an array of allowed roles; DashboardPage allows dealer/superadmin/owner/manager/admin instead of redirecting managers to the stripped /manager route
+- **AUDIT-FIX (M2): Category definitions unified** — serviceCategories.js is now the single source; DashboardPage PRODUCT_CATEGORIES and ServicesPage CATEGORIES derive from it (removed 3-way drift in labels/colors)
+- **AUDIT-FIX (M5): Dealership name-change cap enforced server-side** — DB trigger `enforce_dealership_change_cap` owns the counter/timestamp and rejects changes past 2 (superadmin exempt); client can no longer bypass via direct API call
+- **AUDIT-FIX: Stale lead logic (SalesmanPremium)** — same OR→AND fix applied to premium panel
 - **AUDIT-FIX: callClaude → ai-proxy** — all premium AI features (captions, WA replies, lead scoring, followup suggestions) now route through the working Edge Function instead of direct Anthropic API (which had no key)
 - **AUDIT-FIX: Analytics data scope** — removed dead `dealer_id.eq.${userId}` arm from salesman car fetch; only `assigned_to` filter used
 - **AUDIT-FIX: Loan form data leak** — loanLeads now filtered by `salesman_id` so salesmen only see their own buyers' contacts

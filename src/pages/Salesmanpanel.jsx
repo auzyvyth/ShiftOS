@@ -58,6 +58,7 @@ import {
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
@@ -338,12 +339,10 @@ export default function SalesmanPanel() {
 
  // auth + profile
  useEffect(() => {
- const _params = new URLSearchParams(window.location.search);
- const _at = _params.get('_at');
- const _rt = _params.get('_rt');
+ const { at: _at, rt: _rt } = readHandoffTokens();
  const authReady = _at && _rt
    ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
-       .then(() => { window.history.replaceState({}, '', window.location.pathname); })
+       .then(() => { clearHandoffTokens(); })
    : Promise.resolve();
  authReady.then(() => supabase.auth.getUser()).then(async ({ data: { user }, error }) => {
  if (error ||!user) {

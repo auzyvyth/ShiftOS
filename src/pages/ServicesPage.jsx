@@ -15,73 +15,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
+import { SERVICE_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const CATEGORIES = [
-  {
-    value: "protection",
-    label: "Protection Film",
-    color: "#a78bfa",
-    bg: "rgba(167,139,250,0.1)",
-    border: "rgba(167,139,250,0.2)",
-  },
-  {
-    value: "window_tint",
-    label: "Window Tint",
-    color: "#38bdf8",
-    bg: "rgba(56,189,248,0.1)",
-    border: "rgba(56,189,248,0.2)",
-  },
-  {
-    value: "warranty",
-    label: "Extended Warranty",
-    color: "#34d399",
-    bg: "rgba(52,211,153,0.1)",
-    border: "rgba(52,211,153,0.2)",
-  },
-  {
-    value: "insurance",
-    label: "Insurance",
-    color: "#fbbf24",
-    bg: "rgba(251,191,36,0.1)",
-    border: "rgba(251,191,36,0.2)",
-  },
-  {
-    value: "road_tax",
-    label: "Road Tax",
-    color: "#fb923c",
-    bg: "rgba(251,146,60,0.1)",
-    border: "rgba(251,146,60,0.2)",
-  },
-  {
-    value: "service",
-    label: "Service Package",
-    color: "#67e8f9",
-    bg: "rgba(103,232,249,0.1)",
-    border: "rgba(103,232,249,0.2)",
-  },
-  {
-    value: "accessories",
-    label: "Accessories",
-    color: "#f472b6",
-    bg: "rgba(244,114,182,0.1)",
-    border: "rgba(244,114,182,0.2)",
-  },
-  {
-    value: "workshop",
-    label: "Workshop",
-    color: "#94a3b8",
-    bg: "rgba(148,163,184,0.1)",
-    border: "rgba(148,163,184,0.2)",
-  },
-  {
-    value: "other",
-    label: "Other",
-    color: "#6b7280",
-    bg: "rgba(107,114,128,0.1)",
-    border: "rgba(107,114,128,0.2)",
-  },
-];
+// Category options sourced from serviceCategories.js (single source of truth).
+const CATEGORIES = SERVICE_CATEGORY_OPTIONS;
 
 const SEEDS = [
   {

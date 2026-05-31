@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarFormFast from "../components/CarFormFast";
 import CarForm from "../components/CarForm";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -359,8 +360,9 @@ export default function SalesmanPremium() {
  setStaleLeads(
  leads.filter((l) => {
  if (["won", "lost", "closed_won", "closed_lost"].includes(l.stage)) return false;
- return (l.follow_up_at && new Date(l.follow_up_at) <= now)
- || (l.updated_at && new Date(l.updated_at) < cutoff);
+ const overdueFollowUp = l.follow_up_at && new Date(l.follow_up_at) <= now;
+ const noRecentActivity = l.updated_at && new Date(l.updated_at) < cutoff;
+ return overdueFollowUp && noRecentActivity;
  })
  );
  }, [leads]);
@@ -377,7 +379,12 @@ export default function SalesmanPremium() {
 
  // auth + profile
  useEffect(() => {
- supabase.auth.getSession().then(async ({ data, error }) => {
+ const { at: _at, rt: _rt } = readHandoffTokens();
+ const authReady = _at && _rt
+   ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })
+       .then(() => { clearHandoffTokens(); })
+   : Promise.resolve();
+ authReady.then(() => supabase.auth.getSession()).then(async ({ data, error }) => {
  if (error ||!data.session) {
  setLoading(false);
  navigate("/login");

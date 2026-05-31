@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import CarForm from "../components/CarForm";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
@@ -510,11 +511,9 @@ export default function SalesmanLite() {
   useEffect(() => {
     // Cross-domain session handoff: strip tokens from URL immediately on detection
     // (before any async work) to minimise exposure in referrer headers and history.
-    const _params = new URLSearchParams(window.location.search);
-    const _at = _params.get('_at');
-    const _rt = _params.get('_rt');
+    const { at: _at, rt: _rt } = readHandoffTokens();
     if (_at || _rt) {
-      window.history.replaceState({}, '', window.location.pathname);
+      clearHandoffTokens();
     }
     const sessionPromise = _at && _rt
       ? supabase.auth.setSession({ access_token: _at, refresh_token: _rt })

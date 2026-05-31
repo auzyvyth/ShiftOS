@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
@@ -42,7 +43,7 @@ const OversightTab     = React.lazy(() => import("../components/OversightTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { normalizeMYPhone } from "../utils/phone";
-import { getCategoryCfg } from "../utils/serviceCategories";
+import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
@@ -359,16 +360,8 @@ function SettingsField({ label, hint, children }) {
 }
 
 // ─── ProductsCatalogue ────────────────────────────────────────────────────────
-const PRODUCT_CATEGORIES = [
-  { value: 'protection',   label: 'Protection Film' },
-  { value: 'window_tint',  label: 'Window Tint' },
-  { value: 'warranty',     label: 'Extended Warranty' },
-  { value: 'insurance',    label: 'Insurance' },
-  { value: 'road_tax',     label: 'Road Tax' },
-  { value: 'service',      label: 'Service Package' },
-  { value: 'accessories',  label: 'Accessories' },
-  { value: 'other',        label: 'Other' },
-];
+// Category options sourced from serviceCategories.js (single source of truth).
+const PRODUCT_CATEGORIES = PRODUCT_CATEGORY_OPTIONS;
 
 const PRODUCT_SEEDS = [
   { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
@@ -779,7 +772,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
       clearSiteProfileCache(); // so public pages pick up new settings on next load
       flash(key);
     } catch (e) {
-      setErrors((p) => ({ ...p, [key]: e.message }));
+      const msg = e.message?.includes("dealership_name_change_limit_reached")
+        ? "Dealership name can only be changed twice. Contact support to change it again."
+        : e.message;
+      setErrors((p) => ({ ...p, [key]: msg }));
     }
     setSaving((p) => ({ ...p, [key]: false }));
   };
@@ -6000,7 +5996,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { tab: tabParam } = useParams();
   const { t } = useTranslation();
-  const redirectByRole = useRoleRedirect("dealer");
+  const redirectByRole = useRoleRedirect(["dealer", "superadmin", "owner", "manager", "admin"]);
   const { status, loading: subLoading } = useSubscription();
 
   const [listings, setListings] = useState([]);
@@ -6146,15 +6142,13 @@ export default function DashboardPage() {
     // can trigger SIGNED_OUT during its failed auto-refresh — if we're already
     // subscribed when that fires, we'd redirect to xdrive.my/login before our
     // new tokens even get a chance to run.
-    const _params = new URLSearchParams(window.location.search);
-    const _at = _params.get('_at');
-    const _rt = _params.get('_rt');
+    const { at: _at, rt: _rt } = readHandoffTokens();
     let unsubscribe = () => {};
 
     (async () => {
       let session;
       if (_at && _rt) {
-        window.history.replaceState({}, '', window.location.pathname);
+        clearHandoffTokens();
         const { data } = await supabase.auth.setSession({ access_token: _at, refresh_token: _rt });
         if (!active) return;
         session = data?.session ?? null;
