@@ -7,10 +7,6 @@
 
 ## User-action required (blocked on user)
 
-### A. Vercel env var
-Add `VITE_SUPABASE_ANON_KEY` to Vercel project env vars in the Vercel dashboard.
-Once done, remove the hardcoded fallback key from `src/lib/supabaseClient.js`.
-
 ### B. Lexus logo
 Real Lexus SVG is not available in simple-icons or any accessible npm package.
 User must manually source the official SVG and drop it into `/public/brands/lexus.svg`.
