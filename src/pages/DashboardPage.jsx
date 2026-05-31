@@ -7435,7 +7435,7 @@ export default function DashboardPage() {
             <OutreachHub dealerId={userId} listings={listings} />
           )}
           {activeTab === "oversight" && userId && (
-            <OversightTab dealerId={getDealerIdFromProfile(profile)} />
+            <OversightTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={userId} />

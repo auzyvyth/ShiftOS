@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Activity, Users,
@@ -91,14 +91,14 @@ function Section({ title, subtitle, action, children }) {
 }
 
 // ─── Exception Alerts ─────────────────────────────────────────────────────────
-function ExceptionAlerts({ alerts }) {
+function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
   const items = [];
-  if (alerts.loss_makers?.length) items.push({ icon: AlertTriangle, label: `${alerts.loss_makers.length} listing(s) priced below cost`, severity: 'high', detail: alerts.loss_makers.slice(0, 3).map(l => l.name).join(', ') });
-  if (alerts.stuck_hp > 0) items.push({ icon: Clock, label: `${alerts.stuck_hp} HP submission(s) stuck >7 days`, severity: 'high' });
-  if (alerts.expired_b7 > 0) items.push({ icon: AlertTriangle, label: `${alerts.expired_b7} unit(s) with expired PUSPAKOM B7`, severity: 'high' });
-  if (alerts.missing_b7 > 0) items.push({ icon: AlertTriangle, label: `${alerts.missing_b7} unit(s) missing PUSPAKOM B7`, severity: 'med' });
-  if (alerts.cold_leads > 0) items.push({ icon: Clock, label: `${alerts.cold_leads} lead(s) with no activity 5+ days`, severity: 'med' });
-  if (alerts.anomalies_7d > 0) items.push({ icon: Eye, label: `${alerts.anomalies_7d} anomalous edit(s) in last 7 days`, severity: 'low' });
+  if (alerts.loss_makers?.length) items.push({ icon: AlertTriangle, label: `${alerts.loss_makers.length} listing(s) priced below cost`, severity: 'high', detail: alerts.loss_makers.slice(0, 3).map(l => l.name).join(', '), action: () => onNavigate?.('listings') });
+  if (alerts.stuck_hp > 0) items.push({ icon: Clock, label: `${alerts.stuck_hp} HP submission(s) stuck >7 days`, severity: 'high', action: () => onNavigate?.('hp') });
+  if (alerts.expired_b7 > 0) items.push({ icon: AlertTriangle, label: `${alerts.expired_b7} unit(s) with expired PUSPAKOM B7`, severity: 'high', action: () => onNavigate?.('stock') });
+  if (alerts.missing_b7 > 0) items.push({ icon: AlertTriangle, label: `${alerts.missing_b7} unit(s) missing PUSPAKOM B7`, severity: 'med', action: () => onNavigate?.('stock') });
+  if (alerts.cold_leads > 0) items.push({ icon: Clock, label: `${alerts.cold_leads} lead(s) with no activity 5+ days`, severity: 'med', action: () => onNavigate?.('crm') });
+  if (alerts.anomalies_7d > 0) items.push({ icon: Eye, label: `${alerts.anomalies_7d} anomalous edit(s) in last 7 days`, severity: 'low', action: onFocusAnomalies });
 
   if (items.length === 0) {
     return (
@@ -121,21 +121,29 @@ function ExceptionAlerts({ alerts }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {items.map((it, i) => (
-        <div key={i} style={{
-          background: severityBg[it.severity],
-          border: `1px solid ${severityBorder[it.severity]}`,
-          borderRadius: 10,
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}>
+        <div
+          key={i}
+          onClick={it.action}
+          style={{
+            background: severityBg[it.severity],
+            border: `1px solid ${severityBorder[it.severity]}`,
+            borderRadius: 10,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            cursor: it.action ? 'pointer' : 'default',
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { if (it.action) e.currentTarget.style.opacity = '0.8'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+        >
           <it.icon style={{ width: 16, height: 16, color: severityColor[it.severity], flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0 }}>{it.label}</p>
             {it.detail && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.detail}</p>}
           </div>
-          <ChevronRight style={{ width: 14, height: 14, color: '#9ca3af', flexShrink: 0 }} />
+          <ChevronRight style={{ width: 14, height: 14, color: it.action ? severityColor[it.severity] : '#9ca3af', flexShrink: 0 }} />
         </div>
       ))}
     </div>
@@ -198,9 +206,9 @@ function SalesmanScores({ scores }) {
 }
 
 // ─── Audit Trail ──────────────────────────────────────────────────────────────
-function AuditTrail({ dealerId }) {
+function AuditTrail({ dealerId, initialFilter = 'all' }) {
   const [logs, setLogs] = useState([]);
-  const [filter, setFilter] = useState('all'); // all | anomaly | car_listings | leads | deal_financing | stock_units
+  const [filter, setFilter] = useState(initialFilter); // all | anomaly | car_listings | leads | deal_financing | stock_units
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -441,12 +449,14 @@ function RevenueTrend({ sparkline }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function OversightTab({ dealerId }) {
+export default function OversightTab({ dealerId, onNavigate }) {
   const [pnl, setPnl] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [anomalyFilter, setAnomalyFilter] = useState(false);
+  const activityRef = useRef(null);
 
   useEffect(() => {
     if (!dealerId) return;
@@ -511,7 +521,14 @@ export default function OversightTab({ dealerId }) {
 
       {/* Exception Alerts */}
       <Section title="Eyes Here" subtitle="Issues requiring your attention">
-        <ExceptionAlerts alerts={alerts} />
+        <ExceptionAlerts
+          alerts={alerts}
+          onNavigate={onNavigate}
+          onFocusAnomalies={() => {
+            setAnomalyFilter(true);
+            setTimeout(() => activityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
+        />
       </Section>
 
       {/* Salesman Scores */}
@@ -520,9 +537,11 @@ export default function OversightTab({ dealerId }) {
       </Section>
 
       {/* Audit Trail */}
-      <Section title="Activity Trail" subtitle="Who did what, when. Anomalies surface automatically.">
-        <AuditTrail dealerId={dealerId} />
-      </Section>
+      <div ref={activityRef}>
+        <Section title="Activity Trail" subtitle="Who did what, when. Anomalies surface automatically.">
+          <AuditTrail dealerId={dealerId} initialFilter={anomalyFilter ? 'anomaly' : 'all'} />
+        </Section>
+      </div>
     </div>
   );
 }
