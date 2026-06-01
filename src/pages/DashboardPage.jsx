@@ -5392,7 +5392,7 @@ const DEFAULT_HANDOVER_ITEMS = [
 
 const EMPTY_GEN_FORM = {
   doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
-  buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
+  buyer_email: '', buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
   payment_deadline: '', payment_method: 'Bank Transfer',
   // Dealer (auto-filled from profile)
   dealer_name: '', dealer_ssm: '', dealer_city: '', dealer_state: '',
@@ -5427,6 +5427,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [deleteId, setDeleteId] = useState(null);
   const [newHandoverItem, setNewHandoverItem] = useState('');
   const [linkedStock, setLinkedStock] = useState(null);
+  const [emailSendingId, setEmailSendingId] = useState(null);
 
   // Pre-fill from Enquiries shortcut
   useEffect(() => {
@@ -5538,6 +5539,26 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     return `${prefix}-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
   };
 
+  const handleSendEmail = async (doc) => {
+    if (!doc.buyer_email) { toast.error('No buyer email on this document — edit and add one before sending'); return; }
+    setEmailSendingId(doc.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SERVER_URL}/send-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ doc_id: doc.id, dealer_id: userId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(body.error || 'Failed to send email'); }
+      else {
+        toast.success(`Document emailed to ${doc.buyer_email}`);
+        setDocuments(p => p.map(d => d.id === doc.id ? { ...d, email_sent_at: new Date().toISOString() } : d));
+      }
+    } catch { toast.error('Network error — could not send email'); }
+    setEmailSendingId(null);
+  };
+
   const handleGenerate = async () => {
     const needsIc = ['Sales Agreement', 'Deposit Receipt'].includes(genForm.doc_type);
     if (needsIc && !genForm.buyer_ic.trim()) {
@@ -5557,6 +5578,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         listing_id: genForm.listing_id || null,
         buyer_name: genForm.buyer_name,
         buyer_ic: genForm.buyer_ic,
+        buyer_email: genForm.buyer_email.trim() || null,
         buyer_phone: genForm.buyer_phone,
         buyer_address: genForm.buyer_address,
         doc_type: genForm.doc_type,
@@ -5977,10 +5999,20 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     </td>
                     <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}><Printer className="w-3 h-3" />View</button>
                         {doc.doc_status !== 'issued' && (
                           <button onClick={() => handleIssue(doc)} style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Issue</button>
+                        )}
+                        {doc.doc_status === 'issued' && (
+                          <button
+                            onClick={() => handleSendEmail(doc)}
+                            disabled={emailSendingId === doc.id}
+                            title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email — edit doc to add one'}
+                            style={{ fontSize: 11, fontWeight: 600, color: doc.buyer_email ? '#3b82f6' : '#9ca3af', background: doc.buyer_email ? 'rgba(59,130,246,0.08)' : '#f9fafb', border: `1px solid ${doc.buyer_email ? 'rgba(59,130,246,0.25)' : '#e5e7eb'}`, borderRadius: 6, padding: '4px 10px', cursor: doc.buyer_email ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: emailSendingId === doc.id ? 0.5 : 1 }}
+                          >
+                            {emailSendingId === doc.id ? 'Sending…' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
+                          </button>
                         )}
                         {doc.doc_status !== 'issued' && (
                           <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
@@ -6103,6 +6135,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
+              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Email <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— for document delivery</span></label><input type="email" value={genForm.buyer_email} onChange={e => setGenForm(p => ({ ...p, buyer_email: e.target.value }))} placeholder="buyer@email.com" className={iCls} /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
 
