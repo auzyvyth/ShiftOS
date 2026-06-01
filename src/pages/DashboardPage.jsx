@@ -143,6 +143,7 @@ import {
   Snowflake,
   UserCheck,
   SlidersHorizontal,
+  Download,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -1979,6 +1980,33 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
       getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
   );
 
+  const exportAnalyticsCSV = () => {
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const toCSV = (rows) => rows.map(r => r.map(esc).join(',')).join('\n');
+
+    // Sheet 1: Listing performance
+    const listingMap = {};
+    listings.forEach(l => { listingMap[l.slug] = l; });
+    const lpHeader = ['Brand','Model','Year','Plate','Status','Selling Price (RM)','Days Listed','Views','WhatsApp','Calls','Bookings'];
+    const lpRows = carStatsRows.map(r => {
+      const l = listings.find(li => li.id === r.car_id) || {};
+      return [l.brand||'', l.model||'', l.year||'', l.plate_number||'', l.status||'available', l.selling_price||0, getListingAge(l.created_at), r.views||0, r.whatsapp||0, r.calls||0, r.bookings||0];
+    });
+    const lpCSV = toCSV([lpHeader, ...lpRows]);
+
+    // Sheet 2: Salesman leaderboard
+    const slHeader = ['Salesman Slug','WhatsApp Contacts','Listing Clicks'];
+    const slRows = topSalesmen.map(([slug, d]) => [slug, d.whatsapp, d.clicks]);
+    const slCSV = toCSV([slHeader, ...slRows]);
+
+    const date = new Date().toISOString().slice(0,10);
+    const full = `LISTING PERFORMANCE — ${date}\n${lpCSV}\n\n\nSALESMAN LEADERBOARD — ${date}\n${slCSV}`;
+    const blob = new Blob([full], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `analytics-${date}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const ctx = () => {
     const s = listings
       .slice(0, 20)
@@ -2426,9 +2454,20 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onStale
             <h2 style={{ fontSize:14, fontWeight:700, color:'#111827', margin:0, letterSpacing:'-0.01em' }}>Listing Performance</h2>
             <p style={{ fontSize:11, color:'#6b7280', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
           </div>
-          <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
-            {listings.length} listing{listings.length !== 1 ? 's' : ''}
-          </span>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button
+              onClick={exportAnalyticsCSV}
+              disabled={eventsLoading || carStatsRows.length === 0}
+              style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"'DM Sans',sans-serif" }}
+              title="Export listing performance + salesman leaderboard as CSV"
+            >
+              <Download style={{ width:12, height:12 }} />
+              Export CSV
+            </button>
+            <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
+              {listings.length} listing{listings.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
         {/* ── search bar ── */}
