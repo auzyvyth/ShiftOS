@@ -150,6 +150,8 @@ export default function HPBoard({ dealerId }) {
   const [filter, setFilter] = useState('all');
   const [rejectTarget, setRejectTarget] = useState(null); // row id pending rejection
 
+  const recentCutoff = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 3); return d; }, []);
+
   useEffect(() => {
     if (!dealerId) return;
     supabase
@@ -161,11 +163,12 @@ export default function HPBoard({ dealerId }) {
   }, [dealerId]);
 
   const handleStatusUpdate = async (id, patch) => {
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from('deal_financing')
-      .update({ ...patch, updated_at: new Date().toISOString() })
+      .update({ ...patch, updated_at: now, status_changed_at: now })
       .eq('id', id);
-    if (!error) setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+    if (!error) setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, status_changed_at: now } : r));
   };
 
   const handleReject = async (category) => {
@@ -214,6 +217,34 @@ export default function HPBoard({ dealerId }) {
           </div>
         ))}
       </div>
+
+      {/* Recent status changes banner */}
+      {(() => {
+        const recent = rows.filter(r => r.status_changed_at && new Date(r.status_changed_at) >= recentCutoff);
+        if (recent.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', marginBottom: 6 }}>{recent.length} status update{recent.length !== 1 ? 's' : ''} in the last 3 days</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {recent.slice(0, 5).map(r => {
+                const s = HP_STATUS[r.status] || HP_STATUS.pending;
+                const car = r.lead?.car_listing;
+                return (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '1px 8px', fontSize: 11 }}>{s.label}</span>
+                    <span style={{ color: '#374151' }}>{r.bank_name}</span>
+                    {r.lead?.buyer_name && <span style={{ color: '#6b7280' }}>— {r.lead.buyer_name}</span>}
+                    {car && <span style={{ color: '#9ca3af' }}>{car.year} {car.brand} {car.model}</span>}
+                    <span style={{ color: '#9ca3af', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      {new Date(r.status_changed_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Bank scorecard */}
       <BankScorecard rows={rows} />
@@ -271,7 +302,12 @@ export default function HPBoard({ dealerId }) {
                     <td style={{ padding: '10px 12px', color: overdue ? '#ef4444' : '#374151', fontWeight: overdue ? 700 : 400 }}>{days}d{overdue ? ' !' : ''}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: 12 }}>{rejLabel}</td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>{s.label}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>{s.label}</span>
+                        {row.status_changed_at && new Date(row.status_changed_at) >= recentCutoff && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: 10, padding: '1px 7px', display: 'inline-block' }}>Updated recently</span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', gap: 4 }}>
