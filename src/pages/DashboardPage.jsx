@@ -234,6 +234,22 @@ const iCls =
 const taCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
 
+// Fire-and-forget audit logger — never throws, never blocks the caller
+const logActivity = ({ dealerId, actor, tableName, recordId, action, summary, fieldChanges = null }) => {
+  if (!dealerId) return;
+  supabase.from('activity_log').insert({
+    dealer_id:    dealerId,
+    actor_id:     actor?.id   || null,
+    actor_name:   actor?.full_name || actor?.email || 'Unknown',
+    actor_role:   actor?.role  || null,
+    table_name:   tableName,
+    record_id:    recordId    || null,
+    action,
+    summary,
+    field_changes: fieldChanges,
+  }).then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
+};
+
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
   <svg
@@ -1587,7 +1603,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
 }
 
 // ─── PriceEditModal ───────────────────────────────────────────────────────────
-function PriceEditModal({ listing, onClose, onSave }) {
+function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
   const cur = listing.selling_price || 0;
   const orig = listing.original_price || null;
   const [np, setNp] = useState(String(cur));
@@ -1622,7 +1638,9 @@ function PriceEditModal({ listing, onClose, onSave }) {
         .eq("id", listing.id)
         .select();
       if (error) throw error;
-      onSave(data?.[0] ?? { ...listing, ...payload });
+      const saved = data?.[0] ?? { ...listing, ...payload };
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listing.id, action: 'price_changed', summary: `Price changed from RM ${cur.toLocaleString()} to RM ${npv.toLocaleString()} — ${listing.brand} ${listing.model} ${listing.year}`, fieldChanges: { selling_price: { from: cur, to: npv } } });
+      onSave(saved);
       onClose();
     } catch (e) {
       setErr(e.message);
@@ -4624,7 +4642,7 @@ function ListingDetailDrawer({
 }
 
 // ─── StockTab ─────────────────────────────────────────────────────────────────
-const StockTab = React.memo(function StockTab({ userId, listings }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4697,7 +4715,9 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
 
   const handleAdd = async () => {
     setAddSaving(true);
-    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null });
+    const { data: inserted } = await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null }).select().single();
+    const lbl = listings.find(l => l.id === addForm.listing_id);
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted?.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
     setShowAdd(false);
     setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
     setAddSaving(false);
@@ -4723,6 +4743,8 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
       setSoldSaving(false);
       return;
     }
+    const car = soldTarget.car_listings || {};
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: soldTarget.id, action: 'marked_sold', summary: `Stock unit sold${car.brand ? ` — ${car.brand} ${car.model} ${car.year}` : ''} · RM ${(payload.sold_price||0).toLocaleString()}` });
     setUnits(p => p.map(u => u.id === soldTarget.id ? { ...u, ...payload } : u));
     setSoldTarget(null);
     setSoldSaving(false);
@@ -4745,6 +4767,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     const value = next.trim() || null;
     const { error } = await supabase.from('stock_units').update({ puspakom_b7_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b7_updated', summary: `Puspakom B7 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b7_date: { from: unit.puspakom_b7_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b7_date: value } : u));
     toast.success('PUSPAKOM B7 updated');
   };
@@ -4761,6 +4784,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     const value = next.trim() || null;
     const { error } = await supabase.from('stock_units').update({ puspakom_b5_date: value }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'b5_updated', summary: `Puspakom B5 date set to ${value || 'cleared'}`, fieldChanges: { puspakom_b5_date: { from: unit.puspakom_b5_date, to: value } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b5_date: value } : u));
     toast.success('PUSPAKOM B5 updated');
   };
@@ -4777,6 +4801,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     const next = options[(options.indexOf(current) + 1) % options.length];
     const { error } = await supabase.from('stock_units').update({ encumbrance_status: next }).eq('id', unit.id).eq('dealer_id', userId);
     if (error) { toast.error('Update failed'); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
   };
 
@@ -5294,8 +5319,10 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         },
       }).select().single();
       if (error) throw error;
+      logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: data?.id, action: 'created', summary: `${genForm.doc_type} draft generated — ${genForm.buyer_name || 'unknown buyer'}${data?.doc_ref ? ` · ${data.doc_ref}` : ''}` });
       setShowGen(false);
       setSelectedListing(null);
+      setLinkedStock(null);
       setGenForm({ ...EMPTY_GEN_FORM });
       setNewHandoverItem('');
       if (data) setPrintDoc(data);
@@ -5318,6 +5345,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
       .eq('dealer_id', userId);
     if (error) { toast.error('Failed to issue document'); return; }
     const updated = { ...doc, doc_status: 'issued', issued_at: now, issued_by: issuedBy };
+    logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: doc.id, action: 'issued', summary: `${doc.doc_type} issued — ${doc.buyer_name || 'unknown buyer'}${doc.doc_ref ? ` · ${doc.doc_ref}` : ''}` });
     setDocuments(p => p.map(d => d.id === doc.id ? updated : d));
     setPrintDoc(updated);
     toast.success(`${doc.doc_type} issued`);
@@ -5326,6 +5354,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const handleDelete = async (id) => {
     const doc = documents.find(d => d.id === id);
     if (doc?.doc_status === 'issued') { toast.error('Cannot delete an issued document'); setDeleteId(null); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: id, action: 'deleted', summary: `${doc?.doc_type || 'Document'} draft deleted — ${doc?.buyer_name || 'unknown buyer'}${doc?.doc_ref ? ` · ${doc.doc_ref}` : ''}` });
     const { error } = await supabase.from('dealer_documents').delete().eq('id', id).eq('dealer_id', userId);
     if (error) { toast.error('Failed to delete document'); return; }
     setDocuments(prev => prev.filter(d => d.id !== id));
@@ -6830,6 +6859,8 @@ export default function DashboardPage() {
     setListings((prev) =>
       prev.map((l) => (l.id === listingId ? { ...l, assigned_to: salesmanId } : l))
     );
+    const listing = listings.find(l => l.id === listingId);
+    logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${listing?.brand || ''} ${listing?.model || ''} ${listing?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
     setAssignToast({ listingId, msg: `Assigned to ${name}` });
     setTimeout(() => setAssignToast(null), 2000);
   };
@@ -6839,6 +6870,8 @@ export default function DashboardPage() {
     setListings((prev) =>
       prev.map((l) => (l.id === listingId ? { ...l, assigned_to: null } : l))
     );
+    const listing = listings.find(l => l.id === listingId);
+    logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${listing?.brand || ''} ${listing?.model || ''} ${listing?.year || ''}`.trim() });
     setAssignToast({ listingId, msg: "Unassigned" });
     setTimeout(() => setAssignToast(null), 2000);
   };
@@ -6851,6 +6884,9 @@ export default function DashboardPage() {
         .eq("id", id)
         .select();
       if (error) throw error;
+      const listing = listings.find(l => l.id === id);
+      const prevStatus = listing?.status || 'available';
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: id, action: 'status_changed', summary: `Status ${prevStatus} → ${status} — ${listing?.brand || ''} ${listing?.model || ''} ${listing?.year || ''}`.trim(), fieldChanges: { status: { from: prevStatus, to: status } } });
       setListings((p) =>
         p.map((l) => (l.id === id ? (data?.[0] ?? { ...l, status }) : l)),
       );
@@ -6883,6 +6919,7 @@ export default function DashboardPage() {
         .select();
       if (error) throw error;
       const updated = data?.[0] ?? { ...markSoldListing, status: "sold" };
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: markSoldListing.id, action: 'marked_sold', summary: `Marked sold — ${markSoldListing.brand} ${markSoldListing.model} ${markSoldListing.year}` });
       setListings((p) => p.map((l) => (l.id === updated.id ? updated : l)));
       setMarkSoldListing(null);
     } catch (e) {
@@ -7953,7 +7990,7 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "stock" && userId && (
-            <StockTab userId={userId} listings={listings} />
+            <StockTab userId={userId} listings={listings} profile={profile} />
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
@@ -8179,6 +8216,8 @@ export default function DashboardPage() {
           listing={priceEditListing}
           onClose={() => setPriceEditListing(null)}
           onSave={handlePriceSave}
+          profile={profile}
+          dealerId={userId}
         />
       )}
       {/* Assign dropdown backdrop — closes any open assign dropdown */}
