@@ -3142,7 +3142,7 @@ function MarketplaceAnalyticsTab({ profile }) {
 
 // FIXED: auth-first account creation
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
-function TeamTab({ managerDealership, dealerId }) {
+function TeamTab({ managerDealership, dealerId, profile }) {
   const [salespeople, setSalespeople] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   const [teamError, setTeamError] = useState("");
@@ -3170,6 +3170,9 @@ function TeamTab({ managerDealership, dealerId }) {
   const [analyticsMap, setAnalyticsMap] = useState({});
   const [soldMap, setSoldMap] = useState({});
   const [lastActivityMap, setLastActivityMap] = useState({});
+  const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
+  const [commissionPayTarget, setCommissionPayTarget] = useState(null);
+  const [commissionWorking, setCommissionWorking] = useState(false);
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3186,16 +3189,19 @@ function TeamTab({ managerDealership, dealerId }) {
     if (!dealerId) return;
     const { data } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount")
+      .select("assigned_to, commission_amount, commission_status")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
     if (!data) return;
     const map = {};
-    data.forEach(({ assigned_to, commission_amount }) => {
-      if (!map[assigned_to]) map[assigned_to] = { sold: 0, commission: 0 };
+    data.forEach(({ assigned_to, commission_amount, commission_status }) => {
+      if (!map[assigned_to]) map[assigned_to] = { sold: 0, commission: 0, pending: 0, approved: 0, paid: 0 };
       map[assigned_to].sold += 1;
-      map[assigned_to].commission += Number(commission_amount) || 0;
+      const amt = Number(commission_amount) || 0;
+      map[assigned_to].commission += amt;
+      const cs = commission_status || 'pending';
+      map[assigned_to][cs] = (map[assigned_to][cs] || 0) + amt;
     });
     setSoldMap(map);
   };
@@ -3214,6 +3220,42 @@ function TeamTab({ managerDealership, dealerId }) {
       if (actor_id && !map[actor_id]) map[actor_id] = created_at;
     });
     setLastActivityMap(map);
+  };
+
+  const handleApproveCommission = async (salesmanId) => {
+    setCommissionWorking(true);
+    const { error } = await supabase
+      .from('car_listings')
+      .update({ commission_status: 'approved' })
+      .eq('dealer_id', dealerId)
+      .eq('assigned_to', salesmanId)
+      .eq('status', 'sold')
+      .eq('commission_status', 'pending');
+    if (!error) {
+      const s = salespeople.find(x => x.id === salesmanId);
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: salesmanId, action: 'commission_approved', summary: `Commission payout approved for ${s?.full_name || salesmanId} — RM ${(soldMap[salesmanId]?.pending || 0).toLocaleString()}` });
+      await fetchSoldPerSalesman();
+    }
+    setCommissionApproveTarget(null);
+    setCommissionWorking(false);
+  };
+
+  const handleMarkCommissionPaid = async (salesmanId) => {
+    setCommissionWorking(true);
+    const { error } = await supabase
+      .from('car_listings')
+      .update({ commission_status: 'paid' })
+      .eq('dealer_id', dealerId)
+      .eq('assigned_to', salesmanId)
+      .eq('status', 'sold')
+      .eq('commission_status', 'approved');
+    if (!error) {
+      const s = salespeople.find(x => x.id === salesmanId);
+      logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: salesmanId, action: 'commission_paid', summary: `Commission marked as paid for ${s?.full_name || salesmanId} — RM ${(soldMap[salesmanId]?.approved || 0).toLocaleString()}` });
+      await fetchSoldPerSalesman();
+    }
+    setCommissionPayTarget(null);
+    setCommissionWorking(false);
   };
 
   useEffect(() => {
@@ -3742,6 +3784,48 @@ function TeamTab({ managerDealership, dealerId }) {
                         </div>
                       ))}
                     </div>
+                    {/* Commission payout section */}
+                    {s.role === 'salesman' && (soldMap[s.id]?.commission > 0) && (
+                      <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7 }}>Commission</p>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                          {[
+                            { key: 'pending',  label: 'Pending',  color: '#f59e0b' },
+                            { key: 'approved', label: 'Approved', color: '#3b82f6' },
+                            { key: 'paid',     label: 'Paid',     color: '#22c55e' },
+                          ].map(({ key, label, color }) => {
+                            const amt = soldMap[s.id]?.[key] || 0;
+                            if (!amt) return null;
+                            return (
+                              <div key={key} style={{ fontSize: 11 }}>
+                                <span style={{ color, fontWeight: 700 }}>RM {amt.toLocaleString()}</span>
+                                <span style={{ color: '#9ca3af', marginLeft: 4 }}>{label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {(profile?.role === 'owner' || profile?.role === 'dealer' || profile?.role === 'superadmin' || profile?.role === 'manager') && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {(soldMap[s.id]?.pending > 0) && (
+                              <button
+                                onClick={() => setCommissionApproveTarget(s.id)}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#d97706', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                Approve Payout
+                              </button>
+                            )}
+                            {(soldMap[s.id]?.approved > 0) && (
+                              <button
+                                onClick={() => setCommissionPayTarget(s.id)}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 flex-shrink-0">
                     <button
@@ -4255,6 +4339,58 @@ function TeamTab({ managerDealership, dealerId }) {
           </div>
         </div>
       )}
+
+      {/* Commission Approve Confirmation */}
+      {commissionApproveTarget && (() => {
+        const s = salespeople.find(x => x.id === commissionApproveTarget);
+        const amt = soldMap[commissionApproveTarget]?.pending || 0;
+        return (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+            <div className="modal-top rounded-2xl p-6 w-full max-w-sm">
+              <h3 className="font-semibold text-gray-900 mb-1">Approve Commission Payout?</h3>
+              <p className="text-gray-500 text-sm mb-1">Salesman: <span className="font-semibold text-gray-800">{s?.full_name}</span></p>
+              <p className="text-gray-500 text-sm mb-5">Pending amount: <span className="font-bold text-amber-600">RM {amt.toLocaleString()}</span></p>
+              <div className="flex gap-3">
+                <button onClick={() => setCommissionApproveTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 border border-gray-200 hover:text-gray-900 transition-all">Cancel</button>
+                <button
+                  onClick={() => handleApproveCommission(commissionApproveTarget)}
+                  disabled={commissionWorking}
+                  className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+                  style={{ background: '#d97706', border: 'none' }}
+                >
+                  {commissionWorking ? 'Approving…' : 'Approve Payout'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Commission Mark Paid Confirmation */}
+      {commissionPayTarget && (() => {
+        const s = salespeople.find(x => x.id === commissionPayTarget);
+        const amt = soldMap[commissionPayTarget]?.approved || 0;
+        return (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+            <div className="modal-top rounded-2xl p-6 w-full max-w-sm">
+              <h3 className="font-semibold text-gray-900 mb-1">Mark Commission as Paid?</h3>
+              <p className="text-gray-500 text-sm mb-1">Salesman: <span className="font-semibold text-gray-800">{s?.full_name}</span></p>
+              <p className="text-gray-500 text-sm mb-5">Approved amount: <span className="font-bold text-emerald-600">RM {amt.toLocaleString()}</span></p>
+              <div className="flex gap-3">
+                <button onClick={() => setCommissionPayTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 border border-gray-200 hover:text-gray-900 transition-all">Cancel</button>
+                <button
+                  onClick={() => handleMarkCommissionPaid(commissionPayTarget)}
+                  disabled={commissionWorking}
+                  className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+                  style={{ background: '#16a34a', border: 'none' }}
+                >
+                  {commissionWorking ? 'Saving…' : 'Mark as Paid'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -8200,7 +8336,7 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === "team" && (
-            <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} />
+            <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
           )}
           {activeTab === "settings" && profile && (
             <SettingsTab
