@@ -98,7 +98,7 @@ function Skel({ h = "h-12", w = "w-full" }) {
   return (
     <div
       className={`${h} ${w} rounded-lg animate-pulse`}
-      style={{ background: "rgba(255,255,255,0.05)" }}
+      style={{ background: "#E5E7EB" }}
     />
   );
 }
@@ -348,7 +348,7 @@ export default function ServicesPage({ userId }) {
             fontFamily: "'Bebas Neue',cursive",
             fontSize: 30,
             letterSpacing: "0.06em",
-            color: "#f8fafc",
+            color: "#111827",
             lineHeight: 1,
             margin: 0,
           }}
@@ -374,8 +374,8 @@ export default function ServicesPage({ userId }) {
           <div
             className="rounded-lg"
             style={{
-              background: "rgba(255,255,255,0.022)",
-              border: "1px solid rgba(255,255,255,0.055)",
+              background: "#FFFFFF",
+              border: "1px solid #EAECF0",
               overflow: "hidden",
             }}
           >
@@ -386,14 +386,14 @@ export default function ServicesPage({ userId }) {
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "14px 18px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid #EAECF0",
               }}
             >
               <p
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#e5e7eb",
+                  color: "#111827",
                   margin: 0,
                 }}
               >
@@ -454,8 +454,8 @@ export default function ServicesPage({ userId }) {
                           textAlign: "left",
                           padding: 14,
                           borderRadius: 8,
-                          background: "rgba(255,255,255,0.025)",
-                          border: "1px dashed rgba(255,255,255,0.12)",
+                          background: "#F9FAFB",
+                          border: "1px dashed #D1D5DB",
                           cursor: "pointer",
                           transition: "border-color 0.15s, background 0.15s",
                         }}
@@ -466,17 +466,15 @@ export default function ServicesPage({ userId }) {
                             "rgba(220,38,38,0.04)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "rgba(255,255,255,0.12)";
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.025)";
+                          e.currentTarget.style.borderColor = "#D1D5DB";
+                          e.currentTarget.style.background = "#F9FAFB";
                         }}
                       >
                         <p
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: "#e5e7eb",
+                            color: "#374151",
                             margin: "0 0 4px",
                           }}
                         >
@@ -507,8 +505,8 @@ export default function ServicesPage({ userId }) {
                           gap: 12,
                           padding: "12px 14px",
                           borderRadius: 8,
-                          background: "rgba(255,255,255,0.02)",
-                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "#F9FAFB",
+                          border: "1px solid #EAECF0",
                         }}
                       >
                         {/* Left info */}
@@ -526,7 +524,7 @@ export default function ServicesPage({ userId }) {
                               style={{
                                 fontSize: 13,
                                 fontWeight: 600,
-                                color: "#f1f5f9",
+                                color: "#111827",
                               }}
                             >
                               {p.name}
@@ -681,22 +679,22 @@ export default function ServicesPage({ userId }) {
           <div
             className="rounded-lg"
             style={{
-              background: "rgba(255,255,255,0.022)",
-              border: "1px solid rgba(255,255,255,0.055)",
+              background: "#FFFFFF",
+              border: "1px solid #EAECF0",
               overflow: "hidden",
             }}
           >
             <div
               style={{
                 padding: "14px 18px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid #EAECF0",
               }}
             >
               <p
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#e5e7eb",
+                  color: "#111827",
                   margin: 0,
                 }}
               >
@@ -732,7 +730,7 @@ export default function ServicesPage({ userId }) {
                       style={{
                         fontFamily: "'Bebas Neue',cursive",
                         fontSize: 32,
-                        color: "#f8fafc",
+                        color: "#111827",
                         lineHeight: 1,
                         margin: 0,
                       }}
@@ -751,10 +749,10 @@ export default function ServicesPage({ userId }) {
                   >
                     <div
                       style={{
-                        background: "rgba(255,255,255,0.03)",
+                        background: "#F9FAFB",
                         borderRadius: 6,
                         padding: "10px 12px",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid #EAECF0",
                       }}
                     >
                       <p
@@ -773,7 +771,7 @@ export default function ServicesPage({ userId }) {
                         style={{
                           fontFamily: "'Bebas Neue',cursive",
                           fontSize: 22,
-                          color: "#f8fafc",
+                          color: "#111827",
                           margin: 0,
                         }}
                       >
@@ -782,10 +780,10 @@ export default function ServicesPage({ userId }) {
                     </div>
                     <div
                       style={{
-                        background: "rgba(255,255,255,0.03)",
+                        background: "#F9FAFB",
                         borderRadius: 6,
                         padding: "10px 12px",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid #EAECF0",
                       }}
                     >
                       <p
@@ -804,7 +802,7 @@ export default function ServicesPage({ userId }) {
                         style={{
                           fontFamily: "'Bebas Neue',cursive",
                           fontSize: 22,
-                          color: "#f8fafc",
+                          color: "#111827",
                           margin: 0,
                         }}
                       >
@@ -815,10 +813,10 @@ export default function ServicesPage({ userId }) {
                     </div>
                     <div
                       style={{
-                        background: "rgba(255,255,255,0.03)",
+                        background: "#F9FAFB",
                         borderRadius: 6,
                         padding: "10px 12px",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid #EAECF0",
                         gridColumn: "1 / -1",
                       }}
                     >
@@ -890,10 +888,10 @@ export default function ServicesPage({ userId }) {
                               borderRadius: 20,
                               background:
                                 i === 0
-                                  ? "rgba(220,38,38,0.1)"
-                                  : "rgba(255,255,255,0.05)",
-                              border: `1px solid ${i === 0 ? "rgba(220,38,38,0.25)" : "rgba(255,255,255,0.1)"}`,
-                              color: i === 0 ? "#fca5a5" : "#9ca3af",
+                                  ? "rgba(220,38,38,0.08)"
+                                  : "#F3F4F6",
+                              border: `1px solid ${i === 0 ? "rgba(220,38,38,0.25)" : "#E5E7EB"}`,
+                              color: i === 0 ? "#dc2626" : "#374151",
                             }}
                           >
                             {name} × {count}
@@ -911,22 +909,22 @@ export default function ServicesPage({ userId }) {
           <div
             className="rounded-lg"
             style={{
-              background: "rgba(255,255,255,0.022)",
-              border: "1px solid rgba(255,255,255,0.055)",
+              background: "#FFFFFF",
+              border: "1px solid #EAECF0",
               overflow: "hidden",
             }}
           >
             <div
               style={{
                 padding: "14px 18px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                borderBottom: "1px solid #EAECF0",
               }}
             >
               <p
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#e5e7eb",
+                  color: "#111827",
                   margin: 0,
                 }}
               >
@@ -966,8 +964,8 @@ export default function ServicesPage({ userId }) {
                       gridTemplateColumns: "56px 1fr 1fr 72px",
                       gap: 8,
                       padding: "8px 14px",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
-                      background: "rgba(255,255,255,0.02)",
+                      borderBottom: "1px solid #F3F4F6",
+                      background: "#F9FAFB",
                     }}
                   >
                     {["Date", "Lead", "Product", "Price"].map((h) => (
@@ -996,7 +994,7 @@ export default function ServicesPage({ userId }) {
                         alignItems: "center",
                         borderBottom:
                           i < recentRows.length - 1
-                            ? "1px solid rgba(255,255,255,0.04)"
+                            ? "1px solid #F3F4F6"
                             : "none",
                       }}
                     >
@@ -1017,7 +1015,7 @@ export default function ServicesPage({ userId }) {
                       <span
                         style={{
                           fontSize: 12,
-                          color: "#e5e7eb",
+                          color: "#374151",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
