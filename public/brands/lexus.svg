@@ -1,8 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <!-- Lexus emblem: italic L inside concentric ovals -->
-  <rect width="200" height="200" fill="#fff"/>
-  <ellipse cx="100" cy="100" rx="94" ry="94" fill="none" stroke="#1a1a1a" stroke-width="5"/>
-  <ellipse cx="100" cy="100" rx="80" ry="80" fill="none" stroke="#1a1a1a" stroke-width="2"/>
-  <!-- Italic L: vertical stroke with angled top, horizontal foot -->
-  <path d="M78,48 L93,48 L97,138 L148,138 L148,152 L82,152 Z" fill="#1a1a1a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 230">
+  <!-- Outer oval ring -->
+  <ellipse cx="150" cy="82" rx="108" ry="72" fill="#000"/>
+  <!-- Inner oval cutout (white) -->
+  <ellipse cx="150" cy="82" rx="91" ry="58" fill="#fff"/>
+  <!-- Stylised L: angled vertical arm + horizontal foot -->
+  <path fill="#000" d="M130,25 L148,25 L132,110 L212,110 L212,126 L115,126 L115,110 Z"/>
+  <!-- LEXUS wordmark -->
+  <text x="150" y="202"
+    text-anchor="middle"
+    font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+    font-weight="900"
+    font-size="40"
+    letter-spacing="10"
+    fill="#000">LEXUS</text>
 </svg>
