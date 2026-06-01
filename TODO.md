@@ -2,8 +2,34 @@
 
 ## Dev tasks
 
----
+### CRITICAL (legal / compliance)
 
+- **ENT-1: Stock — encumbrance + B5 tracking** — Add `encumbrance_status` (clear/under_hp/unknown) and `puspakom_b5_date` to `stock_units`; show badge in StockTab and LeadDrawer; block Handover Checklist generation if encumbrance not cleared.
+- **ENT-2: Document approval gate** — Add `doc_status` (draft → issued) to `dealer_documents`; manager/owner must confirm before doc becomes "issued"; issued docs locked from editing; draft badge shown in list.
+- **ENT-3: Master audit log wiring** — `activity_log` table exists (GM-2) but not wired to: listing price edits, status changes, document create/delete, stock cost edits. Add DB triggers or app-layer logging for all write paths.
+- **ENT-4: Buyer IC enforcement** — Buyer IC must be non-empty before generating Sales Agreement or Deposit Receipt; show inline validation error.
+
+### MAJOR (operational gaps)
+
+- **ENT-5: Listings filter panel** — Add collapsible filter sidebar/drawer: price range, mileage range, condition (new/used), transmission, state, status. Persist filters in URL params.
+- **ENT-6: Analytics CSV export** — Export button on Analytics tab → downloads listings performance + salesman leaderboard as Excel/CSV for accountant/GM review.
+- **ENT-7: Settings change log** — Log dealership name, subdomain, and brand color changes to `activity_log`; show last-changed-by + timestamp in Settings tab.
+- **ENT-8: Stock movement log** — Per stock unit: timeline of purchase price edits, recon cost changes, asking price adjustments, with user + timestamp.
+- **ENT-9: Commission approval workflow** — Commission amounts visible in TeamTab but no approval step; add "Approve payout" action for manager/owner before commission is marked paid.
+- **ENT-10: Listings expiry warnings** — Road tax expiry and insurance expiry banners on listing cards when within 30 days; shown in StockTab aging alerts section.
+- **ENT-11: HP Board approval status** — Track lender response (pending / approved / rejected) per submission; show status badge in HP Board; notify salesman when status changes.
+
+### MINOR (polish)
+
+- **ENT-12: Add form duplicate detection** — Warn (not block) if a VIN or plate number already exists when adding a new listing.
+- **ENT-13: Team member inactivity flag** — Highlight salesman tile in TeamTab if no activity in 30+ days.
+- **ENT-14: Document email delivery** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend.
+
+### Infrastructure
+
+- **INFRA-1: Supabase storage cleanup** — Storage is full. Audit bucket usage, delete orphaned images (listings that were deleted but images remain), consider image compression pipeline or CDN offload.
+
+---
 
 ## Done (reference)
 
@@ -33,3 +59,4 @@
 - Analytics RPC migration, React.memo on CarCard, self-booking prevention, brand SVGs, team leaderboard, customer records, manager approval workflow, deal presentation screen, accountant payroll payout, F&I module, HP loan tracking, pipeline redesign, deal sheet v2.
 - **MKT-1–12: Marketplace audit fixes** — keyboard nav, focus-visible, form labels, HeroCarousel image optimisation, duplicate font removal, dynamic canonical URLs, nav contrast, lang toggle aria-labels.
 - **Lexus logo** — redrawn from reference image: horizontal oval ring + angled L emblem + LEXUS wordmark at `/public/brands/lexus.svg`.
+- **Documents panel enterprise upgrade** — Full generate form with payment deadline/method, vehicle details (engine no/CC/odometer/prev owners), compliance declarations (Puspakom B5/B7/encumbrance), exceptions noted for handover checklist. 3 document types with proper Malaysian legal output (CPA 1999, SA/DR/HC).
