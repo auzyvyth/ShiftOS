@@ -5003,14 +5003,17 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
 });
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
+const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+const DOC_TYPE_PREFIX = { 'Sales Agreement': 'SA', 'Deposit Receipt': 'DR', 'Handover Checklist': 'HC' };
+const DEFAULT_HANDOVER_ITEMS = ['Spare keys','Service booklet','Road tax','Insurance document','Owner manual','Spare tyre','Jack & tools','Accessories agreed'];
+
 const EMPTY_GEN_FORM = {
   doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
   buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
-  // SA fields
   sa_name: '', sa_phone: '', sa_ic: '',
-  // Financing fields
   include_financing: false,
   loan_amount: '', interest_rate: '', loan_tenure_months: '', monthly_payment: '', financing_bank: '',
+  handover_items: [...DEFAULT_HANDOVER_ITEMS],
 };
 
 function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profile }) {
@@ -5022,8 +5025,11 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [printDoc, setPrintDoc] = useState(null);
   const [listingDropOpen, setListingDropOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
-
-  const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+  const [docSearch, setDocSearch] = useState('');
+  const [docTypeFilter, setDocTypeFilter] = useState('');
+  const [listingSearch, setListingSearch] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
+  const [newHandoverItem, setNewHandoverItem] = useState('');
 
   // Pre-fill from Enquiries shortcut
   useEffect(() => {
@@ -5085,25 +5091,39 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
       sale_price: listing.selling_price ? String(listing.selling_price) : p.sale_price,
     }));
     setListingDropOpen(false);
+    setListingSearch('');
   };
 
   const fetchDocs = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('dealer_documents')
-      .select('*, car_listings(brand, model, year, plate_number)')
+      .select('*')
       .eq('dealer_id', userId)
-      .order('issued_at', { ascending: false });
+      .order('issued_at', { ascending: false })
+      .limit(300);
     setDocuments(data || []);
     setLoading(false);
   };
 
   useEffect(() => { if (userId) fetchDocs(); }, [userId]);
 
+  const generateDocRef = async (docType) => {
+    const prefix = DOC_TYPE_PREFIX[docType] || 'DOC';
+    const year = new Date().getFullYear();
+    const { count } = await supabase
+      .from('dealer_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('dealer_id', userId)
+      .eq('doc_type', docType);
+    return `${prefix}-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
+  };
+
   const handleGenerate = async () => {
     setGenSaving(true);
     const car = selectedListing || listings.find(l => l.id === genForm.listing_id) || null;
     try {
+      const docRef = await generateDocRef(genForm.doc_type);
       const { data, error } = await supabase.from('dealer_documents').insert({
         dealer_id: userId,
         listing_id: genForm.listing_id || null,
@@ -5112,33 +5132,39 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         buyer_phone: genForm.buyer_phone,
         buyer_address: genForm.buyer_address,
         doc_type: genForm.doc_type,
+        doc_ref: docRef,
         sale_price: Number(genForm.sale_price) || 0,
         deposit_amount: Number(genForm.deposit_amount) || 0,
         balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
         issued_at: new Date().toISOString(),
+        car_brand: car?.brand || null,
+        car_model: car?.model || null,
+        car_year: car?.year || null,
+        car_colour: car?.colour || null,
+        car_plate: car?.plate_number || null,
+        car_vin: car?.vin_number || null,
+        car_mileage: car?.mileage ? Number(car.mileage) : null,
+        included_services_snapshot: car?.included_services || null,
+        sa_name: genForm.sa_name,
+        sa_phone: genForm.sa_phone,
+        sa_ic: genForm.sa_ic,
+        loan_amount: genForm.include_financing && genForm.loan_amount ? Number(genForm.loan_amount) : null,
+        interest_rate: genForm.include_financing && genForm.interest_rate ? Number(genForm.interest_rate) : null,
+        loan_tenure_months: genForm.include_financing && genForm.loan_tenure_months ? Number(genForm.loan_tenure_months) : null,
+        monthly_payment: genForm.include_financing && genForm.monthly_payment ? Number(genForm.monthly_payment) : null,
+        financing_bank: genForm.include_financing ? genForm.financing_bank : null,
         metadata: {
-          car_label: car ? `${car.year} ${car.brand} ${car.model}` : '',
-          car_colour: car?.colour || '',
-          car_plate: car?.plate_number || '',
-          car_mileage: car?.mileage || '',
-          car_vin: car?.vin_number || '',
-          included_services: car?.included_services || [],
-          sa_name: genForm.sa_name,
-          sa_phone: genForm.sa_phone,
-          sa_ic: genForm.sa_ic,
+          car_label: car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : '',
           include_financing: genForm.include_financing,
-          loan_amount: genForm.loan_amount,
-          interest_rate: genForm.interest_rate,
-          loan_tenure_months: genForm.loan_tenure_months,
-          monthly_payment: genForm.monthly_payment,
-          financing_bank: genForm.financing_bank,
+          handover_items: genForm.handover_items,
         },
       }).select().single();
       if (error) throw error;
       setShowGen(false);
       setSelectedListing(null);
       setGenForm({ ...EMPTY_GEN_FORM });
-      if (data) setPrintDoc({ ...data, car_listings: car });
+      setNewHandoverItem('');
+      if (data) setPrintDoc(data);
       fetchDocs();
     } catch (err) {
       console.error('[DocumentsTab] handleGenerate error:', err.message, err);
@@ -5148,23 +5174,55 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }
   };
 
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('dealer_documents').delete().eq('id', id).eq('dealer_id', userId);
+    if (error) { toast.error('Failed to delete document'); return; }
+    setDocuments(prev => prev.filter(d => d.id !== id));
+    setDeleteId(null);
+    toast.success('Document deleted');
+  };
+
+  const filteredDocs = useMemo(() => {
+    let d = documents;
+    if (docTypeFilter) d = d.filter(x => x.doc_type === docTypeFilter);
+    if (docSearch.trim()) {
+      const q = docSearch.toLowerCase();
+      d = d.filter(x =>
+        x.buyer_name?.toLowerCase().includes(q) ||
+        x.doc_ref?.toLowerCase().includes(q) ||
+        x.metadata?.car_label?.toLowerCase().includes(q) ||
+        (x.car_brand && `${x.car_year || ''} ${x.car_brand} ${x.car_model || ''}`.toLowerCase().includes(q))
+      );
+    }
+    return d;
+  }, [documents, docSearch, docTypeFilter]);
+
+  const filteredListings = useMemo(() => {
+    if (!listingSearch.trim()) return listings;
+    const q = listingSearch.toLowerCase();
+    return listings.filter(l =>
+      `${l.year || ''} ${l.brand || ''} ${l.model || ''}`.toLowerCase().includes(q) ||
+      l.plate_number?.toLowerCase().includes(q)
+    );
+  }, [listings, listingSearch]);
+
   const renderDocHTML = (doc) => {
-    const car = doc.car_listings || {};
     const m = doc.metadata || {};
-    const carLabel = m.car_label || (car.brand ? `${car.year || ''} ${car.brand} ${car.model}` : '—');
-    const carPlate  = m.car_plate  || car.plate_number || '—';
-    const carColour = m.car_colour || car.colour       || '—';
-    const carMileage = m.car_mileage || car.mileage     || null;
-    const carVin    = m.car_vin    || car.vin_number   || '—';
+    const carLabel  = m.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—');
+    const carPlate  = doc.car_plate  || '—';
+    const carColour = doc.car_colour || '—';
+    const carMileage = doc.car_mileage || null;
+    const carVin    = doc.car_vin    || null;
     const issued = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
     const isHandover = doc.doc_type === 'Handover Checklist';
     const isDeposit  = doc.doc_type === 'Deposit Receipt';
     const isSales    = doc.doc_type === 'Sales Agreement';
-    const services   = m.included_services || [];
-    const saName     = m.sa_name  || '—';
-    const saPhone    = m.sa_phone || '—';
-    const saIc       = m.sa_ic    || '—';
-    const hasFinancing = isSales && m.include_financing && m.loan_amount;
+    const services   = doc.included_services_snapshot || m.included_services || [];
+    const saName     = doc.sa_name  || '—';
+    const saPhone    = doc.sa_phone || '—';
+    const saIc       = doc.sa_ic    || null;
+    const hasFinancing = isSales && m.include_financing && doc.loan_amount;
+    const handoverItems = m.handover_items?.length ? m.handover_items : [...DEFAULT_HANDOVER_ITEMS];
 
     const row = (label, value) =>
       `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:180px;">${label}</td><td style="padding:5px 0;font-size:13px;">${value || '—'}</td></tr>`;
@@ -5174,9 +5232,12 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
     return `
       <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
-        <div style="text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #111;">
-          <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
-          <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #111;">
+          <div>
+            <h1 style="font-size:21px;font-weight:800;margin:0 0 4px;">${doc.doc_type.toUpperCase()}</h1>
+            <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
+          </div>
+          ${doc.doc_ref ? `<div style="text-align:right;"><span style="display:block;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Ref. No.</span><span style="font-size:15px;font-weight:700;font-family:monospace;letter-spacing:0.04em;">${doc.doc_ref}</span></div>` : ''}
         </div>
 
         ${section('Vehicle Details', `
@@ -5185,7 +5246,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             ${row('Plate Number', carPlate)}
             ${row('Colour', carColour)}
             ${carMileage ? row('Mileage', `${Number(carMileage).toLocaleString()} km`) : ''}
-            ${carVin !== '—' ? row('VIN / Chassis', carVin) : ''}
+            ${carVin ? row('VIN / Chassis', carVin) : ''}
           </table>`)}
 
         ${section('Buyer Details', `
@@ -5197,8 +5258,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           </table>`)}
 
         ${isHandover ? section('Handover Checklist',
-          ['Spare keys','Service booklet','Road tax','Insurance document','Owner manual','Spare tyre','Jack & tools','Accessories agreed']
-            .map(item => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0;"><div style="width:16px;height:16px;border:2px solid #333;border-radius:3px;flex-shrink:0;"></div><span style="font-size:13px;">${item}</span></div>`).join('')
+          handoverItems.map(item => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f0f0;"><div style="width:16px;height:16px;border:2px solid #333;border-radius:3px;flex-shrink:0;"></div><span style="font-size:13px;">${item}</span></div>`).join('')
         ) : section('Financial Summary', `
           <table style="width:100%;border-collapse:collapse;">
             <tr style="border-bottom:1px solid #e5e5e5;"><th style="text-align:left;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Description</th><th style="text-align:right;padding:6px 0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#888;">Amount</th></tr>
@@ -5212,11 +5272,11 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
         ${hasFinancing ? section('Financing Details', `
           <table style="width:100%;border-collapse:collapse;">
-            ${row('Financing Bank', m.financing_bank)}
-            ${row('Loan Amount', `RM ${Number(m.loan_amount).toLocaleString()}`)}
-            ${row('Interest Rate', `${m.interest_rate}% p.a.`)}
-            ${row('Tenure', `${m.loan_tenure_months} months`)}
-            ${m.monthly_payment ? row('Monthly Payment', `RM ${Number(m.monthly_payment).toLocaleString()}`) : ''}
+            ${row('Financing Bank', doc.financing_bank)}
+            ${row('Loan Amount', `RM ${Number(doc.loan_amount).toLocaleString()}`)}
+            ${row('Interest Rate', `${doc.interest_rate}% p.a.`)}
+            ${row('Tenure', `${doc.loan_tenure_months} months`)}
+            ${doc.monthly_payment ? row('Monthly Payment', `RM ${Number(doc.monthly_payment).toLocaleString()}`) : ''}
           </table>`) : ''}
 
         ${isSales && services.length > 0 ? section('Included Services / Packages', `
@@ -5224,11 +5284,11 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${s.name || '—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
           </table>`) : ''}
 
-        ${isSales ? section('Sales Advisor', `
+        ${!isHandover ? section('Sales Advisor', `
           <table style="width:100%;border-collapse:collapse;">
             ${row('Name', saName)}
             ${row('Phone', saPhone)}
-            ${saIc !== '—' ? row('IC Number', saIc) : ''}
+            ${saIc ? row('IC Number', saIc) : ''}
           </table>`) : ''}
 
         <div style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
@@ -5238,7 +5298,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
           </div>
           <div style="border-top:1px solid #111;padding-top:8px;">
-            <p style="font-size:12px;color:#555;margin:0 0 2px;">Sales Advisor Signature</p>
+            <p style="font-size:12px;color:#555;margin:0 0 2px;">${isHandover ? 'Dealer Representative' : 'Sales Advisor'} Signature &amp; Stamp</p>
             <p style="font-size:11px;color:#aaa;margin:0;">${saName}</p>
             <p style="font-size:11px;color:#aaa;margin:24px 0 0;">Date: _______________</p>
           </div>
@@ -5248,34 +5308,64 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
   return (
     <div className="space-y-4">
+      {/* ── Document list ── */}
       <div className="rounded-xl overflow-hidden" style={T.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Documents</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
+            Documents
+            {filteredDocs.length !== documents.length && <span style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', marginLeft: 8 }}>{filteredDocs.length} of {documents.length}</span>}
+          </h2>
           <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
         </div>
+
+        {/* Search + filter bar */}
+        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f3f4f6', background: '#fafafa', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
+            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
+            <input
+              value={docSearch} onChange={e => setDocSearch(e.target.value)}
+              placeholder="Search ref, buyer, car…"
+              style={{ width: '100%', paddingLeft: 30, paddingRight: docSearch ? 28 : 10, paddingTop: 6, paddingBottom: 6, fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
+            />
+            {docSearch && (
+              <button onClick={() => setDocSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex' }}><X style={{ width: 12, height: 12 }} /></button>
+            )}
+          </div>
+          <select value={docTypeFilter} onChange={e => setDocTypeFilter(e.target.value)} style={{ fontSize: 12, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', color: '#374151', outline: 'none', flexShrink: 0 }}>
+            <option value="">All Types</option>
+            {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
         <div className="table-wrap">
           {loading ? (
-            <p className="text-gray-500 text-sm p-6">Loading...</p>
+            <p className="text-gray-500 text-sm p-6">Loading…</p>
           ) : documents.length === 0 ? (
-            <p className="text-gray-600 text-sm p-6">No documents generated yet.</p>
+            <p className="text-gray-500 text-sm p-6">No documents generated yet.</p>
+          ) : filteredDocs.length === 0 ? (
+            <p className="text-gray-500 text-sm p-6">No documents match your search.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  {['Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
+                  {['Ref', 'Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {documents.map(doc => (
+                {filteredDocs.map(doc => (
                   <tr key={doc.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px' }}>{doc.doc_type}</span></td>
-                    <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500 }}>{doc.buyer_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.car_label || (doc.car_listings ? `${doc.car_listings.brand} ${doc.car_listings.model}` : '—')}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 11, fontFamily: 'monospace', color: '#6b7280', whiteSpace: 'nowrap' }}>{doc.doc_ref || '—'}</td>
+                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' }}>{doc.doc_type}</span></td>
+                    <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{doc.buyer_name || '—'}</td>
+                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—')}</td>
                     <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#9ca3af', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}><Printer className="w-3 h-3" />Print</button>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}><Printer className="w-3 h-3" />View</button>
+                        <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -5285,50 +5375,44 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         </div>
       </div>
 
-      {/* Generate Modal */}
+      {/* ── Generate Modal ── */}
       {showGen && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
-            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-gray-900">Generate Document</h3>
-              <button onClick={() => setShowGen(false)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Generate Document</h3>
+              <button onClick={() => setShowGen(false)} className="text-gray-400 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
             </div>
             <div className="overflow-y-auto p-5 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Document Type</label>
                 <select value={genForm.doc_type} onChange={e => setGenForm(p => ({ ...p, doc_type: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
-                  {DOC_TYPES.map(t => <option key={t} value={t} style={{ background: '#fff' }}>{t}</option>)}
+                  {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-              {/* Rich Car Listing Selector */}
+
+              {/* Car listing selector with search */}
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
                 <div style={{ position: 'relative' }}>
-                  <button
-                    type="button"
-                    onClick={() => setListingDropOpen(p => !p)}
-                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
-                  >
+                  <button type="button" onClick={() => setListingDropOpen(p => !p)}
+                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}>
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
                           <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
-                          <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Car style={{ width: 18, height: 18, color: '#6b7280' }} />
-                          </div>
+                          <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#6b7280' }} /></div>
                         )}
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
-                          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 1 }}>
+                          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
                             {selectedListing.plate_number && <span>{selectedListing.plate_number}</span>}
                             {selectedListing.colour && <span>{selectedListing.colour}</span>}
                             {selectedListing.mileage && <span>{Number(selectedListing.mileage).toLocaleString()} km</span>}
                           </div>
                         </div>
-                        {selectedListing.selling_price && (
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(selectedListing.selling_price).toLocaleString()}</span>
-                        )}
+                        {selectedListing.selling_price && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flexShrink: 0 }}>RM {Number(selectedListing.selling_price).toLocaleString()}</span>}
                       </>
                     ) : (
                       <span style={{ fontSize: 13, color: '#6b7280' }}>Select a listing…</span>
@@ -5337,44 +5421,47 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                   </button>
                   {listingDropOpen && (
                     <>
-                      <div onClick={() => setListingDropOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, zIndex: 50, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                        {listings.length === 0 ? (
-                          <div style={{ padding: '12px 14px', fontSize: 13, color: '#6b7280' }}>No active listings</div>
-                        ) : listings.map(l => (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => handleListingSelect(l)}
-                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.1)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif', transition: 'background 0.15s" }}
-                            onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f3f4f6'; }}
-                            onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}
-                          >
-                            {l.images?.[0] ? (
-                              <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
-                            ) : (
-                              <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Car style={{ width: 16, height: 16, color: '#6b7280' }} />
+                      <div onClick={() => { setListingDropOpen(false); setListingSearch(''); }} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, zIndex: 50, maxHeight: 280, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}>
+                        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+                          <input
+                            value={listingSearch} onChange={e => setListingSearch(e.target.value)}
+                            placeholder="Search by car or plate…"
+                            autoFocus
+                            style={{ width: '100%', padding: '6px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 6, outline: 'none', background: '#f9fafb', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div style={{ overflowY: 'auto' }}>
+                          {filteredListings.length === 0 ? (
+                            <div style={{ padding: '12px 14px', fontSize: 13, color: '#9ca3af' }}>No listings match</div>
+                          ) : filteredListings.map(l => (
+                            <button key={l.id} type="button" onClick={() => handleListingSelect(l)}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans', sans-serif" }}
+                              onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
+                              onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
+                              {l.images?.[0] ? (
+                                <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
+                              ) : (
+                                <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#6b7280' }} /></div>
+                              )}
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
+                                <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
+                                  {l.plate_number && <span>{l.plate_number}</span>}
+                                  {l.colour && <span>{l.colour}</span>}
+                                  {l.mileage && <span>{Number(l.mileage).toLocaleString()} km</span>}
+                                </div>
                               </div>
-                            )}
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
-                              <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
-                                {l.plate_number && <span>{l.plate_number}</span>}
-                                {l.colour && <span>{l.colour}</span>}
-                                {l.mileage && <span>{Number(l.mileage).toLocaleString()} km</span>}
-                              </div>
-                            </div>
-                            {l.selling_price && (
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', flexShrink: 0 }}>RM {Number(l.selling_price).toLocaleString()}</span>
-                            )}
-                          </button>
-                        ))}
+                              {l.selling_price && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flexShrink: 0 }}>RM {Number(l.selling_price).toLocaleString()}</span>}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </>
                   )}
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label><input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} /></div>
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer IC</label><input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
@@ -5386,7 +5473,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
 
-              {/* Sales Advisor Details */}
+              {/* Sales Advisor */}
               <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -5395,6 +5482,28 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 </div>
                 <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>
+
+              {/* Handover Checklist item editor */}
+              {genForm.doc_type === 'Handover Checklist' && (
+                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Handover Items</p>
+                  <div className="space-y-1.5">
+                    {genForm.handover_items.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f9fafb', borderRadius: 7, border: '1px solid #e5e7eb' }}>
+                        <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{item}</span>
+                        <button onClick={() => setGenForm(p => ({ ...p, handover_items: p.handover_items.filter((_, i) => i !== idx) }))} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#d1d5db'}><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <input value={newHandoverItem} onChange={e => setNewHandoverItem(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && newHandoverItem.trim()) { setGenForm(p => ({ ...p, handover_items: [...p.handover_items, newHandoverItem.trim()] })); setNewHandoverItem(''); e.preventDefault(); } }}
+                      placeholder="Add item…" className={iCls} style={{ flex: 1 }} />
+                    <button onClick={() => { if (newHandoverItem.trim()) { setGenForm(p => ({ ...p, handover_items: [...p.handover_items, newHandoverItem.trim()] })); setNewHandoverItem(''); } }}
+                      style={{ padding: '0 14px', borderRadius: 8, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>Add</button>
+                  </div>
+                </div>
+              )}
 
               {/* Financing — Sales Agreement only */}
               {genForm.doc_type === 'Sales Agreement' && (
@@ -5414,9 +5523,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                         <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Tenure (months)</label><input type="number" value={genForm.loan_tenure_months} onChange={e => gf('loan_tenure_months', e.target.value)} placeholder="84" className={iCls} /></div>
                         <div>
                           <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Monthly Payment (RM)</label>
-                          <div style={{ position: 'relative' }}>
-                            <input readOnly value={genForm.monthly_payment ? `RM ${Number(genForm.monthly_payment).toLocaleString()}` : '—'} className={iCls} style={{ color: '#4ade80', background: 'rgba(74,222,128,0.05)', cursor: 'default' }} />
-                          </div>
+                          <input readOnly value={genForm.monthly_payment ? `RM ${Number(genForm.monthly_payment).toLocaleString()}` : '—'} className={iCls} style={{ color: '#16a34a', background: 'rgba(22,163,74,0.04)', cursor: 'default' }} />
                         </div>
                       </div>
                     </div>
@@ -5424,26 +5531,43 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 </div>
               )}
             </div>
-            <div className="p-5 border-t border-white/[0.06] flex gap-3">
+            <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
-              <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating...' : 'Generate'}</button>
+              <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating…' : 'Generate'}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Print Preview Modal */}
+      {/* ── Print Preview Modal ── */}
       {printDoc && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
-          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ ...T.modal, background: '#fff' }}>
+          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
+                {printDoc.doc_ref && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', fontFamily: 'monospace' }}>{printDoc.doc_ref}</p>}
+              </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
+                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_ref || printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation ── */}
+      {deleteId && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-6 max-w-xs w-full mx-4" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>Delete document?</h3>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>This cannot be undone.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+              <button onClick={() => handleDelete(deleteId)} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#dc2626', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13, border: 'none' }}>Delete</button>
+            </div>
           </div>
         </div>
       )}
