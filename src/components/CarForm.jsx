@@ -59,6 +59,7 @@ const initialListing = {
   basePrice: "",
   sellingPrice: "",
   originalPrice: "",
+  commissionAmount: "",
   specs: "",
   options: "",
   features: "",
@@ -970,6 +971,9 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         originalPrice: listing.original_price
           ? String(listing.original_price)
           : "",
+        commissionAmount: listing.commission_amount
+          ? String(listing.commission_amount)
+          : "",
         specs: listing.specs || "",
         options: listing.options || "",
         features: listing.features || "",
@@ -1514,6 +1518,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
         local_reg_date: form.isRecon ? form.localRegDate || null : null,
         chassis_status: form.isRecon ? form.chassisStatus || null : null,
         damage_map: form.damageMap || [],
+        commission_amount: form.commissionAmount ? parseFloat(form.commissionAmount) : null,
         included_services: form.included_services || [],
         included_services_cost: servicesCost,
         recon_cost: (form.baseReconCost || 0) + servicesCost,
@@ -2502,6 +2507,51 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
                 : `⚠ Selling below base price by RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()}`}
             </div>
           )}
+          <Field
+            label="Salesman Commission (RM)"
+            hint="Flat payout to salesman who closes this deal"
+          >
+            {(() => {
+              const base = parseFloat(form.basePrice);
+              const sell = parseFloat(form.sellingPrice);
+              const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
+              const suggested = margin ? Math.round(margin * 0.10 / 50) * 50 : null;
+              return (
+                <>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
+                      RM
+                    </span>
+                    <input
+                      type="number"
+                      name="commissionAmount"
+                      value={form.commissionAmount}
+                      onChange={handleChange}
+                      placeholder="0"
+                      min="0"
+                      enterKeyHint="next"
+                      inputMode="numeric"
+                      className={`${inputCls} pl-12`}
+                    />
+                  </div>
+                  {suggested && (
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Suggested: RM {suggested.toLocaleString()} (10% of margin)
+                      {!form.commissionAmount && (
+                        <button
+                          type="button"
+                          onClick={() => set("commissionAmount", String(suggested))}
+                          className="ml-2 text-red-400 underline underline-offset-2"
+                        >
+                          Apply
+                        </button>
+                      )}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="Deposit to Reserve (RM)"
