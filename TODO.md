@@ -24,6 +24,7 @@
 - **ENT-12: Add form duplicate detection** — Warn (not block) if a VIN or plate number already exists when adding a new listing.
 - **ENT-13: Team member inactivity flag** — Highlight salesman tile in TeamTab if no activity in 30+ days.
 - **ENT-14: Document email delivery** — "Send to buyer" button on issued documents; sends HTML doc to buyer email via Supabase Edge Function / Resend.
+- **ENT-15: Email delivery not working** — Resend / edge function email sending is failing end-to-end. Investigate RESEND_API_KEY secret, sender domain verification (alerts@xdrive.my), and edge function logs. notify-price-alerts was redeployed with verify_jwt=false to fix 401 cron block, but actual delivery needs end-to-end testing.
 
 ### Infrastructure
 

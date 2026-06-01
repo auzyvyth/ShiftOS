@@ -167,6 +167,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [lossNotes, setLossNotes]     = useState('');
   const [savingLoss, setSavingLoss]   = useState(false);
   const [pendingStage, setPendingStage] = useState(null);
+
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [selectedCloser, setSelectedCloser] = useState('');
+  const [closeSaving, setCloseSaving] = useState(false);
   const [carSearch, setCarSearch]     = useState('');
   const [carResults, setCarResults]   = useState([]);
   const [carSearching, setCarSearching] = useState(false);
@@ -540,7 +544,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     } catch { toast.error('Failed to save'); }
   }
 
-  // ── Stage change — optimistic, fire-and-forget ───────────────────────────────
+  // ── Stage change ──────────────────────────────────────────────────────────────
   function handleStageChange(newStage) {
     if (newStage === lead.stage) return;
     if (newStage === 'lost') {
@@ -548,8 +552,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       setShowLossPanel(true);
       return;
     }
+    if (newStage === 'closed_won') {
+      setSelectedCloser(lead.salesman_id || lead.assigned_to || '');
+      setShowCloseModal(true);
+      return;
+    }
     const oldStage = lead.stage;
-    setLead(p => ({ ...p, stage: newStage })); // instant
+    setLead(p => ({ ...p, stage: newStage }));
     onUpdate(lead.id, { stage: newStage })
       .then(updated => {
         if (updated) setLead(updated);
@@ -560,6 +569,42 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         setLead(p => ({ ...p, stage: oldStage }));
         toast.error('Error saving — please try again');
       });
+  }
+
+  async function confirmCloseSale() {
+    setCloseSaving(true);
+    const oldStage = lead.stage;
+    try {
+      const updated = await onUpdate(lead.id, { stage: 'closed_won' });
+      setLead(p => ({ ...p, stage: 'closed_won', ...(updated || {}) }));
+      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'closed_won' }).catch(() => {});
+
+      if (lead.car_listing_id) {
+        await supabase
+          .from('car_listings')
+          .update({
+            status: 'sold',
+            sold_at: new Date().toISOString(),
+            assigned_to: selectedCloser || null,
+            commission_status: 'pending',
+          })
+          .eq('id', lead.car_listing_id);
+
+        await supabase
+          .from('leads')
+          .update({ stage: 'closed_lost' })
+          .eq('car_listing_id', lead.car_listing_id)
+          .neq('id', lead.id)
+          .not('stage', 'in', '("closed_won","closed_lost","lost")');
+      }
+
+      setShowCloseModal(false);
+      toast.success('Sale closed — inventory updated');
+    } catch {
+      toast.error('Error saving — please try again');
+    } finally {
+      setCloseSaving(false);
+    }
   }
 
   async function confirmLoss() {
@@ -807,6 +852,40 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px 24px', background: '#f9fafb' }}>
 
             {/* Loss reason panel */}
+            {showCloseModal && (
+              <div style={{ background: '#fff', border: '1px solid #a7f3d0', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#059669', margin: '0 0 4px' }}>Who closed this sale?</p>
+                <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 12px' }}>
+                  {lead.car_listing ? `${lead.car_listing.year || ''} ${lead.car_listing.brand || ''} ${lead.car_listing.model || ''}`.trim() || 'This car' : 'This car'} will be marked as sold.
+                </p>
+                <select
+                  value={selectedCloser}
+                  onChange={e => setSelectedCloser(e.target.value)}
+                  style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "'DM Sans',sans-serif", outline: 'none', marginBottom: 12, cursor: 'pointer', appearance: 'none' }}
+                >
+                  <option value="">— Unassigned —</option>
+                  {teamMembers.map(m => (
+                    <option key={m.id} value={m.id}>{m.full_name}</option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setShowCloseModal(false)}
+                    style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmCloseSale}
+                    disabled={closeSaving}
+                    style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#059669', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: closeSaving ? 0.6 : 1 }}
+                  >
+                    {closeSaving ? 'Saving…' : 'Confirm Sale'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {showLossPanel && (
               <div style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 10, padding: 16, marginBottom: 12 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 12 }}>Why was this lead lost?</p>

@@ -80,6 +80,12 @@
 :focus:not(:focus-visible) {
   outline: none !important;
 }
+/* Inputs manage their own focus state via border/ring — suppress the red outline */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+}
 
 @layer utilities {
   .font-display {

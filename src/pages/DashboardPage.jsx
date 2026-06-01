@@ -18,13 +18,24 @@ class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
   render() {
-    if (this.state.error) return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
-        <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
-        <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
-        <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
-      </div>
-    );
+    if (this.state.error) {
+      const msg = this.state.error?.message || '';
+      if (
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Importing a module script failed') ||
+        msg.includes('error loading dynamically imported module')
+      ) {
+        window.location.reload();
+        return null;
+      }
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+          <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
+          <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
+          <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }
@@ -7385,20 +7396,45 @@ export default function DashboardPage() {
   };
 
   const StatusBadge = React.memo(({ listing }) => {
-    const s = listing.status || "available",
-      cfg = STATUS[s] || STATUS.available,
-      busy = updatingStatus === listing.id;
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef(null);
+    const s = listing.status || "available";
+    const cfg = STATUS[s] || STATUS.available;
+    const busy = updatingStatus === listing.id;
+
+    React.useEffect(() => {
+      if (!open) return;
+      const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
     return (
-      <button
-        onClick={() => handleStatus(listing.id, cfg.next)}
-        disabled={busy}
-        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
-      >
-        <span
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`}
-        />
-        {busy ? "…" : cfg.label}
-      </button>
+      <div ref={ref} className="relative inline-block">
+        <button
+          onClick={() => !busy && setOpen(o => !o)}
+          disabled={busy}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`} />
+          {busy ? "…" : cfg.label}
+          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+        </button>
+        {open && (
+          <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+            {Object.entries(STATUS).map(([key, val]) => (
+              <button
+                key={key}
+                onClick={() => { if (key !== s) handleStatus(listing.id, key); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${key === s ? "opacity-40 cursor-default" : "hover:bg-gray-800 cursor-pointer"}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${val.dot}`} />
+                <span className={val.cls.split(" ")[1]}>{val.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   });
 
