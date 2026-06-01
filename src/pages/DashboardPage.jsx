@@ -705,6 +705,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [subdomain, setSubdomain] = useState(profile?.subdomain || '');
   const [subdomainStatus, setSubdomainStatus] = useState(null); // 'checking' | 'taken' | 'available' | 'unchanged'
   const [planUsage, setPlanUsage] = useState(null);
+  const [settingsLastChange, setSettingsLastChange] = useState(null);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -713,6 +714,15 @@ function SettingsTab({ profile, onProfileUpdate }) {
     supabase.rpc('get_plan_usage', { p_dealer_id: dealerIdForUsage }).then(({ data }) => {
       if (data) setPlanUsage(data);
     });
+    supabase.from('activity_log')
+      .select('actor_name, actor_role, created_at, summary')
+      .eq('dealer_id', dealerIdForUsage)
+      .eq('table_name', 'profiles')
+      .eq('action', 'settings_updated')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setSettingsLastChange(data); });
   }, [profile?.id]);
 
   const sanitizeSubdomain = (val) =>
@@ -799,6 +809,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const saveSection = async (key, payload) => {
     setSaving((p) => ({ ...p, [key]: true }));
     setErrors((p) => ({ ...p, [key]: "" }));
+    let success = false;
     try {
       const {
         data: { user },
@@ -813,6 +824,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       onProfileUpdate(data);
       clearSiteProfileCache(); // so public pages pick up new settings on next load
       flash(key);
+      success = true;
     } catch (e) {
       const msg = e.message?.includes("dealership_name_change_limit_reached")
         ? "Dealership name can only be changed twice. Contact support to change it again."
@@ -820,6 +832,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       setErrors((p) => ({ ...p, [key]: msg }));
     }
     setSaving((p) => ({ ...p, [key]: false }));
+    return success;
   };
 
   const saveDealership = async () => {
@@ -847,7 +860,19 @@ function SettingsTab({ profile, onProfileUpdate }) {
       payload.dealership_change_count = changeCount + 1;
       payload.dealership_name_changed_at = new Date().toISOString();
     }
-    await saveSection("identity", payload);
+    const ok = await saveSection("identity", payload);
+    if (ok) {
+      const changes = [];
+      const fc = {};
+      if (dealership.trim() !== profile?.dealership) { changes.push(`name "${profile?.dealership}" → "${dealership.trim()}"`); fc.dealership = { from: profile?.dealership, to: dealership.trim() }; }
+      if (subdomain !== profile?.subdomain) { changes.push(`subdomain "${profile?.subdomain}" → "${subdomain}"`); fc.subdomain = { from: profile?.subdomain, to: subdomain }; }
+      if (brandColor !== profile?.brand_color) { changes.push(`brand color ${profile?.brand_color} → ${brandColor}`); fc.brand_color = { from: profile?.brand_color, to: brandColor }; }
+      if (changes.length) {
+        const dealerIdForLog = profile?.role === 'manager' || profile?.role === 'admin' ? profile?.dealer_id : profile?.id;
+        logActivity({ dealerId: dealerIdForLog, actor: profile, tableName: 'profiles', recordId: profile?.id, action: 'settings_updated', summary: `Settings updated: ${changes.join('; ')}`, fieldChanges: fc });
+        setSettingsLastChange({ actor_name: profile?.full_name || profile?.email, actor_role: profile?.role, created_at: new Date().toISOString(), summary: `Settings updated: ${changes.join('; ')}` });
+      }
+    }
   };
 
   const saveContact = () =>
@@ -1168,7 +1193,13 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </SettingsField>
 
         <ErrMsg k="identity" />
-        <div className="flex justify-end pt-1">
+        <div className="flex items-center justify-between pt-1 gap-4">
+          {settingsLastChange ? (
+            <p className="text-xs text-gray-500">
+              Last changed by <span className="font-medium text-gray-700">{settingsLastChange.actor_name}</span>
+              {' · '}{new Date(settingsLastChange.created_at).toLocaleString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          ) : <span />}
           <SaveBtn
             sectionKey="identity"
             onClick={saveDealership}
@@ -3138,6 +3169,7 @@ function TeamTab({ managerDealership, dealerId }) {
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
   const [soldMap, setSoldMap] = useState({});
+  const [lastActivityMap, setLastActivityMap] = useState({});
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
@@ -3168,10 +3200,27 @@ function TeamTab({ managerDealership, dealerId }) {
     setSoldMap(map);
   };
 
+  const fetchLastActivity = async () => {
+    if (!dealerId) return;
+    const { data } = await supabase
+      .from('activity_log')
+      .select('actor_id, created_at')
+      .eq('dealer_id', dealerId)
+      .not('actor_id', 'is', null)
+      .order('created_at', { ascending: false });
+    if (!data) return;
+    const map = {};
+    data.forEach(({ actor_id, created_at }) => {
+      if (actor_id && !map[actor_id]) map[actor_id] = created_at;
+    });
+    setLastActivityMap(map);
+  };
+
   useEffect(() => {
     fetchTeam();
     fetchAnalytics();
     fetchSoldPerSalesman();
+    fetchLastActivity();
   }, [managerDealership]);
 
   useEffect(() => {
@@ -3613,6 +3662,11 @@ function TeamTab({ managerDealership, dealerId }) {
                       >
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
+                      {(() => {
+                        const last = lastActivityMap[s.id];
+                        if (last && (Date.now() - new Date(last)) / 86400000 <= 30) return null;
+                        return <span style={{ fontSize: 10, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '1px 7px' }}>Inactive 30d+</span>;
+                      })()}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500">
                       <span className="truncate max-w-[200px]">{s.email}</span>
@@ -4694,6 +4748,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
   const [visibleCount, setVisibleCount] = useState(30);
+  const [historyUnit, setHistoryUnit] = useState(null);
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -4843,6 +4900,21 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     if (error) { toast.error('Update failed'); return; }
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: unit.id, action: 'encumbrance_updated', summary: `Encumbrance status ${unit.encumbrance_status || 'unknown'} → ${next}`, fieldChanges: { encumbrance_status: { from: unit.encumbrance_status, to: next } } });
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
+  };
+
+  const fetchHistory = async (unit) => {
+    setHistoryUnit(unit);
+    setHistoryLogs([]);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from('activity_log')
+      .select('actor_name, actor_role, action, summary, created_at')
+      .eq('dealer_id', userId)
+      .eq('record_id', unit.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setHistoryLogs(data || []);
+    setHistoryLoading(false);
   };
 
   const statusBadge = (s) => {
@@ -5011,7 +5083,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                         <td style={{ padding: '12px 14px' }}>{statusBadge(u.status)}</td>
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
-                            <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                            <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+                              <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                              <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
+                            </div>
                           </td>
                         ) : (
                           <>
@@ -5114,6 +5189,43 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             <div className="p-5 border-t border-white/[0.06] flex gap-3">
               <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleMarkSold} disabled={soldSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{soldSaving ? 'Saving...' : 'Confirm Sale'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Movement History Modal */}
+      {historyUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <div>
+                <h3 className="font-semibold text-gray-900">Movement History</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{historyUnit.car_listings?.brand} {historyUnit.car_listings?.model} {historyUnit.car_listings?.year}</p>
+              </div>
+              <button onClick={() => setHistoryUnit(null)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {historyLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading...</p>
+              ) : historyLogs.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">No history recorded for this unit.</p>
+              ) : (
+                <div className="space-y-3">
+                  {historyLogs.map((log, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: 5 }} />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{log.summary}</p>
+                        <p style={{ fontSize: 11, color: '#6b7280', margin: '3px 0 0' }}>
+                          {log.actor_name}{log.actor_role ? ` · ${log.actor_role}` : ''}{' · '}
+                          {new Date(log.created_at).toLocaleString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -7948,6 +8060,13 @@ export default function DashboardPage() {
                                       {l.included_services.length} svc
                                     </button>
                                   )}
+                                  {(() => {
+                                    const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;
+                                    if (rtD === null || rtD > 30) return null;
+                                    const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
+                                    const lbl = rtD < 0 ? 'Road tax exp.' : `RT ${Math.ceil(rtD)}d`;
+                                    return <span style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{lbl}</span>;
+                                  })()}
                                 </td>
                               </tr>
                             );
@@ -8003,6 +8122,12 @@ export default function DashboardPage() {
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               <AgeBadge createdAt={l.created_at} />
+                              {(() => {
+                                const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;
+                                if (rtD === null || rtD > 30) return null;
+                                const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
+                                return <span style={{ fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px' }}>{rtD < 0 ? 'RT exp.' : `RT ${Math.ceil(rtD)}d`}</span>;
+                              })()}
                               {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                 <button
                                   onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
