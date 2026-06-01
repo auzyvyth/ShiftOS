@@ -5226,6 +5226,15 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   };
 
   const handleGenerate = async () => {
+    const needsIc = ['Sales Agreement', 'Deposit Receipt'].includes(genForm.doc_type);
+    if (needsIc && !genForm.buyer_ic.trim()) {
+      toast.error('Buyer IC is required for ' + genForm.doc_type);
+      return;
+    }
+    if (!genForm.buyer_name.trim()) {
+      toast.error('Buyer name is required');
+      return;
+    }
     setGenSaving(true);
     const car = selectedListing || listings.find(l => l.id === genForm.listing_id) || null;
     try {
@@ -5757,8 +5766,21 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label><input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} /></div>
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer IC</label><input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label>
+                  <input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} style={!genForm.buyer_name.trim() ? { borderColor: '#fca5a5' } : {}} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
+                    Buyer IC
+                    {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
+                  </label>
+                  <input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls}
+                    style={['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() ? { borderColor: '#fca5a5' } : {}} />
+                  {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() && (
+                    <p style={{ fontSize: 10, color: '#dc2626', marginTop: 3 }}>Required for {genForm.doc_type}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
