@@ -3,8 +3,8 @@
 export const config = { runtime: "edge" };
 
 const SITE_URL = "https://xdrive.my";
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 const BOT_AGENTS =
   /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot/i;
@@ -113,13 +113,13 @@ function buildCarSchema(car, dealer) {
   );
 }
 
-function buildCarHtml(car, dealer) {
+function buildCarHtml(car, dealer, pathname) {
   const name = [car.year, car.brand, car.model, car.variant]
     .filter(Boolean)
     .join(" ");
   const price = `RM ${Number(car.selling_price).toLocaleString("en-MY")}`;
   const image = car.images?.[0] ?? `${SITE_URL}/og-default.jpg`;
-  const url = `${SITE_URL}/cars/${car.slug}`;
+  const url = `${SITE_URL}${pathname}`;
   const location =
     [car.city, car.state].filter(Boolean).join(", ") || "Malaysia";
   const mileage = car.mileage
@@ -173,6 +173,7 @@ function buildCarHtml(car, dealer) {
   <meta name="twitter:image" content="${esc(image)}" />
   <meta name="twitter:image:alt" content="${esc(name)}" />
 
+  <link rel="canonical" href="${esc(url)}" />
   <script type="application/ld+json">${JSON.stringify(schema)}</script>
 </head>
 <body></body>
@@ -215,7 +216,7 @@ export default async function handler(req) {
   if (!car) return new Response("Not found", { status: 404 });
 
   const dealer = await getDealerData(car.dealer_id);
-  return new Response(buildCarHtml(car, dealer), {
+  return new Response(buildCarHtml(car, dealer, pathname), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
