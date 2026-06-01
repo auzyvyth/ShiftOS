@@ -5242,7 +5242,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         sale_price: Number(genForm.sale_price) || 0,
         deposit_amount: Number(genForm.deposit_amount) || 0,
         balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
-        issued_at: new Date().toISOString(),
+        issued_at: null,
+        doc_status: 'draft',
         car_brand: car?.brand || null,
         car_model: car?.model || null,
         car_year: car?.year || null,
@@ -5298,7 +5299,24 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }
   };
 
+  const handleIssue = async (doc) => {
+    const now = new Date().toISOString();
+    const issuedBy = profile?.full_name || profile?.email || 'Unknown';
+    const { error } = await supabase
+      .from('dealer_documents')
+      .update({ doc_status: 'issued', issued_at: now, issued_by: issuedBy })
+      .eq('id', doc.id)
+      .eq('dealer_id', userId);
+    if (error) { toast.error('Failed to issue document'); return; }
+    const updated = { ...doc, doc_status: 'issued', issued_at: now, issued_by: issuedBy };
+    setDocuments(p => p.map(d => d.id === doc.id ? updated : d));
+    setPrintDoc(updated);
+    toast.success(`${doc.doc_type} issued`);
+  };
+
   const handleDelete = async (id) => {
+    const doc = documents.find(d => d.id === id);
+    if (doc?.doc_status === 'issued') { toast.error('Cannot delete an issued document'); setDeleteId(null); return; }
     const { error } = await supabase.from('dealer_documents').delete().eq('id', id).eq('dealer_id', userId);
     if (error) { toast.error('Failed to delete document'); return; }
     setDocuments(prev => prev.filter(d => d.id !== id));
@@ -5613,7 +5631,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  {['Ref', 'Type', 'Buyer', 'Car', 'Issued', ''].map(h => (
+                  {['Ref', 'Type', 'Buyer', 'Car', 'Status', 'Date', ''].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -5625,11 +5643,22 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' }}>{doc.doc_type}</span></td>
                     <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{doc.buyer_name || '—'}</td>
                     <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—')}</td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                      {doc.doc_status === 'issued'
+                        ? <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '2px 8px' }}>Issued</span>
+                        : <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '2px 8px' }}>Draft</span>
+                      }
+                    </td>
                     <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}><Printer className="w-3 h-3" />View</button>
-                        <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
+                        {doc.doc_status !== 'issued' && (
+                          <button onClick={() => handleIssue(doc)} style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Issue</button>
+                        )}
+                        {doc.doc_status !== 'issued' && (
+                          <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -5890,14 +5919,30 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
           <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div>
-                <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
+                  {printDoc.doc_status !== 'issued'
+                    ? <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 5, padding: '1px 7px' }}>DRAFT</span>
+                    : <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 5, padding: '1px 7px' }}>Issued</span>
+                  }
+                </div>
                 {printDoc.doc_ref && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', fontFamily: 'monospace' }}>{printDoc.doc_ref}</p>}
+                {printDoc.issued_by && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>Issued by {printDoc.issued_by}</p>}
               </div>
               <div className="flex items-center gap-2">
+                {printDoc.doc_status !== 'issued' && (
+                  <button onClick={() => handleIssue(printDoc)} style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Issue Document</button>
+                )}
                 <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_ref || printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>
+            {printDoc.doc_status !== 'issued' && (
+              <div style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: '#92400e', fontFamily: "'DM Sans',sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
+              </div>
+            )}
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
           </div>
         </div>
