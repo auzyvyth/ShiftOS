@@ -18,13 +18,24 @@ class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
   render() {
-    if (this.state.error) return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
-        <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
-        <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
-        <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
-      </div>
-    );
+    if (this.state.error) {
+      const msg = this.state.error?.message || '';
+      if (
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Importing a module script failed') ||
+        msg.includes('error loading dynamically imported module')
+      ) {
+        window.location.reload();
+        return null;
+      }
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+          <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
+          <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
+          <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }
