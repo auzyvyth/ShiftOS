@@ -31,12 +31,11 @@ const ROLE_LABELS = {
 const SOURCE_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#F97316', '#EC4899'];
 const ACTIVE_STAGES = ['new','contacted','negotiating','presented','reserved','documents','hp_submitted'];
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','#DC2626','#06B6D4'];
-
 const ACT_CFG = {
-  whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle, color: '#16A34A', bg: '#F0FDF4' },
-  stage_changed:  { label: 'Stage',    icon: ArrowRightLeft, color: '#3B82F6', bg: '#EFF6FF' },
-  note_added:     { label: 'Note',     icon: FileText,       color: '#6B7280', bg: '#F9FAFB' },
-  created:        { label: 'New lead', icon: UserPlus,       color: '#8B5CF6', bg: '#F5F3FF' },
+  whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle,   color: '#16A34A', bg: '#F0FDF4' },
+  stage_changed:  { label: 'Stage',    icon: ArrowRightLeft,  color: '#3B82F6', bg: '#EFF6FF' },
+  note_added:     { label: 'Note',     icon: FileText,        color: '#6B7280', bg: '#F9FAFB' },
+  created:        { label: 'New lead', icon: UserPlus,        color: '#8B5CF6', bg: '#F5F3FF' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -122,65 +121,58 @@ export default function OverviewTab({ dealerId }) {
   const [tick, setTick]         = useState(0);
   const subRef = useRef(null);
 
-  // ── Static data (expensive RPCs — load once) ─────────────────────────────
+  // ── PnL RPC — independent, non-blocking ──────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
-    supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId }).then(({ data }) => setPnl(data));
+    supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId })
+      .then(({ data }) => setPnl(data))
+      .catch(() => {});
   }, [dealerId]);
 
-  // ── Live data (re-runs on realtime tick) ─────────────────────────────────
+  // ── Live data ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
     const now = Date.now();
 
     Promise.all([
-      // All leads
       supabase.from('leads')
         .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
         .eq('dealer_id', dealerId)
         .order('updated_at', { ascending: false })
         .limit(300),
-      // Listings
       supabase.from('car_listings')
         .select('id, status, created_at')
         .eq('dealer_id', dealerId),
-      // Appointments today
       supabase.from('appointments')
         .select('id, appointment_date')
         .eq('dealer_id', dealerId)
         .gte('appointment_date', new Date().toISOString().slice(0, 10)),
-      // All staff: staff rows (dealer_id = dealerId) + dealer owner row (id = dealerId)
       supabase.from('profiles')
         .select('id, full_name, slug, role')
         .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)
         .in('role', ['salesman', 'manager', 'admin', 'accountant', 'fi_officer', 'owner', 'dealer', 'superadmin']),
-      // Recent lead activities for online detection + conversations feed
       supabase.from('lead_activities')
         .select('id, activity_type, note, created_at, lead_id, created_by, to_stage, creator:created_by(full_name)')
         .eq('dealer_id', dealerId)
         .order('created_at', { ascending: false })
-        .limit(200),
+        .limit(50),
     ]).then(([l, cl, apt, sm, acts]) => {
-      const allLeads      = l.data    || [];
-      const allListings   = cl.data   || [];
-      const aptsToday     = apt.data  || [];
-      const staff         = sm.data   || [];
-      const activities    = acts.data || [];
+      const allLeads    = l.data    || [];
+      const allListings = cl.data   || [];
+      const aptsToday   = apt.data  || [];
+      const staff       = sm.data   || [];
+      const activities  = acts.data || [];
 
-      // Build lookup maps
       const leadsById = Object.fromEntries(allLeads.map(l => [l.id, l]));
 
-      // Last activity timestamp per user (from lead_activities)
       const lastActivityByUser = {};
       for (const a of activities) {
         if (!a.created_by) continue;
         const cur = lastActivityByUser[a.created_by];
-        if (!cur || new Date(a.created_at) > new Date(cur)) {
+        if (!cur || new Date(a.created_at) > new Date(cur))
           lastActivityByUser[a.created_by] = a.created_at;
-        }
       }
 
-      // Active lead count + last lead touch per salesman (from leads.salesman_id)
       const activeLeads = allLeads.filter(l => !['sold','lost'].includes(l.stage));
       const leadsPerSm  = {};
       const lastLeadTouchSm = {};
@@ -191,24 +183,21 @@ export default function OverviewTab({ dealerId }) {
         if (!cur || new Date(l.updated_at) > new Date(cur)) lastLeadTouchSm[l.salesman_id] = l.updated_at;
       }
 
-      // Pipeline
       const stageCounts = {};
       for (const l of allLeads) stageCounts[l.stage] = (stageCounts[l.stage] || 0) + 1;
 
-      // Source breakdown (active only)
       const sourceCounts = {};
       for (const l of activeLeads) {
         const src = l.lead_source || 'unknown';
         sourceCounts[src] = (sourceCounts[src] || 0) + 1;
       }
 
-      // Stock
       const available = allListings.filter(c => c.status === 'available');
       const avgDays   = available.length
-        ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length) : 0;
+        ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length)
+        : 0;
       const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
 
-      // Team rows — all staff, any role
       const teamRows = staff.map((s, idx) => {
         const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
         return {
@@ -225,7 +214,6 @@ export default function OverviewTab({ dealerId }) {
         return b.active - a.active;
       });
 
-      // Recent conversations: latest lead_activities feed
       const recentActivities = activities.slice(0, 12).map(a => ({
         ...a,
         lead: leadsById[a.lead_id] || null,
@@ -237,23 +225,28 @@ export default function OverviewTab({ dealerId }) {
         stageCounts, sourceCounts, teamRows, avgDays, stale,
         aptsToday: aptsToday.length, recentActivities,
       });
-      setLoading(false);
-    });
+    }).catch(() => {
+      // Show empty state rather than hanging forever
+      setSnapshot({
+        activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
+        teamRows: [], avgDays: 0, stale: 0, aptsToday: 0, recentActivities: [],
+      });
+    }).finally(() => setLoading(false));
   }, [dealerId, tick]);
 
-  // ── Realtime subscription ─────────────────────────────────────────────────
+  // ── Realtime ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
     const bump = () => setTick(t => t + 1);
     subRef.current = supabase
       .channel(`overview-${dealerId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `dealer_id=eq.${dealerId}` }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads',          filter: `dealer_id=eq.${dealerId}` }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_activities', filter: `dealer_id=eq.${dealerId}` }, bump)
       .subscribe();
     return () => { subRef.current?.unsubscribe(); };
   }, [dealerId]);
 
-  // ── Derived render values ─────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
   const mtd  = pnl?.mtd  || {};
   const lmtd = pnl?.lmtd || {};
   const unitTrend = delta(Number(mtd.units || 0), Number(lmtd.units || 0));
@@ -272,36 +265,54 @@ export default function OverviewTab({ dealerId }) {
 
   const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.day?.slice(5), rev: Number(d.revenue || 0) }));
 
-  if (loading || !snapshot) {
+  if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <style>{`
+          @keyframes ov-shimmer { 0%,100%{opacity:1} 50%{opacity:0.45} }
+          .ov-skel { background:#F3F4F6; border-radius:6px; animation:ov-shimmer 1.4s ease-in-out infinite; }
+          @media(max-width:640px){.ov-kpi-grid{grid-template-columns:1fr 1fr !important}}
+        `}</style>
+        <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px', height: 100 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#F3F4F6', marginBottom: 12 }} />
-              <div style={{ width: '60%', height: 24, borderRadius: 6, background: '#F3F4F6', marginBottom: 6 }} />
-              <div style={{ width: '40%', height: 12, borderRadius: 4, background: '#F9FAFB' }} />
+            <div key={i} style={{ background: '#fff', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px' }}>
+              <div className="ov-skel" style={{ width: 36, height: 36, borderRadius: 9, marginBottom: 12 }} />
+              <div className="ov-skel" style={{ width: '60%', height: 22, marginBottom: 8 }} />
+              <div className="ov-skel" style={{ width: '40%', height: 11 }} />
             </div>
           ))}
         </div>
-        <p style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', marginTop: 8 }}>Loading overview…</p>
+        <p style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center' }}>Loading overview…</p>
       </div>
     );
   }
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-rev-stock  { grid-template-columns: 1fr !important; }
+          .ov-pipe-src   { grid-template-columns: 1fr !important; }
+          .ov-team-conv  { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-conv-table { font-size: 11px !important; }
+          .ov-conv-col-hide { display: none !important; }
+        }
+      `}</style>
 
       {/* ── KPI Row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
-        <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}    sub="Active pipeline"                                                  iconColor="#3B82F6" />
-        <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings}  sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'}   iconColor="#8B5CF6" />
-        <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}           sub="Month to date"  trend={unitTrend}                                iconColor="#10B981" />
-        <KpiCard icon={TrendingUp} label="MTD Gross Profit" value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'}   trend={gpTrend} iconColor="#DC2626" />
+      <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+        <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}    sub="Active pipeline"                                                iconColor="#3B82F6" />
+        <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings}  sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'} iconColor="#8B5CF6" />
+        <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}           sub="Month to date" trend={unitTrend}                              iconColor="#10B981" />
+        <KpiCard icon={TrendingUp} label="MTD Gross"        value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'} trend={gpTrend} iconColor="#DC2626" />
       </div>
 
       {/* ── Revenue + Stock ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
+      <div className="ov-rev-stock" style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
         {sparkData.length > 0 && (
           <Panel>
             <SectionHeader title="Revenue — Last 30 Days" sub={`MTD ${fmt(mtd.revenue)}  ·  prev ${fmt(lmtd.revenue)}`} />
@@ -320,10 +331,10 @@ export default function OverviewTab({ dealerId }) {
           <SectionHeader title="Stock Snapshot" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             {[
-              { label: 'Avg Days on Lot', value: `${snapshot.avgDays}d`,   icon: Clock,     color: '#F59E0B' },
-              { label: 'Stale (30d+)',    value: snapshot.stale,            icon: Car,       color: '#EF4444' },
-              { label: 'Appts Today',     value: snapshot.aptsToday,        icon: Calendar,  color: '#3B82F6' },
-              { label: 'Capital Tied',    value: fmt(pnl?.inventory?.capital_tied), icon: DollarSign, color: '#8B5CF6' },
+              { label: 'Avg Days on Lot', value: `${snapshot.avgDays}d`,               icon: Clock,      color: '#F59E0B' },
+              { label: 'Stale (30d+)',    value: snapshot.stale,                        icon: Car,        color: '#EF4444' },
+              { label: 'Appts Today',     value: snapshot.aptsToday,                    icon: Calendar,   color: '#3B82F6' },
+              { label: 'Capital Tied',    value: fmt(pnl?.inventory?.capital_tied),     icon: DollarSign, color: '#8B5CF6' },
             ].map(({ label, value, icon: Icon, color }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -338,7 +349,7 @@ export default function OverviewTab({ dealerId }) {
       </div>
 
       {/* ── Pipeline + Sources ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="ov-pipe-src" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <Panel>
           <SectionHeader title="Lead Pipeline" sub="Active leads by stage" live />
           {pipelineData.length === 0 ? (
@@ -363,15 +374,15 @@ export default function OverviewTab({ dealerId }) {
             <div>
               <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>No leads yet.</p>
               <p style={{ fontSize: 11, color: '#D1D5DB', marginTop: 4, lineHeight: 1.5 }}>
-                Source is set when a salesman adds a lead — channels include Walk-In, WhatsApp, Facebook, Mudah, Carlist, TikTok, Instagram, and Referral.
+                Source is set when a salesman adds a lead — Walk-In, WhatsApp, Facebook, Mudah, Carlist, TikTok, Instagram, Referral.
               </p>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <div style={{ flexShrink: 0 }}>
-                <ResponsiveContainer width={110} height={110}>
+                <ResponsiveContainer width={100} height={100}>
                   <PieChart>
-                    <Pie data={sourceData} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" strokeWidth={0}>
+                    <Pie data={sourceData} cx="50%" cy="50%" innerRadius={28} outerRadius={46} dataKey="value" strokeWidth={0}>
                       {sourceData.map((_, i) => <Cell key={i} fill={SOURCE_COLORS[i % SOURCE_COLORS.length]} />)}
                     </Pie>
                   </PieChart>
@@ -394,13 +405,13 @@ export default function OverviewTab({ dealerId }) {
       </div>
 
       {/* ── Team on Duty + Recent Conversations ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
+      <div className="ov-team-conv" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14 }}>
 
         {/* Team panel */}
         <Panel style={{ padding: '18px 16px' }}>
           <SectionHeader title="Team on Duty" sub={`${snapshot.teamRows.filter(r => r.isActive).length} online now`} live />
           {snapshot.teamRows.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#9CA3AF' }}>No team members yet.</p>
+            <p style={{ fontSize: 12, color: '#9CA3AF' }}>No team members found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {snapshot.teamRows.map((r) => (
@@ -440,20 +451,20 @@ export default function OverviewTab({ dealerId }) {
           )}
         </Panel>
 
-        {/* Recent Conversations — activity feed */}
+        {/* Recent Conversations */}
         <Panel>
-          <SectionHeader title="Recent Conversations" sub="WhatsApp sends, stage changes, notes — across all salesmen" live />
+          <SectionHeader title="Recent Conversations" sub="WhatsApp sends, stage changes, notes" live />
           {snapshot.recentActivities.length === 0 ? (
             <p style={{ fontSize: 12, color: '#9CA3AF' }}>No activity yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {snapshot.recentActivities.map((a, i) => {
-                const cfg   = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
-                const Icon  = cfg.icon;
-                const who   = a.creator?.full_name || 'Salesman';
-                const cust  = a.lead?.buyer_name || 'Unknown';
+                const cfg  = ACT_CFG[a.activity_type] || ACT_CFG.note_added;
+                const Icon = cfg.icon;
+                const who  = a.creator?.full_name || 'Salesman';
+                const cust = a.lead?.buyer_name || 'Unknown';
                 const stage = a.to_stage ? STAGE_LABELS[a.to_stage] || a.to_stage : null;
-                const note  = a.note ? (a.note.length > 50 ? a.note.slice(0, 47) + '…' : a.note) : null;
+                const note  = a.note ? (a.note.length > 48 ? a.note.slice(0, 45) + '…' : a.note) : null;
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}>
                     <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
@@ -464,17 +475,15 @@ export default function OverviewTab({ dealerId }) {
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{cust}</span>
                         <span style={{ fontSize: 11, color: '#6B7280' }}>
                           {a.activity_type === 'whatsapp_sent' && 'WhatsApp sent'}
-                          {a.activity_type === 'stage_changed' && (stage ? `moved to ${stage}` : 'stage changed')}
+                          {a.activity_type === 'stage_changed' && (stage ? `→ ${stage}` : 'stage changed')}
                           {a.activity_type === 'note_added' && (note || 'note added')}
                           {a.activity_type === 'created' && 'lead created'}
                           {!ACT_CFG[a.activity_type] && (note || a.activity_type.replace(/_/g, ' '))}
                         </span>
                       </div>
-                      <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>
-                        {who} · {timeAgo(a.created_at)}
-                      </p>
+                      <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>{who} · {timeAgo(a.created_at)}</p>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 5, padding: '2px 7px', flexShrink: 0, alignSelf: 'center' }}>
+                    <span className="ov-conv-col-hide" style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 5, padding: '2px 7px', flexShrink: 0, alignSelf: 'center' }}>
                       {cfg.label}
                     </span>
                   </div>
