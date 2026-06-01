@@ -142,6 +142,7 @@ import {
   Upload,
   Snowflake,
   UserCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
@@ -6570,6 +6571,14 @@ export default function DashboardPage() {
   const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterMinPrice, setFilterMinPrice] = useState('');
+  const [filterMaxPrice, setFilterMaxPrice] = useState('');
+  const [filterMinMileage, setFilterMinMileage] = useState('');
+  const [filterMaxMileage, setFilterMaxMileage] = useState('');
+  const [filterCondition, setFilterCondition] = useState('');
+  const [filterTransmission, setFilterTransmission] = useState('');
+  const [filterState, setFilterState] = useState('');
   const [visibleCount, setVisibleCount] = useState(30);
   const sentinelRef = useRef(null);
   const [copiedListingId, setCopiedListingId] = useState(null);
@@ -6928,23 +6937,35 @@ export default function DashboardPage() {
     setMarkSoldLoading(false);
   };
 
+  const activeFilterCount = [filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState].filter(Boolean).length;
+
+  const clearFilters = () => { setFilterMinPrice(''); setFilterMaxPrice(''); setFilterMinMileage(''); setFilterMaxMileage(''); setFilterCondition(''); setFilterTransmission(''); setFilterState(''); };
+
   const filteredListings = useMemo(() => {
-    let result = listings.filter((l) =>
-      (l.status || 'available') === statusFilter
-    );
-    if (!searchQuery.trim()) return result;
-    const q = searchQuery.toLowerCase();
-    return result.filter((l) =>
-      (l.brand || "").toLowerCase().includes(q) ||
-      (l.model || "").toLowerCase().includes(q) ||
-      (l.variant || "").toLowerCase().includes(q) ||
-      (l.vin || "").toLowerCase().includes(q) ||
-      (l.vin_number || "").toLowerCase().includes(q)
-    );
-  }, [listings, searchQuery, statusFilter]);
+    let result = listings.filter((l) => (l.status || 'available') === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((l) =>
+        (l.brand || "").toLowerCase().includes(q) ||
+        (l.model || "").toLowerCase().includes(q) ||
+        (l.variant || "").toLowerCase().includes(q) ||
+        (l.vin || "").toLowerCase().includes(q) ||
+        (l.vin_number || "").toLowerCase().includes(q) ||
+        (l.plate_number || "").toLowerCase().includes(q)
+      );
+    }
+    if (filterMinPrice)    result = result.filter(l => (l.selling_price || 0) >= Number(filterMinPrice));
+    if (filterMaxPrice)    result = result.filter(l => (l.selling_price || 0) <= Number(filterMaxPrice));
+    if (filterMinMileage)  result = result.filter(l => (l.mileage || 0) >= Number(filterMinMileage));
+    if (filterMaxMileage)  result = result.filter(l => (l.mileage || 0) <= Number(filterMaxMileage));
+    if (filterCondition)   result = result.filter(l => (l.condition || '').toLowerCase() === filterCondition);
+    if (filterTransmission)result = result.filter(l => (l.transmission || '').toLowerCase() === filterTransmission.toLowerCase());
+    if (filterState)       result = result.filter(l => (l.state || '') === filterState);
+    return result;
+  }, [listings, searchQuery, statusFilter, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   // Reset visible window whenever the filtered set changes
-  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery]);
+  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   // Infinite scroll — expand visible window when sentinel enters viewport
   useEffect(() => {
@@ -7675,6 +7696,14 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <button
+                        onClick={() => setShowFilters(p => !p)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.1)' : '#f9fafb', border: `1px solid ${showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.35)' : '#e5e7eb'}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: showFilters || activeFilterCount > 0 ? '#93c5fd' : '#374151', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        <SlidersHorizontal style={{ width: 13, height: 13 }} />
+                        Filters
+                        {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
+                      </button>
+                      <button
                         onClick={() => setShowFastModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
                       >
@@ -7691,6 +7720,58 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* ── Collapsible filter panel ── */}
+                  {showFilters && (
+                    <div style={{ margin: '12px 20px 0', padding: '14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Min Price (RM)</label>
+                          <input type="number" value={filterMinPrice} onChange={e => setFilterMinPrice(e.target.value)} placeholder="e.g. 20000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Max Price (RM)</label>
+                          <input type="number" value={filterMaxPrice} onChange={e => setFilterMaxPrice(e.target.value)} placeholder="e.g. 150000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Min Mileage (km)</label>
+                          <input type="number" value={filterMinMileage} onChange={e => setFilterMinMileage(e.target.value)} placeholder="e.g. 0" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Max Mileage (km)</label>
+                          <input type="number" value={filterMaxMileage} onChange={e => setFilterMaxMileage(e.target.value)} placeholder="e.g. 100000" style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Condition</label>
+                          <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                            <option value="">All</option>
+                            <option value="new">New</option>
+                            <option value="used">Used</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Transmission</label>
+                          <select value={filterTransmission} onChange={e => setFilterTransmission(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                            <option value="">All</option>
+                            <option value="Auto">Auto</option>
+                            <option value="Manual">Manual</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>State</label>
+                          <select value={filterState} onChange={e => setFilterState(e.target.value)} style={{ width: '100%', padding: '7px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: "'DM Sans',sans-serif" }}>
+                            <option value="">All States</option>
+                            {['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan','Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'].map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      {activeFilterCount > 0 && (
+                        <button onClick={clearFilters} style={{ marginTop: 10, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: "'DM Sans',sans-serif" }}>
+                          Clear all filters ({activeFilterCount})
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* ── Status filter tabs ── */}
                   <div style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14 }}>
