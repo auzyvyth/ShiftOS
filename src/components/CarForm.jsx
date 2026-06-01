@@ -835,6 +835,7 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
+  const [dupWarning, setDupWarning] = useState({ plate: null, vin: null });
   const [capError, setCapError] = useState(false);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const DEFAULT_ORDER = STEPS.map((s) => s.id);
@@ -844,6 +845,17 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
   const formRef = useRef(null);
+
+  // ── Duplicate plate/VIN detection ───────────────────────────────────────
+  const checkDuplicate = async (field, value) => {
+    const trimmed = value.trim().toUpperCase();
+    if (!trimmed || !dealerId) { setDupWarning(p => ({ ...p, [field]: null })); return; }
+    const col = field === 'plate' ? 'plate_number' : 'vin_number';
+    const query = supabase.from('car_listings').select('id, brand, model, year').eq('dealer_id', dealerId).ilike(col, trimmed);
+    if (listing?.id) query.neq('id', listing.id);
+    const { data } = await query.maybeSingle();
+    setDupWarning(p => ({ ...p, [field]: data ? `Already exists: ${[data.brand, data.model, data.year].filter(Boolean).join(' ')}` : null }));
+  };
 
   // ── Draft save (new listings only, not edits) ────────────────────────────
   useEffect(() => {
@@ -1997,18 +2009,26 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
               name="plate_number"
               value={form.plate_number}
               onChange={handleChange}
+              onBlur={e => checkDuplicate('plate', e.target.value)}
               placeholder="e.g. WXY 1234"
               className={inputCls}
             />
+            {dupWarning.plate && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+            )}
           </Field>
           <Field label="VIN Number" hint="Vehicle Identification Number">
             <input
               name="vin_number"
               value={form.vin_number}
               onChange={handleChange}
+              onBlur={e => checkDuplicate('vin', e.target.value)}
               placeholder="e.g. JN1CA31D1XT000001"
               className={inputCls}
             />
+            {dupWarning.vin && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Previous Owners">
