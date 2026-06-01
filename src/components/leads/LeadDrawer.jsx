@@ -551,10 +551,33 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     const oldStage = lead.stage;
     setLead(p => ({ ...p, stage: newStage })); // instant
     onUpdate(lead.id, { stage: newStage })
-      .then(updated => {
+      .then(async updated => {
         if (updated) setLead(updated);
         addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: newStage }).catch(() => {});
         if (newStage === 'won') toast.success('Lead marked as Won!');
+
+        if (newStage === 'closed_won' && lead.car_listing_id) {
+          const salesman = lead.salesman_id || lead.assigned_to || null;
+          await supabase
+            .from('car_listings')
+            .update({
+              status: 'sold',
+              sold_at: new Date().toISOString(),
+              assigned_to: salesman,
+              commission_status: 'pending',
+            })
+            .eq('id', lead.car_listing_id);
+
+          // Auto-close any other open leads competing for the same car
+          await supabase
+            .from('leads')
+            .update({ stage: 'closed_lost' })
+            .eq('car_listing_id', lead.car_listing_id)
+            .neq('id', lead.id)
+            .not('stage', 'in', '("closed_won","closed_lost","lost")');
+
+          toast.success('Car marked as sold and inventory updated');
+        }
       })
       .catch(() => {
         setLead(p => ({ ...p, stage: oldStage }));

@@ -7396,20 +7396,45 @@ export default function DashboardPage() {
   };
 
   const StatusBadge = React.memo(({ listing }) => {
-    const s = listing.status || "available",
-      cfg = STATUS[s] || STATUS.available,
-      busy = updatingStatus === listing.id;
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef(null);
+    const s = listing.status || "available";
+    const cfg = STATUS[s] || STATUS.available;
+    const busy = updatingStatus === listing.id;
+
+    React.useEffect(() => {
+      if (!open) return;
+      const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
     return (
-      <button
-        onClick={() => handleStatus(listing.id, cfg.next)}
-        disabled={busy}
-        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
-      >
-        <span
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`}
-        />
-        {busy ? "…" : cfg.label}
-      </button>
+      <div ref={ref} className="relative inline-block">
+        <button
+          onClick={() => !busy && setOpen(o => !o)}
+          disabled={busy}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`} />
+          {busy ? "…" : cfg.label}
+          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+        </button>
+        {open && (
+          <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+            {Object.entries(STATUS).map(([key, val]) => (
+              <button
+                key={key}
+                onClick={() => { if (key !== s) handleStatus(listing.id, key); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${key === s ? "opacity-40 cursor-default" : "hover:bg-gray-800 cursor-pointer"}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${val.dot}`} />
+                <span className={val.cls.split(" ")[1]}>{val.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   });
 
