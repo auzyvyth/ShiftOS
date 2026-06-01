@@ -4629,7 +4629,7 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '' });
+  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
@@ -4697,9 +4697,9 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
 
   const handleAdd = async () => {
     setAddSaving(true);
-    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null });
+    await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null });
     setShowAdd(false);
-    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '' });
+    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
     setAddSaving(false);
     fetchUnits();
   };
@@ -4747,6 +4747,37 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
     if (error) { toast.error('Update failed'); return; }
     setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b7_date: value } : u));
     toast.success('PUSPAKOM B7 updated');
+  };
+
+  // ENT-1: PUSPAKOM B5 helpers (chassis inspection, no expiry)
+  const b5Status = (date) => {
+    if (!date) return { label: 'B5 missing', color: '#6b7280' };
+    return { label: `B5 done ${new Date(date).toLocaleDateString('en-MY', { day:'2-digit', month:'short' })}`, color: '#22c55e' };
+  };
+  const handleUpdateB5 = async (unit) => {
+    const current = unit.puspakom_b5_date || '';
+    const next = window.prompt('PUSPAKOM B5 inspection date (YYYY-MM-DD). Leave blank to clear.', current);
+    if (next === null) return;
+    const value = next.trim() || null;
+    const { error } = await supabase.from('stock_units').update({ puspakom_b5_date: value }).eq('id', unit.id).eq('dealer_id', userId);
+    if (error) { toast.error('Update failed'); return; }
+    setUnits(p => p.map(u => u.id === unit.id ? { ...u, puspakom_b5_date: value } : u));
+    toast.success('PUSPAKOM B5 updated');
+  };
+
+  // ENT-1: Encumbrance status helpers
+  const ENCUMBRANCE_CFG = {
+    clear:    { label: 'Clear title',  color: '#22c55e' },
+    under_hp: { label: 'Under HP',     color: '#ef4444' },
+    unknown:  { label: 'Enc. unknown', color: '#f59e0b' },
+  };
+  const handleUpdateEncumbrance = async (unit) => {
+    const options = ['clear', 'under_hp', 'unknown'];
+    const current = unit.encumbrance_status || 'unknown';
+    const next = options[(options.indexOf(current) + 1) % options.length];
+    const { error } = await supabase.from('stock_units').update({ encumbrance_status: next }).eq('id', unit.id).eq('dealer_id', userId);
+    if (error) { toast.error('Update failed'); return; }
+    setUnits(p => p.map(u => u.id === unit.id ? { ...u, encumbrance_status: next } : u));
   };
 
   const statusBadge = (s) => {
@@ -4871,15 +4902,24 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                               <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
                               <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p>
                               {u.status === 'in_stock' && (() => {
-                                const ps = puspakomStatus(u.puspakom_b7_date);
+                                const ps  = puspakomStatus(u.puspakom_b7_date);
+                                const b5  = b5Status(u.puspakom_b5_date);
+                                const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
                                 return (
-                                  <button
-                                    onClick={() => handleUpdatePuspakom(u)}
-                                    title="Click to update PUSPAKOM B7 date"
-                                    style={{ marginTop: 4, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}
-                                  >
-                                    {ps.label}
-                                  </button>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                                    <button onClick={() => handleUpdatePuspakom(u)} title="Click to update PUSPAKOM B7 date"
+                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>
+                                      {ps.label}
+                                    </button>
+                                    <button onClick={() => handleUpdateB5(u)} title="Click to update PUSPAKOM B5 date"
+                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>
+                                      {b5.label}
+                                    </button>
+                                    <button onClick={() => handleUpdateEncumbrance(u)} title="Click to toggle encumbrance status"
+                                      style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>
+                                      {enc.label}
+                                    </button>
+                                  </div>
                                 );
                               })()}
                             </>
@@ -4964,10 +5004,25 @@ const StockTab = React.memo(function StockTab({ userId, listings }) {
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in" className={iCls} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B5 Date</label>
+                  <input type="date" value={addForm.puspakom_b5_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b5_date: e.target.value }))} className={iCls} />
+                  <p className="text-[10px] text-gray-500 mt-1">Chassis / body inspection.</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
+                  <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
+                  <p className="text-[10px] text-gray-500 mt-1">Engine cert valid 3 months.</p>
+                </div>
+              </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
-                <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
-                <p className="text-[10px] text-gray-500 mt-1">Inspection cert valid for 3 months from this date.</p>
+                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Encumbrance Status</label>
+                <select value={addForm.encumbrance_status} onChange={e => setAddForm(p => ({ ...p, encumbrance_status: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                  <option value="unknown">Unknown — not verified</option>
+                  <option value="clear">Clear — free from HP / loan</option>
+                  <option value="under_hp">Under HP — outstanding loan</option>
+                </select>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
@@ -5058,6 +5113,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [listingSearch, setListingSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [newHandoverItem, setNewHandoverItem] = useState('');
+  const [linkedStock, setLinkedStock] = useState(null);
 
   // Pre-fill from Enquiries shortcut
   useEffect(() => {
@@ -5116,8 +5172,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     });
   };
 
-  const handleListingSelect = (listing) => {
+  const handleListingSelect = async (listing) => {
     setSelectedListing(listing);
+    setLinkedStock(null);
     setGenForm(p => ({
       ...p,
       listing_id:           listing.id,
@@ -5133,6 +5190,14 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     }));
     setListingDropOpen(false);
     setListingSearch('');
+    // Fetch linked stock unit for encumbrance / B5 check
+    const { data } = await supabase
+      .from('stock_units')
+      .select('encumbrance_status, puspakom_b5_date, puspakom_b7_date')
+      .eq('listing_id', listing.id)
+      .eq('dealer_id', userId)
+      .maybeSingle();
+    setLinkedStock(data || null);
   };
 
   const fetchDocs = async () => {
@@ -5788,10 +5853,33 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 </div>
               )}
             </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
-              <button onClick={handleGenerate} disabled={genSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{genSaving ? 'Generating…' : 'Generate'}</button>
-            </div>
+            {(() => {
+              const encBlocked = genForm.doc_type === 'Handover Checklist' && linkedStock && linkedStock.encumbrance_status === 'under_hp';
+              return (
+                <div className="p-5 border-t border-gray-100 space-y-3">
+                  {encBlocked && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10 }}>
+                      <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "'DM Sans',sans-serif" }}>
+                        This vehicle is marked <strong>Under HP</strong> in stock. Clear the encumbrance before issuing a Handover Checklist.
+                      </span>
+                    </div>
+                  )}
+                  {linkedStock && linkedStock.encumbrance_status === 'unknown' && genForm.doc_type === 'Handover Checklist' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10 }}>
+                      <AlertTriangle style={{ width: 14, height: 14, color: '#f59e0b', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: '#92400e', fontFamily: "'DM Sans',sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
+                    <button onClick={handleGenerate} disabled={genSaving || encBlocked} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={encBlocked ? { background: '#9ca3af', cursor: 'not-allowed' } : T.btnRed}>
+                      {genSaving ? 'Generating…' : 'Generate'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
