@@ -1190,6 +1190,34 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
     } catch {}
   };
 
+  const compressImage = (file, maxWidth = 1200, quality = 0.82) =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) =>
+            resolve(
+              blob
+                ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+                : file,
+            ),
+          "image/jpeg",
+          quality,
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+      img.src = objectUrl;
+    });
+
   const uploadImagesEager = async (files) => {
     const startIdx = imgProgress.length;
     setImgProgress((p) => [
@@ -1199,10 +1227,11 @@ export default function CarForm({ onCreate, listing, onUpdate }) {
 
     const results = await Promise.allSettled(
       files.map(async (file, i) => {
-        const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const compressed = await compressImage(file);
+        const path = `${Date.now()}-${compressed.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { error } = await supabase.storage
           .from("car-images")
-          .upload(path, file);
+          .upload(path, compressed);
         if (error) {
           setImgProgress((p) =>
             p.map((e, j) =>
