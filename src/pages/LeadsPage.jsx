@@ -34,18 +34,20 @@ function EmptyState({ onAdd }) {
   );
 }
 
-// ─── Stage section header (All view) ──────────────────────────────────────────
+// ─── Stage section header (sticky) ───────────────────────────────────────────
 function StageSectionHeader({ stage, count }) {
   const cfg = STAGE_CONFIG[stage];
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
-      padding: '13px 22px 9px',
+      padding: '10px 16px 8px',
       background: '#f9fafb',
       borderBottom: '1px solid #f1f3f5',
+      borderTop: '1px solid #f1f3f5',
+      position: 'sticky', top: 0, zIndex: 10,
     }}>
       <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: cfg.headerBorder }}>
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: cfg.headerBorder }}>
         {cfg.label}
       </span>
       <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{count}</span>
@@ -143,17 +145,25 @@ export default function LeadsPage() {
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+      <style>{`
+        .lp-filter-bar::-webkit-scrollbar { display: none; }
+        .lp-stage-tabs::-webkit-scrollbar { display: none; }
+        @media (max-width: 480px) {
+          .lp-src-select { display: none !important; }
+          .lp-assigned-select { display: none !important; }
+        }
+      `}</style>
 
       {/* ── Top bar ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3"
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5"
         style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
         <div>
-          <h1 className="text-base font-bold text-gray-900">Pipeline</h1>
-          <p className="text-xs text-gray-500">{leads.length} lead{leads.length !== 1 ? 's' : ''} total</p>
+          <h1 className="text-sm font-bold text-gray-900">Pipeline</h1>
+          <p className="text-xs text-gray-400">{filtered.length}{filtered.length !== leads.length ? `/${leads.length}` : ''} lead{leads.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-white font-semibold flex-shrink-0"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm text-white font-semibold flex-shrink-0"
           style={T.btnRed}
         >
           <Plus className="w-4 h-4" />Add Lead
@@ -163,30 +173,33 @@ export default function LeadsPage() {
       {/* ── Filter + Stage bar ── */}
       <div className="flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
         {/* Search + dropdowns */}
-        <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
-          <div className="relative flex-1 min-w-[140px] max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#9ca3af' }} />
+        <div className="lp-filter-bar flex items-center gap-2 px-3 pt-2 pb-1.5 overflow-x-auto">
+          <div className="relative flex-1" style={{ minWidth: 120 }}>
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: '#9ca3af' }} />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search buyer or car…"
-              className="w-full pl-9 pr-8 py-1.5 text-sm rounded-lg focus:outline-none"
+              aria-label="Search leads"
+              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg focus:outline-none"
               style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#111827' }}
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }}>
+              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }}>
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
-            className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
+            aria-label="Filter by source"
+            className="lp-src-select text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
             style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
             <option value="">All Sources</option>
             {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {teamMembers.length > 0 && (
             <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
-              className="text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
+              aria-label="Filter by salesperson"
+              className="lp-assigned-select text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
               style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
               <option value="">All Salespeople</option>
               {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
@@ -194,35 +207,37 @@ export default function LeadsPage() {
           )}
           {hasFilters && (
             <button onClick={() => { setSearch(''); setFilterSource(''); setFilterAssigned(''); }}
-              style={{ fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
+              style={{ fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, touchAction: 'manipulation' }}>
               <X className="w-3 h-3" />Clear
             </button>
           )}
         </div>
 
         {/* Stage tabs */}
-        <div className="flex items-center gap-1 px-4 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="lp-stage-tabs flex items-center gap-1 px-3 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           <button onClick={() => setActiveStage('all')} style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
-            fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+            display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
+            fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
             background: activeStage === 'all' ? '#dc2626' : '#f9fafb',
             border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid #e5e7eb',
             color: activeStage === 'all' ? '#fff' : '#374151',
+            touchAction: 'manipulation',
           }}>
-            All <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts.all}</span>
+            All <span style={{ opacity: 0.8 }}>{stageTabCounts.all}</span>
           </button>
-          {STAGE_ORDER.map(stage => {
+          {STAGE_ORDER.filter(s => stageTabCounts[s] > 0 || activeStage === s).map(stage => {
             const cfg = STAGE_CONFIG[stage];
             const active = activeStage === stage;
             return (
               <button key={stage} onClick={() => setActiveStage(stage)} style={{
-                display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
-                fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+                display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
+                fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
                 background: active ? cfg.headerBorder : '#f9fafb',
                 border: active ? `1px solid ${cfg.headerBorder}` : '1px solid #e5e7eb',
                 color: active ? '#fff' : '#374151',
+                touchAction: 'manipulation',
               }}>
-                {cfg.label} <span style={{ fontSize: 10, opacity: 0.8 }}>{stageTabCounts[stage]}</span>
+                {cfg.label} <span style={{ opacity: 0.8 }}>{stageTabCounts[stage]}</span>
               </button>
             );
           })}
@@ -238,7 +253,7 @@ export default function LeadsPage() {
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ background: '#f3f4f6', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ margin: '8px 0 0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ margin: '8px 0 0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
             {activeStage === 'all' ? (
               STAGE_ORDER.map(stage => {
                 const stageLeads = byStage[stage] || [];
