@@ -4,20 +4,6 @@
 
 ---
 
-## User-action required (blocked on user)
-
-### B. Lexus logo
-Real Lexus SVG is not available in simple-icons or any accessible npm package.
-User must manually source the official SVG and drop it into `/public/brands/lexus.svg`.
-Current file is a geometric approximation (L inside oval).
-
----
-
----
-
----
-
----
 
 ## Done (reference)
 
@@ -46,3 +32,4 @@ Current file is a geometric approximation (L inside oval).
 - **AUDIT-FIX: Analytics data scope, loan form data leak, duplicate leads on appointment, dashboard tab order, ErrorBoundary on lazy tabs.**
 - Analytics RPC migration, React.memo on CarCard, self-booking prevention, brand SVGs, team leaderboard, customer records, manager approval workflow, deal presentation screen, accountant payroll payout, F&I module, HP loan tracking, pipeline redesign, deal sheet v2.
 - **MKT-1–12: Marketplace audit fixes** — keyboard nav, focus-visible, form labels, HeroCarousel image optimisation, duplicate font removal, dynamic canonical URLs, nav contrast, lang toggle aria-labels.
+- **Lexus logo** — redrawn from reference image: horizontal oval ring + angled L emblem + LEXUS wordmark at `/public/brands/lexus.svg`.
