@@ -2,26 +2,6 @@
 
 ## Dev tasks
 
-### Marketplace audit fixes
-
-**High priority**
-- **MKT-1: CarCard keyboard accessibility** — replace `<div onClick>` with `<article tabIndex={0} onKeyDown>` so listings are reachable by keyboard (WCAG 2.1 fail)
-- **MKT-2: Search input label** — wrap HeroCarousel search input in `<label>` or add `aria-label`; same for any unlabelled inputs on MarketplacePage filters
-- **MKT-3: focus-visible outlines** — add global `:focus-visible` outline (2px red) to all buttons, links, and interactive elements; currently invisible to keyboard users
-- **MKT-4: Booking form labels** — CarDetailPage booking form uses placeholders only; add visible `<label>` elements for each field
-
-**Medium priority**
-- **MKT-5: HeroCarousel image mounting** — only mount active + next slide images in DOM; current opacity-toggle approach keeps all slides loaded (memory waste with 10+ slides)
-- **MKT-6: Deduplicate font loading** — Outfit/DM Sans loaded in index.html AND injected again inside CarDetailPage and HomePage component stylesheets; remove in-component font imports
-- **MKT-7: Add `font-display: swap`** — index.html Google Fonts link missing this param; causes FOIT on slow connections
-- **MKT-8: Responsive image `sizes` attribute** — listing mosaic/grid images have no `sizes` attr; browser downloads full-size on mobile unnecessarily
-- **MKT-9: Fix hardcoded canonical URL** — CarDetailPage uses `https://xdrive.my` hardcoded in canonical and OG url tags; should use `window.location.origin` or a dynamic base
-
-**Low priority**
-- **MKT-10: Nav link color contrast** — Header nav links use `rgba(140,140,150,0.85)` on dark background; borderline WCAG AA; nudge opacity up
-- **MKT-11: Language toggle aria-labels** — EN/BM buttons in Header have no aria-label or title attribute
-- **MKT-12: Fallback image alt text** — CarDetailPage fallback/error image renders with empty alt; add descriptive alt
-
 ---
 
 ## User-action required (blocked on user)
@@ -65,3 +45,4 @@ Current file is a geometric approximation (L inside oval).
 - **AUDIT-FIX: callClaude → ai-proxy** — all AI features route through working Edge Function.
 - **AUDIT-FIX: Analytics data scope, loan form data leak, duplicate leads on appointment, dashboard tab order, ErrorBoundary on lazy tabs.**
 - Analytics RPC migration, React.memo on CarCard, self-booking prevention, brand SVGs, team leaderboard, customer records, manager approval workflow, deal presentation screen, accountant payroll payout, F&I module, HP loan tracking, pipeline redesign, deal sheet v2.
+- **MKT-1–12: Marketplace audit fixes** — keyboard nav, focus-visible, form labels, HeroCarousel image optimisation, duplicate font removal, dynamic canonical URLs, nav contrast, lang toggle aria-labels.
