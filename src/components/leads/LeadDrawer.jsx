@@ -580,15 +580,23 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'closed_won' }).catch(() => {});
 
       if (lead.car_listing_id) {
+        const soldAt = new Date().toISOString();
         await supabase
           .from('car_listings')
           .update({
             status: 'sold',
-            sold_at: new Date().toISOString(),
+            sold_at: soldAt,
             assigned_to: selectedCloser || null,
             commission_status: 'pending',
           })
           .eq('id', lead.car_listing_id);
+
+        // Sync stock_units so StockTab stays consistent — only update if not already sold
+        await supabase
+          .from('stock_units')
+          .update({ status: 'sold', sold_date: soldAt.slice(0, 10) })
+          .eq('listing_id', lead.car_listing_id)
+          .neq('status', 'sold');
 
         await supabase
           .from('leads')

@@ -4976,9 +4976,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const handleMarkSold = async () => {
     setSoldSaving(true);
     const soldPrice = parseFloat(soldForm.sold_price);
+    const soldDate = soldForm.sold_date || new Date().toISOString().slice(0, 10);
     const payload = {
       status: 'sold',
-      sold_date: soldForm.sold_date || new Date().toISOString().slice(0, 10),
+      sold_date: soldDate,
       sold_price: isNaN(soldPrice) ? 0 : soldPrice,
     };
     const { error } = await supabase
@@ -4991,6 +4992,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
       toast.error('Failed to mark as sold: ' + error.message);
       setSoldSaving(false);
       return;
+    }
+    // Sync the linked car listing so status is consistent everywhere
+    const listingId = soldTarget.listing_id || soldTarget.car_listings?.id;
+    if (listingId) {
+      await supabase
+        .from('car_listings')
+        .update({ status: 'sold', sold_at: new Date().toISOString() })
+        .eq('id', listingId)
+        .neq('status', 'sold');
     }
     const car = soldTarget.car_listings || {};
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: soldTarget.id, action: 'marked_sold', summary: `Stock unit sold${car.brand ? ` — ${car.brand} ${car.model} ${car.year}` : ''} · RM ${(payload.sold_price||0).toLocaleString()}` });
@@ -5236,7 +5246,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                         {stockView === 'available' ? (
                           <td style={{ padding: '12px 14px' }}>
                             <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
-                              <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
+                              <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
                             </div>
                           </td>
@@ -8192,7 +8202,7 @@ export default function DashboardPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            {['', 'Vehicle', 'Price', 'Year / Km', 'Grade', 'Age', 'Status'].map((h, i) => (
+                            {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>{h}</th>
                             ))}
                           </tr>
@@ -8236,6 +8246,21 @@ export default function DashboardPage() {
                                       <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '0 5px' }}>−{pct}%</span>
                                     </div>
                                   )}
+                                </td>
+                                {/* Cost */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  {l.purchase_price ? <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>RM {Number(l.purchase_price).toLocaleString()}</span> : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                                </td>
+                                {/* Recon */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  {l.recon_cost ? <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>RM {Number(l.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                                </td>
+                                {/* Gross */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  {l.purchase_price ? (() => {
+                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0);
+                                    return <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>;
+                                  })() : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
                                 </td>
                                 {/* Year / Km */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
