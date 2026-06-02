@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { usePermissions } from "../hooks/usePermissions";
 import TikTokStudioV3 from "../components/TikTokStudioV3";
 import { toast } from "sonner";
 import {
@@ -118,6 +119,7 @@ export default function SalesmanPanel() {
  const redirectByRole = useRoleRedirect("salesman");
 
  const [profile, setProfile] = useState(null);
+ const { can: canPerm } = usePermissions(profile);
  const [userId, setUserId] = useState(null);
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("dashboard");
@@ -533,14 +535,16 @@ export default function SalesmanPanel() {
  setEnquiriesLoading(false);
  }
 
- // Leads assigned to this salesman
- supabase
+ // Leads: own-assigned by default; all-dealer if granted view_all_leads
+ (() => {
+ let q = supabase
  .from("leads")
  .select("*, car_listings(brand, model, year, selling_price)")
- .eq("salesman_id", userId)
  .eq("dealer_id", profile?.dealer_id)
- .eq("is_deleted", false)
- .order("updated_at", { ascending: false })
+ .eq("is_deleted", false);
+ if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
+ return q.order("updated_at", { ascending: false });
+ })()
  .then(async ({ data }) => {
  const rows = data || [];
  setLeads(rows);
@@ -1853,6 +1857,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  available
  </p>
  </div>
+ {canPerm("view_commission") && (
  <div
  style={{
  background: "#0d1117",
@@ -1894,6 +1899,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  style={{ width: "100%", marginTop: 10, display: "block" }}
  />
  </div>
+ )}
  <div
  style={{
  background: "#0d1117",
@@ -4955,7 +4961,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      <KPI label="CVR" value={`${cvr}%`} data={cvrD} color={cvrColor} sub="WA / Views" />
      <KPI label="Enquiries" value={enquiries.length} data={enqD} color="#c084fc" sub="All messages" />
      <KPI label="This Month" value={thisMonthSales} data={Array(7).fill(0)} color="#fbbf24" sub="Cars sold" />
+     {canPerm("view_commission") && (
      <KPI label="Commission" value={commission !== null ? `RM ${Number(commission).toLocaleString()}` : "—"} data={Array(7).fill(0)} color="#4ade80" sub="All time" />
+     )}
     </div>
 
     {/* This Month KPI strip */}
@@ -5044,7 +5052,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
     )}
 
     {/* Commission breakdown (with dates) */}
-    {commissionDetails.length > 0 && (
+    {canPerm("view_commission") && commissionDetails.length > 0 && (
      <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#6b7280" }}>Commission Breakdown</p>

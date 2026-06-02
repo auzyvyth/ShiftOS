@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
+import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions } from "../lib/permissions";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
@@ -725,6 +726,72 @@ function ErrMsg({ k, errors }) {
       {errors[k]}
     </p>
   ) : null;
+}
+
+// ─── PermissionsMatrix (SEC-2) ────────────────────────────────────────────────
+function PermissionsMatrix({ dealerId, actor }) {
+  const [rows, setRows] = useState({});   // { role: permissionsMap }
+  const [loading, setLoading] = useState(true);
+  const [savingRole, setSavingRole] = useState(null);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    setLoading(true);
+    supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId)
+      .then(({ data }) => {
+        const byRole = {};
+        for (const { value } of CONFIGURABLE_ROLES) {
+          const stored = (data || []).find(r => r.role === value)?.permissions;
+          byRole[value] = resolvePermissions(value, stored);
+        }
+        setRows(byRole);
+        setLoading(false);
+      });
+  }, [dealerId]);
+
+  const toggle = (role, key) => setRows(p => ({ ...p, [role]: { ...p[role], [key]: !p[role]?.[key] } }));
+
+  const saveRole = async (role) => {
+    setSavingRole(role);
+    const { error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role, permissions: rows[role], updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' });
+    if (error) { toast.error('Save failed'); }
+    else {
+      logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: `Permissions updated — ${role}` });
+      toast.success('Permissions saved');
+    }
+    setSavingRole(null);
+  };
+
+  if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
+
+  return (
+    <div className="space-y-5">
+      {CONFIGURABLE_ROLES.map(({ value, label }) => {
+        const caps = capabilitiesForRole(value);
+        return (
+          <div key={value} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{label}</span>
+              <SaveBtn sectionKey={`perm_${value}`} onClick={() => saveRole(value)} saving={{ [`perm_${value}`]: savingRole === value }} saved={{}} />
+            </div>
+            <div className="space-y-2">
+              {caps.map(cap => (
+                <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
+                  <span>
+                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>Owner, dealer and superadmin accounts always have full access and are not listed here.</p>
+    </div>
+  );
 }
 
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
@@ -1631,6 +1698,18 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
           )}
         </div>
+      </SettingsSection>
+
+      {/* ── Team Permissions (SEC-2) ── */}
+      <SettingsSection
+        title="Team Permissions"
+        subtitle="Control what each staff role can see and do"
+        icon={Lock}
+        iconColor="text-indigo-400"
+        iconBg="rgba(129,140,248,0.08)"
+        iconBorder="rgba(129,140,248,0.18)"
+      >
+        <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>
 
       {/* ── 4. Telegram Auto-Post ── */}
