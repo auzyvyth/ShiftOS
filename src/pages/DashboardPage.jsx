@@ -4906,6 +4906,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [pnlUnit, setPnlUnit] = useState(null);
   const [pnlData, setPnlData] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
+  const [reconUnit, setReconUnit] = useState(null);
+  const [reconJobs, setReconJobs] = useState([]);
+  const [reconLoading, setReconLoading] = useState(false);
+  const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+  const [reconSaving, setReconSaving] = useState(false);
+  const [showReconAdd, setShowReconAdd] = useState(false);
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -5097,6 +5103,59 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     const netPnl         = revenue + addonRevenue - totalCosts;
     setPnlData({ purchasePrice, reconCost, servicesCost, commission, addonRevenue, addonCost, revenue, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
     setPnlLoading(false);
+  };
+
+  const RECON_CATS = [
+    { value: 'wash',        label: 'Wash & Detail' },
+    { value: 'polish',      label: 'Polish / Paint' },
+    { value: 'engine',      label: 'Engine / Mechanical' },
+    { value: 'tyres',       label: 'Tyres' },
+    { value: 'upholstery',  label: 'Upholstery / Interior' },
+    { value: 'bodywork',    label: 'Bodywork / Dents' },
+    { value: 'inspection',  label: 'Inspection' },
+    { value: 'electrical',  label: 'Electrical' },
+    { value: 'accessories', label: 'Accessories' },
+    { value: 'other',       label: 'Other' },
+  ];
+
+  const fetchReconJobs = async (unit) => {
+    setReconUnit(unit);
+    setReconJobs([]);
+    setReconLoading(true);
+    setShowReconAdd(false);
+    setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+    const { data } = await supabase
+      .from('recon_jobs')
+      .select('*')
+      .eq('stock_unit_id', unit.id)
+      .order('created_at', { ascending: true });
+    setReconJobs(data || []);
+    setReconLoading(false);
+  };
+
+  const handleAddReconJob = async () => {
+    if (!reconForm.title.trim()) { toast.error('Enter a job title'); return; }
+    setReconSaving(true);
+    const { data, error } = await supabase.from('recon_jobs').insert({
+      dealer_id: userId,
+      stock_unit_id: reconUnit.id,
+      title: reconForm.title.trim(),
+      category: reconForm.category,
+      vendor: reconForm.vendor.trim() || null,
+      cost: reconForm.cost ? Number(reconForm.cost) : null,
+      eta_date: reconForm.eta_date || null,
+      notes: reconForm.notes.trim() || null,
+      status: 'pending',
+    }).select().single();
+    if (error) { toast.error('Failed to add job'); }
+    else { setReconJobs(p => [...p, data]); setShowReconAdd(false); setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' }); }
+    setReconSaving(false);
+  };
+
+  const handleReconStatus = async (jobId, newStatus) => {
+    const patch = { status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null };
+    const { error } = await supabase.from('recon_jobs').update(patch).eq('id', jobId);
+    if (!error) setReconJobs(p => p.map(j => j.id === jobId ? { ...j, ...patch } : j));
   };
 
   const fetchHistory = async (unit) => {
@@ -5295,6 +5354,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                               <button onClick={() => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); }} style={{ fontSize: 11, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Sold</button>
                               <button onClick={() => fetchHistory(u)} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>History</button>
                               <button onClick={() => fetchPnl(u)} style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>P&L</button>
+                              <button onClick={() => fetchReconJobs(u)} style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Recon</button>
                             </div>
                           </td>
                         ) : (
@@ -5517,6 +5577,101 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                     {!pnlData.isSold && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Based on current asking price — updates when sold.</p>}
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recon Job Card Modal */}
+      {reconUnit && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Recon Job Card</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {reconUnit.car_listings?.brand} {reconUnit.car_listings?.model} {reconUnit.car_listings?.year}
+                  {reconUnit.car_listings?.plate_number || reconUnit.registration_number ? ` · ${reconUnit.car_listings?.plate_number || reconUnit.registration_number}` : ''}
+                </p>
+              </div>
+              <button onClick={() => { setReconUnit(null); setReconJobs([]); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {reconLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : (
+                <>
+                  {/* Job list */}
+                  {reconJobs.length === 0 && !showReconAdd && (
+                    <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No recon jobs yet.</p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {reconJobs.map(job => {
+                      const statusColor = job.status === 'done' ? '#34d399' : job.status === 'in_progress' ? '#f59e0b' : '#9ca3af';
+                      const cat = RECON_CATS.find(c => c.value === job.category)?.label || job.category;
+                      return (
+                        <div key={job.id} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{job.title}</p>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                <span style={{ fontSize: 10, color: '#6b7280' }}>{cat}</span>
+                                {job.vendor && <span style={{ fontSize: 10, color: '#6b7280' }}>· {job.vendor}</span>}
+                                {job.cost != null && <span style={{ fontSize: 10, fontWeight: 600, color: '#374151' }}>RM {Number(job.cost).toLocaleString()}</span>}
+                                {job.eta_date && <span style={{ fontSize: 10, color: '#9ca3af' }}>ETA {new Date(job.eta_date).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}</span>}
+                              </div>
+                            </div>
+                            <select value={job.status} onChange={e => handleReconStatus(job.id, e.target.value)}
+                              style={{ fontSize: 10, fontWeight: 600, color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}40`, borderRadius: 5, padding: '3px 7px', cursor: 'pointer', appearance: 'none', outline: 'none' }}>
+                              <option value="pending">Pending</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="done">Done</option>
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Summary */}
+                  {reconJobs.length > 0 && (() => {
+                    const totalCost = reconJobs.reduce((s, j) => s + (Number(j.cost) || 0), 0);
+                    const done = reconJobs.filter(j => j.status === 'done').length;
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f3f4f6', borderRadius: 8, marginBottom: 12, fontSize: 12 }}>
+                        <span style={{ color: '#6b7280' }}>{done}/{reconJobs.length} jobs done</span>
+                        {totalCost > 0 && <span style={{ fontWeight: 600, color: '#111827' }}>Total: RM {totalCost.toLocaleString()}</span>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Add job form */}
+                  {showReconAdd ? (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <input value={reconForm.title} onChange={e => setReconForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
+                        <select value={reconForm.category} onChange={e => setReconForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
+                          {RECON_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <input value={reconForm.vendor} onChange={e => setReconForm(f => ({ ...f, vendor: e.target.value }))} placeholder="Vendor / workshop" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input type="number" value={reconForm.cost} onChange={e => setReconForm(f => ({ ...f, cost: e.target.value }))} placeholder="Cost (RM)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input type="date" value={reconForm.eta_date} onChange={e => setReconForm(f => ({ ...f, eta_date: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none', colorScheme: 'light' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => setShowReconAdd(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddReconJob} disabled={reconSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f59e0b', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: reconSaving ? 0.6 : 1 }}>
+                          {reconSaving ? 'Saving…' : 'Add Job'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#fffbeb', border: '1px dashed #fbbf24', color: '#d97706', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      + Add Recon Job
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
