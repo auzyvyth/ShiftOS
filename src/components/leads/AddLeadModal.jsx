@@ -9,6 +9,9 @@ const sel = inp + " appearance-none";
 const EMPTY = {
   buyer_name:     '',
   phone:          '+60',
+  buyer_ic:       '',
+  buyer_email:    '',
+  buyer_address:  '',
   lead_source:    '',
   car_listing_id: '',
   employment_type:'',
@@ -69,6 +72,9 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
       const payload = {
         buyer_name:     form.buyer_name.trim(),
         phone:          form.phone.trim(),
+        buyer_ic:       form.buyer_ic.trim()      || null,
+        buyer_email:    form.buyer_email.trim()   || null,
+        buyer_address:  form.buyer_address.trim() || null,
         lead_source:    form.lead_source,
         stage:          form.stage || 'new',
         car_listing_id: form.car_listing_id || null,
@@ -141,6 +147,40 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               />
             </div>
             {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+          </div>
+
+          {/* IC + Email — for HP / loan applications */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">IC Number</label>
+              <input
+                value={form.buyer_ic}
+                onChange={e => set('buyer_ic', e.target.value)}
+                className={inp}
+                placeholder="e.g. 900101-14-5566"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Email</label>
+              <input
+                value={form.buyer_email}
+                onChange={e => set('buyer_email', e.target.value)}
+                className={inp}
+                type="email"
+                placeholder="buyer@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Address</label>
+            <input
+              value={form.buyer_address}
+              onChange={e => set('buyer_address', e.target.value)}
+              className={inp}
+              placeholder="Mailing / residential address"
+            />
           </div>
 
           {/* Source + Stage */}
