@@ -4913,6 +4913,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [reconSaving, setReconSaving] = useState(false);
   const [showReconAdd, setShowReconAdd] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
+  const [showVendors, setShowVendors] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [vendorForm, setVendorForm] = useState({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
+  const [vendorSaving, setVendorSaving] = useState(false);
+  const [showVendorAdd, setShowVendorAdd] = useState(false);
   const [csvRows, setCsvRows] = useState([]);
   const [csvError, setCsvError] = useState('');
   const [csvSaving, setCsvSaving] = useState(false);
@@ -5186,6 +5192,48 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     setCsvSaving(false);
   };
 
+  const VENDOR_CATS = [
+    { value: 'workshop',    label: 'Workshop / Mechanic' },
+    { value: 'tint',        label: 'Window Tint' },
+    { value: 'bodywork',    label: 'Bodywork / Panel' },
+    { value: 'upholstery',  label: 'Upholstery' },
+    { value: 'electrical',  label: 'Electrical' },
+    { value: 'inspection',  label: 'Inspection (PUSPAKOM)' },
+    { value: 'accessories', label: 'Accessories' },
+    { value: 'insurance',   label: 'Insurance' },
+    { value: 'other',       label: 'Other' },
+  ];
+
+  const fetchVendors = async () => {
+    setVendorsLoading(true);
+    const { data } = await supabase.from('vendors').select('*').eq('dealer_id', userId).order('name', { ascending: true });
+    setVendors(data || []);
+    setVendorsLoading(false);
+  };
+
+  const handleAddVendor = async () => {
+    if (!vendorForm.name.trim()) { toast.error('Enter vendor name'); return; }
+    setVendorSaving(true);
+    const { data, error } = await supabase.from('vendors').insert({
+      dealer_id: userId, name: vendorForm.name.trim(), category: vendorForm.category,
+      contact: vendorForm.contact.trim() || null, phone: vendorForm.phone.trim() || null,
+      address: vendorForm.address.trim() || null, notes: vendorForm.notes.trim() || null,
+    }).select().single();
+    if (error) { toast.error('Failed to add vendor'); }
+    else {
+      setVendors(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setShowVendorAdd(false);
+      setVendorForm({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
+      toast.success('Vendor added');
+    }
+    setVendorSaving(false);
+  };
+
+  const handleToggleVendor = async (id, is_active) => {
+    const { error } = await supabase.from('vendors').update({ is_active }).eq('id', id);
+    if (!error) setVendors(p => p.map(v => v.id === id ? { ...v, is_active } : v));
+  };
+
   const fetchReconJobs = async (unit) => {
     setReconUnit(unit);
     setReconJobs([]);
@@ -5282,6 +5330,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Stock Units</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
+            <button onClick={() => { setShowVendors(true); fetchVendors(); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)', color: '#6b7280' }}><Wrench className="w-3.5 h-3.5" />Vendors</button>
             <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
@@ -5811,6 +5860,76 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Vendors Modal */}
+      {showVendors && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Vendor / Supplier Directory</h3>
+              <button onClick={() => { setShowVendors(false); setShowVendorAdd(false); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {vendorsLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
+              ) : (
+                <>
+                  {vendors.length === 0 && !showVendorAdd && (
+                    <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No vendors yet.</p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {vendors.map(v => {
+                      const cat = VENDOR_CATS.find(c => c.value === v.category)?.label || v.category;
+                      return (
+                        <div key={v.id} style={{ background: v.is_active ? '#f9fafb' : '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', opacity: v.is_active ? 1 : 0.6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 3px' }}>{v.name}</p>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: '#6b7280' }}>
+                                <span>{cat}</span>
+                                {v.phone && <a href={`tel:${v.phone}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{v.phone}</a>}
+                                {v.contact && <span>{v.contact}</span>}
+                              </div>
+                              {v.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{v.notes}</p>}
+                            </div>
+                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? '#16a34a' : '#9ca3af', background: v.is_active ? '#f0fdf4' : '#f3f4f6', border: `1px solid ${v.is_active ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                              {v.is_active ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {showVendorAdd ? (
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Vendor</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <input value={vendorForm.name} onChange={e => setVendorForm(f => ({ ...f, name: e.target.value }))} placeholder="Vendor name *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
+                        <select value={vendorForm.category} onChange={e => setVendorForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
+                          {VENDOR_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <input value={vendorForm.phone} onChange={e => setVendorForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input value={vendorForm.contact} onChange={e => setVendorForm(f => ({ ...f, contact: e.target.value }))} placeholder="Contact person" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <input value={vendorForm.notes} onChange={e => setVendorForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes" style={{ gridColumn: '1/-1', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => setShowVendorAdd(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddVendor} disabled={vendorSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#0369a1', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: vendorSaving ? 0.6 : 1 }}>
+                          {vendorSaving ? 'Saving…' : 'Add Vendor'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowVendorAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#f0f9ff', border: '1px dashed #7dd3fc', color: '#0369a1', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      + Add Vendor
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
