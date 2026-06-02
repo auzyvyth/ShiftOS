@@ -350,7 +350,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     if (!nextBank) return;
     setNextBankSaving(true);
     const car = lead?.car_listing;
-    const prevRow = hpRows.find(r => r.status === 'rejected');
+    const prevRow = hpRows.find(r => r.status === 'rejected') || hpRows[0];
     const { data, error } = await supabase.from('deal_financing').insert({
       dealer_id: lead.dealer_id, lead_id: lead.id, listing_id: lead.car_listing_id || null,
       bank_name: nextBank,
@@ -1200,6 +1200,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       </div>
                     );
                   })}
+                  {/* Parallel bank submission — available whenever submissions exist */}
+                  {hpRows.length > 0 && !nextBankPrompt && !showAddHP && (
+                    <button onClick={() => setNextBankPrompt(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', marginBottom: 6 }}>
+                      <Plus style={{ width: 11, height: 11 }} />Submit to another bank
+                    </button>
+                  )}
+
                   {/* HP-2: Try next bank prompt */}
                   {nextBankPrompt && !showAddHP && (() => {
                     const triedBanks = new Set(hpRows.map(r => r.bank_name));
