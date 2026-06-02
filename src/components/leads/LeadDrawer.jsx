@@ -420,7 +420,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const [dealerRes, salesmanRes] = await Promise.all([
-        supabase.from('profiles').select('site_name, brand_color, whatsapp_number').eq('id', lead.dealer_id).maybeSingle(),
+        supabase.from('profiles').select('site_name, brand_color, whatsapp_number, site_logo_url, deal_disclaimer').eq('id', lead.dealer_id).maybeSingle(),
         currentUser ? supabase.from('profiles').select('full_name, whatsapp_number').eq('id', currentUser.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       const dealerProfile  = dealerRes.data;
@@ -469,6 +469,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           name:        dealerProfile?.site_name    || 'Dealership',
           brand_color: dealerProfile?.brand_color  || '#dc2626',
           whatsapp:    dealerProfile?.whatsapp_number || null,
+          logo_url:    dealerProfile?.site_logo_url || null,
+          disclaimer:  dealerProfile?.deal_disclaimer || null,
         },
         addons: dealAddons.map(a => ({
           name:     a.dealer_products?.name || '',

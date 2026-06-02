@@ -125,11 +125,17 @@ export default function DealPage() {
 
           {/* Dealer header */}
           <div style={{ background: accentColor, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.01em' }}>{dealer?.name || 'Dealership'}</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
-                Deal Sheet{buyer_name ? ` · Prepared for ${buyer_name}` : ''}
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {dealer?.logo_url && (
+                <img src={dealer.logo_url} alt={dealer?.name || 'Dealership'}
+                  style={{ height: 44, width: 'auto', maxWidth: 120, objectFit: 'contain', background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: 4 }} />
+              )}
+              <div>
+                <p style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.01em' }}>{dealer?.name || 'Dealership'}</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+                  Deal Sheet{buyer_name ? ` · Prepared for ${buyer_name}` : ''}
+                </p>
+              </div>
             </div>
             {contactWhatsapp && !presentMode && (
               <a
@@ -351,8 +357,31 @@ export default function DealPage() {
               </div>
             )}
 
+            {/* Signature / deposit acknowledgment */}
+            <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 24, paddingTop: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Booking Acknowledgment</p>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ borderBottom: '1px solid #9ca3af', height: 34 }} />
+                  <p style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>Buyer signature{buyer_name ? ` — ${buyer_name}` : ''}</p>
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ borderBottom: '1px solid #9ca3af', height: 34, display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: '#9ca3af' }}>RM</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>Deposit received / date</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Disclaimer */}
+            <p style={{ fontSize: 10.5, color: '#9ca3af', lineHeight: 1.6, marginTop: 20 }}>
+              {dealer?.disclaimer ||
+                'This deal sheet is an estimate prepared for the named buyer and is not a contract of sale. Financing figures, road tax and insurance are estimates only and subject to bank approval and final verification. Prices are valid for the period stated above and subject to vehicle availability.'}
+            </p>
+
             {/* Footer */}
-            <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 1.7 }}>
+            <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 1.7, marginTop: 16 }}>
               {expires_at && `Valid until ${formatValidUntil(expires_at)}`}
               {generated_at && (
                 <><br />Generated {new Date(generated_at).toLocaleString('en-MY', { dateStyle: 'medium', timeStyle: 'short' })} · {dealer?.name}</>

@@ -885,6 +885,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     profile?.announcement_bar_enabled || false,
   );
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
+  const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -980,6 +981,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementText(profile.announcement_bar || "");
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
+    setDealDisclaimer(profile.deal_disclaimer || "");
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1237,6 +1239,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     toast.success("Two-factor authentication disabled");
     loadMfaFactors();
   };
+
+  const saveDealSheet = () => saveSection("dealsheet", { deal_disclaimer: dealDisclaimer.trim() || null });
 
   const saveStorefront = () =>
     saveSection("storefront", {
@@ -1817,6 +1821,29 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBorder="rgba(34,197,94,0.18)"
       >
         <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
+      </SettingsSection>
+
+      {/* ── Deal Sheet (SET-3) ── */}
+      <SettingsSection
+        title="Deal Sheet"
+        subtitle="Your logo (from Dealership Identity) and a custom disclaimer appear on every deal sheet"
+        icon={FileText}
+        iconColor="text-amber-400"
+        iconBg="rgba(251,191,36,0.08)"
+        iconBorder="rgba(251,191,36,0.18)"
+      >
+        <SettingsField label="Deal Sheet Disclaimer" hint="Shown at the bottom of every deal sheet">
+          <textarea
+            value={dealDisclaimer}
+            onChange={(e) => setDealDisclaimer(e.target.value)}
+            rows={4}
+            placeholder="Leave blank to use the standard estimate/not-a-contract disclaimer."
+            className={taCls}
+          />
+        </SettingsField>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="dealsheet" onClick={saveDealSheet} saving={saving} saved={saved} />
+        </div>
       </SettingsSection>
 
       {/* ── 4. Telegram Auto-Post ── */}
