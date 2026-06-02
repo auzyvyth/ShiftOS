@@ -210,6 +210,12 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [hpEmpType, setHpEmpType] = useState('employed');
   const [hpDocCheck, setHpDocCheck] = useState({});
 
+  // Trade-in state
+  const [tradeIn, setTradeIn]       = useState(null);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
+  const [tiForm, setTiForm]         = useState({ plate_number: '', brand: '', model: '', year: '', mileage: '', colour: '', condition: 'good', valuation: '', agreed_price: '', notes: '' });
+  const [tiSaving, setTiSaving]     = useState(false);
+
   // Deposit state
   const [depositAmount, setDepositAmount]       = useState(initialLead?.deposit_amount ?? '');
   const [depositDate, setDepositDate]           = useState(initialLead?.deposit_date || '');
@@ -673,6 +679,45 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
         setTimeout(() => setNotesSaved(false), 1500);
       } catch { /* silent */ }
     }, 800);
+  }
+
+  // ── Trade-in load ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.id) return;
+    supabase.from('trade_ins').select('*').eq('lead_id', lead.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setTradeIn(data);
+          setTiForm({ plate_number: data.plate_number || '', brand: data.brand || '', model: data.model || '', year: data.year ? String(data.year) : '', mileage: data.mileage ? String(data.mileage) : '', colour: data.colour || '', condition: data.condition || 'good', valuation: data.valuation ? String(data.valuation) : '', agreed_price: data.agreed_price ? String(data.agreed_price) : '', notes: data.notes || '' });
+        }
+      });
+  }, [lead?.id]);
+
+  async function saveTradeIn() {
+    setTiSaving(true);
+    const payload = {
+      dealer_id: lead.dealer_id, lead_id: lead.id,
+      plate_number: tiForm.plate_number || null, brand: tiForm.brand || null, model: tiForm.model || null,
+      year: tiForm.year ? Number(tiForm.year) : null, mileage: tiForm.mileage ? Number(tiForm.mileage) : null,
+      colour: tiForm.colour || null, condition: tiForm.condition || null,
+      valuation: tiForm.valuation ? Number(tiForm.valuation) : null,
+      agreed_price: tiForm.agreed_price ? Number(tiForm.agreed_price) : null,
+      notes: tiForm.notes || null,
+    };
+    try {
+      if (tradeIn?.id) {
+        const { error } = await supabase.from('trade_ins').update(payload).eq('id', tradeIn.id);
+        if (error) throw error;
+        setTradeIn(t => ({ ...t, ...payload }));
+      } else {
+        const { data, error } = await supabase.from('trade_ins').insert(payload).select().single();
+        if (error) throw error;
+        setTradeIn(data);
+      }
+      toast.success('Trade-in saved');
+      setTradeInOpen(false);
+    } catch { toast.error('Error saving trade-in'); }
+    finally { setTiSaving(false); }
   }
 
   // ── Deposit save ─────────────────────────────────────────────────────────────
@@ -1534,6 +1579,48 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     )
                   )}
                 </>
+              )}
+            </div>
+
+            {/* ── Trade-In ── */}
+            <div style={w.section}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tradeIn ? 10 : 0 }}>
+                <p style={{ ...w.label, margin: 0 }}>Trade-In Vehicle</p>
+                <button onClick={() => setTradeInOpen(o => !o)} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                  {tradeInOpen ? 'Collapse' : tradeIn ? 'Edit' : '+ Add'}
+                </button>
+              </div>
+              {tradeIn && !tradeInOpen && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{[tradeIn.year, tradeIn.brand, tradeIn.model].filter(Boolean).join(' ') || 'Vehicle'}</span>
+                  {tradeIn.plate_number && <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{tradeIn.plate_number.toUpperCase()}</span>}
+                  {tradeIn.agreed_price && <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>RM {Number(tradeIn.agreed_price).toLocaleString()} agreed</span>}
+                </div>
+              )}
+              {tradeInOpen && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <input value={tiForm.plate_number} onChange={e => setTiForm(f => ({ ...f, plate_number: e.target.value }))} placeholder="Plate no." style={w.inp} className="ld-inp" />
+                    <select value={tiForm.condition} onChange={e => setTiForm(f => ({ ...f, condition: e.target.value }))} style={{ ...w.inp, appearance: 'none' }} className="ld-inp">
+                      <option value="excellent">Excellent</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="poor">Poor</option>
+                    </select>
+                    <input value={tiForm.brand} onChange={e => setTiForm(f => ({ ...f, brand: e.target.value }))} placeholder="Brand" style={w.inp} className="ld-inp" />
+                    <input value={tiForm.model} onChange={e => setTiForm(f => ({ ...f, model: e.target.value }))} placeholder="Model" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.year} onChange={e => setTiForm(f => ({ ...f, year: e.target.value }))} placeholder="Year" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.mileage} onChange={e => setTiForm(f => ({ ...f, mileage: e.target.value }))} placeholder="Mileage (km)" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.valuation} onChange={e => setTiForm(f => ({ ...f, valuation: e.target.value }))} placeholder="Valuation (RM)" style={w.inp} className="ld-inp" />
+                    <input type="number" value={tiForm.agreed_price} onChange={e => setTiForm(f => ({ ...f, agreed_price: e.target.value }))} placeholder="Agreed price (RM)" style={w.inp} className="ld-inp" />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={() => setTradeInOpen(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={saveTradeIn} disabled={tiSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: tiSaving ? 0.6 : 1 }}>
+                      {tiSaving ? 'Saving…' : 'Save Trade-In'}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 
