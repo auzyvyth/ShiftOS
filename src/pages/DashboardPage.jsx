@@ -4912,6 +4912,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
   const [reconSaving, setReconSaving] = useState(false);
   const [showReconAdd, setShowReconAdd] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvRows, setCsvRows] = useState([]);
+  const [csvError, setCsvError] = useState('');
+  const [csvSaving, setCsvSaving] = useState(false);
+  const csvInputRef = useRef(null);
 
   // Reset pagination when switching between available/sold
   useEffect(() => { setVisibleCount(30); }, [stockView]);
@@ -5118,6 +5123,69 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     { value: 'other',       label: 'Other' },
   ];
 
+  const handleCsvFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { setCsvError('File must have a header row and at least one data row.'); setCsvRows([]); return; }
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, '_'));
+        const col = (alts) => headers.findIndex(h => alts.some(a => h.includes(a)));
+        const iB  = col(['brand','make']);
+        const iM  = col(['model']);
+        const iY  = col(['year']);
+        const iP  = col(['plate','reg']);
+        const iCost = col(['purchase','cost','buying']);
+        const iRecon = col(['recon']);
+        const iAsk  = col(['asking','sell','price']);
+        const rows = lines.slice(1).map((line, i) => {
+          const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+          return {
+            _row: i + 2,
+            brand:          iB  >= 0 ? cells[iB]  || '' : '',
+            model:          iM  >= 0 ? cells[iM]  || '' : '',
+            year:           iY  >= 0 ? cells[iY]  || '' : '',
+            plate_number:   iP  >= 0 ? cells[iP]  || '' : '',
+            purchase_price: iCost  >= 0 ? Number(cells[iCost])  || 0 : 0,
+            recon_cost:     iRecon >= 0 ? Number(cells[iRecon]) || 0 : 0,
+            asking_price:   iAsk   >= 0 ? Number(cells[iAsk])  || 0 : 0,
+          };
+        }).filter(r => r.brand || r.model);
+        if (rows.length === 0) { setCsvError('No valid rows found. Ensure columns: brand/make, model, year.'); setCsvRows([]); return; }
+        setCsvError('');
+        setCsvRows(rows);
+      } catch { setCsvError('Failed to parse CSV. Please check the file format.'); setCsvRows([]); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvRows.length) return;
+    setCsvSaving(true);
+    const payload = csvRows.map(r => ({
+      dealer_id: userId, status: 'in_stock',
+      brand: r.brand || null, model: r.model || null, year: r.year ? Number(r.year) : null,
+      registration_number: r.plate_number || null,
+      purchase_price: r.purchase_price || 0,
+      recon_cost: r.recon_cost || 0,
+      asking_price: r.asking_price || 0,
+      encumbrance_status: 'unknown',
+    }));
+    const { error } = await supabase.from('stock_units').insert(payload);
+    if (error) { toast.error('Import failed: ' + error.message); }
+    else {
+      toast.success(`${payload.length} units imported`);
+      setShowCsvImport(false);
+      setCsvRows([]);
+      fetchUnits();
+    }
+    setCsvSaving(false);
+  };
+
   const fetchReconJobs = async (unit) => {
     setReconUnit(unit);
     setReconJobs([]);
@@ -5213,7 +5281,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Stock Units</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button disabled title="CSV import coming soon" className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg opacity-40 cursor-not-allowed" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import Stock</button>
+            <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
+            <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
           </div>
         </div>
@@ -5674,6 +5743,74 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showCsvImport && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
+          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-2xl flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Import Stock from CSV</h3>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Columns: brand/make, model, year, plate/reg, purchase_price, recon_cost, asking_price</p>
+              </div>
+              <button onClick={() => { setShowCsvImport(false); setCsvRows([]); setCsvError(''); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {csvRows.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#fef2f2', border: '2px dashed #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    <Upload style={{ width: 16, height: 16 }} />Choose CSV File
+                  </button>
+                  {csvError && <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{csvError}</p>}
+                  <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', maxWidth: 360 }}>
+                    First row must be a header. Recognised columns: brand, make, model, year, plate, reg, purchase_price, cost, recon_cost, asking_price, selling_price.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{csvRows.length} units to import</span>
+                    <button onClick={() => { setCsvRows([]); setCsvError(''); csvInputRef.current?.click(); }} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Change file</button>
+                  </div>
+                  <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                          {['Brand','Model','Year','Plate','Buy Price','Recon','Asking'].map(h => (
+                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvRows.slice(0, 20).map((r, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            {[r.brand, r.model, r.year, r.plate_number,
+                              r.purchase_price ? `RM ${r.purchase_price.toLocaleString()}` : '—',
+                              r.recon_cost ? `RM ${r.recon_cost.toLocaleString()}` : '—',
+                              r.asking_price ? `RM ${r.asking_price.toLocaleString()}` : '—',
+                            ].map((v, j) => (
+                              <td key={j} style={{ padding: '7px 12px', color: v && v !== '—' ? '#111827' : '#9ca3af' }}>{v || '—'}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {csvRows.length > 20 && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>Showing first 20 of {csvRows.length} rows.</p>}
+                </>
+              )}
+            </div>
+            {csvRows.length > 0 && (
+              <div className="p-5 border-t border-gray-100 flex gap-3">
+                <button onClick={() => { setShowCsvImport(false); setCsvRows([]); }} style={{ flex: 1, padding: '9px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleCsvImport} disabled={csvSaving} style={{ flex: 2, padding: '9px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: csvSaving ? 0.6 : 1 }}>
+                  {csvSaving ? 'Importing…' : `Import ${csvRows.length} Units`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
