@@ -835,7 +835,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaError, setMfaError] = useState("");
 
-  const [tgToken, setTgToken] = useState(profile?.telegram_bot_token || "");
+  const [tgToken, setTgToken] = useState(""); // SEC-5: write-only field, never prefilled
+  const tokenConfigured = !!profile?.telegram_bot_token;
   const [tgChannel, setTgChannel] = useState(profile?.telegram_channel_id || "");
   const [tgAutoPost, setTgAutoPost] = useState(profile?.telegram_auto_post || false);
   const [tgTesting, setTgTesting] = useState(false);
@@ -918,7 +919,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementText(profile.announcement_bar || "");
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
-    setTgToken(profile.telegram_bot_token || "");
+    setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
     setSubdomain(profile.subdomain || "");
@@ -1026,13 +1027,14 @@ function SettingsTab({ profile, onProfileUpdate }) {
 
   const saveTelegram = () =>
     saveSection("telegram", {
-      telegram_bot_token: tgToken.trim(),
+      // SEC-5: only overwrite the stored token when a new one is typed
+      ...(tgToken.trim() ? { telegram_bot_token: tgToken.trim() } : {}),
       telegram_channel_id: tgChannel.trim(),
       telegram_auto_post: tgAutoPost,
     });
 
   const testTelegram = async () => {
-    if (!tgToken.trim() || !tgChannel.trim()) {
+    if (!tgChannel.trim() || (!tgToken.trim() && !tokenConfigured)) {
       setErrors((p) => ({ ...p, telegram: "Fill in bot token and channel ID first." }));
       return;
     }
@@ -1040,8 +1042,15 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setTgTestResult(null);
     setErrors((p) => ({ ...p, telegram: "" }));
     try {
+      // Use the freshly-typed token, or fetch the stored one just-in-time for the test
+      let token = tgToken.trim();
+      if (!token) {
+        const { data: row } = await supabase.from("profiles").select("telegram_bot_token").eq("id", profile?.id).maybeSingle();
+        token = (row?.telegram_bot_token || "").trim();
+      }
+      if (!token) { setErrors((p) => ({ ...p, telegram: "No token saved." })); setTgTesting(false); return; }
       const res = await fetch(
-        `https://api.telegram.org/bot${tgToken.trim()}/sendMessage`,
+        `https://api.telegram.org/bot${token}/sendMessage`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1144,6 +1153,17 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setMfaEnroll(null);
     setMfaCode("");
     setMfaError("");
+  };
+
+  // ── SEC-4: log out everywhere ──
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const logoutAllDevices = async () => {
+    if (!window.confirm("Sign out of ShiftOS on all devices? You'll need to log in again.")) return;
+    setLogoutBusy(true);
+    const { error } = await supabase.auth.signOut({ scope: "global" });
+    if (error) { toast.error(error.message); setLogoutBusy(false); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "updated", summary: "Signed out of all devices" });
+    window.location.href = "/login";
   };
 
   const removeMfaFactor = async (factorId) => {
@@ -1698,6 +1718,20 @@ function SettingsTab({ profile, onProfileUpdate }) {
             </div>
           )}
         </div>
+
+        {/* ── Sessions (SEC-4) ── */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 20, paddingTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#e5e7eb", margin: 0 }}>Active Sessions</p>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>
+              Sign out everywhere if a device is lost or a session may be compromised.
+            </p>
+          </div>
+          <button onClick={logoutAllDevices} disabled={logoutBusy}
+            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
+            {logoutBusy ? "Signing out…" : "Log out all devices"}
+          </button>
+        </div>
       </SettingsSection>
 
       {/* ── Team Permissions (SEC-2) ── */}
@@ -1743,13 +1777,17 @@ function SettingsTab({ profile, onProfileUpdate }) {
           <input
             value={tgToken}
             onChange={(e) => setTgToken(e.target.value)}
-            placeholder="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+            placeholder={tokenConfigured ? "•••••••• saved — type to replace" : "1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"}
             className={iCls}
             type="password"
             autoComplete="off"
           />
           <p className="text-xs text-gray-700 mt-1">
-            Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.
+            {tokenConfigured ? (
+              <span className="text-green-600">Token saved (hidden for security). Leave blank to keep it, or enter a new token to replace.</span>
+            ) : (
+              <>Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.</>
+            )}
           </p>
         </SettingsField>
 
