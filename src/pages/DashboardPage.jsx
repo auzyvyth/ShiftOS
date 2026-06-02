@@ -675,6 +675,50 @@ function ProductsCatalogue({ dealerId }) {
   );
 }
 
+function SaveBtn({ sectionKey, onClick, disabled, saving, saved }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={saving[sectionKey] || disabled}
+      className="btn-shimmer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all"
+      style={
+        saved[sectionKey]
+          ? {
+              background: "linear-gradient(135deg,#16a34a,#15803d)",
+              boxShadow: "0 2px 10px rgba(22,163,74,0.28)",
+            }
+          : T.btnRed
+      }
+    >
+      {saving[sectionKey] ? (
+        <>
+          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          Saving…
+        </>
+      ) : saved[sectionKey] ? (
+        <>
+          <Check className="w-3.5 h-3.5" />
+          Saved!
+        </>
+      ) : (
+        <>
+          <Save className="w-3.5 h-3.5" />
+          Save
+        </>
+      )}
+    </button>
+  );
+}
+
+function ErrMsg({ k, errors }) {
+  return errors[k] ? (
+    <p className="text-red-600 text-xs mt-1.5 flex items-center gap-1.5">
+      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+      {errors[k]}
+    </p>
+  ) : null;
+}
+
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
 function SettingsTab({ profile, onProfileUpdate }) {
   const [saving, setSaving] = useState({});
@@ -982,47 +1026,6 @@ function SettingsTab({ profile, onProfileUpdate }) {
       storefront_cta: sfCta,
     });
 
-  const SaveBtn = ({ sectionKey, onClick, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={saving[sectionKey] || disabled}
-      className="btn-shimmer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all"
-      style={
-        saved[sectionKey]
-          ? {
-              background: "linear-gradient(135deg,#16a34a,#15803d)",
-              boxShadow: "0 2px 10px rgba(22,163,74,0.28)",
-            }
-          : T.btnRed
-      }
-    >
-      {saving[sectionKey] ? (
-        <>
-          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          Saving…
-        </>
-      ) : saved[sectionKey] ? (
-        <>
-          <Check className="w-3.5 h-3.5" />
-          Saved!
-        </>
-      ) : (
-        <>
-          <Save className="w-3.5 h-3.5" />
-          Save
-        </>
-      )}
-    </button>
-  );
-
-  const ErrMsg = ({ k }) =>
-    errors[k] ? (
-      <p className="text-red-600 text-xs mt-1.5 flex items-center gap-1.5">
-        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-        {errors[k]}
-      </p>
-    ) : null;
-
   const planCfg = getPlanConfig(profile?.plan);
   const nextPlan = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
@@ -1203,7 +1206,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </div>
         </SettingsField>
 
-        <ErrMsg k="identity" />
+        <ErrMsg k="identity" errors={errors} />
         <div className="flex items-center justify-between pt-1 gap-4">
           {settingsLastChange ? (
             <p className="text-xs text-gray-500">
@@ -1215,6 +1218,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
             sectionKey="identity"
             onClick={saveDealership}
             disabled={dealershipLocked || subdomainStatus === 'taken' || subdomainStatus === 'checking'}
+            saving={saving}
+            saved={saved}
           />
         </div>
       </SettingsSection>
@@ -1296,9 +1301,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
           </SettingsField>
         </div>
 
-        <ErrMsg k="contact" />
+        <ErrMsg k="contact" errors={errors} />
         <div className="flex justify-end pt-1">
-          <SaveBtn sectionKey="contact" onClick={saveContact} />
+          <SaveBtn sectionKey="contact" onClick={saveContact} saving={saving} saved={saved} />
         </div>
       </SettingsSection>
 
@@ -1444,9 +1449,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
           )}
         </div>
 
-        <ErrMsg k="frontpage" />
+        <ErrMsg k="frontpage" errors={errors} />
         <div className="flex justify-end pt-1">
-          <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} />
+          <SaveBtn sectionKey="frontpage" onClick={saveFrontPage} saving={saving} saved={saved} />
         </div>
       </SettingsSection>
 
@@ -1478,9 +1483,9 @@ function SettingsTab({ profile, onProfileUpdate }) {
           />
         </SettingsField>
 
-        <ErrMsg k="password" />
+        <ErrMsg k="password" errors={errors} />
         <div className="flex justify-end pt-1">
-          <SaveBtn sectionKey="password" onClick={savePassword} />
+          <SaveBtn sectionKey="password" onClick={savePassword} saving={saving} saved={saved} />
         </div>
       </SettingsSection>
 
@@ -1553,7 +1558,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
           ))}
         </div>
 
-        <ErrMsg k="telegram" />
+        <ErrMsg k="telegram" errors={errors} />
 
         {tgTestResult === "ok" && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-emerald-400" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)" }}>
@@ -1574,7 +1579,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
               : <><Send className="w-3.5 h-3.5" />Test Connection</>
             }
           </button>
-          <SaveBtn sectionKey="telegram" onClick={saveTelegram} />
+          <SaveBtn sectionKey="telegram" onClick={saveTelegram} saving={saving} saved={saved} />
         </div>
       </SettingsSection>
 
@@ -1634,8 +1639,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </div>
 
         <div className="pt-2">
-          <SaveBtn sectionKey="storefront" onClick={saveStorefront} />
-          <ErrMsg k="storefront" />
+          <SaveBtn sectionKey="storefront" onClick={saveStorefront} saving={saving} saved={saved} />
+          <ErrMsg k="storefront" errors={errors} />
         </div>
       </SettingsSection>
 
@@ -6875,6 +6880,31 @@ function CustomersTab({ dealerId }) {
   );
 }
 
+function Avatar({ size = "md", profile }) {
+  const sz = size === "lg" ? "w-9 h-9 text-sm" : "w-7 h-7 text-xs";
+  if (profile?.avatar_url)
+    return (
+      <img
+        src={profile.avatar_url}
+        alt=""
+        className={`${sz} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  return (
+    <div
+      className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
+      style={{
+        background: "linear-gradient(135deg, rgba(59,130,246,0.8), rgba(99,102,241,0.8))",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(255,255,255,0.15)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+      }}
+    >
+      {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -7438,31 +7468,6 @@ export default function DashboardPage() {
     );
   });
 
-  const Avatar = ({ size = "md" }) => {
-    const sz = size === "lg" ? "w-9 h-9 text-sm" : "w-7 h-7 text-xs";
-    if (profile?.avatar_url)
-      return (
-        <img
-          src={profile.avatar_url}
-          alt=""
-          className={`${sz} rounded-full object-cover flex-shrink-0`}
-        />
-      );
-    return (
-      <div
-        className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
-        style={{
-          background: "linear-gradient(135deg, rgba(59,130,246,0.8), rgba(99,102,241,0.8))",
-          backdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.15)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
-        }}
-      >
-        {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
-      </div>
-    );
-  };
-
   const DiscountCell = React.memo(({ listing }) => {
     const op = listing.original_price || listing.previous_price || null,
       sp = listing.selling_price || listing.price || null;
@@ -7613,7 +7618,8 @@ export default function DashboardPage() {
     supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
     setOnboardingDismissed(true);
     setOnboardingToast(true);
-    setTimeout(() => setOnboardingToast(false), 5000);
+    const id = setTimeout(() => setOnboardingToast(false), 5000);
+    return () => clearTimeout(id);
   }, [allOnboardingDone]);
 
   const copyStorefrontOnboarding = () => {
@@ -7738,7 +7744,7 @@ export default function DashboardPage() {
         <div className="shrink-0 p-3 space-y-1" style={{ borderTop: '1px solid #EAECF0' }}>
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
-            <Avatar size="lg" />
+            <Avatar size="lg" profile={profile} />
             <div className="flex-1 min-w-0">
               <p style={{ fontSize: 13, fontWeight: 600, color: color.ink }} className="truncate">
                 {profile?.full_name || "—"}
@@ -7899,7 +7905,7 @@ export default function DashboardPage() {
               </>
             )}
           </div>
-          <Avatar />
+          <Avatar profile={profile} />
         </div>
 
         {/* ── Onboarding Banner ── */}

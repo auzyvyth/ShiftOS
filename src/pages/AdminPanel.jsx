@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Car, Eye, MessageSquare, Phone } from "lucide-react";
 import { supabase } from "../supabaseClient";
@@ -47,6 +47,7 @@ export default function AdminPanel() {
   const [team, setTeam] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifChRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -84,11 +85,13 @@ export default function AdminPanel() {
           .eq("salesman_id", p.id).order("created_at", { ascending: false }).limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      const notifCh = supabase.channel("admin_notifs_" + p.id)
+      notifChRef.current = supabase.channel("admin_notifs_" + p.id)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadNotifs)
         .subscribe();
-      return () => supabase.removeChannel(notifCh);
     });
+    return () => {
+      if (notifChRef.current) supabase.removeChannel(notifChRef.current);
+    };
   }, [navigate]);
 
   async function loadListings(did) {

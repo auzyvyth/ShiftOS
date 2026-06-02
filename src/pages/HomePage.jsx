@@ -295,8 +295,8 @@ const HomePage = () => {
     };
     load();
     // sold count is below-fold — defer until after first paint
-    setTimeout(fetchSoldCount, 800);
-    return () => {};
+    const soldCountTimer = setTimeout(fetchSoldCount, 800);
+    return () => clearTimeout(soldCountTimer);
   }, [tenant]);
 
   useEffect(() => {

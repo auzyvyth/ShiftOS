@@ -39,6 +39,116 @@ const TRANSMISSIONS = ['Automatic','Manual'];
 const FUEL_TYPES    = ['Petrol','Diesel','Hybrid','Electric'];
 
 
+function FilterPanel({
+  hotDealsOnly, setHotDealsOnly,
+  selectedPriceBracket, setSelectedPriceBracket,
+  brands, selectedBrands, setSelectedBrands,
+  toggle,
+  selectedYear, setSelectedYear, years,
+  selectedBodyTypes, setSelectedBodyTypes,
+  selectedTransmission, setSelectedTransmission,
+  selectedFuelTypes, setSelectedFuelTypes,
+  selectedLocation, setSelectedLocation, locations,
+}) {
+  return (
+    <div style={{ fontFamily:"'DM Sans',sans-serif" }}>
+
+      {/* Hot Deals toggle */}
+      <div style={{ marginBottom:'4px', borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:'16px' }}>
+        <button
+          onClick={() => setHotDealsOnly(!hotDealsOnly)}
+          style={{
+            width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
+            background: hotDealsOnly ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
+            border: hotDealsOnly ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.07)',
+            borderRadius:'10px', padding:'10px 14px', cursor:'pointer',
+            color: hotDealsOnly ? '#f87171' : '#9ca3af',
+            fontSize:'13px', fontWeight:'700',
+            fontFamily:"'DM Sans',sans-serif",
+            transition:'all 0.15s ease',
+          }}
+        >
+          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
+          {hotDealsOnly && <Check size={13}/>}
+        </button>
+      </div>
+
+      {/* Price */}
+      <FilterSection title="Price Range">
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px' }}>
+          {PRICE_BRACKETS.map(b => (
+            <FilterChip key={b.label} label={b.label} active={selectedPriceBracket?.label===b.label} onClick={() => setSelectedPriceBracket(selectedPriceBracket?.label===b.label ? null : b)} />
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* Brand */}
+      <FilterSection title="Brand">
+        <div style={{ maxHeight:'160px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'4px', paddingRight:'4px' }}>
+          {brands.length === 0
+            ? <p style={{ color:'#4b5563', fontSize:'12px', fontStyle:'italic' }}>No brands loaded</p>
+            : brands.map(b => (
+              <label key={b} style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', padding:'4px 2px' }}>
+                <div
+                  onClick={() => toggle(setSelectedBrands)(b)}
+                  style={{
+                    width:'16px', height:'16px', borderRadius:'4px', flexShrink:0,
+                    background: selectedBrands.includes(b) ? '#dc2626' : 'transparent',
+                    border: selectedBrands.includes(b) ? '1px solid #dc2626' : '1px solid rgba(255,255,255,0.15)',
+                    display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+                    transition:'all 0.15s ease',
+                  }}
+                >
+                  {selectedBrands.includes(b) && <Check size={10} style={{ color:'white' }}/>}
+                </div>
+                <span style={{ color: selectedBrands.includes(b) ? 'white' : '#9ca3af', fontSize:'13px', userSelect:'none' }}
+                  onClick={() => toggle(setSelectedBrands)(b)}>{b}</span>
+              </label>
+            ))}
+        </div>
+      </FilterSection>
+
+      {/* Year */}
+      <FilterSection title="Year" defaultOpen={false}>
+        <DarkSelect value={selectedYear} onChange={setSelectedYear} options={years} placeholder="All Years"/>
+      </FilterSection>
+
+      {/* Body Type */}
+      <FilterSection title="Body Type">
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {BODY_TYPES.map(bt => (
+            <FilterChip key={bt} label={bt} active={selectedBodyTypes.includes(bt)} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* Transmission */}
+      <FilterSection title="Transmission" defaultOpen={false}>
+        <div style={{ display:'flex', gap:'6px' }}>
+          {TRANSMISSIONS.map(tr => (
+            <FilterChip key={tr} label={tr} active={selectedTransmission.includes(tr)} onClick={() => toggle(setSelectedTransmission)(tr)}/>
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* Fuel */}
+      <FilterSection title="Fuel Type" defaultOpen={false}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+          {FUEL_TYPES.map(ft => (
+            <FilterChip key={ft} label={ft} active={selectedFuelTypes.includes(ft)} onClick={() => toggle(setSelectedFuelTypes)(ft)}/>
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* Location */}
+      <FilterSection title="Location" defaultOpen={false}>
+        <DarkSelect value={selectedLocation} onChange={setSelectedLocation} options={locations} placeholder="All Locations"/>
+      </FilterSection>
+
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────
    MAIN PAGE
 ───────────────────────────────────────── */
@@ -239,105 +349,6 @@ const CarsPage = () => {
 
   const displayed = sortedCars.slice(0, displayCount);
 
-  /* ── filter panel (shared sidebar + drawer) ── */
-  const FilterPanel = () => (
-    <div style={{ fontFamily:"'DM Sans',sans-serif" }}>
-
-      {/* Hot Deals toggle */}
-      <div style={{ marginBottom:'4px', borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:'16px' }}>
-        <button
-          onClick={() => setHotDealsOnly(!hotDealsOnly)}
-          style={{
-            width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
-            background: hotDealsOnly ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
-            border: hotDealsOnly ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.07)',
-            borderRadius:'10px', padding:'10px 14px', cursor:'pointer',
-            color: hotDealsOnly ? '#f87171' : '#9ca3af',
-            fontSize:'13px', fontWeight:'700',
-            fontFamily:"'DM Sans',sans-serif",
-            transition:'all 0.15s ease',
-          }}
-        >
-          <span style={{ display:'flex', alignItems:'center', gap:'6px' }}><Flame size={13}/> Hot Deals Only</span>
-          {hotDealsOnly && <Check size={13}/>}
-        </button>
-      </div>
-
-      {/* Price */}
-      <FilterSection title="Price Range">
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px' }}>
-          {PRICE_BRACKETS.map(b => (
-            <FilterChip key={b.label} label={b.label} active={selectedPriceBracket?.label===b.label} onClick={() => setSelectedPriceBracket(selectedPriceBracket?.label===b.label ? null : b)} />
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Brand */}
-      <FilterSection title="Brand">
-        <div style={{ maxHeight:'160px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'4px', paddingRight:'4px' }}>
-          {brands.length === 0
-            ? <p style={{ color:'#4b5563', fontSize:'12px', fontStyle:'italic' }}>No brands loaded</p>
-            : brands.map(b => (
-              <label key={b} style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', padding:'4px 2px' }}>
-                <div
-                  onClick={() => toggle(setSelectedBrands)(b)}
-                  style={{
-                    width:'16px', height:'16px', borderRadius:'4px', flexShrink:0,
-                    background: selectedBrands.includes(b) ? '#dc2626' : 'transparent',
-                    border: selectedBrands.includes(b) ? '1px solid #dc2626' : '1px solid rgba(255,255,255,0.15)',
-                    display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
-                    transition:'all 0.15s ease',
-                  }}
-                >
-                  {selectedBrands.includes(b) && <Check size={10} style={{ color:'white' }}/>}
-                </div>
-                <span style={{ color: selectedBrands.includes(b) ? 'white' : '#9ca3af', fontSize:'13px', userSelect:'none' }}
-                  onClick={() => toggle(setSelectedBrands)(b)}>{b}</span>
-              </label>
-            ))}
-        </div>
-      </FilterSection>
-
-      {/* Year */}
-      <FilterSection title="Year" defaultOpen={false}>
-        <DarkSelect value={selectedYear} onChange={setSelectedYear} options={years} placeholder="All Years"/>
-      </FilterSection>
-
-      {/* Body Type */}
-      <FilterSection title="Body Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {BODY_TYPES.map(bt => (
-            <FilterChip key={bt} label={bt} active={selectedBodyTypes.includes(bt)} onClick={() => toggle(setSelectedBodyTypes)(bt)}/>
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Transmission */}
-      <FilterSection title="Transmission" defaultOpen={false}>
-        <div style={{ display:'flex', gap:'6px' }}>
-          {TRANSMISSIONS.map(tr => (
-            <FilterChip key={tr} label={tr} active={selectedTransmission.includes(tr)} onClick={() => toggle(setSelectedTransmission)(tr)}/>
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Fuel */}
-      <FilterSection title="Fuel Type" defaultOpen={false}>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FUEL_TYPES.map(ft => (
-            <FilterChip key={ft} label={ft} active={selectedFuelTypes.includes(ft)} onClick={() => toggle(setSelectedFuelTypes)(ft)}/>
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Location */}
-      <FilterSection title="Location" defaultOpen={false}>
-        <DarkSelect value={selectedLocation} onChange={setSelectedLocation} options={locations} placeholder="All Locations"/>
-      </FilterSection>
-
-    </div>
-  );
-
   /* ─────────── loading state ─────────── */
   if (isSubdomain() && tenant === null && !tenantLoading) {
     return (
@@ -489,7 +500,17 @@ const CarsPage = () => {
 
         {/* Drawer filters */}
         <div className="filter-sidebar" style={{ flex:1, overflowY:'auto', padding:'8px 20px' }}>
-          <FilterPanel/>
+          <FilterPanel
+            hotDealsOnly={hotDealsOnly} setHotDealsOnly={setHotDealsOnly}
+            selectedPriceBracket={selectedPriceBracket} setSelectedPriceBracket={setSelectedPriceBracket}
+            brands={brands} selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
+            toggle={toggle}
+            selectedYear={selectedYear} setSelectedYear={setSelectedYear} years={years}
+            selectedBodyTypes={selectedBodyTypes} setSelectedBodyTypes={setSelectedBodyTypes}
+            selectedTransmission={selectedTransmission} setSelectedTransmission={setSelectedTransmission}
+            selectedFuelTypes={selectedFuelTypes} setSelectedFuelTypes={setSelectedFuelTypes}
+            selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation} locations={locations}
+          />
         </div>
 
         {/* Drawer footer */}
@@ -674,7 +695,17 @@ const CarsPage = () => {
                   </button>
                 )}
               </div>
-              <FilterPanel/>
+              <FilterPanel
+            hotDealsOnly={hotDealsOnly} setHotDealsOnly={setHotDealsOnly}
+            selectedPriceBracket={selectedPriceBracket} setSelectedPriceBracket={setSelectedPriceBracket}
+            brands={brands} selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
+            toggle={toggle}
+            selectedYear={selectedYear} setSelectedYear={setSelectedYear} years={years}
+            selectedBodyTypes={selectedBodyTypes} setSelectedBodyTypes={setSelectedBodyTypes}
+            selectedTransmission={selectedTransmission} setSelectedTransmission={setSelectedTransmission}
+            selectedFuelTypes={selectedFuelTypes} setSelectedFuelTypes={setSelectedFuelTypes}
+            selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation} locations={locations}
+          />
             </aside>
 
             {/* ── Car grid ── */}

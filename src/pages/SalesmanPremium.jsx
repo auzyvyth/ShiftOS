@@ -642,13 +642,10 @@ export default function SalesmanPremium() {
  .order("created_at", { ascending: false })
  .then(({ data: enqs }) => setEnquiries(enqs || []));
  });
- }, [navigate]);
-
- useEffect(() => {
  return () => {
  if (channelRef.current) supabase.removeChannel(channelRef.current);
  };
- }, []);
+ }, [navigate]);
 
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); return; }

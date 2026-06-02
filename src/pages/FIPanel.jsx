@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, ChevronDown, ChevronUp, Plus, X, TrendingUp,
@@ -561,6 +561,7 @@ export default function FIPanel() {
   const [activeNav, setActiveNav] = useState('deals');
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifChRef = useRef(null);
 
   // Data
   const [deals, setDeals] = useState([]);
@@ -582,11 +583,13 @@ export default function FIPanel() {
           .order('created_at', { ascending: false }).limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      const ch = supabase.channel('fi_notifs_' + p.id)
+      notifChRef.current = supabase.channel('fi_notifs_' + p.id)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'salesman_notifications', filter: `salesman_id=eq.${p.id}` }, loadNotifs)
         .subscribe();
-      return () => supabase.removeChannel(ch);
     });
+    return () => {
+      if (notifChRef.current) supabase.removeChannel(notifChRef.current);
+    };
   }, [navigate]);
 
   useEffect(() => {
