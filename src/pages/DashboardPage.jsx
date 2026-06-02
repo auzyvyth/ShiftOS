@@ -4933,9 +4933,16 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     return Number(u.car_listings?.base_price) || 0;
   };
 
+  // Available units: potential GP at asking price. Sold units: actual GP at sold price.
   const grossProfit = (u) => {
-    if (!u.sold_price) return null;
-    return (Number(u.sold_price) || 0) - costBasis(u) - (Number(u.recon_cost) || 0);
+    const cost = costBasis(u);
+    if (u.status === 'sold') {
+      if (!u.sold_price && cost === 0) return null;
+      return (Number(u.sold_price) || 0) - cost - (Number(u.recon_cost) || 0);
+    }
+    const revenue = Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0;
+    if (revenue === 0 && cost === 0) return null;
+    return revenue - cost - (Number(u.recon_cost) || 0);
   };
 
   const now = new Date();
@@ -5229,8 +5236,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                             ? <span style={{ color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>{carAge}yr</span>
                             : <span style={{ color: '#4b5563' }}>—</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.purchase_price)||0).toLocaleString()}</td>
-                        <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.recon_cost)||0).toLocaleString()}</td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{(() => { const cb = costBasis(u); return cb > 0 ? <span style={{ color: '#111827' }}>RM {cb.toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>; })()}</td>
+                        <td style={{ padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>{Number(u.recon_cost) > 0 ? <span style={{ color: '#374151' }}>RM {Number(u.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                         {stockView === 'available' && (
                           <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13, whiteSpace: 'nowrap' }}>RM {(Number(u.asking_price)||0).toLocaleString()}</td>
                         )}
