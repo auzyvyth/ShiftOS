@@ -210,6 +210,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [hpEmpType, setHpEmpType] = useState('employed');
   const [hpDocCheck, setHpDocCheck] = useState({});
 
+  // Deposit state
+  const [depositAmount, setDepositAmount]       = useState(initialLead?.deposit_amount ?? '');
+  const [depositDate, setDepositDate]           = useState(initialLead?.deposit_date || '');
+  const [depositMethod, setDepositMethod]       = useState(initialLead?.deposit_method || '');
+  const [depositReceiptNo, setDepositReceiptNo] = useState(initialLead?.deposit_receipt_no || '');
+  const [depositBalanceDue, setDepositBalanceDue] = useState(initialLead?.deposit_balance_due ?? '');
+  const [depositSaving, setDepositSaving]       = useState(false);
+
   const notesDebounce = useRef(null);
   const { activities, loading: actLoading, addActivity } = useLeadActivities(lead?.id, lead?.dealer_id);
 
@@ -667,6 +675,24 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }, 800);
   }
 
+  // ── Deposit save ─────────────────────────────────────────────────────────────
+  async function saveDeposit() {
+    setDepositSaving(true);
+    try {
+      const payload = {
+        deposit_amount:     depositAmount !== '' ? Number(depositAmount) : null,
+        deposit_date:       depositDate || null,
+        deposit_method:     depositMethod || null,
+        deposit_receipt_no: depositReceiptNo || null,
+        deposit_balance_due: depositBalanceDue !== '' ? Number(depositBalanceDue) : null,
+      };
+      const updated = await onUpdate(lead.id, payload);
+      if (updated) setLead(updated);
+      toast.success('Deposit saved');
+    } catch { toast.error('Error saving deposit'); }
+    finally { setDepositSaving(false); }
+  }
+
   // ── Car search & link ────────────────────────────────────────────────────────
   async function searchCars(q) {
     if (!lead?.dealer_id) return;
@@ -998,6 +1024,53 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <textarea value={notes} onChange={e => handleNotesChange(e.target.value)} placeholder="Add notes about this lead…" rows={3}
                 style={{ ...w.inp, resize: 'vertical', minHeight: 72 }} className="ld-inp" />
             </div>
+
+            {/* ── Deposit / Booking Fee ── */}
+            {(['deposit_taken','won'].includes(lead.stage) || depositAmount !== '') && (
+              <div style={{ ...w.section, borderColor: '#99f6e4', background: '#f0fdfa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <p style={{ ...w.label, margin: 0, color: '#0d9488' }}>Deposit / Booking Fee</p>
+                  <button onClick={saveDeposit} disabled={depositSaving}
+                    style={{ fontSize: 11, fontWeight: 600, color: '#0d9488', background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', opacity: depositSaving ? 0.6 : 1 }}>
+                    {depositSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <p style={w.label}>Amount (RM)</p>
+                    <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="e.g. 2000"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                  <div>
+                    <p style={w.label}>Date</p>
+                    <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)}
+                      style={{ ...w.inp, background: '#fff', colorScheme: 'light' }} className="ld-inp" />
+                  </div>
+                  <div>
+                    <p style={w.label}>Method</p>
+                    <select value={depositMethod} onChange={e => setDepositMethod(e.target.value)}
+                      style={{ ...w.inp, background: '#fff', appearance: 'none', cursor: 'pointer' }} className="ld-inp">
+                      <option value="">— Select —</option>
+                      <option value="cash">Cash</option>
+                      <option value="transfer">Bank Transfer</option>
+                      <option value="online">Online Payment</option>
+                      <option value="cheque">Cheque</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p style={w.label}>Receipt No.</p>
+                    <input value={depositReceiptNo} onChange={e => setDepositReceiptNo(e.target.value)} placeholder="e.g. REC-0042"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <p style={w.label}>Balance Due (RM)</p>
+                    <input type="number" value={depositBalanceDue} onChange={e => setDepositBalanceDue(e.target.value)}
+                      placeholder="Remaining amount after deposit"
+                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── HP / Financing ── */}
             <div style={w.section}>
