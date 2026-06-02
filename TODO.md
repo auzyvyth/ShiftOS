@@ -19,6 +19,27 @@
 - **ENT-10: Listings expiry warnings** — Road tax expiry and insurance expiry banners on listing cards when within 30 days; shown in StockTab aging alerts section.
 - **ENT-11: HP Board approval status** — Track lender response (pending / approved / rejected) per submission; show status badge in HP Board; notify salesman when status changes.
 
+### BUGS (broken data)
+
+- **AUD-1: AVG Days in Stock = 0** — Stock overview metric shows 0 despite 215 units. Find the days-in-stock calculation in StockTab/OversightTab and fix the aggregation (likely using created_at or a missing `acquired_at` date).
+- **AUD-2: Response time drill-down** — Analytics shows 6,217 min avg but no per-salesman breakdown. Add a per-salesman response time table to the Analytics → Revenue sub-tab using the existing `gm_salesman_scores` RPC or a new query on `analytics_events`.
+
+### OPERATIONAL GAPS (high impact)
+
+- **AUD-3: VIN / plate number in stock list** — Add `plate_number` and `vin` columns to `stock_units` (if missing); display plate number as primary identifier in StockTab row and LeadDrawer header so identical make/model units are distinguishable.
+- **AUD-4: Deposit / booking fee tracker** — On leads at "Deposit Taken" stage: add deposit amount, payment method (cash/transfer/online), receipt number, balance due, and refund policy fields. Store in `leads` or a new `deposits` table. Show deposit summary in LeadDrawer.
+- **AUD-5: Appointment / viewing calendar** — "Appts Today" shows in Overview but no create/manage UI exists. Add appointment creation (date, time, salesperson, car, buyer name/phone) in LeadDrawer and a calendar/list view in a new Appointments tab or sub-tab under Leads.
+- **AUD-6: Stock → Listing auto-link** — When a stock unit is created and a listing already exists for the same car (matched by listing_id or plate), auto-populate the `listing_id` FK rather than requiring manual dropdown selection.
+- **AUD-7: Multi-bank parallel HP submission** — ENT-11 tracks single-bank status. Extend `deal_financing` to allow multiple bank rows per lead; show all banks in a table per deal with individual status badges; "Submit to another bank" button without closing the current submission.
+
+### MISSING MODULES (larger scope)
+
+- **AUD-8: Full P&L per unit** — Per-car P&L: purchase price + all recon costs + advertising spend + HP commission earned + road tax/insurance paid. GM-1 gives MTD rollup; this is per-unit drill-down. Add a "P&L" expand row in StockTab.
+- **AUD-9: Recon job card system** — Assign workshop tasks per stock unit (stages: wash → polish → engine → tyres → inspection → ready), set ETA, track vendor, upload before/after photos, record cost per job line. New `recon_jobs` table linked to `stock_units`.
+- **AUD-10: CSV stock import** — Replace "coming soon" placeholder on Import Stock button with a working CSV parser (Papa Parse). Map columns: make, model, year, plate, purchase price, recon, asking price. Validate and preview before insert.
+- **AUD-11: Trade-in module** — Record trade-in vehicle (plate, make, model, year, km, condition, valuation, agreed price) linked to a lead. New `trade_ins` table. Show trade-in offset in deal P&L.
+- **AUD-12: Vendor / supplier directory** — Dealer-scoped directory of workshops, tint shops, bodywork vendors with name, contact, category. Link vendor to recon job card for cost attribution. New `vendors` table.
+
 ### MINOR (polish)
 
 - **ENT-12: Add form duplicate detection** — Warn (not block) if a VIN or plate number already exists when adding a new listing.

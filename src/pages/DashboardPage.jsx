@@ -4922,7 +4922,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
   useEffect(() => { if (userId) fetchUnits(); }, [userId]);
 
   const daysInStock = (u) => {
-    if (u.days_in_stock != null) return u.days_in_stock;
+    if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
     const date = u.purchase_date || u.created_at;
     if (!date) return '—';
     return Math.floor((Date.now() - new Date(date)) / 86400000);
@@ -4957,11 +4957,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
 
   const totalGP = thisMonth.reduce((s, u) => s + (grossProfit(u) || 0), 0);
   const totalValue = activeUnits.reduce((s, u) => s + (Number(u.asking_price) || 0), 0);
-  const avgDays = activeUnits.length
-    ? Math.round(activeUnits.reduce((s, u) => {
-        const days = daysInStock(u);
-        return typeof days === 'number' ? s + days : s;
-      }, 0) / activeUnits.length)
+  const unitsWithDays = activeUnits.filter(u => typeof daysInStock(u) === 'number');
+  const avgDays = unitsWithDays.length
+    ? Math.round(unitsWithDays.reduce((s, u) => s + daysInStock(u), 0) / unitsWithDays.length)
     : 0;
   const agingUnits = activeUnits.filter(u => {
     const days = daysInStock(u);
