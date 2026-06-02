@@ -5204,7 +5204,18 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
                           {car ? (
                             <>
                               <p style={{ fontSize: 13, color: '#111827', fontWeight: 500, margin: 0 }}>{car.brand} {car.model}</p>
-                              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{car.year}{car.plate_number ? ` · ${car.plate_number}` : ''}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                <span style={{ fontSize: 11, color: '#6b7280' }}>{car.year}</span>
+                                {(car.plate_number || u.registration_number) ? (
+                                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>
+                                    {(car.plate_number || u.registration_number).toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', background: '#fafafa', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>
+                                    no plate
+                                  </span>
+                                )}
+                              </div>
                               {u.status === 'in_stock' && (() => {
                                 const ps  = puspakomStatus(u.puspakom_b7_date);
                                 const b5  = b5Status(u.puspakom_b5_date);
