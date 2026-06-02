@@ -83,16 +83,57 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // 2FA challenge state (SEC-1)
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
+
   useEffect(() => {
     document.title = t("login.meta.title", { defaultValue: "ShiftOS · Login" });
   }, [t]);
 
   useEffect(() => {
     setMounted(true);
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) redirectByRole(data.session.user, data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const proceed = await checkMfaAndProceed(data.session.user);
+      if (proceed) redirectByRole(data.session.user, data.session);
     });
   }, []);
+
+  // Returns true if login can proceed; false if a 2FA challenge is now required.
+  const checkMfaAndProceed = async (user) => {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = (factors?.totp || []).find((f) => f.status === "verified");
+      if (totp) {
+        setMfaFactorId(totp.id);
+        setPendingUser(user);
+        setMfaRequired(true);
+        setLoading(false);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleMfaVerify = async () => {
+    if (mfaCode.trim().length < 6) { setError("Enter the 6-digit code."); return; }
+    setError("");
+    setMfaLoading(true);
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+    if (chErr) { setError(chErr.message); setMfaLoading(false); return; }
+    const { error: vErr } = await supabase.auth.mfa.verify({
+      factorId: mfaFactorId, challengeId: ch.id, code: mfaCode.trim(),
+    });
+    if (vErr) { setError("Invalid code. Please try again."); setMfaLoading(false); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    setMfaLoading(false);
+    await redirectByRole(pendingUser || session?.user, session);
+  };
 
   const handleMagicLink = async () => {
     if (!magicEmail) return;
@@ -220,12 +261,54 @@ export default function LoginPage() {
       return;
     }
     try {
-      await redirectByRole(data.user, data.session);
+      const proceed = await checkMfaAndProceed(data.user);
+      if (proceed) await redirectByRole(data.user, data.session);
+      else return; // 2FA challenge UI now shown
     } catch {
       setError("Something went wrong. Please try again.");
     }
     setLoading(false);
   };
+
+  if (mfaRequired) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#0a0a0c", fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff" }}>
+          <span style={{ width: 30, height: 30, background: "#dc2626", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
+          <span style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 3, fontSize: 28 }}>ShiftOS</span>
+        </div>
+        <div style={{ width: "min(420px, 100%)", background: "#111114", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "40px 36px", textAlign: "center", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
+          <div style={{ width: 56, height: 56, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.6">
+              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#fff", letterSpacing: 2, marginBottom: 12 }}>TWO-FACTOR AUTH</h2>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6, marginBottom: 24 }}>
+            Enter the 6-digit code from your authenticator app.
+          </p>
+          <input
+            type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
+            value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => { if (e.key === "Enter") handleMfaVerify(); }}
+            placeholder="000000"
+            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "14px", color: "#fff", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "'DM Sans', sans-serif" }}
+          />
+          {error && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 14 }}>⚠ {error}</p>}
+          <button
+            onClick={handleMfaVerify} disabled={mfaLoading || mfaCode.length < 6}
+            style={{ width: "100%", padding: "13px", background: "#dc2626", border: "none", borderRadius: 10, color: "#fff", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 3, cursor: "pointer", opacity: (mfaLoading || mfaCode.length < 6) ? 0.5 : 1, marginBottom: 14 }}>
+            {mfaLoading ? "VERIFYING…" : "VERIFY"}
+          </button>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); setMfaRequired(false); setMfaCode(""); setError(""); setPendingUser(null); }}
+            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 12, cursor: "pointer" }}>
+            Cancel and sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (unconfirmed) {
     const unconfirmedEmail = searchParams.get("email") || "";

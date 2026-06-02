@@ -751,6 +751,15 @@ function SettingsTab({ profile, onProfileUpdate }) {
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // ── 2FA / TOTP (SEC-1) ──
+  const [mfaFactors, setMfaFactors] = useState([]);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaEnroll, setMfaEnroll] = useState(null); // { factorId, qr, secret }
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaError, setMfaError] = useState("");
+
   const [tgToken, setTgToken] = useState(profile?.telegram_bot_token || "");
   const [tgChannel, setTgChannel] = useState(profile?.telegram_channel_id || "");
   const [tgAutoPost, setTgAutoPost] = useState(profile?.telegram_auto_post || false);
@@ -1016,6 +1025,61 @@ function SettingsTab({ profile, onProfileUpdate }) {
       setConfirmPassword("");
     }
     setSaving((p) => ({ ...p, password: false }));
+  };
+
+  // ── 2FA / TOTP handlers (SEC-1) ──
+  const loadMfaFactors = async () => {
+    setMfaLoading(true);
+    const { data } = await supabase.auth.mfa.listFactors();
+    setMfaFactors(data?.totp || []);
+    setMfaLoading(false);
+  };
+  useEffect(() => { loadMfaFactors(); }, []);
+
+  const startMfaEnroll = async () => {
+    setMfaError("");
+    setMfaBusy(true);
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+    setMfaBusy(false);
+    if (error) { setMfaError(error.message); return; }
+    setMfaEnroll({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
+    setMfaCode("");
+  };
+
+  const verifyMfaEnroll = async () => {
+    if (!mfaEnroll || mfaCode.trim().length < 6) { setMfaError("Enter the 6-digit code."); return; }
+    setMfaError("");
+    setMfaBusy(true);
+    const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaEnroll.factorId });
+    if (chErr) { setMfaError(chErr.message); setMfaBusy(false); return; }
+    const { error: vErr } = await supabase.auth.mfa.verify({
+      factorId: mfaEnroll.factorId, challengeId: ch.id, code: mfaCode.trim(),
+    });
+    setMfaBusy(false);
+    if (vErr) { setMfaError("Invalid code. Try again."); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "mfa_enabled", summary: "Two-factor authentication enabled" });
+    setMfaEnroll(null);
+    setMfaCode("");
+    toast.success("Two-factor authentication enabled");
+    loadMfaFactors();
+  };
+
+  const cancelMfaEnroll = async () => {
+    if (mfaEnroll?.factorId) await supabase.auth.mfa.unenroll({ factorId: mfaEnroll.factorId }).catch(() => {});
+    setMfaEnroll(null);
+    setMfaCode("");
+    setMfaError("");
+  };
+
+  const removeMfaFactor = async (factorId) => {
+    if (!window.confirm("Disable two-factor authentication for this account?")) return;
+    setMfaBusy(true);
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    setMfaBusy(false);
+    if (error) { toast.error(error.message); return; }
+    logActivity({ dealerId: profile?.id, actor: profile, tableName: "profiles", recordId: profile?.id, action: "mfa_disabled", summary: "Two-factor authentication disabled" });
+    toast.success("Two-factor authentication disabled");
+    loadMfaFactors();
   };
 
   const saveStorefront = () =>
@@ -1486,6 +1550,78 @@ function SettingsTab({ profile, onProfileUpdate }) {
         <ErrMsg k="password" errors={errors} />
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="password" onClick={savePassword} saving={saving} saved={saved} />
+        </div>
+
+        {/* ── Two-Factor Authentication (SEC-1) ── */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 20, paddingTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "#e5e7eb", margin: 0 }}>Two-Factor Authentication</p>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "2px 0 0" }}>
+                Require an authenticator-app code at login. Protects against stolen passwords.
+              </p>
+            </div>
+            {!mfaLoading && mfaFactors.some(f => f.status === "verified") && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 6, padding: "3px 10px", whiteSpace: "nowrap" }}>
+                ENABLED
+              </span>
+            )}
+          </div>
+
+          {mfaLoading ? (
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 10 }}>Loading…</p>
+          ) : mfaFactors.some(f => f.status === "verified") ? (
+            <div style={{ marginTop: 12 }}>
+              {mfaFactors.filter(f => f.status === "verified").map(f => (
+                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: "#e5e7eb" }}>{f.friendly_name || "Authenticator app"}</span>
+                  <button onClick={() => removeMfaFactor(f.id)} disabled={mfaBusy}
+                    style={{ fontSize: 12, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                    Disable
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : mfaEnroll ? (
+            <div style={{ marginTop: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 16 }}>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12, lineHeight: 1.5 }}>
+                Scan this QR code with Google Authenticator, Authy, or 1Password, then enter the 6-digit code to confirm.
+              </p>
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+                <img src={mfaEnroll.qr} alt="2FA QR code" style={{ width: 150, height: 150, borderRadius: 8, background: "#fff", padding: 6 }} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Manual entry key</p>
+                  <code style={{ fontSize: 11, color: "#fbbf24", wordBreak: "break-all", display: "block", marginBottom: 12 }}>{mfaEnroll.secret}</code>
+                  <input
+                    type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                    value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    className={iCls}
+                    style={{ letterSpacing: "0.3em", textAlign: "center", fontSize: 18 }}
+                  />
+                </div>
+              </div>
+              {mfaError && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>⚠ {mfaError}</p>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+                <button onClick={cancelMfaEnroll} disabled={mfaBusy}
+                  style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={verifyMfaEnroll} disabled={mfaBusy || mfaCode.length < 6}
+                  style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "#dc2626", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", opacity: (mfaBusy || mfaCode.length < 6) ? 0.5 : 1 }}>
+                  {mfaBusy ? "Verifying…" : "Verify & Enable"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {mfaError && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>⚠ {mfaError}</p>}
+              <button onClick={startMfaEnroll} disabled={mfaBusy}
+                style={{ fontSize: 13, fontWeight: 600, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "9px 18px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                {mfaBusy ? "Setting up…" : "Enable 2FA"}
+              </button>
+            </div>
+          )}
         </div>
       </SettingsSection>
 

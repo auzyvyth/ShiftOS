@@ -2,6 +2,21 @@
 
 ## Dev tasks
 
+### SECURITY (verified gaps — settings audit)
+
+- **SEC-1: 2FA / TOTP** — Authenticator-app MFA via Supabase native API (`supabase.auth.mfa.enroll/challenge/verify`). Enrollment UI (QR + verify) in Settings → Account Security; AAL2 challenge step on login when a verified factor exists; unenroll option. (IN PROGRESS)
+- **SEC-2: Permission matrix** — Owner-controlled per-role visibility toggles (hide cost/gross/recon from salesman, restrict delete, scope leads to own). New `role_permissions` table + gating helper. Large build.
+- **SEC-3: Audit log completeness + RLS** — Wire `logActivity` into unlogged write paths (dealer_products, vendors, recon_jobs, customers); add RLS policy to `activity_log` (dealer_id = auth.uid()); add table to migrations. (overlaps ENT-3)
+- **SEC-4: Session management** — "Log out all devices" via `signOut({ scope: 'global' })` in Settings; optional idle timeout.
+- **SEC-5: Telegram token hardening** — Move `telegram_bot_token` out of `profiles` (admin-readable) into an edge-function secret / server-side store; UI only writes, never reads back.
+
+### SETTINGS (verified gaps)
+
+- **SET-1: Editable WhatsApp templates** — Template editor in Settings replacing hardcoded `WHATSAPP_TEMPLATES` in leadsHelpers.js; per-dealer storage with `{{placeholders}}`.
+- **SET-2: Add Lead — IC / email / address** — Add buyer_ic, buyer_email, buyer_address to AddLeadModal + leads table for real HP applications.
+- **SET-3: Deal sheet branding** — Add logo, custom disclaimer, and signature/deposit-acknowledgment block to DealPage template.
+- **SET-4: Commission settings** — Per-role commission structure (% of gross / flat / tiered) so payouts auto-calculate.
+
 ### CRITICAL (legal / compliance)
 
 - **ENT-1: Stock — encumbrance + B5 tracking** — Add `encumbrance_status` (clear/under_hp/unknown) and `puspakom_b5_date` to `stock_units`; show badge in StockTab and LeadDrawer; block Handover Checklist generation if encumbrance not cleared.
