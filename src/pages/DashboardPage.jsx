@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions } from "../lib/permissions";
+import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
@@ -790,6 +791,66 @@ function PermissionsMatrix({ dealerId, actor }) {
         );
       })}
       <p style={{ fontSize: 11, color: '#9ca3af' }}>Owner, dealer and superadmin accounts always have full access and are not listed here.</p>
+    </div>
+  );
+}
+
+// ─── WhatsApp Template Editor (SET-1) ─────────────────────────────────────────
+function WaTemplatesEditor({ dealerId, actor }) {
+  const [tpls, setTpls] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase.from('profiles').select('whatsapp_templates').eq('id', dealerId).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.whatsapp_templates;
+        setTpls(Array.isArray(t) && t.length ? t.map(x => ({ ...x })) : DEFAULT_WA_TEMPLATES.map(x => ({ ...x })));
+      });
+  }, [dealerId]);
+
+  const update = (i, k, v) => setTpls(p => p.map((t, idx) => idx === i ? { ...t, [k]: v } : t));
+  const remove = (i) => setTpls(p => p.filter((_, idx) => idx !== i));
+  const add = () => setTpls(p => [...p, { label: 'New template', message: 'Hi {{name}}, ' }]);
+  const reset = () => setTpls(DEFAULT_WA_TEMPLATES.map(x => ({ ...x })));
+
+  const save = async () => {
+    setBusy(true);
+    const clean = (tpls || []).filter(t => t.label.trim() && t.message.trim());
+    const { error } = await supabase.from('profiles').update({ whatsapp_templates: clean }).eq('id', dealerId);
+    if (error) { toast.error('Save failed'); }
+    else {
+      logActivity({ dealerId, actor, tableName: 'profiles', recordId: dealerId, action: 'updated', summary: 'WhatsApp templates updated' });
+      toast.success('Templates saved');
+    }
+    setBusy(false);
+  };
+
+  if (tpls === null) return <p className="text-gray-500 text-sm">Loading…</p>;
+
+  return (
+    <div className="space-y-3">
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>
+        Placeholders: {WA_PLACEHOLDERS.map(p => p.token).join('  ·  ')}
+      </p>
+      {tpls.map((t, i) => (
+        <div key={i} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <input value={t.label} onChange={e => update(i, 'label', e.target.value)} className={iCls} placeholder="Template name" style={{ fontWeight: 600 }} />
+            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
+          </div>
+          <textarea value={t.message} onChange={e => update(i, 'message', e.target.value)} rows={2} className={taCls} placeholder="Message with {{placeholders}}" />
+        </div>
+      ))}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex gap-2">
+          <button onClick={add} className="text-sm font-medium px-3 py-2 rounded-lg" style={{ color: '#6b7280', border: '1px solid #e5e7eb', background: '#fff' }}>+ Add template</button>
+          <button onClick={reset} className="text-sm font-medium px-3 py-2 rounded-lg" style={{ color: '#9ca3af', border: '1px solid #e5e7eb', background: '#fff' }}>Reset to defaults</button>
+        </div>
+        <button onClick={save} disabled={busy} className="btn-shimmer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40" style={T.btnRed}>
+          {busy ? 'Saving…' : 'Save templates'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1744,6 +1805,18 @@ function SettingsTab({ profile, onProfileUpdate }) {
         iconBorder="rgba(129,140,248,0.18)"
       >
         <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
+      </SettingsSection>
+
+      {/* ── WhatsApp Templates (SET-1) ── */}
+      <SettingsSection
+        title="WhatsApp Templates"
+        subtitle="Customise the quick-message templates your team sends to leads"
+        icon={MessageCircle}
+        iconColor="text-green-500"
+        iconBg="rgba(34,197,94,0.08)"
+        iconBorder="rgba(34,197,94,0.18)"
+      >
+        <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>
 
       {/* ── 4. Telegram Auto-Post ── */}

@@ -10,7 +10,7 @@ import LeadSourceBadge from './LeadSourceBadge';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
-  STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, WHATSAPP_TEMPLATES,
+  STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, DEFAULT_WA_TEMPLATES, renderWaTemplate,
   getInitials, avatarGradient,
 } from '../../lib/leadsHelpers';
 
@@ -209,6 +209,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [nextBankSaving, setNextBankSaving] = useState(false);
   const [hpEmpType, setHpEmpType] = useState('employed');
   const [hpDocCheck, setHpDocCheck] = useState({});
+
+  // Editable WhatsApp templates (SET-1): dealer's own, else defaults
+  const [waTemplates, setWaTemplates] = useState(DEFAULT_WA_TEMPLATES);
 
   // Trade-in state
   const [tradeIn, setTradeIn]       = useState(null);
@@ -681,6 +684,16 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }, 800);
   }
 
+  // ── WhatsApp templates load (SET-1) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!lead?.dealer_id) return;
+    supabase.from('profiles').select('whatsapp_templates').eq('id', lead.dealer_id).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.whatsapp_templates;
+        if (Array.isArray(t) && t.length > 0) setWaTemplates(t);
+      });
+  }, [lead?.dealer_id]);
+
   // ── Trade-in load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!lead?.id) return;
@@ -795,7 +808,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── WhatsApp template open ────────────────────────────────────────────────────
   function openTemplate(tpl) {
-    const msg = tpl.message(lead, car);
+    const msg = renderWaTemplate(tpl.message, lead, car);
     window.open(`https://wa.me/${formatWhatsAppURL(lead.phone).replace('https://wa.me/', '')}?text=${encodeURIComponent(msg)}`, '_blank');
     addActivity({ activity_type: 'whatsapp_sent', note: `Sent: ${tpl.label}` }).catch(() => {});
   }
@@ -1628,7 +1641,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             <div style={w.section}>
               <p style={w.label}>Quick Messages</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {WHATSAPP_TEMPLATES.map((tpl, i) => (
+                {waTemplates.map((tpl, i) => (
                   <button key={i} onClick={() => openTemplate(tpl)}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <MessageCircle style={{ width: 11, height: 11 }} />{tpl.label}

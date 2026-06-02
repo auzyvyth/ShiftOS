@@ -63,6 +63,39 @@ export const WHATSAPP_TEMPLATES = [
   },
 ];
 
+// Editable (per-dealer) WhatsApp templates use placeholder strings instead of
+// functions so owners can customise them from Settings. Supported placeholders:
+//   {{name}} {{car}} {{brand}} {{model}} {{monthly}} {{location}}
+export const WA_PLACEHOLDERS = [
+  { token: '{{name}}',     desc: "Buyer's name" },
+  { token: '{{car}}',      desc: 'Brand + model' },
+  { token: '{{brand}}',    desc: 'Car brand' },
+  { token: '{{model}}',    desc: 'Car model' },
+  { token: '{{monthly}}',  desc: 'Est. monthly instalment' },
+  { token: '{{location}}', desc: 'Showroom state/city' },
+];
+
+export const DEFAULT_WA_TEMPLATES = [
+  { label: 'First Contact', message: "Hi {{name}}, I saw your enquiry about the {{car}}. Is it still available for viewing? We're based in {{location}}. 😊" },
+  { label: 'Follow-up After Viewing', message: 'Hi {{name}}, just following up after your visit today for the {{car}}. Any questions I can help with?' },
+  { label: 'Price Drop Alert', message: 'Hi {{name}}, great news! The {{car}} you were interested in just had a price drop. Want to revisit? 🔥' },
+  { label: 'Financing Reminder', message: 'Hi {{name}}, I can help arrange financing for the {{car}}. Monthly est. from RM {{monthly}}. Interested?' },
+  { label: 'Closing Push', message: "Hi {{name}}, just checking if you're still considering the {{car}}? We have a few other buyers looking at it too. 👀" },
+];
+
+export function renderWaTemplate(str, lead, car) {
+  const monthly = car?.selling_price ? calcInstalment(car.selling_price) : null;
+  const map = {
+    '{{name}}':     lead?.buyer_name || 'there',
+    '{{car}}':      car ? `${car.brand} ${car.model}` : 'car',
+    '{{brand}}':    car?.brand || '',
+    '{{model}}':    car?.model || '',
+    '{{monthly}}':  monthly ? monthly.toLocaleString() : '---',
+    '{{location}}': car?.state || car?.city || 'our showroom',
+  };
+  return String(str || '').replace(/\{\{\w+\}\}/g, (m) => (m in map ? map[m] : m));
+}
+
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
