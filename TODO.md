@@ -9,20 +9,10 @@
 
 ## Dev tasks
 
-### SECURITY (verified gaps — settings audit)
+### SECURITY / SETTINGS — remaining follow-ups
 
-- **SEC-1: 2FA / TOTP** — Authenticator-app MFA via Supabase native API (`supabase.auth.mfa.enroll/challenge/verify`). Enrollment UI (QR + verify) in Settings → Account Security; AAL2 challenge step on login when a verified factor exists; unenroll option. (IN PROGRESS)
-- **SEC-2: Permission matrix** — Owner-controlled per-role visibility toggles (hide cost/gross/recon from salesman, restrict delete, scope leads to own). New `role_permissions` table + gating helper. Large build.
-- **SEC-3: Audit log completeness + RLS** — Wire `logActivity` into unlogged write paths (dealer_products, vendors, recon_jobs, customers); add RLS policy to `activity_log` (dealer_id = auth.uid()); add table to migrations. (overlaps ENT-3)
-- **SEC-4: Session management** — "Log out all devices" via `signOut({ scope: 'global' })` in Settings; optional idle timeout.
-- **SEC-5: Telegram token hardening** — Move `telegram_bot_token` out of `profiles` (admin-readable) into an edge-function secret / server-side store; UI only writes, never reads back.
-
-### SETTINGS (verified gaps)
-
-- **SET-1: Editable WhatsApp templates** — Template editor in Settings replacing hardcoded `WHATSAPP_TEMPLATES` in leadsHelpers.js; per-dealer storage with `{{placeholders}}`.
-- **SET-2: Add Lead — IC / email / address** — Add buyer_ic, buyer_email, buyer_address to AddLeadModal + leads table for real HP applications.
-- **SET-3: Deal sheet branding** — Add logo, custom disclaimer, and signature/deposit-acknowledgment block to DealPage template.
-- **SET-4: Commission settings** — Per-role commission structure (% of gross / flat / tiered) so payouts auto-calculate.
+- **SEC-2b: Extend permission matrix** — Add more capabilities/roles (cost/gross gating for manager/admin, delete/export restrictions) as concrete needs arise; live re-scope of salesman lead query when a permission changes mid-session.
+- **SEC-5b: Telegram token server-side** — Move outbound Telegram sends into an edge function (service role) so the token never reaches the browser at all. (SEC-5 already made the Settings field write-only.)
 
 ### CRITICAL (legal / compliance)
 
@@ -76,6 +66,17 @@
 ---
 
 ## Done (reference)
+
+- **SEC-1: 2FA / TOTP** — Supabase native MFA; enroll (QR+verify) in Settings, AAL2 challenge on password login, disable. (needs ACT-1 to function)
+- **SEC-2: Permission matrix** — role_permissions table + RLS, usePermissions hook, Settings matrix; enforces view_commission + view_all_leads in Salesmanpanel.
+- **SEC-3: Audit log hardening** — tightened activity_log INSERT RLS (no forged entries); logActivity wired into dealer_products/vendors/recon_jobs.
+- **SEC-4: Log out all devices** — signOut({ scope: 'global' }) in Settings.
+- **SEC-5: Telegram token write-only** — never prefilled/read back; only overwritten when a new value is typed.
+- **SET-1: Editable WhatsApp templates** — per-dealer whatsapp_templates with {{placeholders}} + Settings editor.
+- **SET-2: Add Lead IC/email/address** — buyer_ic/email/address on leads + AddLeadModal.
+- **SET-3: Deal sheet branding** — logo + custom disclaimer + signature/deposit block on DealPage.
+- **SET-4: Commission structure** — commission_config (percent_gross/percent_sale/flat) drives suggested commission in CarForm.
+- **AUD-1..12** — days-in-stock fix, response-time drilldown, plate badge, deposit tracker, appointments tab, stock→listing autolink, parallel HP banks, per-unit P&L, recon job cards, CSV import, trade-in module, vendor directory.
 
 - **V1: `invites` edge function deployed** — manager/accountant/fi_officer/admin creation now calls `auth.admin.createUser()` via the new `invites` edge function; profile upserted with retry loop; DELETE path also deletes auth user. These roles can now actually log in.
 - **V2: TeamTab realtime wired to fetchSoldPerSalesman** — car_listings change event now calls both `fetchSold` (total count) and `fetchSoldPerSalesman` (per-salesman tiles) so commission tiles update live without a manual refresh.

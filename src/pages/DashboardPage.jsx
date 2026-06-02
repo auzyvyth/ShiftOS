@@ -886,6 +886,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
   );
   const [aboutText, setAboutText] = useState(profile?.about_text || "");
   const [dealDisclaimer, setDealDisclaimer] = useState(profile?.deal_disclaimer || "");
+  const [commType, setCommType] = useState(profile?.commission_config?.type || "percent_gross");
+  const [commValue, setCommValue] = useState(profile?.commission_config?.value != null ? String(profile.commission_config.value) : "10");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -982,6 +984,8 @@ function SettingsTab({ profile, onProfileUpdate }) {
     setAnnouncementOn(profile.announcement_bar_enabled || false);
     setAboutText(profile.about_text || "");
     setDealDisclaimer(profile.deal_disclaimer || "");
+    setCommType(profile.commission_config?.type || "percent_gross");
+    setCommValue(profile.commission_config?.value != null ? String(profile.commission_config.value) : "10");
     setTgToken(""); // SEC-5: write-only — never load the stored token back into the form
     setTgChannel(profile.telegram_channel_id || "");
     setTgAutoPost(profile.telegram_auto_post || false);
@@ -1241,6 +1245,10 @@ function SettingsTab({ profile, onProfileUpdate }) {
   };
 
   const saveDealSheet = () => saveSection("dealsheet", { deal_disclaimer: dealDisclaimer.trim() || null });
+
+  const saveCommission = () => saveSection("commission", {
+    commission_config: { type: commType, value: Number(commValue) || 0 },
+  });
 
   const saveStorefront = () =>
     saveSection("storefront", {
@@ -1843,6 +1851,42 @@ function SettingsTab({ profile, onProfileUpdate }) {
         </SettingsField>
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="dealsheet" onClick={saveDealSheet} saving={saving} saved={saved} />
+        </div>
+      </SettingsSection>
+
+      {/* ── Commission (SET-4) ── */}
+      <SettingsSection
+        title="Commission Structure"
+        subtitle="Default rule used to suggest salesman commission on new listings"
+        icon={DollarSign}
+        iconColor="text-green-500"
+        iconBg="rgba(34,197,94,0.08)"
+        iconBorder="rgba(34,197,94,0.18)"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <SettingsField label="Type">
+            <select value={commType} onChange={(e) => setCommType(e.target.value)} className={iCls} style={{ appearance: "none" }}>
+              <option value="percent_gross">% of gross margin</option>
+              <option value="percent_sale">% of sale price</option>
+              <option value="flat">Flat amount (RM)</option>
+            </select>
+          </SettingsField>
+          <SettingsField label={commType === "flat" ? "Amount (RM)" : "Percentage (%)"}>
+            <input
+              type="number"
+              value={commValue}
+              onChange={(e) => setCommValue(e.target.value)}
+              className={iCls}
+              min="0"
+              placeholder={commType === "flat" ? "e.g. 500" : "e.g. 10"}
+            />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Applied as the suggested commission when adding or editing a listing. Salesmen can still be set a custom amount per deal.
+        </p>
+        <div className="flex justify-end pt-1">
+          <SaveBtn sectionKey="commission" onClick={saveCommission} saving={saving} saved={saved} />
         </div>
       </SettingsSection>
 
