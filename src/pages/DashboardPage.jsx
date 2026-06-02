@@ -5308,10 +5308,23 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
             <div className="overflow-y-auto p-5 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <select value={addForm.listing_id} onChange={e => setAddForm(p => ({ ...p, listing_id: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
+                <select value={addForm.listing_id} onChange={e => {
+                  const lid = e.target.value;
+                  const listing = listings.find(l => l.id === lid);
+                  setAddForm(p => ({
+                    ...p,
+                    listing_id: lid,
+                    asking_price: listing?.selling_price ? String(listing.selling_price) : p.asking_price,
+                  }));
+                }} className={iCls} style={{ background: '#fff' }}>
                   <option value="">Select listing...</option>
                   {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}{l.plate_number ? ` · ${l.plate_number}` : ''}</option>)}
                 </select>
+                {addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold') && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />A stock unit already exists for this listing.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
