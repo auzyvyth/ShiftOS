@@ -1,5 +1,12 @@
 # ShiftOS — Pending Tasks
 
+## ⚠️ USER ACTION REQUIRED — remind every session until done
+
+- **ACT-1: Enable TOTP in Supabase dashboard** — 2FA (SEC-1) will not work end-to-end until the TOTP factor type is enabled: Supabase → Authentication → Settings → Multi-Factor → enable **TOTP**. Until then, the "Enable 2FA" button in Settings will error on enroll.
+- **ACT-2: Decide on full 2FA enforcement (SEC-1b)** — Client-side 2FA only challenges the password login path. Google OAuth and magic-link logins are NOT challenged. True enforcement across all auth methods needs RLS policies keyed on `aal2` so the database rejects aal1 sessions. Confirm if/when you want this hardening built.
+
+> Reminder protocol: while ACT-1 or ACT-2 remain here, surface them at session start and whenever 2FA/security work is touched.
+
 ## Dev tasks
 
 ### SECURITY (verified gaps — settings audit)

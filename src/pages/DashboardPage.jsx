@@ -433,7 +433,7 @@ function marginColor(sell, cost) {
   return '#f87171';
 }
 
-function ProductsCatalogue({ dealerId }) {
+function ProductsCatalogue({ dealerId, profile }) {
   const [products, setProducts]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [open, setOpen]           = useState(false);
@@ -483,8 +483,13 @@ function ProductsCatalogue({ dealerId }) {
     try {
       if (editTarget) {
         await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
+        const changes = {};
+        if (Number(editTarget.cost_price) !== payload.cost_price) changes.cost_price = { from: editTarget.cost_price, to: payload.cost_price };
+        if (Number(editTarget.selling_price) !== payload.selling_price) changes.selling_price = { from: editTarget.selling_price, to: payload.selling_price };
+        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: editTarget.id, action: 'updated', summary: `Product updated — ${payload.name}`, fieldChanges: Object.keys(changes).length ? changes : null });
       } else {
-        await supabase.from('dealer_products').insert(payload);
+        const { data: ins } = await supabase.from('dealer_products').insert(payload).select().single();
+        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: ins?.id, action: 'created', summary: `Product added — ${payload.name} · sell RM ${payload.selling_price.toLocaleString()}` });
       }
       await fetchProducts();
       setShowModal(false);
@@ -495,13 +500,16 @@ function ProductsCatalogue({ dealerId }) {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this product?')) return;
+    const target = products.find(x => x.id === id);
     await supabase.from('dealer_products').delete().eq('id', id);
+    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: id, action: 'deleted', summary: `Product deleted${target ? ` — ${target.name}` : ''}` });
     setProducts(p => p.filter(x => x.id !== id));
     toast.success('Deleted');
   };
 
   const handleToggleActive = async (p) => {
     await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
+    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: p.id, action: 'updated', summary: `Product ${!p.is_active ? 'activated' : 'deactivated'} — ${p.name}` });
     setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
   };
 
@@ -1781,7 +1789,7 @@ function SettingsTab({ profile, onProfileUpdate }) {
       </SettingsSection>
 
       {/* ── 6. Services & Add-ons ── */}
-      <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} />
+      <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />
 
     </div>
   );
@@ -5357,6 +5365,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
     }).select().single();
     if (error) { toast.error('Failed to add vendor'); }
     else {
+      logActivity({ dealerId: userId, actor: profile, tableName: 'vendors', recordId: data.id, action: 'created', summary: `Vendor added — ${data.name} (${data.category})` });
       setVendors(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)));
       setShowVendorAdd(false);
       setVendorForm({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
@@ -5400,7 +5409,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile }) {
       status: 'pending',
     }).select().single();
     if (error) { toast.error('Failed to add job'); }
-    else { setReconJobs(p => [...p, data]); setShowReconAdd(false); setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' }); }
+    else {
+      logActivity({ dealerId: userId, actor: profile, tableName: 'recon_jobs', recordId: data.id, action: 'created', summary: `Recon job — ${data.title}${data.cost ? ` · RM ${Number(data.cost).toLocaleString()}` : ''}${data.vendor ? ` · ${data.vendor}` : ''}` });
+      setReconJobs(p => [...p, data]); setShowReconAdd(false); setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
+    }
     setReconSaving(false);
   };
 

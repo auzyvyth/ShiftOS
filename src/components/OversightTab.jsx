@@ -225,6 +225,10 @@ function AuditTrail({ dealerId, initialFilter = 'all' }) {
     stock_units: 'Stock',
     deal_financing: 'HP',
     leads: 'Lead',
+    dealer_products: 'Product',
+    vendors: 'Vendor',
+    recon_jobs: 'Recon',
+    profiles: 'Account',
   };
   const actionColor = { create: '#16a34a', update: '#3b82f6', delete: '#dc2626' };
 
